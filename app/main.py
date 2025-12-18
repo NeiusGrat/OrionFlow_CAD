@@ -1,30 +1,28 @@
+import os
+import json
+import uuid
+from pathlib import Path
+
+from fastapi import FastAPI, Body
 from pydantic import BaseModel
-from fastapi import FastAPI
+
 import cadquery as cq
 from cadquery import exporters
-from pathlib import Path
-import uuid
 
-
-import os
 from dotenv import load_dotenv
 from google import genai
 
-# 1. Load the variables from .env into the system environment
+
+# Load environment variables from .env
 load_dotenv()
 
-# 2. Retrieve the key securely
-# We use os.getenv so that if the key is missing, the app doesn't crash immediately 
-# but gives us a chance to handle the error.
+# Read Gemini API key
 api_key = os.getenv("GEMINI_API_KEY")
-
 if not api_key:
-    raise ValueError("No API Key found. Did you create the .env file?")
+    raise RuntimeError("GEMINI_API_KEY not found in environment")
 
-# 3. Initialize the client
+# Initialize Gemini client
 client = genai.Client(api_key=api_key)
-
-# Now you can use 'client' to generate content
 
 
 
@@ -42,6 +40,7 @@ app = FastAPI(
     version="0.1.0"
 )
 
+
 class GenerateRequest(BaseModel):
     prompt: str
     
@@ -58,15 +57,45 @@ def sanitize_parameters(raw_params: dict) -> dict:
     return safe
 
 
-def mock_llm_extract_parameters(prompt: str) -> dict:
+def gemini_extract_parameters(prompt: str) -> dict:
     """
-    Temporary stand-in for LLM.
+    Uses Gemini Flash-3 to extract CAD parameters as STRICT JSON.
     """
-    if "large" in prompt.lower():
-        return {"radius": 50, "height": 30}
-    if "small" in prompt.lower():
-        return {"radius": 10, "height": 5}
-    return {}
+
+    system_prompt = f"""
+You are a mechanical CAD parameter extraction assistant.
+
+TASK:
+Extract numeric parameters from the user text.
+
+RULES:
+- Output ONLY valid JSON
+- NO explanations
+- NO markdown
+- NO units
+- ONLY these keys are allowed: {list(ALLOWED_PARAMETERS.keys())}
+- If a parameter is not mentioned, omit it
+
+EXAMPLE OUTPUT:
+{{ "radius": 25, "height": 10 }}
+
+USER TEXT:
+{prompt}
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-exp",
+        contents=system_prompt
+    )
+
+    text = response.text.strip()
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Safety fallback
+        return {}
+
 
 
 def make_model(params: dict):
@@ -96,7 +125,7 @@ def generate_cad(request: GenerateRequest):
     step_path = output_dir / f"{job_id}.step"
     stl_path = output_dir / f"{job_id}.stl"
 
-    raw_params = mock_llm_extract_parameters(request.prompt)
+    raw_params = gemini_extract_parameters(request.prompt)
     safe_params = sanitize_parameters(raw_params)
     model = make_model(safe_params)
 
@@ -113,4 +142,5 @@ def generate_cad(request: GenerateRequest):
             "stl": str(stl_path)
         }
     }
+
 
