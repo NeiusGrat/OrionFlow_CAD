@@ -12,6 +12,13 @@ from cadquery import exporters
 from dotenv import load_dotenv
 from google import genai
 
+import trimesh
+
+from google.genai.errors import ClientError
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 
 # Load environment variables from .env
 load_dotenv()
@@ -39,6 +46,17 @@ app = FastAPI(
     description="Text-to-Parametric CAD backend",
     version="0.1.0"
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"], # Your Vite dev server
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# This makes http://127.0.0.1:8000/outputs/filename.stl work!
+app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
 
 
 class GenerateRequest(BaseModel):
@@ -82,20 +100,29 @@ EXAMPLE OUTPUT:
 USER TEXT:
 {prompt}
 """
-
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-exp",
-        contents=system_prompt
-    )
-
-    text = response.text.strip()
-
     try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-exp",
+            contents=system_prompt
+        )
+
+        text = response.text.strip()
         return json.loads(text)
-    except json.JSONDecodeError:
-        # Safety fallback
+
+    except ClientError as e:
+        # Quota exceeded, rate limit, etc.
+        print("⚠️ Gemini unavailable, falling back:", e)
         return {}
 
+    except json.JSONDecodeError:
+        # Model returned garbage
+        return {}
+
+    except Exception as e:
+        # Absolute safety net
+        print("⚠️ Unexpected Gemini error:", e)
+        return {}
+   
 
 
 def make_model(params: dict):
@@ -108,6 +135,13 @@ def make_model(params: dict):
         .extrude(height)
     )
 
+def convert_stl_to_glb(stl_path: Path, glb_path: Path):
+    """
+    Converts STL mesh to GLB for browser visualization.
+    """
+    mesh = trimesh.load_mesh(stl_path)
+    glb_bytes = mesh.export(file_type="glb")
+    glb_path.write_bytes(glb_bytes)
 
 
 
@@ -125,6 +159,9 @@ def generate_cad(request: GenerateRequest):
     step_path = output_dir / f"{job_id}.step"
     stl_path = output_dir / f"{job_id}.stl"
 
+    glb_path = output_dir / f"{job_id}.glb"
+
+
     raw_params = gemini_extract_parameters(request.prompt)
     safe_params = sanitize_parameters(raw_params)
     model = make_model(safe_params)
@@ -133,13 +170,18 @@ def generate_cad(request: GenerateRequest):
     exporters.export(model, str(step_path)) # Better to cast Path to str for exporters
     exporters.export(model, str(stl_path))
 
+    convert_stl_to_glb(stl_path, glb_path)
+
+
+
     return {
         "job_id": job_id,
         "prompt": request.prompt,
         "parameters": safe_params,
         "files": {
             "step": str(step_path),
-            "stl": str(stl_path)
+            "stl": str(stl_path),
+            "glb": str(glb_path)
         }
     }
 
