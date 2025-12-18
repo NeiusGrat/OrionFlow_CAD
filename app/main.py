@@ -5,6 +5,29 @@ from cadquery import exporters
 from pathlib import Path
 import uuid
 
+
+import os
+from dotenv import load_dotenv
+from google import genai
+
+# 1. Load the variables from .env into the system environment
+load_dotenv()
+
+# 2. Retrieve the key securely
+# We use os.getenv so that if the key is missing, the app doesn't crash immediately 
+# but gives us a chance to handle the error.
+api_key = os.getenv("GEMINI_API_KEY")
+
+if not api_key:
+    raise ValueError("No API Key found. Did you create the .env file?")
+
+# 3. Initialize the client
+client = genai.Client(api_key=api_key)
+
+# Now you can use 'client' to generate content
+
+
+
 ALLOWED_PARAMETERS = {
     "radius": {"min": 1, "max": 200, "default": 20},
     "height": {"min": 1, "max": 300, "default": 10}
