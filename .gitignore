@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# CAD outputs
+outputs/
+*.step
+*.stl
+*.glb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
