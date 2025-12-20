@@ -1,4 +1,5 @@
 import re
+# Force reload
 
 def rule_based_extract(prompt: str) -> dict:
     """
@@ -32,6 +33,17 @@ def rule_based_extract(prompt: str) -> dict:
     if width_match:
         params["width"] = float(width_match.group(1))
 
+    # "10x5" or "10 x 5" pattern (Length x Width)
+    dim_match = re.search(r"(\d+)\s*[xX]\s*(\d+)", prompt)
+    if dim_match:
+        # Assuming Length x Width or Length x Height
+        # If we already have explicit params, don't overwrite? Or overwrite? 
+        # Usually NxM means L x W for 2D shapes.
+        params.setdefault("length", float(dim_match.group(1)))
+        params.setdefault("width", float(dim_match.group(2)))
+        # For a box, user might mean L x W, and height is separate or default.
+        # This gives us better defaults than 50x50.
+
     # qualitative sizing
     if "small" in prompt:
         params.setdefault("radius", 10)
@@ -54,7 +66,7 @@ def infer_part_type(prompt: str) -> str:
     """
     prompt = prompt.lower()
     
-    if any(w in prompt for w in ["box", "cube", "plate", "rectangular"]):
+    if any(w in prompt for w in ["box", "cube", "plate", "rectangular", "rectangle"]):
         return "box"
     
     if any(w in prompt for w in ["shaft", "rod", "pole"]):

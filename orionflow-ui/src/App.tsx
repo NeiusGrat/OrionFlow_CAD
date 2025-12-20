@@ -3,19 +3,21 @@ import LeftPanel from "./components/Panels/LeftPanel";
 import RightPanel from "./components/Panels/RightPanel";
 import Viewer from "./components/Viewer/Viewer";
 import { useDesignStore } from "./store/designStore";
-import { Loader2, Box, LayoutGrid, RotateCcw } from "lucide-react";
+import { Box, LayoutGrid, RotateCcw } from "lucide-react";
 
 export default function App() {
   const current = useDesignStore((state) => state.current);
   const addCreation = useDesignStore((state) => state.addCreation);
+  const setIsGenerating = useDesignStore((state) => state.setIsGenerating);
+  const triggerViewAction = useDesignStore((state) => state.triggerViewAction);
+  const isGenerating = useDesignStore((state) => state.isGenerating);
 
   const [prompt, setPrompt] = useState("");
-  const [loading, setLoading] = useState(false);
 
   async function generateModel() {
     if (!prompt.trim()) return;
 
-    setLoading(true);
+    setIsGenerating(true);
 
     try {
       const response = await fetch("http://127.0.0.1:8000/generate", {
@@ -45,12 +47,12 @@ export default function App() {
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   }
 
   // --- HOME VIEW ---
-  if (!current && !loading) {
+  if (!current && !isGenerating) {
     return (
       <div style={{
         height: "100vh", width: "100vw",
@@ -152,19 +154,7 @@ export default function App() {
           background: "#f8f9fa", // White/Light grey CAD background
         }}
       >
-        {/* LOADING OVERLAY */}
-        {loading && (
-          <div style={{
-            position: "absolute", zIndex: 50, inset: 0,
-            background: "rgba(0,0,0,0.7)", backdropFilter: "blur(10px)",
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            color: "white"
-          }}>
-            <Loader2 size={48} className="animate-spin" color="var(--color-accent)" />
-            <p style={{ marginTop: "20px", fontSize: "18px", fontWeight: 500 }}>Generating 3D Model...</p>
-            <p style={{ marginTop: "8px", fontSize: "14px", opacity: 0.7 }}>This might take a few moments</p>
-          </div>
-        )}
+        {/* LOADING OVERLAY HANDLED BY VIEWER NOW */}
 
         {/* 3D VIEWER */}
         <div style={{ flex: 1, position: "relative" }}>
@@ -172,7 +162,7 @@ export default function App() {
         </div>
 
         {/* BOTTOM VIEW CONTROLS (Ortho/Iso/Reset) */}
-        {!loading && (
+        {!isGenerating && (
           <div style={{
             position: "absolute",
             bottom: "24px",
@@ -190,14 +180,7 @@ export default function App() {
           }}>
             <div
               style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}
-              onClick={() => {
-                const camera = useDesignStore.getState().camera
-                if (camera) {
-                  camera.position.set(0, 10, 0);
-                  camera.lookAt(0, 0, 0);
-                  camera.updateProjectionMatrix();
-                }
-              }}
+              onClick={() => triggerViewAction('ortho')}
             >
               <LayoutGrid size={16} />
               <span>Orthographic</span>
@@ -205,14 +188,7 @@ export default function App() {
             <div style={{ width: "1px", height: "16px", background: "#e5e7eb" }} />
             <div
               style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}
-              onClick={() => {
-                const camera = useDesignStore.getState().camera
-                if (camera) {
-                  camera.position.set(5, 5, 5);
-                  camera.lookAt(0, 0, 0);
-                  camera.updateProjectionMatrix();
-                }
-              }}
+              onClick={() => triggerViewAction('iso')}
             >
               <Box size={16} />
               <span>Isometric</span>
@@ -220,14 +196,7 @@ export default function App() {
             <div style={{ width: "1px", height: "16px", background: "#e5e7eb" }} />
             <div
               style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px", fontWeight: 600 }}
-              onClick={() => {
-                const camera = useDesignStore.getState().camera
-                if (camera) {
-                  camera.position.set(5, 5, 5);
-                  camera.lookAt(0, 0, 0);
-                  camera.updateProjectionMatrix();
-                }
-              }}
+              onClick={() => triggerViewAction('reset')}
             >
               <RotateCcw size={16} />
               <span>Reset</span>

@@ -38,7 +38,7 @@ def build_box_graph(params: dict) -> FeatureGraph:
                 id="extrude_1",
                 type="extrude",
                 params={
-                    "height": params.get("height", 20)
+                    "height": params.get("height", 5)
                 },
                 depends_on=["sketch_1"]
             )

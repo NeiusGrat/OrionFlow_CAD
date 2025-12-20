@@ -18,29 +18,38 @@ export default function ParamPanel() {
             },
         };
 
-        const res = await fetch("http://127.0.0.1:8000/regenerate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ feature_graph: updatedGraph }),
-        });
+        const setIsGenerating = useDesignStore.getState().setIsGenerating;
+        setIsGenerating(true);
 
-        const data = await res.json();
+        try {
+            const res = await fetch("http://127.0.0.1:8000/regenerate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ feature_graph: updatedGraph }),
+            });
 
-        // Get fresh state
-        const freshCurrent = useDesignStore.getState().current;
-        if (!freshCurrent) return;
+            const data = await res.json();
 
-        useDesignStore.setState({
-            current: {
-                ...freshCurrent,
-                featureGraph: data.feature_graph,
-                files: {
-                    ...freshCurrent.files,
-                    step: "http://127.0.0.1:8000/" + data.files.step,
-                    glb: "http://127.0.0.1:8000/" + data.files.glb,
+            // Get fresh state
+            const freshCurrent = useDesignStore.getState().current;
+            if (!freshCurrent) return;
+
+            useDesignStore.setState({
+                current: {
+                    ...freshCurrent,
+                    featureGraph: data.feature_graph,
+                    files: {
+                        ...freshCurrent.files,
+                        step: "http://127.0.0.1:8000/" + data.files.step,
+                        glb: "http://127.0.0.1:8000/" + data.files.glb,
+                    },
                 },
-            },
-        });
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsGenerating(false);
+        }
     }
 
     return (
