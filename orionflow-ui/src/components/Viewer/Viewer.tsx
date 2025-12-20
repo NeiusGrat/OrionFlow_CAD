@@ -1,4 +1,4 @@
-import AxisCube from "./AxisCube";
+import ViewCube from "./ViewCube";
 
 
 
@@ -35,7 +35,7 @@ function CameraController() {
     const setCamera = useDesignStore.setState;
 
     useEffect(() => {
-        setCamera({ camera });
+        setCamera({ camera: camera as any });
     }, [camera]);
 
     return null;
@@ -49,11 +49,11 @@ export default function Viewer({ url }: { url: string }) {
                 <directionalLight position={[5, 5, 5]} intensity={0.8} />
 
                 <CameraController />
-                <Model url={url} />
+                {url && <Model url={url} />}
                 <OrbitControls enableDamping />
             </Canvas>
 
-            <AxisCube />
+            <ViewCube />
         </div>
     );
 
