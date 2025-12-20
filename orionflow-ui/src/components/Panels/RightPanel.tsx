@@ -2,6 +2,7 @@ import { useDesignStore } from "../../store/designStore";
 import { Download, RefreshCw, ChevronDown } from "lucide-react";
 import AdamSlider from "../Controls/AdamSlider";
 import { useState } from "react";
+import ParamPanel from "./ParamPanel";
 
 export default function RightPanel() {
     const current = useDesignStore((state) => state.current);
@@ -43,10 +44,8 @@ export default function RightPanel() {
             {/* PARAMETERS LIST */}
             <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {/* Mocking the Adam CAD specific sliders for the visual requirements */}
-                    <AdamSlider label="Cylinder Radius" value={15} min={1} max={50} unit="mm" onChange={() => { }} />
-                    <AdamSlider label="Cylinder Height" value={50} min={1} max={100} unit="mm" onChange={() => { }} />
-                    <AdamSlider label="Resolution" value={60} min={10} max={100} step={1} onChange={() => { }} />
+
+                    <ParamPanel />
 
                     {/* Divider */}
                     <div style={{ height: "1px", background: "var(--color-border)", margin: "16px 0" }} />

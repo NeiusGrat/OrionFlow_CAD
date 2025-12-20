@@ -30,6 +30,7 @@ export default function App() {
         id: crypto.randomUUID(),
         prompt,
         parameters: data.parameters || {},
+        featureGraph: data.feature_graph,
         material: {
           roughness: 0.4,
           metalness: 0.6,

@@ -8,6 +8,7 @@ export type DesignState = {
     id: string;
     prompt: string;
     parameters: Record<string, number>;
+    featureGraph?: any;
     material: {
         roughness: number;
         metalness: number;
