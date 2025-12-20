@@ -10,11 +10,10 @@ import cadquery as cq
 from cadquery import exporters
 
 from dotenv import load_dotenv
-from google import genai
 
 import trimesh
 
-from google.genai.errors import ClientError
+from app.ml.predictor import predict_parameters
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -22,15 +21,6 @@ from fastapi.staticfiles import StaticFiles
 
 # Load environment variables from .env
 load_dotenv()
-
-# Read Gemini API key
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    raise RuntimeError("GEMINI_API_KEY not found in environment")
-
-# Initialize Gemini client
-client = genai.Client(api_key=api_key)
-
 
 
 ALLOWED_PARAMETERS = {
@@ -75,56 +65,6 @@ def sanitize_parameters(raw_params: dict) -> dict:
     return safe
 
 
-def gemini_extract_parameters(prompt: str) -> dict:
-    """
-    Uses Gemini Flash-3 to extract CAD parameters as STRICT JSON.
-    """
-
-    system_prompt = f"""
-You are a mechanical CAD parameter extraction assistant.
-
-TASK:
-Extract numeric parameters from the user text.
-
-RULES:
-- Output ONLY valid JSON
-- NO explanations
-- NO markdown
-- NO units
-- ONLY these keys are allowed: {list(ALLOWED_PARAMETERS.keys())}
-- If a parameter is not mentioned, omit it
-
-EXAMPLE OUTPUT:
-{{ "radius": 25, "height": 10 }}
-
-USER TEXT:
-{prompt}
-"""
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
-            contents=system_prompt
-        )
-
-        text = response.text.strip()
-        return json.loads(text)
-
-    except ClientError as e:
-        # Quota exceeded, rate limit, etc.
-        print("⚠️ Gemini unavailable, falling back:", e)
-        return {}
-
-    except json.JSONDecodeError:
-        # Model returned garbage
-        return {}
-
-    except Exception as e:
-        # Absolute safety net
-        print("⚠️ Unexpected Gemini error:", e)
-        return {}
-   
-
-
 def make_model(params: dict):
     radius = params["radius"]
     height = params["height"]
@@ -162,7 +102,7 @@ def generate_cad(request: GenerateRequest):
     glb_path = output_dir / f"{job_id}.glb"
 
 
-    raw_params = gemini_extract_parameters(request.prompt)
+    raw_params = predict_parameters(request.prompt)
     safe_params = sanitize_parameters(raw_params)
     model = make_model(safe_params)
 
@@ -184,5 +124,3 @@ def generate_cad(request: GenerateRequest):
             "glb": str(glb_path)
         }
     }
-
-
