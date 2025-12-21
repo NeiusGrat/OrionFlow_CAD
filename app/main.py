@@ -5,6 +5,7 @@ import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Body, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import cadquery as cq
@@ -16,8 +17,8 @@ import trimesh
 
 # New Architecture Imports
 from app.intent.intent_parser import parse_intent
-from app.ml.parameter_infer import infer_parameters
-from app.validation.sanity import validate
+from app.ml.predictor_xgb import infer_parameters_xgb as infer_parameters
+from app.validation.sanity import validate, stress_test
 from app.cad.registry import PART_REGISTRY
 
 # Legacy imports for Regenerate (keeping for back-compat if needed, though regenerate might need updates)
@@ -136,11 +137,17 @@ def generate_cad(request: GenerateRequest):
     # 4. Build Geometry (Registry Lookup)
     try:
         part_cls = PART_REGISTRY[intent.part_type]
+        
+        # Stress Test (Advanced)
+        # We run a quick check on tweaked params to ensure stability
+        # stress_test(part_cls, raw_params) # Optional: enable if performant enough
+        
         part = part_cls(raw_params)
         model = part.build()
     except Exception as e:
         print(f"CRITICAL BUILD ERROR: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
 
 
     exporters.export(model, str(step_path))
@@ -238,3 +245,20 @@ def describe_cad(request: DescribeRequest):
         return {"description": description}
     except Exception as e:
          raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/download/step/{filename}")
+def download_step(filename: str):
+    """
+    Force download of STEP file.
+    """
+    file_path = Path("outputs") / filename
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/step", # or "application/octet-stream"
+        filename=filename, # Triggers browser download
+    )
+

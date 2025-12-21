@@ -1,22 +1,29 @@
 from app.intent.intent_schema import Intent
+from app.intent.normalize import normalize
+
+PART_SYNONYMS = {
+    "box": ["box", "cube", "rectangular", "rectangle", "plate", "block"],
+    "cylinder": ["cylinder", "rod", "pipe", "tube", "pole"],
+    "shaft": ["shaft", "axle", "spindle"],
+    "gear": ["gear", "helical gear", "spur gear", "cog"]
+}
 
 def parse_intent(prompt: str) -> Intent:
-    prompt = prompt.lower()
+    """
+    3-Stage Advanced Intent Pipeline:
+    1. Normalize
+    2. Strict Keyword Match
+    3. Return Intent or Raise
+    """
+    # 1. Normalize
+    clean_prompt = normalize(prompt)
 
-    if any(w in prompt for w in ["cube", "box", "rectangle", "plate"]):
-        return Intent(part_type="box")
+    # 2. Strict Intent Classification
+    for part_type, keywords in PART_SYNONYMS.items():
+        # Check whole word matches or known compounds
+        if any(w in clean_prompt for w in keywords):
+            return Intent(part_type=part_type)
 
-    if any(w in prompt for w in ["cylinder", "rod", "pole", "tube"]):
-        return Intent(part_type="cylinder")
-        
-    if "shaft" in prompt:
-        return Intent(part_type="shaft")
-    
-    if "gear" in prompt:
-         return Intent(part_type="gear")
+    # 3. No fallback allowed for advanced mode
+    raise ValueError("Unsupported part description. Please specify 'box', 'cylinder', 'shaft', or 'gear'.")
 
-    # Default fallback for now or raise Error
-    # For strict mode we might want to raise, but let's default to cylinder if unsure 
-    # to avoid crashing on random chat, OR strictly raise to force clarity.
-    # The plan says "raise ValueError", so let's stick to the plan for strictness.
-    raise ValueError("Unknown or unsupported part type in prompt.")

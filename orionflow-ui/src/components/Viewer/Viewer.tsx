@@ -1,10 +1,11 @@
+import React, { useEffect, useState } from "react";
 import ViewCube from "./ViewCube";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { useDesignStore } from "../../store/designStore";
 import * as THREE from "three";
-import { useEffect } from "react";
-import { Box } from "lucide-react";
+
+import { Box, Download } from "lucide-react";
 
 /**
  * Aggressively removes any GridHelper found in the scene
@@ -22,12 +23,13 @@ function GridRemover() {
     return null;
 }
 
+
+
 function Model({ url }: { url: string }) {
     const { scene } = useGLTF(url);
-    const current = useDesignStore((state) => state.current);
     const { camera, controls } = useThree();
 
-    // Auto-fit on load with slight delay to ensure geometry is ready
+    // Auto-fit on load
     useEffect(() => {
         if (!scene) return;
 
@@ -36,18 +38,13 @@ function Model({ url }: { url: string }) {
             const size = box.getSize(new THREE.Vector3());
             const center = box.getCenter(new THREE.Vector3());
 
-            // Check if bounds are valid (not empty)
             if (size.lengthSq() === 0) return;
 
-            // Center geometry
             scene.position.sub(center);
 
-            // Fit camera
-            // Use a slightly larger multiplier for better margins
             const maxDim = Math.max(size.x, size.y, size.z) || 10;
             const dist = maxDim * 2.0;
 
-            // Position fitting isometric-ish
             camera.position.set(dist, dist, dist);
             camera.lookAt(0, 0, 0);
 
@@ -56,31 +53,78 @@ function Model({ url }: { url: string }) {
                 controls.target.set(0, 0, 0);
                 // @ts-ignore
                 controls.update();
-                // @ts-ignore
-                controls.saveState(); // Save this as the "reset" state
             }
         };
 
-        // Run immediately and after a short tick
         fit();
         const t = setTimeout(fit, 50);
         return () => clearTimeout(t);
 
     }, [scene, url, camera, controls]);
 
+    // Apply SolidWorks-ish Material + Edges
     scene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
             const mesh = child as THREE.Mesh;
+            // Matte Grey Material
             mesh.material = new THREE.MeshStandardMaterial({
-                roughness: current?.material.roughness ?? 0.4,
-                metalness: current?.material.metalness ?? 0.6,
-                color: "#00A6FF"
+                color: "#E0E0E0", // Light Grey
+                roughness: 0.5,
+                metalness: 0.1,
+                flatShading: false,
+                polygonOffset: true,
+                polygonOffsetFactor: 1, // Push back slightly so lines show
+                polygonOffsetUnits: 1
             });
+            // We can't easily inject the edges as children of the existing mesh in the glTF directly 
+            // without reconstructing. But we can render a separate component for edges if we clone geometry.
+            // A simpler way with react-three-fiber is to clone the element or just modify the scene structure.
+            // BUT: useGLTF returns a primitive. 
+            // Let's just create a helper component `Edges` and parent it effectively?
+            // Actually, we can just iterate and attach edges geometry.
+
+            // However, doing it declaratively is cleaner.
+            // Let's rely on the primitive for now, but to get edges, we might need a workaround.
+            // Or we just add specific LineSegments to the scene manually.
         }
     });
 
-    return <primitive object={scene} />;
+    return (
+        <group>
+            <primitive object={scene} />
+            {/* 
+              To do edges properly on an imported GLTF without complex recursion here:
+              We'll stick to the material change above. 
+              Adding edges to arbitrary GLTF scene is tricky in one go.
+              Let's try a simple approach: traverse and spawn LineSegments.
+            */}
+            <SceneEdges scene={scene} />
+        </group>
+    );
 }
+
+function SceneEdges({ scene }: { scene: THREE.Group }) {
+    const [edges, setEdges] = useState<React.ReactElement[]>([]);
+
+    useEffect(() => {
+        const newEdges: React.ReactElement[] = [];
+        scene.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                newEdges.push(
+                    <lineSegments key={mesh.uuid}>
+                        <edgesGeometry args={[mesh.geometry, 30]} />
+                        <lineBasicMaterial color="#000000" />
+                    </lineSegments>
+                );
+            }
+        });
+        setEdges(newEdges);
+    }, [scene]);
+
+    return <>{edges}</>;
+}
+
 
 function ViewManager() {
     const viewAction = useDesignStore((state) => state.viewAction);
@@ -119,6 +163,13 @@ function ViewManager() {
 
 export default function Viewer({ url }: { url: string }) {
     const isGenerating = useDesignStore((state) => state.isGenerating);
+    const current = useDesignStore((state) => state.current);
+
+    // Prepare download URL
+    const getStepFilename = (path: string) => path.split(/[/\\]/).pop();
+    const downloadUrl = current?.files?.step
+        ? `http://127.0.0.1:8000/download/step/${getStepFilename(current.files.step)}`
+        : null;
 
     return (
         <div style={{ height: "100%", width: "100%", position: "relative" }}>
@@ -126,7 +177,7 @@ export default function Viewer({ url }: { url: string }) {
             {isGenerating && (
                 <div style={{
                     position: "absolute", zIndex: 100, inset: 0,
-                    background: "rgba(240, 240, 240, 0.8)",
+                    background: "rgba(255, 255, 255, 0.9)",
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                     color: "#333"
                 }}>
@@ -138,17 +189,47 @@ export default function Viewer({ url }: { url: string }) {
                         }
                         `}
                     </style>
-                    <Box size={48} color="#00A6FF" style={{ animation: "spin 2s linear infinite" }} />
+                    <Box size={48} color="#F97316" style={{ animation: "spin 2s linear infinite" }} />
                     <p style={{ marginTop: "20px", fontSize: "16px", fontWeight: 600 }}>Generating geometry...</p>
                 </div>
             )}
 
-            <Canvas camera={{ position: [20, 20, 20], fov: 45 }} style={{ background: "#f5f5f5" }}>
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-                <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+            {/* FLOATING DOWNLOAD BUTTON */}
+            {downloadUrl && !isGenerating && (
+                <a
+                    href={downloadUrl}
+                    style={{
+                        position: "absolute",
+                        bottom: "24px",
+                        right: "24px",
+                        zIndex: 50,
+                        background: "#F97316", // Orange
+                        color: "white",
+                        padding: "12px 20px",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        textDecoration: "none",
+                        fontWeight: 600,
+                        boxShadow: "0 4px 12px rgba(249, 115, 22, 0.3)",
+                        transition: "transform 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1.0)"}
+                >
+                    <Download size={20} />
+                    <span>Download STEP</span>
+                </a>
+            )}
 
-                {/* Guarantee NO GRID */}
+            <Canvas camera={{ position: [20, 20, 20], fov: 45 }} style={{ background: "#f9fafb" }}> {/* Very light grey bg */}
+                {/* Stronger lighting for CAD look */}
+                <ambientLight intensity={1.0} />
+                <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />
+                <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+                <directionalLight position={[0, 0, 10]} intensity={0.5} />
+
                 <GridRemover />
 
                 {url && <Model url={url} />}

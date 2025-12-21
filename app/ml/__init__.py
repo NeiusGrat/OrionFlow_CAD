@@ -1,1 +1,2 @@
-from .parameter_infer import infer_parameters
+from .parameter_infer import infer_parameters as infer_parameters_rule
+from .predictor_xgb import infer_parameters_xgb

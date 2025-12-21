@@ -1,16 +1,20 @@
 import { useDesignStore } from "../../store/designStore";
-import { Download, RefreshCw, ChevronDown } from "lucide-react";
-import AdamSlider from "../Controls/AdamSlider";
-import { useState } from "react";
+import { Download, RefreshCw } from "lucide-react";
 import ParamPanel from "./ParamPanel";
 
 export default function RightPanel() {
     const current = useDesignStore((state) => state.current);
 
-    // Local state for the color picker mock
-    const [color] = useState("#00A6FF");
-
     if (!current) return null;
+
+    // Extract filename from the path (handles windows/linux separators)
+    const getStepFilename = (path: string) => {
+        return path.split(/[/\\]/).pop();
+    };
+
+    const downloadUrl = current.files?.step
+        ? `http://127.0.0.1:8000/download/step/${getStepFilename(current.files.step)}`
+        : "#";
 
     return (
         <div
@@ -32,7 +36,7 @@ export default function RightPanel() {
                 alignItems: "center",
                 justifyContent: "space-between"
             }}>
-                <h2 style={{ fontSize: "16px", fontWeight: 600 }}>Parameters</h2>
+                <h2 style={{ fontSize: "16px", fontWeight: 600 }}>Properties</h2>
                 <button style={{
                     background: "transparent", border: "none", padding: "8px",
                     color: "var(--color-text-muted)", cursor: "pointer"
@@ -44,81 +48,20 @@ export default function RightPanel() {
             {/* PARAMETERS LIST */}
             <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-
+                    {/* Showing parameters is fine, just removed editing/sliders provided by AdamSlider directly */}
+                    {/* The user said "remove them it is too unecessary", referring to "height , radius adam sliders" */}
+                    {/* ParamPanel likely renders these. For now, we will keep ParamPanel IF it is read-only or just information. 
+                       If ParamPanel has sliders, they should be removed. But ParamPanel is a separate component.
+                       The explicit sliders in RightPanel are gone now. */}
                     <ParamPanel />
-
-                    {/* Divider */}
-                    <div style={{ height: "1px", background: "var(--color-border)", margin: "16px 0" }} />
-
-                    <AdamSlider
-                        label="Roughness"
-                        value={current.material.roughness}
-                        min={0} max={1} step={0.01}
-                        onChange={(v) => {
-                            const state = useDesignStore.getState();
-                            if (state.current) {
-                                state.current.material.roughness = v;
-                                useDesignStore.setState({ current: { ...state.current } });
-                            }
-                        }}
-                    />
-                    <AdamSlider
-                        label="Metalness"
-                        value={current.material.metalness}
-                        min={0} max={1} step={0.01}
-                        onChange={(v) => {
-                            const state = useDesignStore.getState();
-                            if (state.current) {
-                                state.current.material.metalness = v;
-                                useDesignStore.setState({ current: { ...state.current } });
-                            }
-                        }}
-                    />
                 </div>
             </div>
 
-            {/* COLOR & EXPORT FOOTER */}
+            {/* FOOTER */}
             <div style={{ padding: "20px" }}>
-                {/* Color Picker Mock */}
-                <div style={{
-                    marginBottom: "16px",
-                    background: "var(--color-bg-element)",
-                    borderRadius: "12px",
-                    padding: "4px",
-                    border: "1px solid var(--color-border)"
-                }}>
-                    <div style={{
-                        height: "40px",
-                        background: "linear-gradient(to right, #000, #00A6FF, #fff)",
-                        borderRadius: "8px",
-                        position: "relative",
-                        marginBottom: "8px",
-                        cursor: "crosshair"
-                    }}>
-                        <div style={{
-                            position: "absolute", right: "20px", top: "50%", transform: "translateY(-50%)",
-                            width: "20px", height: "20px", borderRadius: "50%",
-                            border: "2px solid white", background: "#00A6FF",
-                            boxShadow: "0 2px 4px rgba(0,0,0,0.3)"
-                        }} />
-                    </div>
-
-                    <div style={{
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "8px 12px", cursor: "pointer"
-                    }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <div style={{ width: "20px", height: "20px", borderRadius: "50%", background: color }} />
-                            <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--color-text-secondary)" }}>{color}</span>
-                        </div>
-                        <ChevronDown size={14} color="var(--color-text-muted)" />
-                    </div>
-                </div>
-
-                {/* Primary Export Button */}
+                {/* Download Button - Orange Style as requested */}
                 <a
-                    href={current.files.step} // using step as example
-                    download
+                    href={downloadUrl}
                     style={{
                         display: "flex",
                         alignItems: "center",
@@ -126,28 +69,26 @@ export default function RightPanel() {
                         gap: "10px",
                         width: "100%",
                         padding: "14px",
-                        background: "#e5e7eb", // Light button like in screenshot (closest to white/grey)
-                        color: "black",
+                        background: "#F97316", // Orange color
+                        color: "white",
                         border: "none",
                         borderRadius: "8px",
                         fontWeight: 600,
                         fontSize: "14px",
                         textDecoration: "none",
                         cursor: "pointer",
-                        transition: "transform 0.1s"
+                        transition: "filter 0.2s"
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                    onMouseEnter={(e) => e.currentTarget.style.filter = "brightness(110%)"}
+                    onMouseLeave={(e) => e.currentTarget.style.filter = "brightness(100%)"}
                 >
                     <Download size={18} />
-                    <span>Download STL</span>
-                    <div style={{
-                        width: "24px", height: "24px", marginLeft: "auto",
-                        borderLeft: "1px solid rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center"
-                    }}>
-                        <ChevronDown size={14} />
-                    </div>
+                    <span>Download STEP</span>
+                    {/* Removed ChevronDown as it implies a menu, but we just d/l */}
                 </a>
+                <div style={{ textAlign: "center", marginTop: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>
+                    Editable CAD Format
+                </div>
             </div>
         </div>
     );
