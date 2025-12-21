@@ -124,7 +124,7 @@ def generate_cad(request: GenerateRequest):
     print(f"DEBUG: Intent={intent}")
 
     # 2. Infer Parameters (Context-Aware)
-    raw_params = infer_parameters(intent, request.prompt)
+    raw_params, param_units = infer_parameters(intent, request.prompt)
     
     # 3. Validate (Fail Fast)
     try:
@@ -163,6 +163,7 @@ def generate_cad(request: GenerateRequest):
     mock_feature = {
         "type": intent.part_type,
         "params": raw_params,
+        "units": param_units,
         "name": "Main Shape",
         "id": str(uuid.uuid4())
     }
