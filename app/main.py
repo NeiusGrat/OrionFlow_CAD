@@ -14,9 +14,16 @@ from dotenv import load_dotenv
 
 import trimesh
 
-from app.ml.predictor import predict_parameters
-from app.ml.rules import infer_part_type
-from app.cad.graph_builder import build_cylinder_graph, build_box_graph, build_shaft_graph
+# New Architecture Imports
+from app.intent.intent_parser import parse_intent
+from app.ml.parameter_infer import infer_parameters
+from app.validation.sanity import validate
+from app.cad.registry import PART_REGISTRY
+
+# Legacy imports for Regenerate (keeping for back-compat if needed, though regenerate might need updates)
+# from app.ml.predictor import predict_parameters 
+# from app.ml.rules import infer_part_type
+# from app.cad.graph_builder import build_cylinder_graph, build_box_graph, build_shaft_graph
 from app.cad.cq_builder import build_from_graph
 from app.cad.feature_graph import FeatureGraph
 from app.cad.describe import describe_feature_graph
@@ -63,19 +70,6 @@ class RegenerateRequest(BaseModel):
 class DescribeRequest(BaseModel):
     feature_graph: dict
 
-def sanitize_parameters(raw_params: dict) -> dict:
-    """
-    Enforces parameter bounds and defaults.
-    """
-    safe = {}
-    # We relax the strict ALLOWED_PARAMETERS check for now to allow new params (length, width)
-    # But we still want to ensure they are numeric.
-    for k, v in raw_params.items():
-        if isinstance(v, (int, float)):
-            safe[k] = v
-    return safe
-
-
 def convert_stl_to_glb(stl_path: Path, glb_path: Path):
     """
     Converts STL mesh to GLB for browser visualization.
@@ -108,8 +102,8 @@ def log_feedback(prompt: str, final_params: dict, part_type: str):
 @app.post("/generate")
 def generate_cad(request: GenerateRequest):
     """
-    Generate a CAD model from text (Prompt -> ML -> Graph -> Geometry)
-    Now supports Multiple Part Types!
+    Generate a CAD model from text (Prompt -> Intent -> Params -> Geometry)
+    Now supports Multiple Part Types via 4-Layer Architecture!
     """
     job_id = str(uuid.uuid4())
 
@@ -120,24 +114,32 @@ def generate_cad(request: GenerateRequest):
     stl_path = output_dir / f"{job_id}.stl"
     glb_path = output_dir / f"{job_id}.glb"
 
-
-    # 1. Infer Part Type & Predict
-    part_type = infer_part_type(request.prompt)
-    raw_params = predict_parameters(request.prompt)
-    safe_params = sanitize_parameters(raw_params)
-
-    # 2. Build Graph (Route to correct builder)
-    if part_type == "box":
-        graph = build_box_graph(safe_params)
-    elif part_type == "shaft":
-        graph = build_shaft_graph(safe_params)
-    else:
-        graph = build_cylinder_graph(safe_params)
-
-    # 3. Build Geometry from Graph
+    # 1. Parse Intent (Locked)
     try:
-        model = build_from_graph(graph)
+        intent = parse_intent(request.prompt)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    print(f"DEBUG: Intent={intent}")
+
+    # 2. Infer Parameters (Context-Aware)
+    raw_params = infer_parameters(intent, request.prompt)
+    
+    # 3. Validate (Fail Fast)
+    try:
+        validate(raw_params, intent)
+    except ValueError as e:
+         raise HTTPException(status_code=400, detail=str(e))
+         
+    print(f"DEBUG: Params={raw_params}")
+
+    # 4. Build Geometry (Registry Lookup)
+    try:
+        part_cls = PART_REGISTRY[intent.part_type]
+        part = part_cls(raw_params)
+        model = part.build()
     except Exception as e:
+        print(f"CRITICAL BUILD ERROR: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -146,12 +148,28 @@ def generate_cad(request: GenerateRequest):
 
     convert_stl_to_glb(stl_path, glb_path)
 
+    # Convert simple params to a faux-feature-graph structure for frontend compatibility
+    # The frontend likely expects: { features: [...], part_type: ... }
+    # We will mock it so the frontend doesn't crash, but regenerate might be limited until updated.
+    
+    # We construct a single feature representing the part
+    mock_feature = {
+        "type": intent.part_type,
+        "params": raw_params,
+        "name": "Main Shape",
+        "id": str(uuid.uuid4())
+    }
+    
+    feature_graph_dict = {
+        "part_type": intent.part_type,
+        "features": [mock_feature]
+    }
 
     return {
         "job_id": job_id,
         "prompt": request.prompt,
-        "parameters": safe_params,
-        "feature_graph": graph.model_dump(),
+        "parameters": raw_params,
+        "feature_graph": feature_graph_dict, 
         "files": {
             "step": str(step_path),
             "stl": str(stl_path),
@@ -193,11 +211,6 @@ def regenerate_cad(request: RegenerateRequest):
     convert_stl_to_glb(stl_path, glb_path)
     
     # 4. Active Learning: Log Feedback
-    # Extract flattened params from graph for simplified logging
-    # (Assuming single feature params for now or we log full graph)
-    # The prompt asked for "final_parameters". We can extract them from the graph logic.
-    # For now logging the first feature params is often enough for simple parts, 
-    # but let's aggregate all params.
     flattened_params = {}
     for f in graph.features:
         flattened_params.update(f.params)

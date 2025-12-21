@@ -26,6 +26,11 @@ export default function App() {
         body: JSON.stringify({ prompt }),
       });
 
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.detail || "Generation failed");
+      }
+
       const data = await response.json();
 
       addCreation({
@@ -44,8 +49,9 @@ export default function App() {
       });
 
       setPrompt("");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(`Error: ${e.message}`);
     } finally {
       setIsGenerating(false);
     }
