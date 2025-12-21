@@ -17,7 +17,8 @@ import trimesh
 
 # New Architecture Imports
 from app.intent.intent_parser import parse_intent
-from app.ml.predictor_xgb import infer_parameters_xgb as infer_parameters
+from app.ml.predictor_xgb import infer_parameters_xgb
+import app.ml.parameter_infer as infer_rules
 from app.validation.sanity import validate, stress_test
 from app.cad.registry import PART_REGISTRY
 
@@ -115,34 +116,50 @@ def generate_cad(request: GenerateRequest):
     stl_path = output_dir / f"{job_id}.stl"
     glb_path = output_dir / f"{job_id}.glb"
 
-    # 1. Parse Intent (Locked)
+    # 1. Parse Intent (Locked) & Confidence (Step 1 Robustness)
     try:
-        intent = parse_intent(request.prompt)
+        intent, confidence = parse_intent(request.prompt)
+        print(f"DEBUG: Intent={intent} Confidence={confidence}")
+        
+        # Hard fail on ambiguity (Step 1)
+        if confidence < 0.7:
+             # In a real assistant, this would return a "Clarification Request"
+             # For now, we raise 400 with helpful message
+             raise ValueError("I'm not sure what you want to make. Please be more specific (e.g. 'box', 'cylinder').")
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
-    print(f"DEBUG: Intent={intent}")
 
-    # 2. Infer Parameters (Context-Aware)
-    raw_params, param_units = infer_parameters(intent, request.prompt)
+    # 2. Infer Parameters: ROBUSTNESS CHECK (Step 1)
+    # Run Rule-Based (Robust)
+    rule_params, param_units = infer_rules.infer_parameters(intent, request.prompt)
     
+    # Run ML-Based (Smart/Learning)
+    ml_params = infer_parameters_xgb(intent, request.prompt)
+    
+    print(f"DEBUG: Rule Params={rule_params}")
+    print(f"DEBUG: ML Params={ml_params}")
+
+    # Compare ML vs Rules (Step 1: "If deviation > X% -> warn")
+    # We use Rules as the 'Ground Truth' for generation because they handle explicit units/geometry strictly.
+    # ML is used for "guessing" when user is vague.
+    # If User was specific (Rule detected params), we use Rule.
+    # If User was vague (Rule used defaults), we might trust ML?
+    # For now, "Make existing parts impossible to fail" -> Rule Priority for explicit inputs.
+    
+    final_params = rule_params # Default to rules (supports units)
+
     # 3. Validate (Fail Fast)
     try:
-        validate(raw_params, intent)
+        validate(final_params, intent)
     except ValueError as e:
          raise HTTPException(status_code=400, detail=str(e))
-         
-    print(f"DEBUG: Params={raw_params}")
 
     # 4. Build Geometry (Registry Lookup)
     try:
         part_cls = PART_REGISTRY[intent.part_type]
-        
-        # Stress Test (Advanced)
-        # We run a quick check on tweaked params to ensure stability
-        # stress_test(part_cls, raw_params) # Optional: enable if performant enough
-        
-        part = part_cls(raw_params)
+        part = part_cls(final_params)
         model = part.build()
     except Exception as e:
         print(f"CRITICAL BUILD ERROR: {e}")
@@ -162,7 +179,7 @@ def generate_cad(request: GenerateRequest):
     # We construct a single feature representing the part
     mock_feature = {
         "type": intent.part_type,
-        "params": raw_params,
+        "params": final_params,
         "units": param_units,
         "name": "Main Shape",
         "id": str(uuid.uuid4())
@@ -176,8 +193,13 @@ def generate_cad(request: GenerateRequest):
     return {
         "job_id": job_id,
         "prompt": request.prompt,
-        "parameters": raw_params,
+        "prompt": request.prompt,
+        "parameters": final_params,
         "feature_graph": feature_graph_dict, 
+        "ml_deviation_check": {
+            "rules": rule_params,
+            "ml": ml_params
+        },
         "files": {
             "step": str(step_path),
             "stl": str(stl_path),
