@@ -39,7 +39,7 @@ export const ValidationDisplay: React.FC<ValidationDisplayProps> = ({ result, on
           {result.suggestedFixes && onApplyFix && (
             <div className="mt-3">
               <button
-                onClick={() => onApplyFix(result.suggestedFixes!)}
+                onClick={() => onApplyFix(result.suggestedFixes || {})}
                 className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
               >
                 Apply Suggested Fixes
