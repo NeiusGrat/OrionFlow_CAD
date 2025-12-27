@@ -285,6 +285,7 @@ def download_step(filename: str):
         filename=filename, # Triggers browser download
     )
 
-from app.routers import generation_v2
+from app.routers import generation_v2, export
 app.include_router(generation_v2.router)
+app.include_router(export.router)
 

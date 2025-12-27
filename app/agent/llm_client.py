@@ -1,7 +1,7 @@
 import os
 import re
 from groq import AsyncGroq
-from app.agent.prompts import SYSTEM_PROMPT
+from app.agent.prompts import SYSTEM_PROMPT, SOLIDWORKS_VBA_PROMPT
 
 class LLMClient:
     def __init__(self):
@@ -53,4 +53,27 @@ class LLMClient:
             
         except Exception as e:
             print(f"LLM Generation Error: {e}")
+            raise e
+
+    async def generate_solidworks_macro(self, user_prompt: str) -> str:
+        """
+        Generates a SolidWorks VBA macro from a user prompt.
+        """
+        try:
+            completion = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": SOLIDWORKS_VBA_PROMPT},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=2048
+            )
+            
+            raw_response = completion.choices[0].message.content
+            # Reuse sanitization as it removes markdown ticks
+            return self._sanitize_code(raw_response)
+            
+        except Exception as e:
+            print(f"LLM Macro Generation Error: {e}")
             raise e
