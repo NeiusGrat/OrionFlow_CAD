@@ -1,0 +1,7 @@
+{"instruction": "A 10x10x10 cube", "input": "", "output": "from build123d import *\npart = Box(10, 10, 10)"}
+{"instruction": "A cylinder with radius 5 and height 20", "input": "", "output": "from build123d import *\npart = Cylinder(radius=5, height=20)"}
+{"instruction": "A sphere with radius 15", "input": "", "output": "from build123d import *\npart = Sphere(radius=15)"}
+{"instruction": "A rectangular plate 50x20 with thickness 5", "input": "", "output": "from build123d import *\npart = Box(50, 20, 5)"}
+{"instruction": "A pipe with outer radius 10, inner radius 8, length 30", "input": "", "output": "from build123d import *\npart = Cylinder(radius=10, height=30) - Cylinder(radius=8, height=30)"}
+{"instruction": "A torus with major radius 20 and minor radius 5", "input": "", "output": "from build123d import *\npart = Torus(major_radius=20, minor_radius=5)"}
+{"instruction": "A 100x10x10 beam", "input": "", "output": "from build123d import *\npart = Box(100, 10, 10)"}

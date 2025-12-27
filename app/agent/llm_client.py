@@ -10,7 +10,7 @@ class LLMClient:
             print("WARNING: GROQ_API_KEY not found in environment variables.")
         
         self.client = AsyncGroq(api_key=self.api_key)
-        self.model = "llama3-70b-8192" # High performance model
+        self.model = "llama-3.3-70b-versatile" # "llama3-70b-8192" was decommissioned
 
     def _sanitize_code(self, raw_text: str) -> str:
         """

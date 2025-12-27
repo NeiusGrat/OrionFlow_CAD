@@ -5,8 +5,8 @@ from typing import Optional, Dict, Any
 # Pre-import build123d to be available in the exec context
 import build123d as b3d
 from build123d import *
-from ocp_tessellator.tessellator import Tessellator, compute_quality
-from ocp_tessellator.ocp_utils import oc_export_gltf
+# from ocp_tessellator.tessellator import Tessellator, compute_quality
+# from ocp_tessellator.ocp_utils import oc_export_gltf
 
 class Build123dExecutionError(Exception):
     """Custom exception for errors during B3D script execution."""
@@ -41,7 +41,6 @@ def execute_build123d_script(code: str) -> bytes:
         # EXPORT TO GLB
         # Using ocp_tessellator/build123d export logic
         # We need a BytesIO stream
-        buffer = io.BytesIO()
         
         # Determine export method based on type
         # For now, we assume it's a Part or Composition that supports export_gltf equivalent

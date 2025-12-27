@@ -3,6 +3,8 @@ uvicorn
 python-dotenv
 pydantic
 build123d>=0.5.0
-ocp-tessellator>=1.0.0
+
 numpy
 groq
+
+
