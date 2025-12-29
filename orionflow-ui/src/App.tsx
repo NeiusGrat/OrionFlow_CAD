@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 import LeftPanel from "./components/Panels/LeftPanel";
 import RightPanel from "./components/Panels/RightPanel";
 import Viewer from "./components/Viewer/Viewer";
-import { useDesignStore, type ChatMessage } from "./store/designStore";
+import { useDesignStore } from "./store/designStore";
+import { useChatStore, type ChatMessage } from "./store/chatStore";
 import { Box, LayoutGrid } from "lucide-react";
 
 export default function App() {
   const current = useDesignStore((state) => state.current);
   const addCreation = useDesignStore((state) => state.addCreation);
   const setCurrent = useDesignStore((state) => state.setCurrent);
-  const addMessage = useDesignStore((state) => state.addMessage); // NEW
+  const addMessage = useChatStore((state) => state.addMessage); // NEW
   const setIsGenerating = useDesignStore((state) => state.setIsGenerating);
   const triggerViewAction = useDesignStore((state) => state.triggerViewAction);
   const isGenerating = useDesignStore((state) => state.isGenerating);
@@ -94,10 +95,11 @@ export default function App() {
         role: 'assistant',
         content: "Here is your updated part:",
         timestamp: Date.now(),
-        partVersion: (useDesignStore.getState().current?.history.filter(m => m.role === 'assistant').length || 0) + 1,
+        partVersion: (useChatStore.getState().getHistory(activeId).filter(m => m.role === 'assistant').length || 0) + 1,
         files: {
           glb: "http://127.0.0.1:8000/" + data.files.glb,
           step: "http://127.0.0.1:8000/" + data.files.step,
+          stl: "http://127.0.0.1:8000/" + data.files.stl,
         }
       };
 
@@ -110,7 +112,8 @@ export default function App() {
             return {
               ...c,
               files: assistantMsg.files!, // Update main files entry for Viewer
-              featureGraph: data.feature_graph // Keep graph updated
+              featureGraph: data.feature_graph, // Keep graph updated
+              parameters: data.parameters || {} // Update parameters
             };
           }
           return c;

@@ -122,18 +122,23 @@ class GenerationService:
         feature_graph = await self.llm_client.generate_feature_graph(prompt)
         
         # 2. Compile geometry using Build123d
-        step_path, stl_path, glb_path = self.compiler.compile(feature_graph, job_id)
+        paths = self.compiler.compile(feature_graph, job_id)
         
         # 3. Build Result
+        # Ensure we have relative paths for URL generation if needed, but absolute is fine for now if main.py handles it.
+        # However, user requests geometry_path to be URL-like. 
+        # But GenerationResult expects Path. We will pass Path, and main.py converts to string/URL.
+        
         result = GenerationResult(
-            geometry_path=glb_path,
+            geometry_path=paths["glb"],
             format="glb",
             metadata={
                 "job_id": job_id,
                 "prompt": prompt,
                 "feature_graph": feature_graph.model_dump(),
-                "step_path": str(step_path),
-                "stl_path": str(stl_path)
+                "step_path": str(paths["step"]),
+                "stl_path": str(paths["stl"]),
+                "parameters": feature_graph.parameters, # Explicitly add parameters
             },
             source="llm-v2"
         )

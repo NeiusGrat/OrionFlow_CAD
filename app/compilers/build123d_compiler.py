@@ -67,6 +67,7 @@ class Build123dCompiler:
             (step_path, stl_path, glb_path)
         """
         logger.info(f"Compiling job_id={job_id} (CFG v1)")
+        print("Building solid from CFG")
         
         try:
             # 1. Initialize context
@@ -84,19 +85,24 @@ class Build123dCompiler:
             glb_path = self.output_dir / f"{job_id}.glb"
             
             # Export STEP (Exact B-Rep)
-            ctx.part.export_step(str(step_path))
+            export_step(ctx.part, str(step_path))
             
             # Export STL (Tessellated)
-            ctx.part.export_stl(
+            export_stl(
+                ctx.part,
                 str(stl_path),
-                linear_deflection=self.STL_LINEAR_DEFLECTION,
-                angular_deflection=self.STL_ANGULAR_DEFLECTION
+                tolerance=self.STL_LINEAR_DEFLECTION,
+                angular_tolerance=self.STL_ANGULAR_DEFLECTION
             )
             
             # Convert to GLB for web
             self._convert_to_glb(stl_path, glb_path)
             
-            return step_path, stl_path, glb_path
+            return {
+                "step": step_path,
+                "stl": stl_path,
+                "glb": glb_path
+            }
             
         except Exception as e:
             logger.error(f"Compilation failed: {e}")

@@ -70,6 +70,7 @@ async def generate_cad(request: GenerateRequest):
     Generate CAD from natural language prompt (Unified Pipeline)
     Uses the new canonical generate() method.
     """
+    print(f"API REQUEST RECEIVED: {request.prompt}")
     try:
         result = await generation_service.generate(request.prompt)
     except ValueError as e:
@@ -86,9 +87,9 @@ async def generate_cad(request: GenerateRequest):
         "parameters": fg.get("parameters", {}),
         "feature_graph": fg,
         "files": {
-            "step": result.metadata.get("step_path", ""),
-            "stl": result.metadata.get("stl_path", ""),
-            "glb": str(result.geometry_path)
+            "step": str(result.metadata.get("step_path", "")).replace("\\", "/"),
+            "stl": str(result.metadata.get("stl_path", "")).replace("\\", "/"),
+            "glb": str(result.geometry_path).replace("\\", "/")
         }
     }
 
@@ -124,9 +125,9 @@ async def regenerate_cad(request: RegenerateRequest):
         "job_id": result.metadata["job_id"],
         "feature_graph": result.metadata["feature_graph"],
         "files": {
-            "step": result.metadata["step_path"],
-            "stl": result.metadata["stl_path"],
-            "glb": str(result.geometry_path)
+            "step": str(result.metadata["step_path"]).replace("\\", "/"),
+            "stl": str(result.metadata["stl_path"]).replace("\\", "/"),
+            "glb": str(result.geometry_path).replace("\\", "/")
         }
     }
 
@@ -156,6 +157,22 @@ def download_step(filename: str):
         path=file_path,
         media_type="application/step", # or "application/octet-stream"
         filename=filename, # Triggers browser download
+    )
+
+@app.get("/download/stl/{filename}")
+def download_stl(filename: str):
+    """
+    Force download of STL file.
+    """
+    file_path = Path("outputs") / filename
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(
+        path=file_path,
+        media_type="application/sla", # Common MIME for STL
+        filename=filename,
     )
 
 

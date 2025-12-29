@@ -13,6 +13,7 @@ export type DesignState = {
     files: {
         glb: string;
         step: string;
+        stl: string;
     };
     source?: "v1" | "v2";  // Track generation source (V1 or V2)
 };
