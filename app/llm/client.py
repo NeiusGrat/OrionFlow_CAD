@@ -7,10 +7,13 @@ Swap providers (Groq, OpenAI, local) without changing service layer.
 import os
 import re
 import json
+import logging
 from groq import AsyncGroq
 
 from app.domain.feature_graph import FeatureGraph
 from app.llm.prompts import FEATURE_GRAPH_PROMPT
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -144,7 +147,12 @@ class LLMClient:
     
     def _parse_and_validate(self, raw_response: str) -> FeatureGraph:
         """
-        Parse LLM response and validate as FeatureGraph.
+        Parse LLM response and validate as FeatureGraph (with auto-repair).
+        
+        Implements retry logic with auto-repair for common issues:
+        - Missing version field
+        - Missing optional fields (parameters, metadata)
+        - Markdown formatting
         
         Args:
             raw_response: Raw text from LLM
@@ -153,29 +161,146 @@ class LLMClient:
             Validated FeatureGraph
             
         Raises:
-            ValueError: If parsing or validation fails
+            ValueError: If parsing or validation fails after repair attempts
         """
         # Remove markdown code blocks if present
-        json_content = raw_response
-        if "```" in raw_response:
-            match = re.search(r"```(?:json)?\s*(.*?)```", raw_response, re.DOTALL)
-            if match:
-                json_content = match.group(1).strip()
+        json_content = self._extract_json(raw_response)
         
         # Parse JSON
         try:
             graph_dict = json.loads(json_content)
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"LLM returned invalid JSON: {e}\n"
-                f"Content preview: {json_content[:200]}"
-            )
+            # Try to repair common JSON issues
+            repaired_json = self._repair_json(json_content)
+            try:
+                graph_dict = json.loads(repaired_json)
+                logger.info("JSON repaired successfully")
+            except json.JSONDecodeError:
+                raise ValueError(
+                    f"LLM returned invalid JSON (even after repair): {e}\n"
+                    f"Content preview: {json_content[:200]}"
+                )
+        
+        # Auto-repair missing fields
+        graph_dict = self._auto_repair_graph(graph_dict)
         
         # Validate schema with Pydantic
         try:
             return FeatureGraph(**graph_dict)
         except Exception as e:
+            logger.error(f"FeatureGraph validation failed: {e}")
+            logger.error(f"Graph data: {graph_dict}")
             raise ValueError(
                 f"Invalid FeatureGraph schema: {e}\n"
+                f"This may indicate LLM hallucinated invalid structure.\n"
                 f"Data: {graph_dict}"
             )
+    
+    def _extract_json(self, raw_response: str) -> str:
+        """
+        Extract JSON from LLM response, handling markdown formatting.
+        
+        Args:
+            raw_response: Raw LLM response
+            
+        Returns:
+            Cleaned JSON string
+        """
+        content = raw_response.strip()
+        
+        # Remove markdown code blocks
+        if "```" in content:
+            # Try ```json format
+            match = re.search(r"```(?:json)?\s*(.*?)```", content, re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+        
+        # Find JSON object boundaries
+        start = content.find('{')
+        end = content.rfind('}')
+        
+        if start != -1 and end != -1 and end > start:
+            content = content[start:end+1]
+        
+        return content
+    
+    def _repair_json(self, json_str: str) -> str:
+        """
+        Attempt to repair common JSON formatting issues.
+        
+        Args:
+            json_str: Potentially malformed JSON
+            
+        Returns:
+            Repaired JSON string
+        """
+        # Remove trailing commas (common LLM mistake)
+        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+        
+        # Fix single quotes to double quotes
+        json_str = json_str.replace("'", '"')
+        
+        # Remove comments (LLMs sometimes add them)
+        json_str = re.sub(r'//.*?\n', '\n', json_str)
+        
+        return json_str
+    
+    def _auto_repair_graph(self, graph_dict: dict) -> dict:
+        """
+        Auto-repair common FeatureGraph issues (CFG v1).
+        
+        Adds missing required/optional fields with sensible defaults.
+        
+        Args:
+            graph_dict: Parsed graph dictionary
+            
+        Returns:
+            Repaired graph dictionary
+        """
+        # Add version if missing
+        if 'version' not in graph_dict:
+            graph_dict['version'] = 'v1'
+            logger.info("Auto-repair: Added missing 'version' field")
+        
+        # Add units if missing
+        if 'units' not in graph_dict:
+            graph_dict['units'] = 'mm'
+            logger.info("Auto-repair: Added missing 'units' field")
+        
+        # Add empty parameters if missing
+        if 'parameters' not in graph_dict:
+            graph_dict['parameters'] = {}
+            logger.info("Auto-repair: Added empty 'parameters' dict")
+            
+        # Add empty sketches if missing
+        if 'sketches' not in graph_dict:
+            graph_dict['sketches'] = []
+            logger.info("Auto-repair: Added empty 'sketches' list")
+            
+        # Add empty features if missing
+        if 'features' not in graph_dict:
+            graph_dict['features'] = []
+            logger.info("Auto-repair: Added empty 'features' list")
+        
+        # Add empty metadata if missing
+        if 'metadata' not in graph_dict:
+            graph_dict['metadata'] = {}
+        
+        # Repair sketches
+        if 'sketches' in graph_dict and isinstance(graph_dict['sketches'], list):
+            for sketch in graph_dict['sketches']:
+                if 'constraints' not in sketch:
+                    sketch['constraints'] = []
+                if 'entities' not in sketch:
+                    sketch['entities'] = []
+        
+        # Repair features
+        if 'features' in graph_dict and isinstance(graph_dict['features'], list):
+            for feature in graph_dict['features']:
+                if 'depends_on' not in feature:
+                    feature['depends_on'] = []
+                # Ensure params exists
+                if 'params' not in feature:
+                    feature['params'] = {}
+        
+        return graph_dict

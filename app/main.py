@@ -65,13 +65,13 @@ class DescribeRequest(BaseModel):
 
 
 @app.post("/generate")
-def generate_cad(request: GenerateRequest):
+async def generate_cad(request: GenerateRequest):
     """
-    Generate a CAD model from text (Unified Pipeline)
+    Generate CAD from natural language prompt (Unified Pipeline)
     Uses the new canonical generate() method.
     """
     try:
-        result, debug_info = generation_service.generate(request.prompt)
+        result = await generation_service.generate(request.prompt)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -79,27 +79,44 @@ def generate_cad(request: GenerateRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
     # Backward-compatible response format
+    fg = result.metadata.get("feature_graph", {})
     return {
         "job_id": result.metadata["job_id"],
         "prompt": request.prompt,
-        "parameters": result.metadata["parameters"],
-        "feature_graph": debug_info["feature_graph"],
+        "parameters": fg.get("parameters", {}),
+        "feature_graph": fg,
         "files": {
-            "step": str(debug_info["step_path"]),
-            "stl": str(debug_info["stl_path"]),
+            "step": result.metadata.get("step_path", ""),
+            "stl": result.metadata.get("stl_path", ""),
             "glb": str(result.geometry_path)
         }
     }
 
 
 @app.post("/regenerate")
-def regenerate_cad(request: RegenerateRequest):
+async def regenerate_cad(request: RegenerateRequest):
     """
-    Regenerate CAD from an edited Feature Graph (Graph → Geometry)
-    Now uses GenerationService for better separation of concerns.
+    Regenerate CAD from edited feature graph OR apply conversational edit.
+    
+    Supports:
+    1. Direct graph editing (parametric CAD)
+    2. Conversational edits ("make it taller")
     """
+    from app.services.conversational_editor import ConversationalEditor
+    from app.domain.feature_graph import FeatureGraph
+    
     try:
-        result = generation_service.regenerate(request.feature_graph, request.prompt)
+        # Parse feature graph
+        feature_graph = FeatureGraph(**request.feature_graph)
+        
+        # Apply conversational edit if prompted
+        if request.prompt and request.prompt.strip():
+            editor = ConversationalEditor()
+            feature_graph = await editor.apply_edit(feature_graph, request.prompt)
+            print(f"Applied edit: '{request.prompt}'")
+        
+        # Regenerate geometry
+        result = await generation_service.regenerate(feature_graph.model_dump(), request.prompt)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     

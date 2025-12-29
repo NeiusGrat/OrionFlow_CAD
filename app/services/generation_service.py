@@ -8,64 +8,141 @@ import json
 from pathlib import Path
 from typing import Tuple, Dict, Any
 
-from app.intent.intent_parser import parse_intent
-import app.ml.parameter_infer as infer_rules
-from app.validation.sanity import validate
+
 from app.domain.generation_result import GenerationResult
 from app.domain.feature_graph import FeatureGraph, Feature
 from app.compilers.build123d_compiler import Build123dCompiler
+from app.llm import LLMClient
+import logging
 
-# Legacy imports (deprecated - not used in active path)
-# from app.cad.registry import PART_REGISTRY
-# from app.cad.legacy.cq_builder import build_from_graph
-# from cadquery import exporters
-import trimesh
+# Legacy imports (deprecated)
+# from app.intent.intent_parser import parse_intent
+# import app.ml.parameter_infer as infer_rules
+# from app.validation.sanity import validate
+
+logger = logging.getLogger(__name__)
 
 
 class GenerationService:
     """
-    Orchestrates CAD generation pipelines (V1 and V2).
-    Isolates business logic from HTTP layer for better testability.
+    Orchestrates CAD generation pipelines.
+    
+    Flow: Prompt → LLM (FeatureGraph) → Compiler → Geometry Files
     """
     
-    def __init__(self, output_dir: Path = Path("outputs")):
+    def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None):
         """
         Initialize the generation service.
         
         Args:
             output_dir: Directory for output files
+            llm_client: Optional injected LLM client
         """
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
         
-        # NEW: Build123d Compiler (replaces CadQuery)
-        self.compiler = Build123dCompiler(output_dir=output_dir)
-    
-    def generate(self, prompt: str) -> Tuple[GenerationResult, Dict[str, Any]]:
-        """
-        Unified generation method (replaces V1/V2).
+        # Dependencies
+        self.output_dir = output_dir
+        self.output_dir.mkdir(exist_ok=True)
         
-        This is the new canonical entry point for CAD generation.
-        Internally delegates to existing builders for now, but provides
-        a single interface for future LLM → FeatureGraph → Export pipeline.
+        # Core Components
+        self.compiler = Build123dCompiler(output_dir=output_dir)
+        self.llm_client = llm_client or LLMClient()
+        
+        # Onshape Integration (Optional - Live CAD)
+        # We lazy-load these to avoid hard dependencies if keys are missing
+        self.onshape_client = None
+        self.onshape_compiler = None
+        
+        try:
+            from app.clients.onshape_client import OnshapeClient
+            from app.compilers.onshape_compiler import OnshapeCompiler
+            
+            client = OnshapeClient()
+            if client.is_configured():
+                self.onshape_client = client
+                self.onshape_compiler = OnshapeCompiler()
+                logger.info("Onshape integration enabled")
+            else:
+                logger.info("Onshape integration disabled (missing API keys)")
+        except ImportError:
+            logger.warning("Could not import Onshape components")
+
+    async def sync_to_onshape(self, feature_graph: FeatureGraph, doc_id: str, work_id: str, ele_id: str) -> bool:
+        """
+        Push current design to Onshape (Step 5/6).
         
         Args:
-            prompt: User's text description
+            feature_graph: The design to sync
+            doc_id: Onshape Document ID
+            work_id: Onshape Workspace ID
+            ele_id: Onshape Element ID (FeatureStudio)
             
         Returns:
-            Tuple of (GenerationResult, debug_info) for backward compatibility
+            True if sync successful
+        """
+        if not self.onshape_client or not self.onshape_compiler:
+            logger.warning("Cannot sync to Onshape: Not configured")
+            return False
             
-        Raises:
-            ValueError: If generation fails
-            Exception: If geometry generation fails
+        try:
+            # 1. Compile to FeatureScript (CFG -> FS)
+            script_content = self.onshape_compiler.compile(feature_graph)
+            
+            # 2. Push to API
+            return self.onshape_client.update_featurescript(
+                did=doc_id,
+                wid=work_id,
+                eid=ele_id,
+                script_content=script_content
+            )
+        except Exception as e:
+            logger.error(f"Onshape sync failed: {e}")
+            return False
+
+    async def generate(self, prompt: str) -> GenerationResult:
         """
-        # For now, delegate to V1 pipeline
-        # Future: LLM → FeatureGraph → Exporters
-        return self.generate_v1(prompt)
+        Generate CAD from natural language prompt.
+        
+        New Unified Pipeline:
+        1. LLM generates FeatureGraph from prompt
+        2. Compiler converts FeatureGraph to geometry (STEP/STL/GLB)
+        
+        Args:
+            prompt: User description (e.g., "box 10x10x10")
+            
+        Returns:
+            GenerationResult containing paths and metadata
+        """
+        job_id = str(uuid.uuid4())
+        logger.info(f"Starting generation job_id={job_id} for prompt='{prompt}'")
+        
+        # 1. Generate FeatureGraph via LLM
+        # This replaces the old intent parser + rule-based inference
+        feature_graph = await self.llm_client.generate_feature_graph(prompt)
+        
+        # 2. Compile geometry using Build123d
+        step_path, stl_path, glb_path = self.compiler.compile(feature_graph, job_id)
+        
+        # 3. Build Result
+        result = GenerationResult(
+            geometry_path=glb_path,
+            format="glb",
+            metadata={
+                "job_id": job_id,
+                "prompt": prompt,
+                "feature_graph": feature_graph.model_dump(),
+                "step_path": str(step_path),
+                "stl_path": str(stl_path)
+            },
+            source="llm-v2"
+        )
+        
+        return result
     
-    def generate_v1(self, prompt: str) -> Tuple[GenerationResult, Dict[str, Any]]:
+    def generate_legacy(self, prompt: str) -> Tuple[GenerationResult, Dict[str, Any]]:
         """
-        V1 Pipeline: Intent → Parameters → Geometry
+        Legacy V1 Generation Pipeline (Rules-Based).
         
         DEPRECATED: Use generate() instead. This will be removed in future versions.
         
@@ -163,7 +240,7 @@ class GenerationService:
             source="v2"
         )
     
-    def regenerate(self, feature_graph_dict: dict, prompt: str = "") -> GenerationResult:
+    async def regenerate(self, feature_graph_dict: dict, prompt: str = "") -> GenerationResult:
         """
         Regenerate from edited feature graph (V1 parametric editing).
         
@@ -179,18 +256,37 @@ class GenerationService:
         """
         job_id = str(uuid.uuid4())
         
-        # 1. Rehydrate Graph
+        # 1. Rehydrate Graph (Validate CFG v1)
         graph = FeatureGraph(**feature_graph_dict)
         
-        # 2. Compile geometry using Build123d
+        # 2. Compile geometry using Build123d (Local)
         step_path, stl_path, glb_path = self.compiler.compile(graph, job_id)
         
-        # 3. Active Learning: Log Feedback
-        flattened_params = {}
-        for f in graph.features:
-            flattened_params.update(f.params)
+        # 3. Sync to Onshape (Cloud - Live CAD)
+        # Check for environment variables for the "Live" document target
+        # In production, these might come from the request
+        import os
+        did = os.getenv("ONSHAPE_DOC_ID")
+        wid = os.getenv("ONSHAPE_WORKSPACE_ID")
+        eid = os.getenv("ONSHAPE_ELEMENT_ID")
         
-        self._log_feedback(prompt, flattened_params, graph.part_type)
+        if did and wid and eid:
+             logger.info(f"Syncing job {job_id} to Onshape...")
+             success = await self.sync_to_onshape(graph, did, wid, eid)
+             if success:
+                 logger.info("Onshape sync completed.")
+             else:
+                 logger.warning("Onshape sync failed.")
+        
+        # 4. Active Learning: Log Feedback
+        try:
+            flattened_params = {}
+            # Handle list-based parameters structure if needed, or simple dict
+            # Graph parameters is Dict[str, float] in v1
+            flattened_params.update(graph.parameters)
+            self._log_feedback(prompt, flattened_params, "custom")
+        except Exception as e:
+            logger.warning(f"Feedback logging failed: {e}")
         
         return GenerationResult(
             geometry_path=glb_path,
