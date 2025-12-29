@@ -9,15 +9,16 @@ from pathlib import Path
 from typing import Tuple, Dict, Any
 
 from app.intent.intent_parser import parse_intent
-from app.ml.predictor_xgb import infer_parameters_xgb
 import app.ml.parameter_infer as infer_rules
 from app.validation.sanity import validate
-from app.cad.registry import PART_REGISTRY
 from app.domain.generation_result import GenerationResult
-from app.cad.feature_graph import FeatureGraph
-from app.cad.legacy.cq_builder import build_from_graph
+from app.domain.feature_graph import FeatureGraph, Feature
+from app.compilers.build123d_compiler import Build123dCompiler
 
-from cadquery import exporters
+# Legacy imports (deprecated - not used in active path)
+# from app.cad.registry import PART_REGISTRY
+# from app.cad.legacy.cq_builder import build_from_graph
+# from cadquery import exporters
 import trimesh
 
 
@@ -36,10 +37,37 @@ class GenerationService:
         """
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
+        
+        # NEW: Build123d Compiler (replaces CadQuery)
+        self.compiler = Build123dCompiler(output_dir=output_dir)
+    
+    def generate(self, prompt: str) -> Tuple[GenerationResult, Dict[str, Any]]:
+        """
+        Unified generation method (replaces V1/V2).
+        
+        This is the new canonical entry point for CAD generation.
+        Internally delegates to existing builders for now, but provides
+        a single interface for future LLM → FeatureGraph → Export pipeline.
+        
+        Args:
+            prompt: User's text description
+            
+        Returns:
+            Tuple of (GenerationResult, debug_info) for backward compatibility
+            
+        Raises:
+            ValueError: If generation fails
+            Exception: If geometry generation fails
+        """
+        # For now, delegate to V1 pipeline
+        # Future: LLM → FeatureGraph → Exporters
+        return self.generate_v1(prompt)
     
     def generate_v1(self, prompt: str) -> Tuple[GenerationResult, Dict[str, Any]]:
         """
         V1 Pipeline: Intent → Parameters → Geometry
+        
+        DEPRECATED: Use generate() instead. This will be removed in future versions.
         
         Args:
             prompt: User's text description
@@ -64,32 +92,23 @@ class GenerationService:
                 "Please be more specific (e.g. 'box', 'cylinder')."
             )
         
-        # 2. Infer Parameters: Rule-Based (Robust) + ML-Based (Smart)
-        rule_params, param_units = infer_rules.infer_parameters(intent, prompt)
-        ml_params = infer_parameters_xgb(intent, prompt)
+        # 2. Infer Parameters: Rule-Based (with intelligent defaults)
+        # XGBoost removed - rules now handle both explicit and implicit params
+        # LLM will provide better inference in future iterations
+        final_params, param_units = infer_rules.infer_parameters(intent, prompt)
         
-        print(f"DEBUG: Rule Params={rule_params}")
-        print(f"DEBUG: ML Params={ml_params}")
-        
-        # Use Rules as priority (handles explicit units/geometry strictly)
-        final_params = rule_params
+        print(f"DEBUG: Params={final_params}")
         
         # 3. Validate (Fail Fast)
         validate(final_params, intent)
         
-        # 4. Build Geometry (Registry Lookup)
-        part_cls = PART_REGISTRY[intent.part_type]
-        part = part_cls(final_params)
-        model = part.build()
+        # 4. Build FeatureGraph from intent and parameters
+        feature_graph = self._build_feature_graph_from_intent(
+            intent.part_type, final_params
+        )
         
-        # 5. Export to multiple formats
-        step_path = self.output_dir / f"{job_id}.step"
-        stl_path = self.output_dir / f"{job_id}.stl"
-        glb_path = self.output_dir / f"{job_id}.glb"
-        
-        exporters.export(model, str(step_path))
-        exporters.export(model, str(stl_path))
-        self._convert_stl_to_glb(stl_path, glb_path)
+        # 5. Compile geometry using Build123d (NEW: Clean separation)
+        step_path, stl_path, glb_path = self.compiler.compile(feature_graph, job_id)
         
         # 6. Build Result
         result = GenerationResult(
@@ -99,11 +118,7 @@ class GenerationService:
                 "job_id": job_id,
                 "prompt": prompt,
                 "parameters": final_params,
-                "intent": intent.model_dump(),
-                "ml_deviation": {
-                    "rules": rule_params,
-                    "ml": ml_params
-                }
+                "intent": intent.model_dump()
             },
             source="v1"
         )
@@ -124,6 +139,8 @@ class GenerationService:
         """
         V2 Pipeline: LLM → Code → Geometry (GLB bytes already generated)
         This wraps the existing V2 flow into the unified contract.
+        
+        DEPRECATED: Use generate() instead. This will be removed in future versions.
         
         Args:
             glb_bytes: Generated GLB file bytes
@@ -165,19 +182,10 @@ class GenerationService:
         # 1. Rehydrate Graph
         graph = FeatureGraph(**feature_graph_dict)
         
-        # 2. Rebuild Geometry
-        model = build_from_graph(graph)
+        # 2. Compile geometry using Build123d
+        step_path, stl_path, glb_path = self.compiler.compile(graph, job_id)
         
-        # 3. Export
-        step_path = self.output_dir / f"{job_id}.step"
-        stl_path = self.output_dir / f"{job_id}.stl"
-        glb_path = self.output_dir / f"{job_id}.glb"
-        
-        exporters.export(model, str(step_path))
-        exporters.export(model, str(stl_path))
-        self._convert_stl_to_glb(stl_path, glb_path)
-        
-        # 4. Active Learning: Log Feedback
+        # 3. Active Learning: Log Feedback
         flattened_params = {}
         for f in graph.features:
             flattened_params.update(f.params)
@@ -197,10 +205,89 @@ class GenerationService:
             source="v1"
         )
     
+    def _build_feature_graph_from_intent(self, part_type: str, params: dict) -> FeatureGraph:
+        """
+        Build FeatureGraph from intent and parameters.
+        
+        Converts legacy intent-based parameters into canonical FeatureGraph format.
+        
+        Args:
+            part_type: Type of part (box, cylinder, shaft)
+            params: Parameter dictionary
+            
+        Returns:
+            FeatureGraph ready for compilation
+        """
+        if part_type == "box":
+            return FeatureGraph(
+                part_type="box",
+                base_plane="XY",
+                features=[
+                    Feature(
+                        id="sketch_1",
+                        type="rectangle",
+                        params={
+                            "length": params.get("length", 10.0),
+                            "width": params.get("width", 10.0)
+                        },
+                        depends_on=[]
+                    ),
+                    Feature(
+                        id="extrude_1",
+                        type="extrude",
+                        params={"height": params.get("height", 10.0)},
+                        depends_on=["sketch_1"]
+                    )
+                ]
+            )
+        elif part_type == "cylinder":
+            return FeatureGraph(
+                part_type="cylinder",
+                base_plane="XY",
+                features=[
+                    Feature(
+                        id="sketch_1",
+                        type="circle",
+                        params={"radius": params.get("radius", 5.0)},
+                        depends_on=[]
+                    ),
+                    Feature(
+                        id="extrude_1",
+                        type="extrude",
+                        params={"height": params.get("height", 10.0)},
+                        depends_on=["sketch_1"]
+                    )
+                ]
+            )
+        elif part_type == "shaft":
+            return FeatureGraph(
+                part_type="shaft",
+                base_plane="XY",
+                features=[
+                    Feature(
+                        id="sketch_1",
+                        type="circle",
+                        params={"radius": params.get("radius", 2.5)},
+                        depends_on=[]
+                    ),
+                    Feature(
+                        id="extrude_1",
+                        type="extrude",
+                        params={"height": params.get("height", 50.0)},
+                        depends_on=["sketch_1"]
+                    )
+                ]
+            )
+        else:
+            raise ValueError(f"Unsupported part type: {part_type}")
+    
     @staticmethod
     def _convert_stl_to_glb(stl_path: Path, glb_path: Path):
         """
         Convert STL mesh to GLB for browser visualization.
+        
+        DEPRECATED: Compiler now handles this directly.
+        Kept for regenerate() backward compatibility.
         
         Args:
             stl_path: Input STL file path

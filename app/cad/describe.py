@@ -1,4 +1,4 @@
-from app.cad.feature_graph import FeatureGraph
+from app.domain.feature_graph import FeatureGraph
 
 def describe_feature_graph(graph: FeatureGraph) -> str:
     """

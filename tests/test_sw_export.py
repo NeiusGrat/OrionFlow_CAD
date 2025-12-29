@@ -3,7 +3,7 @@ import sys
 import os
 sys.path.append(os.getcwd())
 
-from app.agent.llm_client import LLMClient
+from app.llm import LLMClient
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from app.services.generation_service import GenerationService
 
 # Keep for describe endpoint
-from app.cad.feature_graph import FeatureGraph
+from app.domain.feature_graph import FeatureGraph
 from app.cad.describe import describe_feature_graph
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,11 +67,11 @@ class DescribeRequest(BaseModel):
 @app.post("/generate")
 def generate_cad(request: GenerateRequest):
     """
-    Generate a CAD model from text (V1 Pipeline: Prompt → Intent → Params → Geometry)
-    Now uses GenerationService for better separation of concerns.
+    Generate a CAD model from text (Unified Pipeline)
+    Uses the new canonical generate() method.
     """
     try:
-        result, debug_info = generation_service.generate_v1(request.prompt)
+        result, debug_info = generation_service.generate(request.prompt)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -84,7 +84,6 @@ def generate_cad(request: GenerateRequest):
         "prompt": request.prompt,
         "parameters": result.metadata["parameters"],
         "feature_graph": debug_info["feature_graph"],
-        "ml_deviation_check": result.metadata["ml_deviation"],
         "files": {
             "step": str(debug_info["step_path"]),
             "stl": str(debug_info["stl_path"]),
@@ -142,7 +141,4 @@ def download_step(filename: str):
         filename=filename, # Triggers browser download
     )
 
-from app.routers import generation_v2, export
-app.include_router(generation_v2.router)
-app.include_router(export.router)
 
