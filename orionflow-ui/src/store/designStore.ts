@@ -1,20 +1,6 @@
 import * as THREE from "three";
 import { create } from "zustand";
 
-export type ChatMessage = {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: number;
-    // If assistant generated a part
-    partVersion?: number;
-    files?: {
-        glb: string;
-        step: string;
-    };
-    image?: string; // For user uploads
-};
-
 export type DesignState = {
     id: string;
     prompt: string;
@@ -28,7 +14,7 @@ export type DesignState = {
         glb: string;
         step: string;
     };
-    history: ChatMessage[];
+    source?: "v1" | "v2";  // Track generation source (V1 or V2)
 };
 
 export type ViewAction = {
@@ -50,7 +36,6 @@ type AppStore = {
 
     addCreation: (design: DesignState) => void;
     setCurrent: (id: string) => void;
-    addMessage: (id: string, message: ChatMessage) => void;
 };
 
 export const useDesignStore = create<AppStore>((set) => ({
@@ -72,21 +57,5 @@ export const useDesignStore = create<AppStore>((set) => ({
         set((state) => ({
             current: state.creations.find((c) => c.id === id) || null,
         })),
-
-    addMessage: (id, message) =>
-        set((state) => {
-            const creations = state.creations.map((c) => {
-                if (c.id === id) {
-                    return { ...c, history: [...(c.history || []), message] };
-                }
-                return c;
-            });
-            // Update current if it's the one being modified
-            const current = state.current?.id === id
-                ? { ...state.current, history: [...(state.current.history || []), message] }
-                : state.current;
-
-            return { creations, current };
-        }),
 
 }));

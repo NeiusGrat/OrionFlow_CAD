@@ -194,34 +194,6 @@ export default function Viewer({ url }: { url: string }) {
                 </div>
             )}
 
-            {/* FLOATING DOWNLOAD BUTTON */}
-            {downloadUrl && !isGenerating && (
-                <a
-                    href={downloadUrl}
-                    style={{
-                        position: "absolute",
-                        bottom: "24px",
-                        right: "24px",
-                        zIndex: 50,
-                        background: "#F97316", // Orange
-                        color: "white",
-                        padding: "12px 20px",
-                        borderRadius: "8px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        textDecoration: "none",
-                        fontWeight: 600,
-                        boxShadow: "0 4px 12px rgba(249, 115, 22, 0.3)",
-                        transition: "transform 0.2s"
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1.0)"}
-                >
-                    <Download size={20} />
-                    <span>Download STEP</span>
-                </a>
-            )}
 
             <Canvas camera={{ position: [20, 20, 20], fov: 45 }} style={{ background: "#f9fafb" }}> {/* Very light grey bg */}
                 {/* Stronger lighting for CAD look */}

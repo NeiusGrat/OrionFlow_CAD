@@ -9,3 +9,4 @@ class Intent(BaseModel):
         "gear"
     ]
     shape_hint: Optional[str] = None
+    confidence: float = 1.0  # Confidence score for intent parsing robustness

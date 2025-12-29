@@ -3,8 +3,13 @@ uvicorn
 python-dotenv
 pydantic
 build123d>=0.5.0
-
+cadquery
+trimesh
 numpy
+pandas
+xgboost
+scikit-learn
+joblib
 groq
 
 

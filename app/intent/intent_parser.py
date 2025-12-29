@@ -22,14 +22,9 @@ def parse_intent(prompt: str) -> Intent:
     for part_type, keywords in PART_SYNONYMS.items():
         # Check whole word matches or known compounds
         if any(w in clean_prompt for w in keywords):
-            return Intent(part_type=part_type)
+            return Intent(part_type=part_type), 1.0
 
     # 3. No fallback allowed for advanced mode
-    # Calculate confidence based on keyword match strength
-    # Since we use strict `any(w in clean_prompt)`, if it matches, we are fairly confident.
-    # We could check ratio of matched keyword length to prompt length?
-    # For now, strict match = 1.0 confidence.
-    return Intent(part_type=part_type), 1.0
-
+    # If we get here, no intent was found.
     raise ValueError("Unsupported part description. Please specify 'box', 'cylinder', 'shaft', or 'gear'.")
 

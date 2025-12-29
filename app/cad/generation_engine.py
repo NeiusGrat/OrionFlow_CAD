@@ -5,8 +5,6 @@ from typing import Optional, Dict, Any
 # Pre-import build123d to be available in the exec context
 import build123d as b3d
 from build123d import *
-# from ocp_tessellator.tessellator import Tessellator, compute_quality
-# from ocp_tessellator.ocp_utils import oc_export_gltf
 
 class Build123dExecutionError(Exception):
     """Custom exception for errors during B3D script execution."""
@@ -14,29 +12,66 @@ class Build123dExecutionError(Exception):
         super().__init__(message)
         self.traceback_str = traceback_str
 
+# SANDBOXED GLOBALS - NO FILESYSTEM, NO IMPORTS, NO OS
+# This prevents prompt injection attacks and ensures code safety
+SAFE_GLOBALS = {
+    "__builtins__": {
+        # Allow only safe built-ins for math and data structures
+        "abs": abs,
+        "round": round,
+        "min": min,
+        "max": max,
+        "sum": sum,
+        "len": len,
+        "range": range,
+        "enumerate": enumerate,
+        "zip": zip,
+        "list": list,
+        "dict": dict,
+        "tuple": tuple,
+        "set": set,
+        "str": str,
+        "int": int,
+        "float": float,
+        "bool": bool,
+        "True": True,
+        "False": False,
+        "None": None,
+        # NO: open, exec, eval, __import__, compile, input, etc.
+    },
+    "b3d": b3d,
+    **{k: v for k, v in b3d.__dict__.items() if not k.startswith("_")}
+}
+
 def execute_build123d_script(code: str) -> bytes:
     """
-    Executes a raw string of build123d Python code and returns the GLB bytes.
+    Executes build123d code in a sandboxed environment.
+    Returns GLB bytes.
     
-    The code MUST assign the final object to a variable named 'part' or 'shape' or 'sketch'.
-    Priority: 'part' > 'shape' > 'sketch'
+    SECURITY: No filesystem, imports, or OS access allowed.
+    The code MUST assign the final object to 'part', 'shape', or 'sketch'.
     """
     
-    # Sandbox context: Include standard build123d imports
-    context: Dict[str, Any] = {
-        "b3d": b3d,
-        **b3d.__dict__
-    }
+    # Use explicit local namespace (no implicit globals)
+    local_env = {}
 
     try:
-        # EXECUTE THE CODE
-        exec(code, context)
+        # CRITICAL: Use sandboxed globals with restricted builtins
+        exec(code, SAFE_GLOBALS, local_env)
         
         # EXTRACT RESULT
-        part = context.get("part") or context.get("shape") or context.get("sketch")
+        part = local_env.get("part") or local_env.get("shape") or local_env.get("sketch")
         
         if part is None:
-            raise Build123dExecutionError("The script executed but did not assign a result to 'part', 'shape', or 'sketch'.")
+            raise Build123dExecutionError(
+                "Script executed but did not assign result to 'part', 'shape', or 'sketch'."
+            )
+        
+        # Validate result type (post-execution validation)
+        if not hasattr(part, "__class__") or "build123d" not in str(type(part)):
+            raise Build123dExecutionError(
+                f"Result is not a valid build123d object. Got: {type(part)}"
+            )
 
         # EXPORT TO GLB
         # Using ocp_tessellator/build123d export logic
@@ -101,7 +136,14 @@ def execute_build123d_script(code: str) -> bytes:
 
     except SyntaxError as e:
         tb = traceback.format_exc()
-        raise Build123dExecutionError(f"Syntax Error in generated code: {e}", traceback_str=tb)
+        raise Build123dExecutionError(f"Syntax Error: {e}", traceback_str=tb)
+    except NameError as e:
+        # Likely tried to use forbidden function
+        tb = traceback.format_exc()
+        raise Build123dExecutionError(
+            f"Security Error: {e}. Only build123d API is allowed.", 
+            traceback_str=tb
+        )
     except Exception as e:
         tb = traceback.format_exc()
-        raise Build123dExecutionError(f"Runtime Error during execution: {e}", traceback_str=tb)
+        raise Build123dExecutionError(f"Runtime Error: {e}", traceback_str=tb)

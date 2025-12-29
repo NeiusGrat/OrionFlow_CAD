@@ -87,8 +87,61 @@ export default function RightPanel() {
                     {/* Removed ChevronDown as it implies a menu, but we just d/l */}
                 </a>
                 <div style={{ textAlign: "center", marginTop: "8px", fontSize: "12px", color: "var(--color-text-muted)" }}>
-                    Editable CAD Format
+                    editable CAD Format
                 </div>
+
+                {/* SOLIDWORKS MACRO BUTTON */}
+                <button
+                    onClick={async () => {
+                        if (!current?.prompt) return;
+                        try {
+                            const response = await fetch("http://localhost:8000/api/v2/export/solidworks", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ prompt: current.prompt }),
+                            });
+
+                            if (!response.ok) throw new Error("Export failed");
+
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = "orion_macro.vba";
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        } catch (error) {
+                            console.error("Failed to download macro:", error);
+                            alert("Could not generate SolidWorks macro.");
+                        }
+                    }}
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "10px",
+                        width: "100%",
+                        padding: "14px",
+                        marginTop: "10px",
+                        background: "#2563EB", // Blue color
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontWeight: 600,
+                        fontSize: "14px",
+                        cursor: "pointer",
+                        transition: "filter 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.filter = "brightness(110%)"}
+                    onMouseLeave={(e) => e.currentTarget.style.filter = "brightness(100%)"}
+                >
+                    {/* SVG Icon */}
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Download SW Macro</span>
+                </button>
             </div>
         </div>
     );
