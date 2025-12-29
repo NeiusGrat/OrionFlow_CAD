@@ -5,7 +5,7 @@ import { OrbitControls, useGLTF } from "@react-three/drei";
 import { useDesignStore } from "../../store/designStore";
 import * as THREE from "three";
 
-import { Box, Download } from "lucide-react";
+import { Box } from "lucide-react";
 
 /**
  * Aggressively removes any GridHelper found in the scene
@@ -25,41 +25,50 @@ function GridRemover() {
 
 
 
+function frameModel(camera: THREE.Camera, controls: any, model: THREE.Object3D) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    // cast camera only if perspective
+    if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+        const perspectiveCam = camera as THREE.PerspectiveCamera;
+        const fov = perspectiveCam.fov * (Math.PI / 180);
+        let cameraZ = Math.abs(maxDim / (2 * Math.tan(fov / 2)));
+        cameraZ *= 1.4; // Zoom out a bit
+
+        perspectiveCam.position.set(
+            center.x + cameraZ,
+            center.y + cameraZ,
+            center.z + cameraZ
+        );
+    } else {
+        // Fallback for Ortho if we ever swap
+        camera.position.set(
+            center.x + maxDim * 2,
+            center.y + maxDim * 2,
+            center.z + maxDim * 2
+        );
+    }
+
+    camera.lookAt(center);
+
+    if (controls) {
+        controls.target.copy(center);
+        controls.update();
+    }
+}
+
 function Model({ url }: { url: string }) {
     const { scene } = useGLTF(url);
     const { camera, controls } = useThree();
 
-    // Auto-fit on load
+    // Auto-fit on load using Professional logic
     useEffect(() => {
         if (!scene) return;
-
-        const fit = () => {
-            const box = new THREE.Box3().setFromObject(scene);
-            const size = box.getSize(new THREE.Vector3());
-            const center = box.getCenter(new THREE.Vector3());
-
-            if (size.lengthSq() === 0) return;
-
-            scene.position.sub(center);
-
-            const maxDim = Math.max(size.x, size.y, size.z) || 10;
-            const dist = maxDim * 2.0;
-
-            camera.position.set(dist, dist, dist);
-            camera.lookAt(0, 0, 0);
-
-            if (controls) {
-                // @ts-ignore
-                controls.target.set(0, 0, 0);
-                // @ts-ignore
-                controls.update();
-            }
-        };
-
-        fit();
-        const t = setTimeout(fit, 50);
-        return () => clearTimeout(t);
-
+        frameModel(camera, controls, scene);
     }, [scene, url, camera, controls]);
 
     // Apply SolidWorks-ish Material + Edges
@@ -76,28 +85,12 @@ function Model({ url }: { url: string }) {
                 polygonOffsetFactor: 1, // Push back slightly so lines show
                 polygonOffsetUnits: 1
             });
-            // We can't easily inject the edges as children of the existing mesh in the glTF directly 
-            // without reconstructing. But we can render a separate component for edges if we clone geometry.
-            // A simpler way with react-three-fiber is to clone the element or just modify the scene structure.
-            // BUT: useGLTF returns a primitive. 
-            // Let's just create a helper component `Edges` and parent it effectively?
-            // Actually, we can just iterate and attach edges geometry.
-
-            // However, doing it declaratively is cleaner.
-            // Let's rely on the primitive for now, but to get edges, we might need a workaround.
-            // Or we just add specific LineSegments to the scene manually.
         }
     });
 
     return (
         <group>
             <primitive object={scene} />
-            {/* 
-              To do edges properly on an imported GLTF without complex recursion here:
-              We'll stick to the material change above. 
-              Adding edges to arbitrary GLTF scene is tricky in one go.
-              Let's try a simple approach: traverse and spawn LineSegments.
-            */}
             <SceneEdges scene={scene} />
         </group>
     );
@@ -163,13 +156,6 @@ function ViewManager() {
 
 export default function Viewer({ url }: { url: string }) {
     const isGenerating = useDesignStore((state) => state.isGenerating);
-    const current = useDesignStore((state) => state.current);
-
-    // Prepare download URL
-    const getStepFilename = (path: string) => path.split(/[/\\]/).pop();
-    const downloadUrl = current?.files?.step
-        ? `http://127.0.0.1:8000/download/step/${getStepFilename(current.files.step)}`
-        : null;
 
     return (
         <div style={{ height: "100%", width: "100%", position: "relative" }}>

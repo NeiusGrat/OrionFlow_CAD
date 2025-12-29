@@ -9,6 +9,7 @@ export type ChatMessage = {
     files?: {
         glb: string;
         step: string;
+        stl: string;
     };
     image?: string;
 };
@@ -22,18 +23,18 @@ type ChatStore = {
 
 export const useChatStore = create<ChatStore>((set, get) => ({
     conversations: new Map(),
-    
+
     addMessage: (designId, message) => set((state) => {
         const newConvos = new Map(state.conversations);
         const history = newConvos.get(designId) || [];
         newConvos.set(designId, [...history, message]);
         return { conversations: newConvos };
     }),
-    
+
     getHistory: (designId) => {
         return get().conversations.get(designId) || [];
     },
-    
+
     clearHistory: (designId) => set((state) => {
         const newConvos = new Map(state.conversations);
         newConvos.delete(designId);

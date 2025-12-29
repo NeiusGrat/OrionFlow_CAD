@@ -60,9 +60,9 @@ export default function App() {
         prompt: finalPrompt,
         parameters: {},
         material: { roughness: 0.5, metalness: 0.1 },
-        files: { glb: "", step: "" },
-        history: [userMsg]
+        files: { glb: "", step: "", stl: "" },
       });
+      addMessage(activeId, userMsg); // Add to chat store separately
       setCurrent(activeId); // Switch to this view
     } else {
       try {
@@ -97,9 +97,9 @@ export default function App() {
         timestamp: Date.now(),
         partVersion: (useChatStore.getState().getHistory(activeId).filter(m => m.role === 'assistant').length || 0) + 1,
         files: {
-          glb: "http://127.0.0.1:8000/" + data.files.glb,
-          step: "http://127.0.0.1:8000/" + data.files.step,
-          stl: "http://127.0.0.1:8000/" + data.files.stl,
+          glb: "http://127.0.0.1:8000/" + data.viewer.glb_url,
+          step: "http://127.0.0.1:8000/" + data.downloads.step,
+          stl: "http://127.0.0.1:8000/" + data.downloads.stl,
         }
       };
 
@@ -112,8 +112,8 @@ export default function App() {
             return {
               ...c,
               files: assistantMsg.files!, // Update main files entry for Viewer
-              featureGraph: data.feature_graph, // Keep graph updated
-              parameters: data.parameters || {} // Update parameters
+              featureGraph: data.cfg, // Keep graph updated
+              parameters: data.cfg.parameters || {} // Update parameters
             };
           }
           return c;

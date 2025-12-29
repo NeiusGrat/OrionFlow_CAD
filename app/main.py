@@ -79,18 +79,22 @@ async def generate_cad(request: GenerateRequest):
         print(f"CRITICAL BUILD ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
-    # Backward-compatible response format
-    fg = result.metadata.get("feature_graph", {})
+    # Canonical Response Schema (Spec 1.2)
+    fg_data = result.metadata.get("feature_graph", {})
+    # Ensure parameters are present
+    if "parameters" not in fg_data and "parameters" in result.metadata:
+        fg_data["parameters"] = result.metadata["parameters"]
+
     return {
-        "job_id": result.metadata["job_id"],
-        "prompt": request.prompt,
-        "parameters": fg.get("parameters", {}),
-        "feature_graph": fg,
-        "files": {
+        "model_id": result.metadata["job_id"],
+        "viewer": {
+            "glb_url": str(result.geometry_path).replace("\\", "/")
+        },
+        "downloads": {
             "step": str(result.metadata.get("step_path", "")).replace("\\", "/"),
-            "stl": str(result.metadata.get("stl_path", "")).replace("\\", "/"),
-            "glb": str(result.geometry_path).replace("\\", "/")
-        }
+            "stl": str(result.metadata.get("stl_path", "")).replace("\\", "/")
+        },
+        "cfg": fg_data
     }
 
 
@@ -122,13 +126,15 @@ async def regenerate_cad(request: RegenerateRequest):
         raise HTTPException(status_code=400, detail=str(e))
     
     return {
-        "job_id": result.metadata["job_id"],
-        "feature_graph": result.metadata["feature_graph"],
-        "files": {
+        "model_id": result.metadata["job_id"],
+        "viewer": {
+            "glb_url": str(result.geometry_path).replace("\\", "/")
+        },
+        "downloads": {
             "step": str(result.metadata["step_path"]).replace("\\", "/"),
-            "stl": str(result.metadata["stl_path"]).replace("\\", "/"),
-            "glb": str(result.geometry_path).replace("\\", "/")
-        }
+            "stl": str(result.metadata["stl_path"]).replace("\\", "/")
+        },
+        "cfg": result.metadata["feature_graph"]
     }
 
 @app.post("/describe")
