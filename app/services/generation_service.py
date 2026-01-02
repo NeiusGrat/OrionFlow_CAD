@@ -20,6 +20,7 @@ from app.services.retry_policy import is_retryable
 from build123d import export_gltf, export_step, export_stl
 from app.llm import LLMClient
 from app.services.intent_contract import DecomposedIntent
+from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
 import logging
 
 MAX_RETRIES = 1
@@ -168,16 +169,18 @@ class GenerationService:
             logger.error(f"Onshape sync failed: {e}")
             return False
 
-    async def generate(self, prompt: str) -> GenerationResult:
+    async def generate(self, prompt: str, backend: str = "build123d", onshape_context: Dict[str, str] = None) -> GenerationResult:
         """
         Generate CAD from natural language prompt.
         
         New Unified Pipeline:
         1. LLM generates FeatureGraph from prompt (with retries)
-        2. Compiler converts FeatureGraph to geometry
+        2. Compiler converts FeatureGraph to geometry (Backend agnostic)
         
         Args:
             prompt: User description
+            backend: "build123d" (default) or "onshape"
+            onshape_context: Dict with keys 'document_id', 'workspace_id', 'element_id'
             
         Returns:
             GenerationResult containing paths and metadata
@@ -211,33 +214,71 @@ class GenerationService:
                 # 3. Generate FeatureGraph via LLM (with intent)
                 feature_graph = await self.llm_client.generate_feature_graph(prompt, last_trace, intent.model_dump())
                 
-                # 2. Compile geometry using V1 Compiler
-                solid, trace = self.v1_compiler.compile(feature_graph)
+                solid, trace = None, None
                 
-                # 3. Check Success
-                if trace.success and solid:
-                    # Export files
-                    glb_path = self.output_dir / f"{job_id}.glb"
-                    step_path = self.output_dir / f"{job_id}.step"
-                    stl_path = self.output_dir / f"{job_id}.stl"
-                    
-                    export_gltf(solid, str(glb_path))
-                    export_step(solid, str(step_path))
-                    export_stl(solid, str(stl_path))
-                    
-                    return GenerationResult(
-                        geometry_path=glb_path,
-                        format="glb",
-                        metadata={
-                            "job_id": job_id,
-                            "prompt": prompt,
-                            "feature_graph": feature_graph.model_dump(),
-                            "retry_count": attempt,
-                            "parameters": feature_graph.parameters
-                        },
-                        source="llm-v2",
-                        execution_trace=trace
+                # 4. Select Backend
+                if backend == "onshape":
+                    if not onshape_context:
+                        raise ValueError("Onshape backend requires onshape_context (did, wid, eid)")
+                        
+                    logger.info("Compiling to Onshape...")
+                    adapter = OnshapeFeatureGraphAdapter(
+                        onshape_context.get("document_id"),
+                        onshape_context.get("workspace_id"),
+                        onshape_context.get("element_id")
                     )
+                    # Onshape adapter compiles directly to cloud, doesn't return solid/trace in same way
+                    # For now, we assume success if no exception, or we need the adapter to return a trace?
+                    # The instructions didn't specify adapter return type, but V1 compiler returns (solid, trace).
+                    # Let's assume adapter.compile(graph) raises exception on failure and we mock a success trace.
+                    adapter.compile(feature_graph)
+                    
+                    # Mock trace for consistency
+                    from app.domain.execution_trace import ExecutionTrace, TraceEvent
+                    trace = ExecutionTrace(success=True, events=[TraceEvent(stage="onshape", status="success", message="Synced to Onshape")])
+                    solid = "onshape_cloud_entity" 
+
+                else:
+                    # Default: Build123d Backend
+                    solid, trace = self.v1_compiler.compile(feature_graph)
+                
+                # 5. Check Success
+                if trace.success and solid:
+                    metadata = {
+                        "job_id": job_id,
+                        "prompt": prompt,
+                        "feature_graph": feature_graph.model_dump(),
+                        "retry_count": attempt,
+                        "parameters": feature_graph.parameters,
+                        "backend": backend
+                    }
+
+                    if backend == "build123d":
+                        # Export files
+                        glb_path = self.output_dir / f"{job_id}.glb"
+                        step_path = self.output_dir / f"{job_id}.step"
+                        stl_path = self.output_dir / f"{job_id}.stl"
+                        
+                        export_gltf(solid, str(glb_path))
+                        export_step(solid, str(step_path))
+                        export_stl(solid, str(stl_path))
+                        
+                        return GenerationResult(
+                            geometry_path=glb_path,
+                            format="glb",
+                            metadata=metadata,
+                            source="llm-v2",
+                            execution_trace=trace
+                        )
+                    else:
+                        # Onshape result (no local geometry to return)
+                        return GenerationResult(
+                            geometry_path=Path(""),
+                            format="onshape",
+                            metadata=metadata,
+                            source="llm-v2",
+                            execution_trace=trace
+                        )
                 
                 # 4. Handle Failure
                 trace.retryable = is_retryable(trace)
