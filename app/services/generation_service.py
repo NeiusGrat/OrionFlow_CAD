@@ -21,6 +21,8 @@ from build123d import export_gltf, export_step, export_stl
 from app.llm import LLMClient
 from app.services.intent_contract import DecomposedIntent
 from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
+from app.services.dataset_writer import write_dataset_sample
+from app.domain.dataset_sample import DatasetSample
 import logging
 
 MAX_RETRIES = 1
@@ -263,6 +265,22 @@ class GenerationService:
                         export_step(solid, str(step_path))
                         export_stl(solid, str(stl_path))
                         
+                        # --- DATASET LOGGING ---
+                        try:
+                            sample = DatasetSample(
+                                prompt=prompt,
+                                decomposed_intent=intent.model_dump(),
+                                feature_graph=feature_graph,
+                                execution_trace=trace,
+                                success=trace.success,
+                                backend=backend,
+                                timestamp=datetime.datetime.utcnow().isoformat()
+                            )
+                            write_dataset_sample(sample)
+                        except Exception as e:
+                            logger.warning(f"Failed to log dataset sample: {e}")
+                        # -----------------------
+
                         return GenerationResult(
                             geometry_path=glb_path,
                             format="glb",
@@ -272,6 +290,23 @@ class GenerationService:
                         )
                     else:
                         # Onshape result (no local geometry to return)
+                        
+                        # --- DATASET LOGGING ---
+                        try:
+                            sample = DatasetSample(
+                                prompt=prompt,
+                                decomposed_intent=intent.model_dump(),
+                                feature_graph=feature_graph,
+                                execution_trace=trace,
+                                success=trace.success,
+                                backend=backend,
+                                timestamp=datetime.datetime.utcnow().isoformat()
+                            )
+                            write_dataset_sample(sample)
+                        except Exception as e:
+                            logger.warning(f"Failed to log dataset sample: {e}")
+                        # -----------------------
+
                         return GenerationResult(
                             geometry_path=Path(""),
                             format="onshape",
@@ -284,6 +319,23 @@ class GenerationService:
                 trace.retryable = is_retryable(trace)
                 
                 if not trace.retryable or attempt == MAX_RETRIES:
+                    
+                    # --- DATASET LOGGING ---
+                    try:
+                        sample = DatasetSample(
+                            prompt=prompt,
+                            decomposed_intent=intent.model_dump(),
+                            feature_graph=feature_graph,
+                            execution_trace=trace,
+                            success=trace.success, # Likely False here
+                            backend=backend,
+                            timestamp=datetime.datetime.utcnow().isoformat()
+                        )
+                        write_dataset_sample(sample)
+                    except Exception as e:
+                        logger.warning(f"Failed to log dataset sample: {e}")
+                    # -----------------------
+
                     return GenerationResult(
                         geometry_path=Path(""), # No geometry on failure
                         format="glb",
