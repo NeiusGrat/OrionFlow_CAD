@@ -11,6 +11,9 @@ from typing import Tuple, Dict, Any
 
 from app.domain.generation_result import GenerationResult
 from app.domain.feature_graph import FeatureGraph, Feature
+# [NEW] Import V1 Schema
+from app.domain.feature_graph_v1 import FeatureGraphV1
+from pydantic import ValidationError
 from app.compilers.build123d_compiler import Build123dCompiler
 from app.llm import LLMClient
 import logging
@@ -29,6 +32,19 @@ class GenerationService:
     
     Flow: Prompt → LLM (FeatureGraph) → Compiler → Geometry Files
     """
+    
+    @staticmethod
+    def parse_feature_graph(llm_output: dict) -> FeatureGraphV1:
+        """
+        Strictly validates LLM output against FeatureGraphV1.
+        Fails fast if the schema is incorrect.
+        """
+        try:
+            return FeatureGraphV1(**llm_output)
+        except ValidationError as e:
+            # We raise ValueError here so it propagates cleanly as a "Bad Request" type error
+            # rather than an internal server error.
+            raise ValueError(f"Invalid FeatureGraph schema: {e}")
     
     def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None):
         """
