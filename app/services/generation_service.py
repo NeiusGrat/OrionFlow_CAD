@@ -15,8 +15,14 @@ from app.domain.feature_graph import FeatureGraph, Feature
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from pydantic import ValidationError
 from app.compilers.build123d_compiler import Build123dCompiler
+from app.compilers.v1.compiler import FeatureGraphCompilerV1
+from app.services.retry_policy import is_retryable
+from build123d import export_gltf, export_step, export_stl
 from app.llm import LLMClient
+from app.services.intent_contract import DecomposedIntent
 import logging
+
+MAX_RETRIES = 1
 
 # Legacy imports (deprecated)
 # from app.intent.intent_parser import parse_intent
@@ -46,6 +52,51 @@ class GenerationService:
             # rather than an internal server error.
             raise ValueError(f"Invalid FeatureGraph schema: {e}")
     
+    @staticmethod
+    def decompose_prompt(prompt: str) -> DecomposedIntent:
+        """
+        Decomposes natural language prompt into structured intent.
+        Enforces discipline by identifying unsupported expert concepts.
+        """
+        sketch = []
+        constraints = []
+        features = []
+        unsupported = []
+
+        keywords = prompt.lower()
+
+        if "rectangle" in keywords or "plate" in keywords or "box" in keywords:
+            sketch.append("base_profile")
+            features.append("extrude")
+
+        if "hole" in keywords or "circle" in keywords or "cylinder" in keywords or "shaft" in keywords:
+            sketch.append("circle")
+            
+        if "box" in keywords or "cylinder" in keywords or "shaft" in keywords:
+            features.append("extrude")
+
+        if "horizontal" in keywords or "vertical" in keywords:
+            constraints.append("orientation")
+
+        if "distance" in keywords or "radius" in keywords or "length" in keywords or "width" in keywords:
+            constraints.append("dimension")
+
+        if "extrude" in keywords or "thickness" in keywords or "height" in keywords:
+            features.append("extrude")
+
+        if "fillet" in keywords:
+            unsupported.append("fillet")
+
+        if "symmetric" in keywords or "mirror" in keywords:
+            unsupported.append("symmetry")
+
+        return DecomposedIntent(
+            sketch_intent=sketch,
+            constraint_intent=constraints,
+            feature_intent=features,
+            unsupported_intent=unsupported
+        )
+    
     def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None):
         """
         Initialize the generation service.
@@ -63,6 +114,7 @@ class GenerationService:
         
         # Core Components
         self.compiler = Build123dCompiler(output_dir=output_dir)
+        self.v1_compiler = FeatureGraphCompilerV1()
         self.llm_client = llm_client or LLMClient()
         
         # Onshape Integration (Optional - Live CAD)
@@ -121,11 +173,11 @@ class GenerationService:
         Generate CAD from natural language prompt.
         
         New Unified Pipeline:
-        1. LLM generates FeatureGraph from prompt
-        2. Compiler converts FeatureGraph to geometry (STEP/STL/GLB)
+        1. LLM generates FeatureGraph from prompt (with retries)
+        2. Compiler converts FeatureGraph to geometry
         
         Args:
-            prompt: User description (e.g., "box 10x10x10")
+            prompt: User description
             
         Returns:
             GenerationResult containing paths and metadata
@@ -133,33 +185,87 @@ class GenerationService:
         job_id = str(uuid.uuid4())
         logger.info(f"Starting generation job_id={job_id} for prompt='{prompt}'")
         
-        # 1. Generate FeatureGraph via LLM
-        # This replaces the old intent parser + rule-based inference
-        feature_graph = await self.llm_client.generate_feature_graph(prompt)
+        attempt = 0
+        last_trace = None
         
-        # 2. Compile geometry using Build123d
-        paths = self.compiler.compile(feature_graph, job_id)
+        # 1. Decompose Prompt (Pre-LLM)
+        intent = self.decompose_prompt(prompt)
         
-        # 3. Build Result
-        # Ensure we have relative paths for URL generation if needed, but absolute is fine for now if main.py handles it.
-        # However, user requests geometry_path to be URL-like. 
-        # But GenerationResult expects Path. We will pass Path, and main.py converts to string/URL.
+        # 2. Hard Fail on Unsupported Concepts
+        if intent.unsupported_intent:
+            return GenerationResult(
+                geometry_path=Path(""),
+                format="glb",
+                metadata={
+                    "job_id": job_id,
+                    "prompt": prompt,
+                    "error": f"Unsupported features requested: {intent.unsupported_intent}"
+                },
+                source="llm-v2"
+            )
+            
+        logger.info(f"Decomposed Intent: {intent}")
         
-        result = GenerationResult(
-            geometry_path=paths["glb"],
-            format="glb",
-            metadata={
-                "job_id": job_id,
-                "prompt": prompt,
-                "feature_graph": feature_graph.model_dump(),
-                "step_path": str(paths["step"]),
-                "stl_path": str(paths["stl"]),
-                "parameters": feature_graph.parameters, # Explicitly add parameters
-            },
-            source="llm-v2"
-        )
+        while attempt <= MAX_RETRIES:
+            try:
+                # 3. Generate FeatureGraph via LLM (with intent)
+                feature_graph = await self.llm_client.generate_feature_graph(prompt, last_trace, intent.model_dump())
+                
+                # 2. Compile geometry using V1 Compiler
+                solid, trace = self.v1_compiler.compile(feature_graph)
+                
+                # 3. Check Success
+                if trace.success and solid:
+                    # Export files
+                    glb_path = self.output_dir / f"{job_id}.glb"
+                    step_path = self.output_dir / f"{job_id}.step"
+                    stl_path = self.output_dir / f"{job_id}.stl"
+                    
+                    export_gltf(solid, str(glb_path))
+                    export_step(solid, str(step_path))
+                    export_stl(solid, str(stl_path))
+                    
+                    return GenerationResult(
+                        geometry_path=glb_path,
+                        format="glb",
+                        metadata={
+                            "job_id": job_id,
+                            "prompt": prompt,
+                            "feature_graph": feature_graph.model_dump(),
+                            "retry_count": attempt,
+                            "parameters": feature_graph.parameters
+                        },
+                        source="llm-v2",
+                        execution_trace=trace
+                    )
+                
+                # 4. Handle Failure
+                trace.retryable = is_retryable(trace)
+                
+                if not trace.retryable or attempt == MAX_RETRIES:
+                    return GenerationResult(
+                        geometry_path=Path(""), # No geometry on failure
+                        format="glb",
+                        metadata={
+                            "job_id": job_id,
+                            "prompt": prompt,
+                            "retry_count": attempt,
+                            "error": "Compilation failed"
+                        },
+                        source="llm-v2",
+                        execution_trace=trace
+                    )
+                
+                # Setup for retry
+                logger.warning(f"Generation failed (attempt {attempt}), retrying...")
+                last_trace = trace
+                attempt += 1
+                
+            except Exception as e:
+                logger.error(f"Generation loop error: {e}")
+                raise e
         
-        return result
+        return None # Should be unreachable due to return in loop
     
     def generate_legacy(self, prompt: str) -> Tuple[GenerationResult, Dict[str, Any]]:
         """

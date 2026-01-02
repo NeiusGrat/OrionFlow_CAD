@@ -12,3 +12,4 @@ class TraceEvent(BaseModel):
 class ExecutionTrace(BaseModel):
     success: bool
     events: List[TraceEvent]
+    retryable: bool = False

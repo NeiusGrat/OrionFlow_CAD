@@ -144,3 +144,18 @@ Output:
   ]
 }
 """
+
+RETRY_PROMPT_TEMPLATE = """You previously generated a FeatureGraph that failed to compile.
+
+Here is the structured execution trace:
+{execution_trace}
+
+Your task:
+- Generate a NEW FeatureGraphV1
+- Fix ONLY what caused the failure
+- Keep the design intent unchanged
+- Do not add new features
+- Output valid JSON only
+
+No explanation. No markdown.
+"""

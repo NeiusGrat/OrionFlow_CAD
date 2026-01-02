@@ -10,8 +10,10 @@ import json
 import logging
 from groq import AsyncGroq
 
-from app.domain.feature_graph import FeatureGraph
-from app.llm.prompts import FEATURE_GRAPH_PROMPT
+from typing import Optional
+from app.domain.feature_graph_v1 import FeatureGraphV1 as FeatureGraph
+from app.domain.execution_trace import ExecutionTrace
+from app.llm.prompts import FEATURE_GRAPH_PROMPT, RETRY_PROMPT_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +64,7 @@ class LLMClient:
         """Initialize local LLM provider (future)."""
         raise NotImplementedError("Local LLM provider not yet implemented")
     
-    async def generate_feature_graph(self, user_prompt: str) -> FeatureGraph:
+    async def generate_feature_graph(self, user_prompt: str, trace: Optional[ExecutionTrace] = None, intent_context: Optional[dict] = None) -> FeatureGraph:
         """
         Generate FeatureGraph from natural language prompt.
         
@@ -71,6 +73,8 @@ class LLMClient:
         
         Args:
             user_prompt: User's natural language description
+            trace: Optional execution trace for retry context
+            intent_context: Optional decomposed intent to constrain generation
             
         Returns:
             FeatureGraph object ready for compilation
@@ -80,27 +84,44 @@ class LLMClient:
             Exception: If LLM call fails
         """
         if self.provider == "groq":
-            return await self._generate_groq(user_prompt)
+            return await self._generate_groq(user_prompt, trace, intent_context)
         elif self.provider == "openai":
-            return await self._generate_openai(user_prompt)
+            return await self._generate_openai(user_prompt, trace)
         elif self.provider == "local":
-            return await self._generate_local(user_prompt)
+            return await self._generate_local(user_prompt, trace)
     
-    async def _generate_groq(self, user_prompt: str) -> FeatureGraph:
+    async def _generate_groq(self, user_prompt: str, trace: Optional[ExecutionTrace] = None, intent_context: Optional[dict] = None) -> FeatureGraph:
         """
         Generate using Groq provider.
         
         Args:
             user_prompt: User's prompt
+            trace: Optional execution trace
+            intent_context: Optional decomposed intent
             
         Returns:
             Validated FeatureGraph
         """
         try:
+            # Select prompt based on retry status
+            if trace:
+                system_prompt = RETRY_PROMPT_TEMPLATE.format(
+                    execution_trace=trace.model_dump_json(indent=2)
+                )
+                logger.info("Generating using RETRY prompt")
+            else:
+                system_prompt = FEATURE_GRAPH_PROMPT
+
+            # Inject Intent Constraints if present
+            if intent_context:
+                intent_str = json.dumps(intent_context, indent=2)
+                system_prompt += f"\n\nSTRICT DECOMPOSED INTENT:\n{intent_str}\n\n"
+                system_prompt += "You must ONLY generate features/constraints allowed by the strict intent above."
+                
             completion = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": FEATURE_GRAPH_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.1,  # Low temp for structured output
