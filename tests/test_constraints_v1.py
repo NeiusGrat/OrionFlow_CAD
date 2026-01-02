@@ -41,8 +41,9 @@ def test_circle_with_radius_constraint():
         ]
     )
 
-    solid = FeatureGraphCompilerV1().compile(graph)
+    solid, trace = FeatureGraphCompilerV1().compile(graph)
     assert solid is not None
+    assert trace.success is True
     assert solid.volume > 0
 
 def test_rectangle_constraints():
@@ -90,5 +91,6 @@ def test_rectangle_constraints():
             }
         ]
     )
-    solid = FeatureGraphCompilerV1().compile(graph)
+    solid, trace = FeatureGraphCompilerV1().compile(graph)
     assert solid is not None
+    assert trace.success is True

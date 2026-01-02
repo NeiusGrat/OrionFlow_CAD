@@ -38,9 +38,10 @@ def test_basic_extrude():
     )
 
     compiler = FeatureGraphCompilerV1()
-    solid = compiler.compile(graph)
+    solid, trace = compiler.compile(graph)
 
     assert solid is not None
+    assert trace.success is True
     # Check if we got a valid Part/Solid
     assert hasattr(solid, "volume")
     assert solid.volume > 0

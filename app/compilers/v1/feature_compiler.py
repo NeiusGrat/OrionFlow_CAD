@@ -5,6 +5,10 @@ from .errors import FeatureCompilationError
 
 class FeatureCompiler:
     def compile(self, graph: FeatureGraphV1, sketches: dict):
+        # Validate that we have features to compile
+        if not graph.features:
+            raise FeatureCompilationError("No features provided - cannot generate geometry")
+        
         solid = None
 
         for feature in graph.features:
