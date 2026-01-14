@@ -15,6 +15,7 @@ from app.domain.feature_graph import FeatureGraph, Feature
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from pydantic import ValidationError
 from app.compilers.build123d_compiler import Build123dCompiler
+from app.compilers.cadquery_compiler import CadQueryCompiler
 from app.compilers.v1.compiler import FeatureGraphCompilerV1
 from app.services.retry_policy import is_retryable
 from build123d import export_gltf, export_step, export_stl
@@ -116,6 +117,9 @@ class GenerationService:
         self.output_dir.mkdir(exist_ok=True)
         
         # Core Components
+        # CadQuery is the primary compiler (preferred for LLM compatibility)
+        self.cadquery_compiler = CadQueryCompiler(output_dir=output_dir)
+        # Build123d kept as fallback (deprecated)
         self.compiler = Build123dCompiler(output_dir=output_dir)
         self.v1_compiler = FeatureGraphCompilerV1()
         self.llm_client = llm_client or LLMClient()
@@ -171,7 +175,7 @@ class GenerationService:
             logger.error(f"Onshape sync failed: {e}")
             return False
 
-    async def generate(self, prompt: str, backend: str = "build123d", onshape_context: Dict[str, str] = None) -> GenerationResult:
+    async def generate(self, prompt: str, backend: str = "cadquery", onshape_context: Dict[str, str] = None) -> GenerationResult:
         """
         Generate CAD from natural language prompt.
         
@@ -240,8 +244,15 @@ class GenerationService:
                     trace = ExecutionTrace(success=True, events=[TraceEvent(stage="onshape", status="success", message="Synced to Onshape")])
                     solid = "onshape_cloud_entity" 
 
+                elif backend == "cadquery":
+                    # Primary: CadQuery Backend (preferred)
+                    step_path, stl_path, glb_path, trace = self.cadquery_compiler.compile(
+                        feature_graph, job_id
+                    )
+                    solid = "cadquery_solid"  # Placeholder for success check
+                    
                 else:
-                    # Default: Build123d Backend
+                    # Fallback: Build123d Backend (deprecated)
                     solid, trace = self.v1_compiler.compile(feature_graph)
                 
                 # 5. Check Success
@@ -255,8 +266,14 @@ class GenerationService:
                         "backend": backend
                     }
 
-                    if backend == "build123d":
-                        # Export files
+                    if backend == "cadquery":
+                        # CadQuery already exported files in compile()
+                        # step_path, stl_path, glb_path are already set
+                        metadata["step_path"] = str(step_path)
+                        metadata["stl_path"] = str(stl_path)
+                        
+                    elif backend == "build123d":
+                        # Export files (Build123d fallback)
                         glb_path = self.output_dir / f"{job_id}.glb"
                         step_path = self.output_dir / f"{job_id}.step"
                         stl_path = self.output_dir / f"{job_id}.stl"
@@ -265,51 +282,39 @@ class GenerationService:
                         export_step(solid, str(step_path))
                         export_stl(solid, str(stl_path))
                         
-                        # --- DATASET LOGGING ---
-                        try:
-                            sample = DatasetSample(
-                                prompt=prompt,
-                                decomposed_intent=intent.model_dump(),
-                                feature_graph=feature_graph,
-                                execution_trace=trace,
-                                success=trace.success,
-                                backend=backend,
-                                timestamp=datetime.datetime.utcnow().isoformat()
-                            )
-                            write_dataset_sample(sample)
-                        except Exception as e:
-                            logger.warning(f"Failed to log dataset sample: {e}")
-                        # -----------------------
+                        metadata["step_path"] = str(step_path)
+                        metadata["stl_path"] = str(stl_path)
+                    
+                    # --- DATASET LOGGING (all backends) ---
+                    try:
+                        sample = DatasetSample(
+                            prompt=prompt,
+                            decomposed_intent=intent.model_dump(),
+                            feature_graph=feature_graph,
+                            execution_trace=trace,
+                            success=trace.success,
+                            backend=backend,
+                            timestamp=datetime.datetime.utcnow().isoformat()
+                        )
+                        write_dataset_sample(sample)
+                    except Exception as e:
+                        logger.warning(f"Failed to log dataset sample: {e}")
+                    # -----------------------
 
+                    if backend == "onshape":
+                        # Onshape result (no local geometry to return)
                         return GenerationResult(
-                            geometry_path=glb_path,
-                            format="glb",
+                            geometry_path=Path(""),
+                            format="onshape",
                             metadata=metadata,
                             source="llm-v2",
                             execution_trace=trace
                         )
                     else:
-                        # Onshape result (no local geometry to return)
-                        
-                        # --- DATASET LOGGING ---
-                        try:
-                            sample = DatasetSample(
-                                prompt=prompt,
-                                decomposed_intent=intent.model_dump(),
-                                feature_graph=feature_graph,
-                                execution_trace=trace,
-                                success=trace.success,
-                                backend=backend,
-                                timestamp=datetime.datetime.utcnow().isoformat()
-                            )
-                            write_dataset_sample(sample)
-                        except Exception as e:
-                            logger.warning(f"Failed to log dataset sample: {e}")
-                        # -----------------------
-
+                        # CadQuery or Build123d - return local geometry
                         return GenerationResult(
-                            geometry_path=Path(""),
-                            format="onshape",
+                            geometry_path=glb_path,
+                            format="glb",
                             metadata=metadata,
                             source="llm-v2",
                             execution_trace=trace

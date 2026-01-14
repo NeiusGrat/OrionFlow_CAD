@@ -1,0 +1,110 @@
+{
+  "prompt": "Create a rectangular plate 50 by 30 mm and extrude it by 10 mm. Create a base plate suitable for mounting, with a central hole and adjustable thickness.",
+  "decomposed_intent": {
+    "sketch_intent": [
+      "base_profile",
+      "circle"
+    ],
+    "constraint_intent": [],
+    "feature_intent": [
+      "extrude",
+      "extrude"
+    ],
+    "unsupported_intent": []
+  },
+  "feature_graph": {
+    "schema_version": "1.0",
+    "units": "mm",
+    "metadata": {
+      "intent": "Rectangular plate with central hole and adjustable thickness"
+    },
+    "parameters": {
+      "plate_width": {
+        "type": "float",
+        "value": 50.0,
+        "min": null,
+        "max": null
+      },
+      "plate_height": {
+        "type": "float",
+        "value": 30.0,
+        "min": null,
+        "max": null
+      },
+      "plate_thickness": {
+        "type": "float",
+        "value": 10.0,
+        "min": null,
+        "max": null
+      },
+      "hole_radius": {
+        "type": "float",
+        "value": 5.0,
+        "min": null,
+        "max": null
+      }
+    },
+    "sketches": [
+      {
+        "id": "plate_sketch",
+        "plane": "XY",
+        "primitives": [
+          {
+            "id": "plate_rect",
+            "type": "rectangle",
+            "params": {
+              "width": "$plate_width",
+              "height": "$plate_height",
+              "center_x": 0.0,
+              "center_y": 0.0
+            },
+            "construction": false
+          },
+          {
+            "id": "hole_circle",
+            "type": "circle",
+            "params": {
+              "radius": "$hole_radius",
+              "center_x": 0.0,
+              "center_y": 0.0
+            },
+            "construction": false
+          }
+        ],
+        "constraints": []
+      }
+    ],
+    "features": [
+      {
+        "id": "plate_extrude",
+        "type": "extrude",
+        "sketch": "plate_sketch",
+        "targets": [],
+        "params": {
+          "depth": "$plate_thickness"
+        }
+      }
+    ]
+  },
+  "execution_trace": {
+    "success": true,
+    "events": [
+      {
+        "stage": "sketch_compile",
+        "target": null,
+        "status": "success",
+        "message": null
+      },
+      {
+        "stage": "feature_compile",
+        "target": null,
+        "status": "success",
+        "message": null
+      }
+    ],
+    "retryable": false
+  },
+  "success": true,
+  "backend": "build123d",
+  "timestamp": "2026-01-02T10:53:36.023974"
+}
