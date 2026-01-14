@@ -1,8 +1,20 @@
+# Core Framework
 fastapi
 uvicorn
 python-dotenv
 pydantic
-build123d>=0.5.0
+
+# CAD Kernels
+# ⚠️ CRITICAL: CadQuery MUST be installed via mamba/conda-forge (NOT pip):
+#   mamba install -c conda-forge cadquery
+# pip installation will fail due to OpenCASCADE C++ binary dependencies.
+# cadquery>=2.2.0  # Installed via conda-forge
+build123d>=0.5.0  # Deprecated: Kept for backward compatibility/fallback
+
+# Mesh & Export
 trimesh
 numpy
+
+# LLM & API
 groq
+requests
