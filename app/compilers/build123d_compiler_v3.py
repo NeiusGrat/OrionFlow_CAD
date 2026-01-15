@@ -76,9 +76,23 @@ class Build123dCompilerV3(Build123dCompilerV2):
     """
     
     def __init__(self, output_dir: Path = Path("outputs")):
-        """Initialize V3 compiler with output directory."""
+        """Initialize V3 compiler with output directory and validators."""
         super().__init__(output_dir)
-        logger.info("Build123dCompilerV3 initialized (topological identity enabled)")
+        
+        # Phase 3: Register geometry validators
+        from app.compilers.validators.zero_thickness import ZeroThicknessValidator
+        from app.compilers.validators.fillet_validator import FilletValidator
+        from app.compilers.validators.self_intersection import SelfIntersectionValidator
+        from app.compilers.validators.degenerate_face import DegenerateFaceValidator
+        
+        self.validators = [
+            ZeroThicknessValidator(),
+            FilletValidator(),
+            SelfIntersectionValidator(),
+            DegenerateFaceValidator()
+        ]
+        
+        logger.info(f"Build123dCompilerV3 initialized with {len(self.validators)} validators")
     
     def compile(
         self,
@@ -166,6 +180,22 @@ class Build123dCompilerV3(Build123dCompilerV2):
             )
             return step_path, stl_path, glb_path, trace
             
+        except FeatureCompilationError as e:
+            logger.error(f"V3 Compilation failed: {e}")
+            
+            # Store structured error in trace metadata if available
+            metadata = {}
+            if hasattr(e, 'compiler_error') and e.compiler_error:
+                metadata["compiler_error"] = e.compiler_error.model_dump()
+                logger.info(f"Structured error available: {e.compiler_error.error_type}")
+            
+            trace = ExecutionTrace(
+                success=False,
+                events=events,
+                retryable=True,
+                metadata=metadata
+            )
+            raise
         except Exception as e:
             logger.error(f"V3 Compilation failed: {e}")
             trace = ExecutionTrace(success=False, events=events, retryable=True)
@@ -178,11 +208,11 @@ class Build123dCompilerV3(Build123dCompilerV2):
         current_solid: Optional[Solid]
     ) -> Solid:
         """
-        Apply a feature with entity tracking.
+        Apply a feature with entity tracking and validation.
         
-        This wraps the geometry creation and automatically tags all
-        new edges/faces with metadata.
+        Phase 3: Includes geometry validation passes after build.
         """
+        # Step 1: Build geometry
         if feature.type == "extrude":
             solid = self._apply_extrude_v3(feature, ctx, current_solid)
         elif feature.type == "fillet":
@@ -194,7 +224,33 @@ class Build123dCompilerV3(Build123dCompilerV2):
             logger.warning(f"Feature type '{feature.type}' not yet V3-enabled, using V2")
             solid = self._apply_feature_v2(feature, ctx.sketches, ctx.graph, current_solid)
         
+        # Step 2: VALIDATE geometry (Phase 3)
+        self._validate_geometry(solid, feature)
+        
         return solid
+    
+    def _validate_geometry(self, solid: Solid, feature: FeatureV2) -> None:
+        """
+        Run all geometry validators on the current solid.
+        
+        Fails fast on first error detected.
+        
+        Args:
+            solid: Geometry to validate
+            feature: Feature that created/modified the geometry
+            
+        Raises:
+            FeatureCompilationError: If any validator detects an issue
+        """
+        for validator in self.validators:
+            error = validator.validate(solid, feature)
+            if error:
+                logger.error(f"{validator.name} failed: {error.reason}")
+                # Fail fast with structured error
+                raise FeatureCompilationError(
+                    error.to_trace_message(),
+                    compiler_error=error
+                )
     
     def _apply_extrude_v3(
         self,
