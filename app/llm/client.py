@@ -3,6 +3,8 @@ LLM Client - Provider-agnostic language model interface.
 
 ONE client, ONE canonical method: generate_feature_graph()
 Swap providers (Groq, OpenAI, local) without changing service layer.
+
+Phase 4: Added two-stage pipeline for designer intelligence.
 """
 import os
 import re
@@ -15,6 +17,12 @@ from app.domain.feature_graph_v1 import FeatureGraphV1 as FeatureGraph
 from app.domain.execution_trace import ExecutionTrace
 from app.llm.prompts import FEATURE_GRAPH_PROMPT, RETRY_PROMPT_TEMPLATE
 
+# Phase 4: Two-stage prompts
+from app.llm.prompts_v2 import (
+    INTENT_EXTRACTION_SYSTEM_PROMPT,
+    INTENT_EXTRACTION_USER_TEMPLATE
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,8 +33,10 @@ class LLMClient:
     This is the ONLY LLM client in the system.
     Provider can be swapped without affecting upstream code.
     
-    Canonical Method:
-        generate_feature_graph(prompt) -> FeatureGraph
+    Methods:
+        generate_feature_graph(prompt) -> FeatureGraph (original, V1)
+        generate_design_intent(prompt) -> DesignIntent (Phase 4 Stage 1)
+        generate_from_template(intent) -> FeatureGraphV3 (Phase 4 Stage 2)
     """
     
     def __init__(self, provider: str = "groq"):
@@ -134,6 +144,77 @@ class LLMClient:
         except Exception as e:
             print(f"Groq LLM Error: {e}")
             raise
+    
+    async def generate_design_intent(self, user_prompt: str):
+        """
+        Phase 4 Stage 1: Extract design intent from user prompt.
+        
+        Focuses LLM on engineering reasoning, not topology.
+        
+        Args:
+            user_prompt: User's natural language description
+            
+        Returns:
+            DesignIntent object
+        """
+        from app.domain.design_intent import DesignIntent
+        
+        try:
+            completion = await self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": INTENT_EXTRACTION_SYSTEM_PROMPT},
+                    {"role": "user", "content": INTENT_EXTRACTION_USER_TEMPLATE.format(prompt=user_prompt)}
+                ],
+                temperature=0.2,
+                max_tokens=512
+            )
+            
+            raw_response = completion.choices[0].message.content.strip()
+            json_content = self._extract_json(raw_response)
+            intent_dict = json.loads(json_content)
+            
+            # Add original prompt
+            intent_dict["original_prompt"] = user_prompt
+            
+            logger.info(f"Extracted intent: part_type={intent_dict.get('part_type')}")
+            return DesignIntent(**intent_dict)
+            
+        except Exception as e:
+            logger.error(f"Design intent extraction failed: {e}")
+            raise
+    
+    async def generate_from_template(self, intent):
+        """
+        Phase 4 Stage 2: Generate FeatureGraph from intent using template.
+        
+        Templates eliminate topology hallucinations.
+        
+        Args:
+            intent: DesignIntent object
+            
+        Returns:
+            FeatureGraphV3
+        """
+        from app.templates.parametric_templates import TemplateRegistry
+        
+        # Select template
+        template = TemplateRegistry.select_template(intent)
+        if not template:
+            raise ValueError(f"No template found for part_type: {intent.part_type}")
+        
+        # Validate intent has required dimensions
+        if not template.validate_intent(intent):
+            missing = [d for d in template.required_dimensions() if d not in intent.key_dimensions]
+            raise ValueError(
+                f"Intent missing required dimensions for {template.name}: {missing}"
+            )
+        
+        # Generate FeatureGraph
+        logger.info(f"Generating from template: {template.name}")
+        feature_graph = template.generate(intent)
+        
+        return feature_graph
     
     async def _generate_openai(self, user_prompt: str) -> FeatureGraph:
         """
