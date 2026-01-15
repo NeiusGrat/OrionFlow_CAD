@@ -42,6 +42,9 @@ class ErrorType(str, Enum):
     MISSING_SKETCH = "MissingSketch"
     MISSING_FEATURE = "MissingFeature"
     CIRCULAR_DEPENDENCY = "CircularDependency"
+    
+    # Manufacturing Errors (Phase 5)
+    MANUFACTURING_VIOLATION = "ManufacturingViolation"
 
 
 class CompilerError(BaseModel):
