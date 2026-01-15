@@ -13,6 +13,7 @@ from app.domain.generation_result import GenerationResult
 from app.domain.feature_graph import FeatureGraph, Feature
 # [NEW] Import V1 Schema
 from app.domain.feature_graph_v1 import FeatureGraphV1
+from app.domain.feature_graph_v3 import FeatureGraphV3
 from pydantic import ValidationError
 from app.compilers.build123d_compiler import Build123dCompiler
 from app.compilers.v1.compiler import FeatureGraphCompilerV1
@@ -215,8 +216,15 @@ class GenerationService:
         while attempt <= MAX_RETRIES:
             try:
                 # 3. Generate FeatureGraph via LLM (with intent)
-                feature_graph = await self.llm_client.generate_feature_graph(prompt, last_trace, intent.model_dump())
-                
+                fg_v1 = await self.llm_client.generate_feature_graph(
+                    prompt, last_trace, intent.model_dump()
+                )
+
+                # Lift to V3 (design-intent IR) and project back to V1
+                # for the existing compiler pipeline.
+                fg_v3 = FeatureGraphV3.from_v1(fg_v1)
+                fg_for_compile = fg_v3.to_v1()
+
                 solid, trace = None, None
                 
                 # 4. Select Backend
@@ -234,7 +242,7 @@ class GenerationService:
                     # For now, we assume success if no exception, or we need the adapter to return a trace?
                     # The instructions didn't specify adapter return type, but V1 compiler returns (solid, trace).
                     # Let's assume adapter.compile(graph) raises exception on failure and we mock a success trace.
-                    adapter.compile(feature_graph)
+                    adapter.compile(fg_for_compile)
                     
                     # Mock trace for consistency
                     from app.domain.execution_trace import ExecutionTrace, TraceEvent
@@ -244,21 +252,23 @@ class GenerationService:
                 elif backend == "cadquery":
                     # CadQuery backend removed - use Build123d instead
                     logger.warning("CadQuery backend deprecated, falling back to Build123d")
-                    solid, trace = self.v1_compiler.compile(feature_graph)
+                    solid, trace = self.v1_compiler.compile(fg_for_compile)
                     
                 else:
                     # Default: Build123d Backend
-                    solid, trace = self.v1_compiler.compile(feature_graph)
+                    solid, trace = self.v1_compiler.compile(fg_for_compile)
                 
                 # 5. Check Success
                 if trace.success and solid:
                     metadata = {
                         "job_id": job_id,
                         "prompt": prompt,
-                        "feature_graph": feature_graph.model_dump(),
+                        # Expose V3 to callers as the canonical IR
+                        "feature_graph": fg_v3.to_dataset_dict(),
                         "retry_count": attempt,
-                        "parameters": feature_graph.parameters,
-                        "backend": backend
+                        # Parameters in a JSON-friendly form
+                        "parameters": fg_v3.parameters,
+                        "backend": backend,
                     }
 
                     if backend != "onshape":
@@ -279,11 +289,11 @@ class GenerationService:
                         sample = DatasetSample(
                             prompt=prompt,
                             decomposed_intent=intent.model_dump(),
-                            feature_graph=feature_graph,
+                            feature_graph=fg_v3,
                             execution_trace=trace,
                             success=trace.success,
                             backend=backend,
-                            timestamp=datetime.datetime.utcnow().isoformat()
+                            timestamp=datetime.datetime.utcnow().isoformat(),
                         )
                         write_dataset_sample(sample)
                     except Exception as e:
@@ -319,11 +329,11 @@ class GenerationService:
                         sample = DatasetSample(
                             prompt=prompt,
                             decomposed_intent=intent.model_dump(),
-                            feature_graph=feature_graph,
+                            feature_graph=fg_v3,
                             execution_trace=trace,
-                            success=trace.success, # Likely False here
+                            success=trace.success,  # Likely False here
                             backend=backend,
-                            timestamp=datetime.datetime.utcnow().isoformat()
+                            timestamp=datetime.datetime.utcnow().isoformat(),
                         )
                         write_dataset_sample(sample)
                     except Exception as e:
