@@ -15,7 +15,6 @@ from app.domain.feature_graph import FeatureGraph, Feature
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from pydantic import ValidationError
 from app.compilers.build123d_compiler import Build123dCompiler
-from app.compilers.cadquery_compiler import CadQueryCompiler
 from app.compilers.v1.compiler import FeatureGraphCompilerV1
 from app.services.retry_policy import is_retryable
 from build123d import export_gltf, export_step, export_stl
@@ -117,9 +116,7 @@ class GenerationService:
         self.output_dir.mkdir(exist_ok=True)
         
         # Core Components
-        # CadQuery is the primary compiler (preferred for LLM compatibility)
-        self.cadquery_compiler = CadQueryCompiler(output_dir=output_dir)
-        # Build123d kept as fallback (deprecated)
+        # Build123d is the primary CAD compiler
         self.compiler = Build123dCompiler(output_dir=output_dir)
         self.v1_compiler = FeatureGraphCompilerV1()
         self.llm_client = llm_client or LLMClient()
@@ -175,7 +172,7 @@ class GenerationService:
             logger.error(f"Onshape sync failed: {e}")
             return False
 
-    async def generate(self, prompt: str, backend: str = "cadquery", onshape_context: Dict[str, str] = None) -> GenerationResult:
+    async def generate(self, prompt: str, backend: str = "build123d", onshape_context: Dict[str, str] = None) -> GenerationResult:
         """
         Generate CAD from natural language prompt.
         
@@ -245,14 +242,12 @@ class GenerationService:
                     solid = "onshape_cloud_entity" 
 
                 elif backend == "cadquery":
-                    # Primary: CadQuery Backend (preferred)
-                    step_path, stl_path, glb_path, trace = self.cadquery_compiler.compile(
-                        feature_graph, job_id
-                    )
-                    solid = "cadquery_solid"  # Placeholder for success check
+                    # CadQuery backend removed - use Build123d instead
+                    logger.warning("CadQuery backend deprecated, falling back to Build123d")
+                    solid, trace = self.v1_compiler.compile(feature_graph)
                     
                 else:
-                    # Fallback: Build123d Backend (deprecated)
+                    # Default: Build123d Backend
                     solid, trace = self.v1_compiler.compile(feature_graph)
                 
                 # 5. Check Success
@@ -266,14 +261,8 @@ class GenerationService:
                         "backend": backend
                     }
 
-                    if backend == "cadquery":
-                        # CadQuery already exported files in compile()
-                        # step_path, stl_path, glb_path are already set
-                        metadata["step_path"] = str(step_path)
-                        metadata["stl_path"] = str(stl_path)
-                        
-                    elif backend == "build123d":
-                        # Export files (Build123d fallback)
+                    if backend != "onshape":
+                        # Export files for local backends (Build123d)
                         glb_path = self.output_dir / f"{job_id}.glb"
                         step_path = self.output_dir / f"{job_id}.step"
                         stl_path = self.output_dir / f"{job_id}.stl"
@@ -311,7 +300,7 @@ class GenerationService:
                             execution_trace=trace
                         )
                     else:
-                        # CadQuery or Build123d - return local geometry
+                        # Build123d - return local geometry
                         return GenerationResult(
                             geometry_path=glb_path,
                             format="glb",
