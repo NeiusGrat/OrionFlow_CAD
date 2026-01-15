@@ -101,7 +101,7 @@ class GenerationService:
             unsupported_intent=unsupported
         )
     
-    def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None, use_v3_compiler: bool = False):
+    def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None, use_v3_compiler: bool = False, use_two_stage: bool = False):
         """
         Initialize the generation service.
         
@@ -109,6 +109,7 @@ class GenerationService:
             output_dir: Directory for output files
             llm_client: Optional injected LLM client
             use_v3_compiler: Enable Phase 2 topological identity tracking (default: False)
+            use_two_stage: Enable Phase 4 two-stage LLM (intent → template) (default: False)
         """
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
@@ -129,6 +130,11 @@ class GenerationService:
         
         self.v1_compiler = FeatureGraphCompilerV1()
         self.llm_client = llm_client or LLMClient()
+        
+        # Phase 4: Two-stage mode
+        self.use_two_stage = use_two_stage
+        if use_two_stage:
+            logger.info("Phase 4: Two-stage LLM mode enabled (Intent → Template)")
         
         # Onshape Integration (Optional - Live CAD)
         # We lazy-load these to avoid hard dependencies if keys are missing
