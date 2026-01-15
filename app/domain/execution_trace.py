@@ -1,5 +1,5 @@
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field
 
 
 class TraceEvent(BaseModel):
@@ -10,6 +10,11 @@ class TraceEvent(BaseModel):
 
 
 class ExecutionTrace(BaseModel):
+    """
+    Structured trace of compilation execution.
+    For Phase 2+ retry logic with clear failure context.
+    """
     success: bool
     events: List[TraceEvent]
     retryable: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # Phase 2: entity registry, etc.

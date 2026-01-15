@@ -101,13 +101,14 @@ class GenerationService:
             unsupported_intent=unsupported
         )
     
-    def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None):
+    def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None, use_v3_compiler: bool = False):
         """
         Initialize the generation service.
         
         Args:
             output_dir: Directory for output files
             llm_client: Optional injected LLM client
+            use_v3_compiler: Enable Phase 2 topological identity tracking (default: False)
         """
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
@@ -118,7 +119,14 @@ class GenerationService:
         
         # Core Components
         # Build123d is the primary CAD compiler
-        self.compiler = Build123dCompiler(output_dir=output_dir)
+        if use_v3_compiler:
+            from app.compilers import Build123dCompilerV3
+            self.compiler = Build123dCompilerV3(output_dir=output_dir)
+            logger.info("Using Build123dCompilerV3 (Phase 2: Topological Identity)")
+        else:
+            self.compiler = Build123dCompiler(output_dir=output_dir)
+            logger.info("Using Build123dCompiler (Standard)")
+        
         self.v1_compiler = FeatureGraphCompilerV1()
         self.llm_client = llm_client or LLMClient()
         

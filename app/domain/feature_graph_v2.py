@@ -75,7 +75,21 @@ class SemanticSelector(BaseModel):
     topology_type: Optional[Literal["edge", "face", "vertex"]] = None
     
     # Metadata for debugging and LLM context
-    description: Optional[str] = None  # Human-readable: "top edges parallel to X"
+    description: Optional[str] = None
+    
+    # Phase 2: Explicit entity targeting (4-tier resolution)
+    entity_ids: Optional[List[str]] = Field(
+        None, 
+        description="Explicit entity UUIDs to target (Tier 1: highest priority)"
+    )
+    created_by_feature: Optional[str] = Field(
+        None,
+        description="Select entities created by this feature ID (Tier 2)"
+    )
+    semantic_roles: Optional[List[str]] = Field(
+        None,
+        description="Select entities with these semantic role tags (Tier 3)"
+    )  # Human-readable: "top edges parallel to X"
     
     class Config:
         use_enum_values = True
