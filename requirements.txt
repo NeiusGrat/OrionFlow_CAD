@@ -19,3 +19,9 @@ requests
 
 # Logging
 structlog
+
+# Testing
+pytest>=7.0
+pytest-cov
+pytest-asyncio
+pytest-html

@@ -1,0 +1,71 @@
+# Coverage.py configuration
+# https://coverage.readthedocs.io/en/latest/config.html
+
+[run]
+# Measure branch coverage
+branch = True
+
+# Source directories to measure
+source = app
+
+# Omit test files and __pycache__
+omit = 
+    */tests/*
+    */__pycache__/*
+    */venv/*
+    */.venv/*
+    */migrations/*
+
+# Context for parallel runs
+parallel = True
+
+# Data file location
+data_file = .coverage
+
+[report]
+# Minimum coverage percentage
+fail_under = 0
+
+# Show missing lines
+show_missing = True
+
+# Skip covered files in report
+skip_covered = False
+
+# Exclude these patterns from coverage
+exclude_lines =
+    # Re-enable default pragma
+    pragma: no cover
+    
+    # Don't measure debug-only code
+    def __repr__
+    
+    # Don't measure abstract methods
+    @abstractmethod
+    
+    # Don't measure defensive assertions
+    raise AssertionError
+    raise NotImplementedError
+    
+    # Don't measure if __name__ == "__main__"
+    if __name__ == .__main__.:
+    
+    # Don't measure type checking imports
+    if TYPE_CHECKING:
+    
+    # Don't measure pass statements
+    pass
+
+# Precision of coverage percentage
+precision = 2
+
+[html]
+# HTML report output directory
+directory = htmlcov
+
+# Title for HTML report
+title = OrionFlow_CAD Coverage Report
+
+[xml]
+# XML report output file (for CI integration)
+output = coverage.xml
