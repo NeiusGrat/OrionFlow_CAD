@@ -1,0 +1,77 @@
+{
+  "prompt": "Create a 30mm cube",
+  "decomposed_intent": {
+    "sketch_intent": [],
+    "constraint_intent": [],
+    "feature_intent": [],
+    "unsupported_intent": []
+  },
+  "feature_graph": {
+    "version": "3.0",
+    "units": "mm",
+    "metadata": {
+      "intent": "Cube 30mm"
+    },
+    "parameters": {
+      "size": {
+        "type": "float",
+        "value": 30.0,
+        "min": null,
+        "max": null
+      }
+    },
+    "sketches": [
+      {
+        "id": "s1",
+        "plane": "XY",
+        "primitives": [
+          {
+            "id": "p1",
+            "type": "rectangle",
+            "params": {
+              "width": "$size",
+              "height": "$size"
+            },
+            "construction": false
+          }
+        ],
+        "constraints": []
+      }
+    ],
+    "features": [
+      {
+        "id": "f1",
+        "type": "extrude",
+        "params": {
+          "depth": "$size"
+        },
+        "sketch": "s1",
+        "topology_refs": null,
+        "dependencies": []
+      }
+    ],
+    "constraints": []
+  },
+  "execution_trace": {
+    "success": true,
+    "events": [
+      {
+        "stage": "sketch_compile",
+        "target": null,
+        "status": "success",
+        "message": null
+      },
+      {
+        "stage": "feature_compile",
+        "target": null,
+        "status": "success",
+        "message": null
+      }
+    ],
+    "retryable": false,
+    "metadata": {}
+  },
+  "success": true,
+  "backend": "build123d",
+  "timestamp": "2026-01-16T11:13:40.375142"
+}

@@ -31,7 +31,7 @@ export default function ParamPanel() {
             resolvedParams[key] = val;
         }
         // String number
-        else if (typeof val === 'string' && !val.startsWith('$')) {
+        else if (typeof val === 'string' && !(val as any).startsWith('$')) {
             const parsed = Number(val);
             if (!isNaN(parsed)) {
                 resolvedParams[key] = parsed;
