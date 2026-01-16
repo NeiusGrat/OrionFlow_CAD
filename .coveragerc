@@ -9,12 +9,7 @@ branch = True
 source = app
 
 # Omit test files and __pycache__
-omit = 
-    */tests/*
-    */__pycache__/*
-    */venv/*
-    */.venv/*
-    */migrations/*
+omit = */tests/*, */__pycache__/*, */venv/*, */.venv/*, */migrations/*
 
 # Context for parallel runs
 parallel = True

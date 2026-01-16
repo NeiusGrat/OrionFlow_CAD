@@ -85,6 +85,7 @@ curl -X POST http://localhost:8000/generate \
 - Install deps: `python -m venv .venv && .\.venv\Scripts\activate && pip install -r requirements.txt`
 - Run API with hot reload: `uvicorn app.main:app --reload`
 - Run full test suite: `pytest`
+- Run tests with coverage: `pytest --cov=app --cov-report=html tests/`
 - Run a single test: `pytest tests/test_context_engine.py -k reference`
 - View configuration: `python -c "from app.config import settings; settings.print_config_summary()"`
 - Lint/type hints are not centralized; rely on Pyright/mypy if added later.
@@ -97,16 +98,38 @@ curl -X POST http://localhost:8000/generate \
 
 ## Architecture highlights
 
-### Configuration System (NEW)
+### Configuration System
 - `app/config.py` provides type-safe settings via Pydantic `BaseSettings`
 - All hardcoded values moved to environment variables
 - Settings loaded from `.env` file automatically
 - Validation on startup (e.g., API key presence, valid values)
 - Access settings anywhere: `from app.config import settings`
 
+### Error Handling
+- `app/exceptions.py` defines typed exception hierarchy:
+  - `OrionFlowError`: Base exception with error codes, retryable flags
+  - Validation errors: `InvalidPromptError`, `InvalidFeatureGraphError`
+  - LLM errors: `LLMGenerationError`, `LLMParseError`, `LLMRateLimitError`
+  - Compilation errors: `CompilationError`, `DimensionConflictError`
+- All exceptions include:
+  - Error code enum for programmatic handling
+  - Retryable flag for client retry logic
+  - Structured details for debugging
+- FastAPI exception handlers in `app/main.py` return consistent JSON responses
+
+### Structured Logging
+- `app/logging_config.py` provides structlog integration:
+  - JSON output for production (log aggregation ready)
+  - Pretty console output for development (DEBUG mode)
+  - Request ID tracking via `X-Request-ID` header
+- All logs include: service name, version, request_id
+- Usage: `from app.logging_config import get_logger; logger = get_logger(__name__)`
+
 ### FastAPI surface
 - `app/main.py` exposes `/generate`, `/regenerate`, `/describe`, `/health`, and file download endpoints.
 - **Full OpenAPI documentation** at `/docs` (Swagger UI) and `/redoc`
+- Request ID middleware for distributed tracing
+- Exception handlers for consistent error responses
 - Mounts `outputs/` for static delivery and enforces CORS from configuration.
 
 ### Generation pipeline (core backend)
@@ -118,23 +141,32 @@ curl -X POST http://localhost:8000/generate \
 2. `GenerationService.regenerate()` recompiles edited feature graphs, re-syncing to Onshape when credentials are present and logging feedback for active learning.
 3. `app/services/retry_policy.py` flags retryable compiler failures so the service can re-prompt the LLM.
 
+### Compiler Architecture
+- `app/compilers/base_compiler.py`: Abstract base class with shared functionality
+  - Parameter resolution (`_resolve_param`)
+  - Export pipeline (STEP, STL, GLB)
+  - BuildContext for managing compilation state
+- Concrete compilers extend BaseCompiler:
+  - `Build123dCompiler`: V1 standard compiler
+  - `Build123dCompilerV2`: Semantic selector support
+  - `Build123dCompilerV3`: Topological identity tracking
+
 ### Conversational + context subsystems
 - `app/services/conversational_editor.py` tries heuristic parameter edits first, then falls back to LLM-guided edits using a strict prompt template.
 - `app/context/context_engine.py` tracks session state (conversation history, active topology references, parameter history) to resolve phrases like "that edge" during multi-turn interactions.
 
 ### Domain models & compilers
-- `app/domain/feature_graph_v1.py` (not shown above) represents canonical CFG v1. `feature_graph_v2.py` introduces semantic topology selectors for advanced operations; `app/compilers/build123d_compiler_v2.py` demonstrates V2 support with selector resolution and filter chains.
+- `app/domain/feature_graph_v1.py` represents canonical CFG v1. `feature_graph_v2.py` introduces semantic topology selectors for advanced operations.
 - `app/domain/generation_result.py` standardizes outputs across v1/v2 and carries execution traces for retries/analytics.
 - `app/cad/onshape/` and `app/clients/onshape_client.py` (when configured) adapt graphs to FeatureScript and push to cloud workspaces.
 
 ### LLM integration
-- `app/llm/client.py` abstracts provider-specific logic (currently Groq). It enforces JSON-only responses, performs auto-repair, and validates outputs through Pydantic schemas before the compiler sees them. The retry prompt (`app/llm/prompts.py`) includes execution traces to steer the model after failures.
+- `app/llm/client.py` abstracts provider-specific logic (currently Groq). It enforces JSON-only responses, performs auto-repair, and validates outputs through Pydantic schemas before the compiler sees them.
 - **Configuration via settings**: model name, temperature, max_tokens all configurable via `.env`.
 
 ### Dataset & validation support
 - `app/services/dataset_writer.py` and `app/domain/dataset_sample.py` persist prompt/graph/trace tuples for offline learning.
 - `app/validation/` and `app/services/retry_policy.py` encapsulate guardrails (sanity checks, error recovery).
-- Standalone scripts like `generate_part.py`, `check_build123d.py`, and `debug_trace.py` help reproduce compiler issues.
 
 ### Frontend (orionflow-ui)
 - Vite + React + TypeScript. Scripts in `package.json` handle dev/build/lint. Components are expected to call backend endpoints at `http://localhost:8000` (configure proxies if necessary). CORS is configurable via `CORS_ORIGINS` environment variable.
