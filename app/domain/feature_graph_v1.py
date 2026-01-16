@@ -1,5 +1,11 @@
 from typing import List, Dict, Optional, Literal, Union
 from pydantic import BaseModel, Field
+import uuid as uuid_lib
+
+
+def _generate_uuid() -> str:
+    """Generate a new UUID string."""
+    return str(uuid_lib.uuid4())
 
 
 # -------------------------
@@ -19,6 +25,7 @@ class Parameter(BaseModel):
 
 class SketchPrimitive(BaseModel):
     id: str
+    uuid: str = Field(default_factory=_generate_uuid, description="Unique identifier for topological tracking")
     type: Literal[
         "line",
         "circle",
@@ -48,6 +55,7 @@ class SketchConstraint(BaseModel):
 
 class SketchGraph(BaseModel):
     id: str
+    uuid: str = Field(default_factory=_generate_uuid, description="Unique identifier for topological tracking")
     plane: Literal["XY", "YZ", "XZ"]
     primitives: List[SketchPrimitive]
     constraints: List[SketchConstraint]
@@ -59,6 +67,7 @@ class SketchGraph(BaseModel):
 
 class Feature(BaseModel):
     id: str
+    uuid: str = Field(default_factory=_generate_uuid, description="Unique identifier for topological tracking")
     type: Literal[
         "extrude",
         "revolve",

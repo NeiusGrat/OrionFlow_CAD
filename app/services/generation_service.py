@@ -25,6 +25,7 @@ from app.services.intent_contract import DecomposedIntent
 from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
 from app.services.dataset_writer import write_dataset_sample
 from app.domain.dataset_sample import DatasetSample
+from app.domain.construction_plan import ConstructionPlan, PlanParameter
 
 # Use centralized configuration
 MAX_RETRIES = settings.max_llm_retries
@@ -41,7 +42,7 @@ class GenerationService:
     """
     Orchestrates CAD generation pipelines.
     
-    Flow: Prompt → LLM (FeatureGraph) → Compiler → Geometry Files
+    Flow: Prompt → DecomposedIntent → ConstructionPlan → LLM (FeatureGraph) → Compiler → Geometry Files
     """
     
     @staticmethod
@@ -100,6 +101,83 @@ class GenerationService:
             constraint_intent=constraints,
             feature_intent=features,
             unsupported_intent=unsupported
+        )
+    
+    @staticmethod
+    def generate_construction_plan(prompt: str, intent: DecomposedIntent) -> ConstructionPlan:
+        """
+        Generate a ConstructionPlan from decomposed intent.
+        
+        This is the intermediate reasoning layer between DecomposedIntent and FeatureGraph.
+        It captures explicit construction steps, parameters, and assumptions.
+        
+        Args:
+            prompt: Original user prompt
+            intent: Decomposed intent from prompt analysis
+            
+        Returns:
+            ConstructionPlan with construction sequence and parameters
+        """
+        construction_sequence = []
+        parameters = {}
+        assumptions = []
+        open_questions = []
+        
+        keywords = prompt.lower()
+        
+        # Build construction sequence from intent
+        if "base_profile" in intent.sketch_intent:
+            construction_sequence.append("Create base sketch on XY plane")
+            
+            # Detect shape type for more specific instructions
+            if "box" in keywords or "rectangle" in keywords:
+                construction_sequence.append("Draw rectangle with width and height parameters")
+                parameters["width"] = PlanParameter(unit="mm", default=50.0, min_value=1.0)
+                parameters["height"] = PlanParameter(unit="mm", default=50.0, min_value=1.0)
+            elif "plate" in keywords:
+                construction_sequence.append("Draw rectangle for plate base")
+                parameters["length"] = PlanParameter(unit="mm", default=100.0, min_value=1.0)
+                parameters["width"] = PlanParameter(unit="mm", default=50.0, min_value=1.0)
+        
+        if "circle" in intent.sketch_intent:
+            if "hole" in keywords:
+                construction_sequence.append("Add circular cutout sketch")
+                parameters["hole_diameter"] = PlanParameter(unit="mm", default=10.0, min_value=0.5)
+            elif "cylinder" in keywords or "shaft" in keywords:
+                construction_sequence.append("Create circular profile sketch")
+                parameters["diameter"] = PlanParameter(unit="mm", default=20.0, min_value=1.0)
+        
+        if "extrude" in intent.feature_intent:
+            construction_sequence.append("Extrude sketch to depth")
+            parameters["depth"] = PlanParameter(unit="mm", default=20.0, min_value=0.1)
+        
+        # Extract numeric values from prompt if present
+        import re
+        numbers = re.findall(r'(\d+(?:\.\d+)?)\s*(?:mm|cm|inch|in)?', keywords)
+        if len(numbers) >= 1 and "width" in parameters:
+            parameters["width"] = PlanParameter(unit="mm", default=float(numbers[0]), min_value=1.0)
+        if len(numbers) >= 2 and "height" in parameters:
+            parameters["height"] = PlanParameter(unit="mm", default=float(numbers[1]), min_value=1.0)
+        if len(numbers) >= 3 and "depth" in parameters:
+            parameters["depth"] = PlanParameter(unit="mm", default=float(numbers[2]), min_value=0.1)
+        
+        # Add default assumptions
+        if construction_sequence:
+            assumptions.append("Part centered on origin")
+            assumptions.append("All dimensions in millimeters")
+        
+        # If we couldn't determine construction steps, flag as open question
+        if not construction_sequence:
+            construction_sequence.append("Determine base geometry from user input")
+            open_questions.append("Unable to determine specific geometry - please provide more details")
+        
+        return ConstructionPlan(
+            base_reference="XY plane",
+            construction_sequence=construction_sequence,
+            parameters=parameters,
+            assumptions=assumptions,
+            open_questions=open_questions,
+            design_rationale=f"Generated from prompt: {prompt[:100]}..."
         )
     
     def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None, use_v3_compiler: bool = False, use_two_stage: bool = False):
@@ -228,6 +306,30 @@ class GenerationService:
             
         logger.info(f"Decomposed Intent: {intent}")
         
+        # 2.5 Generate Construction Plan (NEW intermediate layer)
+        construction_plan = self.generate_construction_plan(prompt, intent)
+        logger.info(f"Construction Plan: {len(construction_plan.construction_sequence)} steps, {len(construction_plan.parameters)} params")
+        
+        # 2.6 Validate Construction Plan
+        plan_errors = construction_plan.validate_plan()
+        if plan_errors:
+            logger.warning(f"Construction plan validation errors: {plan_errors}")
+        
+        # 2.7 Handle Open Questions (reject plan if clarification needed)
+        if construction_plan.has_open_questions():
+            return GenerationResult(
+                geometry_path=Path(""),
+                format="glb",
+                metadata={
+                    "job_id": job_id,
+                    "prompt": prompt,
+                    "construction_plan": construction_plan.model_dump(),
+                    "open_questions": construction_plan.open_questions,
+                    "error": f"Clarification needed: {construction_plan.open_questions}"
+                },
+                source="llm-v2"
+            )
+        
         while attempt <= MAX_RETRIES:
             try:
                 # 3. Generate FeatureGraph via LLM (with intent)
@@ -280,6 +382,8 @@ class GenerationService:
                         "prompt": prompt,
                         # Expose V3 to callers as the canonical IR
                         "feature_graph": fg_v3.to_dataset_dict(),
+                        # NEW: Include ConstructionPlan for traceability
+                        "construction_plan": construction_plan.model_dump(),
                         "retry_count": attempt,
                         # Parameters in a JSON-friendly form
                         "parameters": fg_v3.parameters,
