@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ViewCube from "./ViewCube";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
@@ -16,6 +16,8 @@ function Model({ url }: { url: string }) {
     const { scene } = useGLTF(url);
     const { camera, controls } = useThree();
     const hasFramed = useRef(false);
+    const [selectedMesh, setSelectedMesh] = useState<string | null>(null);
+    const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
 
     // Auto-fit camera to model
     useEffect(() => {
@@ -77,25 +79,80 @@ function Model({ url }: { url: string }) {
     // Reset framing flag when URL changes
     useEffect(() => {
         hasFramed.current = false;
+        setSelectedMesh(null);
     }, [url]);
 
-    // Apply professional CAD material
+    // Apply professional CAD material and Highlight Logic
     useEffect(() => {
         if (!scene) return;
         scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
-                mesh.material = new THREE.MeshStandardMaterial({
-                    color: "#D1D5DB", // Professional cool grey
-                    roughness: 0.4,
-                    metalness: 0.2,
-                    flatShading: false,
-                });
+                const isSelected = mesh.uuid === selectedMesh;
+                const isHovered = mesh.uuid === hoveredMesh;
+
+                if (isSelected) {
+                    // Selected Style: Active Blue/Orange
+                    mesh.material = new THREE.MeshStandardMaterial({
+                        color: "#F97316", // Orange highlight
+                        emissive: "#C2410C",
+                        emissiveIntensity: 0.2,
+                        roughness: 0.3,
+                        metalness: 0.1,
+                    });
+                } else if (isHovered) {
+                    // Hover Style: Lighter Grey
+                    mesh.material = new THREE.MeshStandardMaterial({
+                        color: "#E5E7EB",
+                        roughness: 0.4,
+                        metalness: 0.2,
+                    });
+                } else {
+                    // Default Style: Professional Cool Grey
+                    mesh.material = new THREE.MeshStandardMaterial({
+                        color: "#D1D5DB",
+                        roughness: 0.4,
+                        metalness: 0.2,
+                        flatShading: false,
+                    });
+                }
             }
         });
-    }, [scene]);
+    }, [scene, selectedMesh, hoveredMesh]);
 
-    return <primitive object={scene} />;
+    const handlePointerOver = (e: any) => {
+        e.stopPropagation();
+        setHoveredMesh(e.object.uuid);
+        document.body.style.cursor = 'pointer';
+    };
+
+    const handlePointerOut = () => {
+        setHoveredMesh(null);
+        document.body.style.cursor = 'auto';
+    };
+
+    const handleClick = (e: any) => {
+        e.stopPropagation();
+        setSelectedMesh(e.object.uuid);
+
+        // Optional: Focus camera on click?
+        // For now, just selection logic to avoid jarring movements.
+    };
+
+    const handleMiss = () => {
+        setSelectedMesh(null);
+    }
+
+    return (
+        <group
+            onPointerOver={handlePointerOver}
+            onPointerOut={handlePointerOut}
+            onClick={handleClick}
+            onPointerMissed={handleMiss}
+        >
+            <primitive object={scene} />
+        </group>
+    );
 }
 
 
