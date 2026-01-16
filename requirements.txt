@@ -16,3 +16,6 @@ numpy
 # LLM & API
 groq
 requests
+
+# Logging
+structlog
