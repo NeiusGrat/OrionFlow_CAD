@@ -3,6 +3,7 @@ fastapi
 uvicorn
 python-dotenv
 pydantic
+pydantic-settings
 
 # CAD Engine (Primary)
 build123d>=0.5.0

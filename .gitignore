@@ -13,6 +13,6 @@ outputs/
 .DS_Store
 Thumbs.db
 
-# Env
+# Env (keep .env.example for documentation)
 .env
-.env.*
+!.env.example
