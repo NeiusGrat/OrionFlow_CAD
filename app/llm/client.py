@@ -13,6 +13,7 @@ import logging
 from groq import AsyncGroq
 
 from typing import Optional
+from app.config import settings
 from app.domain.feature_graph_v1 import FeatureGraphV1 as FeatureGraph
 from app.domain.execution_trace import ExecutionTrace
 from app.llm.prompts import FEATURE_GRAPH_PROMPT, RETRY_PROMPT_TEMPLATE
@@ -58,13 +59,15 @@ class LLMClient:
             raise ValueError(f"Unsupported LLM provider: {provider}")
     
     def _init_groq(self):
-        """Initialize Groq provider."""
-        self.api_key = os.getenv("GROQ_API_KEY")
+        """Initialize Groq provider using centralized configuration."""
+        self.api_key = settings.groq_api_key
         if not self.api_key:
-            print("WARNING: GROQ_API_KEY not found in environment variables.")
+            logger.warning("GROQ_API_KEY not found. Set it in .env or environment variables.")
         
         self.client = AsyncGroq(api_key=self.api_key)
-        self.model = "llama-3.3-70b-versatile"
+        self.model = settings.llm_model
+        self.temperature = settings.llm_temperature
+        self.max_tokens = settings.llm_max_tokens
     
     def _init_openai(self):
         """Initialize OpenAI provider (future)."""
@@ -134,8 +137,8 @@ class LLMClient:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.1,  # Low temp for structured output
-                max_tokens=2048
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
             )
             
             raw_response = completion.choices[0].message.content.strip()

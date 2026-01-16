@@ -7,8 +7,9 @@ import datetime
 import json
 from pathlib import Path
 from typing import Tuple, Dict, Any
+import logging
 
-
+from app.config import settings
 from app.domain.generation_result import GenerationResult
 from app.domain.feature_graph import FeatureGraph, Feature
 # [NEW] Import V1 Schema
@@ -24,9 +25,9 @@ from app.services.intent_contract import DecomposedIntent
 from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
 from app.services.dataset_writer import write_dataset_sample
 from app.domain.dataset_sample import DatasetSample
-import logging
 
-MAX_RETRIES = 1
+# Use centralized configuration
+MAX_RETRIES = settings.max_llm_retries
 
 # Legacy imports (deprecated)
 # from app.intent.intent_parser import parse_intent
@@ -403,11 +404,10 @@ class GenerationService:
         
         # 3. Sync to Onshape (Cloud - Live CAD)
         # Check for environment variables for the "Live" document target
-        # In production, these might come from the request
-        import os
-        did = os.getenv("ONSHAPE_DOC_ID")
-        wid = os.getenv("ONSHAPE_WORKSPACE_ID")
-        eid = os.getenv("ONSHAPE_ELEMENT_ID")
+        # Use centralized configuration
+        did = settings.onshape_doc_id
+        wid = settings.onshape_workspace_id
+        eid = settings.onshape_element_id
         
         if did and wid and eid:
              logger.info(f"Syncing job {job_id} to Onshape...")
@@ -462,7 +462,9 @@ class GenerationService:
         }
         
         try:
-            with open("data/feedback.jsonl", "a") as f:
+            # Use centralized configuration for feedback log path
+            settings.feedback_log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(settings.feedback_log_path, "a") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
-            print(f"Warning: Failed to log feedback: {e}")
+            logger.warning(f"Failed to log feedback: {e}")
