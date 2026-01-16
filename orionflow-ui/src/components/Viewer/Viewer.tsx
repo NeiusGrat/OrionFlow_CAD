@@ -37,19 +37,26 @@ function frameModel(camera: THREE.Camera, controls: any, model: THREE.Object3D) 
         const perspectiveCam = camera as THREE.PerspectiveCamera;
         const fov = perspectiveCam.fov * (Math.PI / 180);
         let cameraZ = Math.abs(maxDim / (2 * Math.tan(fov / 2)));
-        cameraZ *= 1.4; // Zoom out a bit
+
+        // Zoom factor - increased for better visibility of small models
+        // 2.5x gives a good balance between model visibility and context
+        cameraZ *= 2.5;
+
+        // Ensure minimum distance for very small models
+        const minDistance = 50;
+        cameraZ = Math.max(cameraZ, minDistance);
 
         perspectiveCam.position.set(
-            center.x + cameraZ,
-            center.y + cameraZ,
-            center.z + cameraZ
+            center.x + cameraZ * 0.7,
+            center.y + cameraZ * 0.7,
+            center.z + cameraZ * 0.7
         );
     } else {
         // Fallback for Ortho if we ever swap
         camera.position.set(
-            center.x + maxDim * 2,
-            center.y + maxDim * 2,
-            center.z + maxDim * 2
+            center.x + maxDim * 3,
+            center.y + maxDim * 3,
+            center.z + maxDim * 3
         );
     }
 
