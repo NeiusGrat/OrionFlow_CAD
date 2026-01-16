@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import ViewCube from "./ViewCube";
+import PreviewMesh from "./PreviewMesh";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { useDesignStore } from "../../store/designStore";
+import { useManifoldPreview } from "../../hooks/useManifoldPreview";
 import * as THREE from "three";
 
 import { Box as BoxIcon } from "lucide-react";
@@ -235,6 +237,14 @@ function ZoomGuard() {
 
 export default function Viewer({ url }: { url: string }) {
     const isGenerating = useDesignStore((state) => state.isGenerating);
+    const current = useDesignStore((state) => state.current);
+
+    // WASM Preview - get fast-draft mesh from FeatureGraph
+    const featureGraph = current?.featureGraph;
+    const { mesh: previewMesh, isLoading: isPreviewLoading } = useManifoldPreview(featureGraph);
+
+    // Show preview when: no GLB url yet AND we have a preview mesh
+    const showPreview = !url && previewMesh && !isPreviewLoading;
 
     return (
         <div style={{ height: "100%", width: "100%", position: "relative" }}>
@@ -259,6 +269,20 @@ export default function Viewer({ url }: { url: string }) {
                 </div>
             )}
 
+            {/* PREVIEW MODE INDICATOR */}
+            {showPreview && (
+                <div style={{
+                    position: "absolute", top: "16px", left: "16px", zIndex: 50,
+                    background: "rgba(251, 146, 60, 0.9)",
+                    color: "white",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                }}>
+                    ⚡ Fast Preview (WASM)
+                </div>
+            )}
 
             <Canvas
                 camera={{ position: [50, 50, 50], fov: 45, near: 0.1, far: 10000 }}
@@ -270,6 +294,10 @@ export default function Viewer({ url }: { url: string }) {
                 <directionalLight position={[-10, 10, -5]} intensity={0.5} />
                 <spotLight position={[0, 40, 0]} intensity={0.5} />
 
+                {/* Fast-draft WASM preview */}
+                {showPreview && <PreviewMesh geometry={previewMesh} />}
+
+                {/* High-fidelity GLB model */}
                 {url && <Model url={url} />}
 
                 <OrbitControls
