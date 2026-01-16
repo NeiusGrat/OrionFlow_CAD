@@ -1,11 +1,25 @@
 import * as THREE from "three";
 import { create } from "zustand";
 
+// Chat message type for conversation history
+export interface ChatMessage {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: number;
+    partVersion?: number;
+    files?: {
+        glb: string;
+        step: string;
+    };
+}
+
 export type DesignState = {
     id: string;
     prompt: string;
     parameters: Record<string, number>;
     featureGraph?: any;
+    history?: ChatMessage[];  // Conversation history
     material: {
         roughness: number;
         metalness: number;
