@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Skill(frontend-design)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(copy \"c:\\\\Users\\\\Legion\\\\Downloads\\\\Orionflowlogo.png\" \"E:\\\\OrionFLow_CAD\\\\orionflow-ui\\\\public\\\\logo.png\")"
     ]
   }
 }

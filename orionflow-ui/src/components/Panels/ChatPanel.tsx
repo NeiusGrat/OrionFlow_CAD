@@ -1,92 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useDesignStore } from "../../store/designStore";
 import { useChatStore } from "../../store/chatStore";
-import {
-    X,
-    Box,
-    ArrowUp,
-    Paperclip,
-    Sparkles,
-    ChevronDown
-} from "lucide-react";
+import { X, Box, ArrowUp, Paperclip } from "lucide-react";
 
 interface ChatPanelProps {
     onGenerate: (prompt: string, image?: File) => void;
-}
-
-// Unit selector component
-function UnitSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const units = ["mm", "cm", "in"];
-
-    return (
-        <div style={{ position: "relative" }}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "6px 10px",
-                    background: "var(--color-bg-element)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-sm)",
-                    color: "var(--color-text-secondary)",
-                    fontSize: "12px",
-                    fontFamily: "var(--font-mono)",
-                    fontWeight: 500,
-                }}
-            >
-                {value}
-                <ChevronDown size={12} />
-            </button>
-
-            {isOpen && (
-                <div style={{
-                    position: "absolute",
-                    bottom: "100%",
-                    right: 0,
-                    marginBottom: "4px",
-                    background: "var(--slate-850)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "4px",
-                    minWidth: "70px",
-                    boxShadow: "var(--shadow-lg)",
-                    zIndex: 100,
-                    animation: "slideInUp 0.15s var(--ease-out-expo)",
-                }}>
-                    {units.map((unit) => (
-                        <button
-                            key={unit}
-                            onClick={() => {
-                                onChange(unit);
-                                setIsOpen(false);
-                            }}
-                            style={{
-                                display: "block",
-                                width: "100%",
-                                padding: "8px 12px",
-                                background: value === unit ? "var(--color-bg-element)" : "transparent",
-                                border: "none",
-                                borderRadius: "var(--radius-sm)",
-                                color: value === unit ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-                                fontSize: "12px",
-                                fontFamily: "var(--font-mono)",
-                                textAlign: "left",
-                                cursor: "pointer",
-                            }}
-                        >
-                            {unit}
-                            {value === unit && (
-                                <span style={{ float: "right", color: "#3b82f6" }}>✓</span>
-                            )}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
 }
 
 export default function ChatPanel({ onGenerate }: ChatPanelProps) {
@@ -98,16 +16,24 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
     const [inputValue, setInputValue] = useState("");
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [unit, setUnit] = useState("mm");
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [chatHistory, isGenerating]);
+
+    // Auto-resize textarea
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "24px";
+            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + "px";
+        }
+    }, [inputValue]);
 
     const handleSend = () => {
         if ((!inputValue.trim() && !selectedImage) || isGenerating) return;
@@ -141,89 +67,43 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
     return (
         <div style={{
             width: "400px",
-            background: "var(--slate-950)",
-            borderLeft: "1px solid var(--color-border)",
+            background: "#0a0a0a",
+            borderLeft: "1px solid #1f1f1f",
             display: "flex",
             flexDirection: "column",
             height: "100%",
             flexShrink: 0,
-            position: "relative",
         }}>
             {/* Header */}
             <div style={{
                 padding: "16px 20px",
-                borderBottom: "1px solid var(--color-border)",
+                borderBottom: "1px solid #1f1f1f",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                background: "var(--slate-900)",
             }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <div style={{
-                        width: "36px",
-                        height: "36px",
-                        borderRadius: "var(--radius-md)",
-                        background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "8px",
+                        background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 0 16px rgba(59, 130, 246, 0.4)",
                     }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                             <path d="M12 2L2 7l10 5 10-5-10-5z" />
                             <path d="M2 17l10 5 10-5" />
                             <path d="M2 12l10 5 10-5" />
                         </svg>
                     </div>
-                    <div>
-                        <div style={{
-                            fontSize: "15px",
-                            fontWeight: 700,
-                            letterSpacing: "-0.02em",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                        }}>
-                            <span style={{ color: "var(--color-text-primary)" }}>Orion</span>
-                            <span style={{
-                                background: "linear-gradient(135deg, #60a5fa 0%, #818cf8 100%)",
-                                WebkitBackgroundClip: "text",
-                                WebkitTextFillColor: "transparent",
-                                backgroundClip: "text",
-                            }}>Flow</span>
-                        </div>
-                        <div style={{
-                            fontSize: "11px",
-                            color: "var(--color-text-muted)",
-                            fontWeight: 500,
-                            marginTop: "2px",
-                        }}>
-                            AI-Powered CAD
-                        </div>
-                    </div>
-                </div>
-                <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "6px 12px",
-                    background: "var(--color-bg-element)",
-                    borderRadius: "var(--radius-full)",
-                    border: "1px solid var(--color-border)",
-                }}>
-                    <div style={{
-                        width: "6px",
-                        height: "6px",
-                        borderRadius: "var(--radius-full)",
-                        background: "#22c55e",
-                        boxShadow: "0 0 8px rgba(34, 197, 94, 0.5)",
-                    }} />
                     <span style={{
-                        fontSize: "11px",
-                        fontWeight: 500,
-                        color: "var(--color-text-secondary)",
+                        fontSize: "15px",
+                        fontWeight: 600,
+                        color: "#fff",
                     }}>
-                        Online
+                        OrionFlow
                     </span>
                 </div>
             </div>
@@ -244,128 +124,63 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: "24px",
                         textAlign: "center",
-                        padding: "20px",
+                        padding: "40px 20px",
                     }}>
-                        {/* Hero Icon */}
                         <div style={{
-                            width: "80px",
-                            height: "80px",
-                            borderRadius: "var(--radius-2xl)",
-                            background: "linear-gradient(135deg, var(--slate-800) 0%, var(--slate-850) 100%)",
-                            border: "1px solid var(--color-border)",
+                            width: "56px",
+                            height: "56px",
+                            borderRadius: "14px",
+                            background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            position: "relative",
+                            marginBottom: "20px",
                         }}>
-                            <Sparkles size={32} style={{ color: "#60a5fa" }} />
-                            <div style={{
-                                position: "absolute",
-                                inset: "-1px",
-                                borderRadius: "var(--radius-2xl)",
-                                background: "linear-gradient(135deg, #3b82f6, transparent)",
-                                opacity: 0.1,
-                                pointerEvents: "none",
-                            }} />
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                            </svg>
                         </div>
-
-                        <div>
-                            <p style={{
-                                fontSize: "16px",
-                                fontWeight: 600,
-                                color: "var(--color-text-primary)",
-                                marginBottom: "8px",
-                            }}>
-                                What would you like to create?
-                            </p>
-                            <p style={{
-                                fontSize: "13px",
-                                color: "var(--color-text-muted)",
-                                lineHeight: 1.6,
-                                maxWidth: "280px",
-                            }}>
-                                Describe your CAD model in natural language and I'll generate it for you
-                            </p>
-                        </div>
-
-                        {/* Quick Prompts */}
-                        <div style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "8px",
-                            width: "100%",
+                        <p style={{
+                            fontSize: "16px",
+                            fontWeight: 500,
+                            color: "#fff",
+                            marginBottom: "8px",
                         }}>
-                            {[
-                                "Create a 20mm cube with filleted edges",
-                                "Cylinder with 15mm radius, 30mm height",
-                                "L-bracket with mounting holes"
-                            ].map((prompt, i) => (
-                                <button
-                                    key={prompt}
-                                    onClick={() => setInputValue(prompt)}
-                                    style={{
-                                        padding: "14px 16px",
-                                        background: "var(--slate-900)",
-                                        border: "1px solid var(--color-border)",
-                                        borderRadius: "var(--radius-md)",
-                                        color: "var(--color-text-secondary)",
-                                        fontSize: "13px",
-                                        textAlign: "left",
-                                        cursor: "pointer",
-                                        transition: "all var(--duration-fast) var(--ease-out-quad)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "12px",
-                                        animation: `slideInUp 0.3s var(--ease-out-expo) ${i * 0.05}s both`,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.5)";
-                                        e.currentTarget.style.color = "var(--color-text-primary)";
-                                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.borderColor = "var(--color-border)";
-                                        e.currentTarget.style.color = "var(--color-text-secondary)";
-                                        e.currentTarget.style.background = "var(--slate-900)";
-                                    }}
-                                >
-                                    <Box size={16} style={{ color: "#60a5fa", flexShrink: 0 }} />
-                                    {prompt}
-                                </button>
-                            ))}
-                        </div>
+                            How can I help you?
+                        </p>
+                        <p style={{
+                            fontSize: "14px",
+                            color: "#71717a",
+                            lineHeight: 1.5,
+                        }}>
+                            Describe a CAD model to generate
+                        </p>
                     </div>
                 ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                        {chatHistory.map((msg, i) => (
-                            <div
-                                key={msg.id}
-                                style={{
-                                    animation: `slideInUp 0.3s var(--ease-out-expo) ${i * 0.03}s both`,
-                                }}
-                            >
-                                {/* Role Badge */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                        {chatHistory.map((msg) => (
+                            <div key={msg.id}>
+                                {/* Role */}
                                 <div style={{
                                     display: "flex",
                                     alignItems: "center",
                                     gap: "8px",
-                                    marginBottom: "10px",
+                                    marginBottom: "8px",
                                 }}>
                                     <div style={{
                                         width: "24px",
                                         height: "24px",
-                                        borderRadius: "var(--radius-sm)",
-                                        background: msg.role === "user"
-                                            ? "var(--slate-700)"
-                                            : "linear-gradient(135deg, #3b82f6, #6366f1)",
+                                        borderRadius: "6px",
+                                        background: msg.role === "user" ? "#27272a" : "linear-gradient(135deg, #3b82f6, #6366f1)",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
                                     }}>
                                         {msg.role === "user" ? (
-                                            <span style={{ fontSize: "11px", fontWeight: 600 }}>U</span>
+                                            <span style={{ fontSize: "11px", fontWeight: 600, color: "#a1a1aa" }}>Y</span>
                                         ) : (
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                                                 <path d="M12 2L2 7l10 5 10-5-10-5z" />
@@ -375,11 +190,9 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         )}
                                     </div>
                                     <span style={{
-                                        fontSize: "12px",
-                                        fontWeight: 600,
-                                        color: msg.role === "user" ? "var(--color-text-muted)" : "#60a5fa",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.05em",
+                                        fontSize: "13px",
+                                        fontWeight: 500,
+                                        color: msg.role === "user" ? "#a1a1aa" : "#fff",
                                     }}>
                                         {msg.role === "user" ? "You" : "OrionFlow"}
                                     </span>
@@ -392,9 +205,9 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         alt="Uploaded"
                                         style={{
                                             maxWidth: "200px",
-                                            borderRadius: "var(--radius-md)",
-                                            marginBottom: "12px",
-                                            border: "1px solid var(--color-border)",
+                                            borderRadius: "8px",
+                                            marginBottom: "8px",
+                                            marginLeft: "32px",
                                         }}
                                     />
                                 )}
@@ -402,53 +215,49 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                 {/* Message */}
                                 <p style={{
                                     fontSize: "14px",
-                                    lineHeight: 1.7,
-                                    color: "var(--color-text-primary)",
+                                    lineHeight: 1.6,
+                                    color: "#e4e4e7",
                                     margin: 0,
                                     paddingLeft: "32px",
                                 }}>
                                     {msg.content}
                                 </p>
 
-                                {/* Model Version Badge */}
+                                {/* Model Badge */}
                                 {msg.partVersion && (
                                     <div style={{
                                         marginTop: "12px",
                                         marginLeft: "32px",
-                                        padding: "10px 14px",
-                                        background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.05))",
-                                        border: "1px solid rgba(59, 130, 246, 0.3)",
-                                        borderRadius: "var(--radius-md)",
+                                        padding: "8px 12px",
+                                        background: "rgba(59, 130, 246, 0.1)",
+                                        border: "1px solid rgba(59, 130, 246, 0.2)",
+                                        borderRadius: "8px",
                                         display: "inline-flex",
                                         alignItems: "center",
-                                        gap: "10px",
+                                        gap: "8px",
                                     }}>
-                                        <Box size={16} style={{ color: "#60a5fa" }} />
-                                        <span style={{
-                                            fontSize: "13px",
-                                            fontWeight: 600,
-                                            color: "#60a5fa",
-                                        }}>
-                                            Model v{msg.partVersion} ready
+                                        <Box size={14} style={{ color: "#60a5fa" }} />
+                                        <span style={{ fontSize: "13px", color: "#60a5fa" }}>
+                                            Model v{msg.partVersion}
                                         </span>
                                     </div>
                                 )}
                             </div>
                         ))}
 
-                        {/* Loading State */}
+                        {/* Loading */}
                         {isGenerating && (
-                            <div style={{ animation: "slideInUp 0.3s var(--ease-out-expo)" }}>
+                            <div>
                                 <div style={{
                                     display: "flex",
                                     alignItems: "center",
                                     gap: "8px",
-                                    marginBottom: "10px",
+                                    marginBottom: "8px",
                                 }}>
                                     <div style={{
                                         width: "24px",
                                         height: "24px",
-                                        borderRadius: "var(--radius-sm)",
+                                        borderRadius: "6px",
                                         background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                                         display: "flex",
                                         alignItems: "center",
@@ -460,43 +269,23 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                             <path d="M2 12l10 5 10-5" />
                                         </svg>
                                     </div>
-                                    <span style={{
-                                        fontSize: "12px",
-                                        fontWeight: 600,
-                                        color: "#60a5fa",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.05em",
-                                    }}>
+                                    <span style={{ fontSize: "13px", fontWeight: 500, color: "#fff" }}>
                                         OrionFlow
                                     </span>
                                 </div>
-
-                                <div style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "12px",
-                                    paddingLeft: "32px",
-                                }}>
-                                    <div style={{ display: "flex", gap: "4px" }}>
-                                        {[0, 1, 2].map((i) => (
-                                            <div
-                                                key={i}
-                                                style={{
-                                                    width: "8px",
-                                                    height: "8px",
-                                                    borderRadius: "var(--radius-full)",
-                                                    background: "#3b82f6",
-                                                    animation: `pulse 1.4s ease-in-out ${i * 0.15}s infinite`,
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                    <span style={{
-                                        fontSize: "14px",
-                                        color: "var(--color-text-muted)",
-                                    }}>
-                                        Generating geometry...
-                                    </span>
+                                <div style={{ paddingLeft: "32px", display: "flex", gap: "4px" }}>
+                                    {[0, 1, 2].map((i) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                width: "6px",
+                                                height: "6px",
+                                                borderRadius: "50%",
+                                                background: "#3b82f6",
+                                                animation: `pulse 1.4s ease-in-out ${i * 0.15}s infinite`,
+                                            }}
+                                        />
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -505,11 +294,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
             </div>
 
             {/* Input Area */}
-            <div style={{
-                padding: "16px 20px",
-                borderTop: "1px solid var(--color-border)",
-                background: "var(--slate-900)",
-            }}>
+            <div style={{ padding: "16px" }}>
                 {/* Image Preview */}
                 {imagePreview && (
                     <div style={{
@@ -521,10 +306,9 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                             src={imagePreview}
                             alt="Preview"
                             style={{
-                                height: "64px",
-                                borderRadius: "var(--radius-md)",
+                                height: "60px",
+                                borderRadius: "8px",
                                 objectFit: "cover",
-                                border: "1px solid var(--color-border)",
                             }}
                         />
                         <button
@@ -535,33 +319,33 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                 right: "-6px",
                                 width: "20px",
                                 height: "20px",
-                                borderRadius: "var(--radius-full)",
-                                background: "var(--slate-800)",
-                                border: "1px solid var(--color-border)",
-                                color: "var(--color-text-muted)",
+                                borderRadius: "50%",
+                                background: "#27272a",
+                                border: "none",
+                                color: "#a1a1aa",
                                 padding: 0,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
+                                cursor: "pointer",
                             }}
                         >
-                            <X size={10} />
+                            <X size={12} />
                         </button>
                     </div>
                 )}
 
-                {/* Input Container */}
+                {/* Input Box */}
                 <div style={{
+                    background: "#18181b",
+                    border: "1px solid #27272a",
+                    borderRadius: "12px",
+                    padding: "12px",
                     display: "flex",
                     alignItems: "flex-end",
-                    gap: "10px",
-                    background: "var(--slate-850)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "var(--radius-lg)",
-                    padding: "10px 12px",
-                    transition: "all var(--duration-fast) var(--ease-out-quad)",
+                    gap: "8px",
                 }}>
-                    {/* Image Upload */}
+                    {/* Attach */}
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -573,83 +357,75 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isGenerating}
                         style={{
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "var(--radius-md)",
-                            background: "var(--slate-800)",
-                            border: "1px solid var(--color-border)",
-                            color: "var(--color-text-muted)",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            background: "transparent",
+                            border: "none",
+                            color: "#71717a",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             flexShrink: 0,
-                            opacity: isGenerating ? 0.5 : 1,
+                            transition: "color 0.15s",
                         }}
-                        title="Attach reference image"
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#a1a1aa"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#71717a"}
                     >
-                        <Paperclip size={16} />
+                        <Paperclip size={18} />
                     </button>
 
-                    {/* Text Input */}
-                    <input
-                        type="text"
-                        placeholder="Describe your CAD model..."
+                    {/* Textarea */}
+                    <textarea
+                        ref={textareaRef}
+                        placeholder="Message OrionFlow..."
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                            }
+                        }}
                         disabled={isGenerating}
+                        rows={1}
                         style={{
                             flex: 1,
                             background: "transparent",
                             border: "none",
                             outline: "none",
-                            color: "var(--color-text-primary)",
+                            color: "#fff",
                             fontSize: "14px",
-                            padding: "8px 0",
+                            lineHeight: "24px",
+                            resize: "none",
+                            minHeight: "24px",
+                            maxHeight: "120px",
+                            fontFamily: "inherit",
                         }}
                     />
 
-                    {/* Unit Selector */}
-                    <UnitSelector value={unit} onChange={setUnit} />
-
-                    {/* Send Button */}
+                    {/* Send */}
                     <button
                         onClick={handleSend}
                         disabled={!canSend}
                         style={{
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "var(--radius-md)",
-                            background: canSend
-                                ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)"
-                                : "var(--slate-800)",
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "8px",
+                            background: canSend ? "#3b82f6" : "#27272a",
                             border: "none",
-                            color: canSend ? "white" : "var(--color-text-muted)",
+                            color: canSend ? "#fff" : "#52525b",
+                            cursor: canSend ? "pointer" : "not-allowed",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             flexShrink: 0,
-                            boxShadow: canSend ? "0 0 20px rgba(59, 130, 246, 0.4)" : "none",
+                            transition: "all 0.15s",
                         }}
                     >
-                        <ArrowUp size={18} strokeWidth={2.5} />
+                        <ArrowUp size={16} />
                     </button>
-                </div>
-
-                {/* Hint */}
-                <div style={{
-                    marginTop: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                }}>
-                    <span style={{
-                        fontSize: "11px",
-                        color: "var(--color-text-muted)",
-                    }}>
-                        Press <kbd style={{
-                            background: "var(--slate-800)",
-                            padding: "2px 6px",
-                            borderRadius: "var(--radius-sm)",
-                            fontSize: "10px",
-                            fontFamily: "var(--font-mono)",
-                        }}>Enter</kbd> to send
-                    </span>
                 </div>
             </div>
         </div>
