@@ -7,9 +7,7 @@ import { useDesignStore } from "../../store/designStore";
 import { useManifoldPreview } from "../../hooks/useManifoldPreview";
 import * as THREE from "three";
 
-import { Box as BoxIcon } from "lucide-react";
-
-// frameModel function removed - logic moved to Model component
+import { Box as BoxIcon, Download, Zap, RotateCcw, Maximize2 } from "lucide-react";
 
 /**
  * Model component - loads GLB and applies professional CAD styling
@@ -21,13 +19,10 @@ function Model({ url }: { url: string }) {
     const [selectedMesh, setSelectedMesh] = useState<string | null>(null);
     const [hoveredMesh, setHoveredMesh] = useState<string | null>(null);
 
-    // Auto-fit camera to model
     useEffect(() => {
         if (!scene || hasFramed.current) return;
 
-        // Delay slightly to ensure Three.js has updated the world matrices
         const timer = setTimeout(() => {
-            // 1. Calculate bounds based only on actual meshes
             const box = new THREE.Box3();
             let hasMesh = false;
             scene.traverse((child) => {
@@ -48,25 +43,15 @@ function Model({ url }: { url: string }) {
             if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
                 const pCam = camera as THREE.PerspectiveCamera;
                 const fov = pCam.fov * (Math.PI / 180);
-
-                // Distance calculation: model should fill ~70% of viewport
-                // Formula: distance = radius / tan(fov / 2)
-                // Adding 1.5x margin for professional look
                 const fitDistance = radius / Math.tan(fov / 2);
                 const distance = fitDistance * 1.5;
-
-                // Isometric direction vector (normalized)
                 const dir = new THREE.Vector3(1, 1, 1).normalize();
-
                 const finalPos = new THREE.Vector3().copy(center).add(dir.multiplyScalar(distance));
                 camera.position.copy(finalPos);
-
-                console.log(`Camera: radius=${radius.toFixed(1)}mm, distance=${distance.toFixed(1)}`);
             }
 
             camera.lookAt(center);
 
-            // Update orbit controls target
             if (controls) {
                 (controls as any).target.copy(center);
                 (controls as any).update();
@@ -78,13 +63,11 @@ function Model({ url }: { url: string }) {
         return () => clearTimeout(timer);
     }, [scene, url, camera, controls]);
 
-    // Reset framing flag when URL changes
     useEffect(() => {
         hasFramed.current = false;
         setSelectedMesh(null);
     }, [url]);
 
-    // Apply professional CAD material and Highlight Logic
     useEffect(() => {
         if (!scene) return;
         scene.traverse((child) => {
@@ -94,25 +77,22 @@ function Model({ url }: { url: string }) {
                 const isHovered = mesh.uuid === hoveredMesh;
 
                 if (isSelected) {
-                    // Selected Style: Active Blue/Orange
                     mesh.material = new THREE.MeshStandardMaterial({
-                        color: "#F97316", // Orange highlight
-                        emissive: "#C2410C",
+                        color: "#F59E0B",
+                        emissive: "#D97706",
                         emissiveIntensity: 0.2,
                         roughness: 0.3,
                         metalness: 0.1,
                     });
                 } else if (isHovered) {
-                    // Hover Style: Lighter Grey
                     mesh.material = new THREE.MeshStandardMaterial({
                         color: "#E5E7EB",
                         roughness: 0.4,
                         metalness: 0.2,
                     });
                 } else {
-                    // Default Style: Professional Cool Grey
                     mesh.material = new THREE.MeshStandardMaterial({
-                        color: "#D1D5DB",
+                        color: "#CBD5E1",
                         roughness: 0.4,
                         metalness: 0.2,
                         flatShading: false,
@@ -136,9 +116,6 @@ function Model({ url }: { url: string }) {
     const handleClick = (e: any) => {
         e.stopPropagation();
         setSelectedMesh(e.object.uuid);
-
-        // Optional: Focus camera on click?
-        // For now, just selection logic to avoid jarring movements.
     };
 
     const handleMiss = () => {
@@ -157,10 +134,6 @@ function Model({ url }: { url: string }) {
     );
 }
 
-
-/**
- * View manager for orthographic/isometric view switching
- */
 function ViewManager() {
     const viewAction = useDesignStore((state) => state.viewAction);
     const { camera, scene, controls } = useThree();
@@ -168,7 +141,6 @@ function ViewManager() {
     useEffect(() => {
         if (!viewAction || !scene) return;
 
-        // Calculate current model bounds
         const box = new THREE.Box3();
         scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) box.expandByObject(child);
@@ -187,7 +159,6 @@ function ViewManager() {
             const dir = new THREE.Vector3(1, 1, 1).normalize();
             camera.position.copy(center).add(dir.multiplyScalar(dist));
         } else if (viewAction.type === 'ortho') {
-            // Plan view from +Y
             camera.position.set(center.x, center.y + dist, center.z);
         }
 
@@ -203,20 +174,15 @@ function ViewManager() {
     return null;
 }
 
-/**
- * Ensures model is always visible if it somehow gets lost
- */
 function ZoomGuard() {
     const { camera, scene, controls } = useThree();
 
     useFrame(() => {
-        // Only guard if we have meshes
         let hasMesh = false;
         scene.traverse(c => { if ((c as any).isMesh) hasMesh = true; });
         if (!hasMesh) return;
 
         const cameraDist = camera.position.length();
-        // If camera is ridiculously far (e.g. > 10000), reset it
         if (cameraDist > 5000) {
             const box = new THREE.Box3().setFromObject(scene);
             const center = box.getCenter(new THREE.Vector3());
@@ -235,70 +201,320 @@ function ZoomGuard() {
     return null;
 }
 
+// Floating Action Button Component
+function FloatingButton({
+    icon: Icon,
+    label,
+    onClick,
+    href,
+    primary = false,
+}: {
+    icon: any;
+    label: string;
+    onClick?: () => void;
+    href?: string;
+    primary?: boolean;
+}) {
+    const content = (
+        <>
+            <Icon size={16} strokeWidth={2} />
+            <span style={{
+                fontSize: "13px",
+                fontWeight: 600,
+            }}>
+                {label}
+            </span>
+        </>
+    );
+
+    const baseStyle: React.CSSProperties = {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
+        padding: "12px 18px",
+        background: primary
+            ? "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)"
+            : "var(--glass-bg)",
+        backdropFilter: primary ? "none" : "var(--glass-blur)",
+        WebkitBackdropFilter: primary ? "none" : "var(--glass-blur)",
+        border: primary ? "none" : "1px solid var(--glass-border)",
+        borderRadius: "var(--radius-md)",
+        color: primary ? "var(--slate-950)" : "var(--color-text-primary)",
+        textDecoration: "none",
+        cursor: "pointer",
+        boxShadow: primary ? "var(--shadow-glow-accent)" : "var(--shadow-md)",
+        transition: "all var(--duration-fast) var(--ease-out-quad)",
+    };
+
+    if (href) {
+        return (
+            <a
+                href={href}
+                download
+                style={baseStyle}
+                onMouseEnter={(e) => {
+                    if (!primary) {
+                        e.currentTarget.style.background = "var(--glass-bg-light)";
+                        e.currentTarget.style.borderColor = "var(--color-border-hover)";
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (!primary) {
+                        e.currentTarget.style.background = "var(--glass-bg)";
+                        e.currentTarget.style.borderColor = "var(--glass-border)";
+                    }
+                }}
+            >
+                {content}
+            </a>
+        );
+    }
+
+    return (
+        <button
+            onClick={onClick}
+            style={baseStyle}
+            onMouseEnter={(e) => {
+                if (!primary) {
+                    e.currentTarget.style.background = "var(--glass-bg-light)";
+                    e.currentTarget.style.borderColor = "var(--color-border-hover)";
+                }
+            }}
+            onMouseLeave={(e) => {
+                if (!primary) {
+                    e.currentTarget.style.background = "var(--glass-bg)";
+                    e.currentTarget.style.borderColor = "var(--glass-border)";
+                }
+            }}
+        >
+            {content}
+        </button>
+    );
+}
+
 export default function Viewer({ url }: { url: string }) {
     const isGenerating = useDesignStore((state) => state.isGenerating);
     const current = useDesignStore((state) => state.current);
+    const triggerViewAction = useDesignStore((state) => state.triggerViewAction);
 
-    // WASM Preview - get fast-draft mesh from FeatureGraph
     const featureGraph = current?.featureGraph;
     const { mesh: previewMesh, isLoading: isPreviewLoading } = useManifoldPreview(featureGraph);
 
-    // Show preview when: no GLB url yet AND we have a preview mesh
-    const showPreview = !url && previewMesh && !isPreviewLoading;
+    const isValidUrl = url && url.startsWith('http') && url.endsWith('.glb');
+    const showPreview = !isValidUrl && previewMesh && !isPreviewLoading;
+
+    const getDownloadUrl = (format: 'step' | 'stl') => {
+        if (!current?.files?.[format]) return null;
+        const file = current.files[format];
+        if (!file || file === "") return null;
+        const filename = file.split(/[/\\]/).pop();
+        return `http://127.0.0.1:8000/download/${format}/${filename}`;
+    };
+
+    const stepUrl = getDownloadUrl('step');
+    const stlUrl = getDownloadUrl('stl');
+    const hasValidFiles = stepUrl || stlUrl;
 
     return (
         <div style={{ height: "100%", width: "100%", position: "relative" }}>
-            {/* LOADING OVERLAY */}
+            {/* Export & View Controls - Floating Top Left */}
+            {hasValidFiles && !isGenerating && (
+                <div style={{
+                    position: "absolute",
+                    top: "20px",
+                    left: "20px",
+                    zIndex: 50,
+                    display: "flex",
+                    gap: "10px",
+                    animation: "slideInLeft 0.3s var(--ease-out-expo)",
+                }}>
+                    {stepUrl && (
+                        <FloatingButton
+                            icon={Download}
+                            label=".step"
+                            href={stepUrl}
+                        />
+                    )}
+                    {stlUrl && (
+                        <FloatingButton
+                            icon={Download}
+                            label=".stl"
+                            href={stlUrl}
+                        />
+                    )}
+                </div>
+            )}
+
+            {/* View Controls - Floating Top Right */}
+            {isValidUrl && !isGenerating && (
+                <div style={{
+                    position: "absolute",
+                    top: "20px",
+                    right: "20px",
+                    zIndex: 50,
+                    display: "flex",
+                    gap: "8px",
+                    animation: "slideInRight 0.3s var(--ease-out-expo)",
+                }}>
+                    <button
+                        onClick={() => triggerViewAction('reset')}
+                        style={{
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "var(--radius-md)",
+                            background: "var(--glass-bg)",
+                            backdropFilter: "var(--glass-blur)",
+                            WebkitBackdropFilter: "var(--glass-blur)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--color-text-secondary)",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all var(--duration-fast) var(--ease-out-quad)",
+                        }}
+                        title="Reset View"
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "var(--glass-bg-light)";
+                            e.currentTarget.style.color = "var(--color-text-primary)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "var(--glass-bg)";
+                            e.currentTarget.style.color = "var(--color-text-secondary)";
+                        }}
+                    >
+                        <RotateCcw size={16} />
+                    </button>
+                    <button
+                        onClick={() => triggerViewAction('iso')}
+                        style={{
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "var(--radius-md)",
+                            background: "var(--glass-bg)",
+                            backdropFilter: "var(--glass-blur)",
+                            WebkitBackdropFilter: "var(--glass-blur)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--color-text-secondary)",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "all var(--duration-fast) var(--ease-out-quad)",
+                        }}
+                        title="Fit to View"
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "var(--glass-bg-light)";
+                            e.currentTarget.style.color = "var(--color-text-primary)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "var(--glass-bg)";
+                            e.currentTarget.style.color = "var(--color-text-secondary)";
+                        }}
+                    >
+                        <Maximize2 size={16} />
+                    </button>
+                </div>
+            )}
+
+            {/* Loading Overlay */}
             {isGenerating && (
                 <div style={{
-                    position: "absolute", zIndex: 100, inset: 0,
-                    background: "rgba(255, 255, 255, 0.95)",
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    color: "#333"
+                    position: "absolute",
+                    zIndex: 100,
+                    inset: 0,
+                    background: "linear-gradient(135deg, var(--slate-100) 0%, var(--slate-200) 100%)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--slate-700)",
                 }}>
                     <style>
                         {`
-                        @keyframes spin { 
-                            from { transform: rotate(0deg); } 
-                            to { transform: rotate(360deg); } 
+                        @keyframes spinGlow {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
                         }
                         `}
                     </style>
-                    <BoxIcon size={48} color="#F97316" style={{ animation: "spin 2s linear infinite" }} />
-                    <p style={{ marginTop: "20px", fontSize: "16px", fontWeight: 600 }}>Generating geometry...</p>
+                    <div style={{
+                        width: "80px",
+                        height: "80px",
+                        borderRadius: "var(--radius-xl)",
+                        background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 0 40px var(--copper-glow)",
+                        animation: "spinGlow 2s linear infinite",
+                    }}>
+                        <BoxIcon size={36} color="var(--slate-950)" />
+                    </div>
+                    <p style={{
+                        marginTop: "24px",
+                        fontSize: "18px",
+                        fontWeight: 600,
+                        color: "var(--slate-800)",
+                    }}>
+                        Generating geometry...
+                    </p>
+                    <p style={{
+                        marginTop: "8px",
+                        fontSize: "14px",
+                        color: "var(--slate-500)",
+                    }}>
+                        Building your parametric model
+                    </p>
                 </div>
             )}
 
-            {/* PREVIEW MODE INDICATOR */}
+            {/* Preview Mode Indicator */}
             {showPreview && (
                 <div style={{
-                    position: "absolute", top: "16px", left: "16px", zIndex: 50,
-                    background: "rgba(251, 146, 60, 0.9)",
-                    color: "white",
-                    padding: "6px 12px",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    fontWeight: 600,
+                    position: "absolute",
+                    top: "20px",
+                    left: "20px",
+                    zIndex: 50,
+                    background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
+                    padding: "10px 16px",
+                    borderRadius: "var(--radius-md)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "var(--shadow-glow-accent)",
+                    animation: "slideInLeft 0.3s var(--ease-out-expo)",
                 }}>
-                    ⚡ Fast Preview (WASM)
+                    <Zap size={16} color="var(--slate-950)" />
+                    <span style={{
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        color: "var(--slate-950)",
+                    }}>
+                        Fast Preview (WASM)
+                    </span>
                 </div>
             )}
 
+            {/* 3D Canvas */}
             <Canvas
                 camera={{ position: [50, 50, 50], fov: 45, near: 0.1, far: 10000 }}
-                style={{ background: "#f3f4f6" }}
+                style={{
+                    background: "linear-gradient(180deg, #e2e8f0 0%, #f1f5f9 100%)",
+                }}
             >
-                {/* Clean studio lighting for CAD */}
-                <ambientLight intensity={0.7} />
+                {/* Studio Lighting */}
+                <ambientLight intensity={0.8} />
                 <directionalLight position={[10, 20, 10]} intensity={1.0} />
                 <directionalLight position={[-10, 10, -5]} intensity={0.5} />
                 <spotLight position={[0, 40, 0]} intensity={0.5} />
 
-                {/* Fast-draft WASM preview */}
+                {/* WASM Preview */}
                 {showPreview && <PreviewMesh geometry={previewMesh} />}
 
-                {/* High-fidelity GLB model */}
-                {url && <Model url={url} />}
+                {/* GLB Model */}
+                {isValidUrl && <Model url={url} />}
 
                 <OrbitControls
                     makeDefault
