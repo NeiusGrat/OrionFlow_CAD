@@ -7,8 +7,7 @@ import {
     ArrowUp,
     Paperclip,
     Sparkles,
-    ChevronDown,
-    Hexagon
+    ChevronDown
 } from "lucide-react";
 
 interface ChatPanelProps {
@@ -80,7 +79,7 @@ function UnitSelector({ value, onChange }: { value: string; onChange: (v: string
                         >
                             {unit}
                             {value === unit && (
-                                <span style={{ float: "right", color: "var(--copper-500)" }}>✓</span>
+                                <span style={{ float: "right", color: "#3b82f6" }}>✓</span>
                             )}
                         </button>
                     ))}
@@ -164,13 +163,17 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                         width: "36px",
                         height: "36px",
                         borderRadius: "var(--radius-md)",
-                        background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
+                        background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 0 16px var(--copper-glow)",
+                        boxShadow: "0 0 16px rgba(59, 130, 246, 0.4)",
                     }}>
-                        <Hexagon size={18} color="var(--slate-950)" strokeWidth={2.5} fill="var(--slate-950)" />
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                            <path d="M2 17l10 5 10-5" />
+                            <path d="M2 12l10 5 10-5" />
+                        </svg>
                     </div>
                     <div>
                         <div style={{
@@ -182,7 +185,12 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                             gap: "6px",
                         }}>
                             <span style={{ color: "var(--color-text-primary)" }}>Orion</span>
-                            <span style={{ color: "var(--copper-400)" }}>Flow</span>
+                            <span style={{
+                                background: "linear-gradient(135deg, #60a5fa 0%, #818cf8 100%)",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent",
+                                backgroundClip: "text",
+                            }}>Flow</span>
                         </div>
                         <div style={{
                             fontSize: "11px",
@@ -252,12 +260,12 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                             justifyContent: "center",
                             position: "relative",
                         }}>
-                            <Sparkles size={32} style={{ color: "var(--copper-400)" }} />
+                            <Sparkles size={32} style={{ color: "#60a5fa" }} />
                             <div style={{
                                 position: "absolute",
                                 inset: "-1px",
                                 borderRadius: "var(--radius-2xl)",
-                                background: "linear-gradient(135deg, var(--copper-500), transparent)",
+                                background: "linear-gradient(135deg, #3b82f6, transparent)",
                                 opacity: 0.1,
                                 pointerEvents: "none",
                             }} />
@@ -313,9 +321,9 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         animation: `slideInUp 0.3s var(--ease-out-expo) ${i * 0.05}s both`,
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.borderColor = "var(--copper-500)";
+                                        e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.5)";
                                         e.currentTarget.style.color = "var(--color-text-primary)";
-                                        e.currentTarget.style.background = "var(--slate-850)";
+                                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.borderColor = "var(--color-border)";
@@ -323,7 +331,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         e.currentTarget.style.background = "var(--slate-900)";
                                     }}
                                 >
-                                    <Box size={16} style={{ color: "var(--copper-400)", flexShrink: 0 }} />
+                                    <Box size={16} style={{ color: "#60a5fa", flexShrink: 0 }} />
                                     {prompt}
                                 </button>
                             ))}
@@ -351,7 +359,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         borderRadius: "var(--radius-sm)",
                                         background: msg.role === "user"
                                             ? "var(--slate-700)"
-                                            : "linear-gradient(135deg, var(--copper-500), var(--copper-400))",
+                                            : "linear-gradient(135deg, #3b82f6, #6366f1)",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
@@ -359,13 +367,17 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         {msg.role === "user" ? (
                                             <span style={{ fontSize: "11px", fontWeight: 600 }}>U</span>
                                         ) : (
-                                            <Hexagon size={12} color="var(--slate-950)" fill="var(--slate-950)" />
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                                <path d="M2 17l10 5 10-5" />
+                                                <path d="M2 12l10 5 10-5" />
+                                            </svg>
                                         )}
                                     </div>
                                     <span style={{
                                         fontSize: "12px",
                                         fontWeight: 600,
-                                        color: msg.role === "user" ? "var(--color-text-muted)" : "var(--copper-400)",
+                                        color: msg.role === "user" ? "var(--color-text-muted)" : "#60a5fa",
                                         textTransform: "uppercase",
                                         letterSpacing: "0.05em",
                                     }}>
@@ -404,18 +416,18 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         marginTop: "12px",
                                         marginLeft: "32px",
                                         padding: "10px 14px",
-                                        background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))",
-                                        border: "1px solid rgba(245, 158, 11, 0.3)",
+                                        background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.05))",
+                                        border: "1px solid rgba(59, 130, 246, 0.3)",
                                         borderRadius: "var(--radius-md)",
                                         display: "inline-flex",
                                         alignItems: "center",
                                         gap: "10px",
                                     }}>
-                                        <Box size={16} style={{ color: "var(--copper-400)" }} />
+                                        <Box size={16} style={{ color: "#60a5fa" }} />
                                         <span style={{
                                             fontSize: "13px",
                                             fontWeight: 600,
-                                            color: "var(--copper-400)",
+                                            color: "#60a5fa",
                                         }}>
                                             Model v{msg.partVersion} ready
                                         </span>
@@ -437,17 +449,21 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         width: "24px",
                                         height: "24px",
                                         borderRadius: "var(--radius-sm)",
-                                        background: "linear-gradient(135deg, var(--copper-500), var(--copper-400))",
+                                        background: "linear-gradient(135deg, #3b82f6, #6366f1)",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
                                     }}>
-                                        <Hexagon size={12} color="var(--slate-950)" fill="var(--slate-950)" />
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                            <path d="M2 17l10 5 10-5" />
+                                            <path d="M2 12l10 5 10-5" />
+                                        </svg>
                                     </div>
                                     <span style={{
                                         fontSize: "12px",
                                         fontWeight: 600,
-                                        color: "var(--copper-400)",
+                                        color: "#60a5fa",
                                         textTransform: "uppercase",
                                         letterSpacing: "0.05em",
                                     }}>
@@ -469,7 +485,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                                     width: "8px",
                                                     height: "8px",
                                                     borderRadius: "var(--radius-full)",
-                                                    background: "var(--copper-500)",
+                                                    background: "#3b82f6",
                                                     animation: `pulse 1.4s ease-in-out ${i * 0.15}s infinite`,
                                                 }}
                                             />
@@ -602,12 +618,12 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                             height: "36px",
                             borderRadius: "var(--radius-md)",
                             background: canSend
-                                ? "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)"
+                                ? "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)"
                                 : "var(--slate-800)",
                             border: "none",
-                            color: canSend ? "var(--slate-950)" : "var(--color-text-muted)",
+                            color: canSend ? "white" : "var(--color-text-muted)",
                             flexShrink: 0,
-                            boxShadow: canSend ? "0 0 20px var(--copper-glow)" : "none",
+                            boxShadow: canSend ? "0 0 20px rgba(59, 130, 246, 0.4)" : "none",
                         }}
                     >
                         <ArrowUp size={18} strokeWidth={2.5} />
