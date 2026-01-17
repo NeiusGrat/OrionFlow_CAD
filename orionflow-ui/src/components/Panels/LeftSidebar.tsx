@@ -7,9 +7,7 @@ import {
     Settings,
     X,
     FileDown,
-    Box,
-    Hexagon,
-    ChevronDown
+    Box
 } from "lucide-react";
 
 // ============ Feature Tree Panel ============
@@ -47,12 +45,12 @@ function FeatureTreePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                         width: "32px",
                         height: "32px",
                         borderRadius: "var(--radius-md)",
-                        background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
+                        background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                     }}>
-                        <Layers size={16} color="var(--slate-950)" strokeWidth={2.5} />
+                        <Layers size={16} color="white" strokeWidth={2.5} />
                     </div>
                     <span style={{ fontWeight: 600, fontSize: "15px", letterSpacing: "-0.01em" }}>
                         Feature Tree
@@ -131,7 +129,7 @@ function FeatureTreePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                     transition: "all var(--duration-fast) var(--ease-out-quad)",
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = "var(--color-border-hover)";
+                                    e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.3)";
                                     e.currentTarget.style.background = "var(--color-bg-element-hover)";
                                 }}
                                 onMouseLeave={(e) => {
@@ -150,11 +148,11 @@ function FeatureTreePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                         height: "8px",
                                         borderRadius: "var(--radius-full)",
                                         background: index === 0
-                                            ? "var(--copper-500)"
-                                            : "var(--cyan-500)",
+                                            ? "#3b82f6"
+                                            : "#6366f1",
                                         boxShadow: index === 0
-                                            ? "0 0 8px var(--copper-glow)"
-                                            : "0 0 8px var(--cyan-glow)",
+                                            ? "0 0 8px rgba(59, 130, 246, 0.5)"
+                                            : "0 0 8px rgba(99, 102, 241, 0.5)",
                                     }} />
                                     <span style={{
                                         fontSize: "13px",
@@ -308,12 +306,12 @@ function ExportDropdown({
                                 width: "36px",
                                 height: "36px",
                                 borderRadius: "var(--radius-md)",
-                                background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
+                                background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                             }}>
-                                <FileDown size={18} color="var(--slate-950)" />
+                                <FileDown size={18} color="white" />
                             </div>
                             <div>
                                 <div style={{ fontSize: "14px", fontWeight: 600 }}>STEP</div>
@@ -346,12 +344,12 @@ function ExportDropdown({
                                 width: "36px",
                                 height: "36px",
                                 borderRadius: "var(--radius-md)",
-                                background: "linear-gradient(135deg, var(--cyan-500) 0%, var(--cyan-400) 100%)",
+                                background: "linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                             }}>
-                                <FileDown size={18} color="var(--slate-950)" />
+                                <FileDown size={18} color="white" />
                             </div>
                             <div>
                                 <div style={{ fontSize: "14px", fontWeight: 600 }}>STL</div>
@@ -419,9 +417,9 @@ const NavButton = React.forwardRef<HTMLButtonElement, {
                 transform: "translateY(-50%)",
                 width: "3px",
                 height: "20px",
-                background: "var(--copper-500)",
+                background: "#3b82f6",
                 borderRadius: "0 2px 2px 0",
-                boxShadow: "0 0 8px var(--copper-glow)",
+                boxShadow: "0 0 8px rgba(59, 130, 246, 0.5)",
             }} />
         )}
         {icon}
@@ -478,20 +476,24 @@ export default function LeftSidebar() {
                     width: "44px",
                     height: "44px",
                     borderRadius: "var(--radius-lg)",
-                    background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
+                    background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "20px",
-                    boxShadow: "var(--shadow-glow-accent)",
+                    boxShadow: "0 0 30px rgba(59, 130, 246, 0.4)",
                     position: "relative",
                 }}>
-                    <Hexagon size={22} color="var(--slate-950)" strokeWidth={2.5} fill="var(--slate-950)" />
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                        <path d="M2 17l10 5 10-5" />
+                        <path d="M2 12l10 5 10-5" />
+                    </svg>
                     <div style={{
                         position: "absolute",
                         inset: "-2px",
                         borderRadius: "var(--radius-lg)",
-                        background: "linear-gradient(135deg, var(--copper-400), var(--copper-500))",
+                        background: "linear-gradient(135deg, #60a5fa, #818cf8)",
                         opacity: 0.4,
                         filter: "blur(8px)",
                         zIndex: -1,
