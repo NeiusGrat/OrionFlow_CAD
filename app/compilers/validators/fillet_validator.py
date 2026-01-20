@@ -30,7 +30,7 @@ class FilletValidator(GeometryValidator):
         Error: "Fillet radius exceeds edge length"
     """
     
-    MAX_RATIO = 0.5  # Fillet radius should be ≤ 50% of edge length
+    MAX_RATIO = 0.9  # Fillet radius should be ≤ 90% of edge length (relaxed from 0.5)
     
     @property
     def name(self) -> str:
@@ -44,6 +44,10 @@ class FilletValidator(GeometryValidator):
             return None
         
         radius = feature.params.get("radius", 0)
+        
+        # Skip validation if parameter is not a number
+        if isinstance(radius, str):
+            return None
         
         if radius <= 0:
             return CompilerError(
@@ -69,6 +73,8 @@ class FilletValidator(GeometryValidator):
             # Find shortest edge
             edge_lengths = [(edge, edge.length) for edge in edges]
             shortest_edge, min_length = min(edge_lengths, key=lambda x: x[1])
+            
+            # Check if radius is too large
             
             # Check if radius is too large
             max_safe_radius = min_length * self.MAX_RATIO

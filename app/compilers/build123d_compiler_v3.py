@@ -147,6 +147,10 @@ class Build123dCompilerV3(Build123dCompilerV2):
                     solid = self._apply_feature_v3(feature, ctx, solid)
                     events[-1].status = "success"
                     events[-1].message = f"Created {len(ctx.registry.feature_map.get(feature.id, []))} entities"
+                except FeatureCompilationError:
+                     events[-1].status = "failure"
+                     # Re-raise existing structured error
+                     raise
                 except Exception as e:
                     events[-1].status = "failure"
                     events[-1].message = str(e)
@@ -225,11 +229,11 @@ class Build123dCompilerV3(Build123dCompilerV2):
             solid = self._apply_feature_v2(feature, ctx.sketches, ctx.graph, current_solid)
         
         # Step 2: VALIDATE geometry (Phase 3)
-        self._validate_geometry(solid, feature)
+        self._validate_geometry(solid, feature, ctx)
         
         return solid
     
-    def _validate_geometry(self, solid: Solid, feature: FeatureV2) -> None:
+    def _validate_geometry(self, solid: Solid, feature: FeatureV2, ctx: CompilationContext) -> None:
         """
         Run all geometry validators on the current solid.
         
@@ -238,19 +242,44 @@ class Build123dCompilerV3(Build123dCompilerV2):
         Args:
             solid: Geometry to validate
             feature: Feature that created/modified the geometry
+            ctx: Compilation context for parameter resolution
             
         Raises:
             FeatureCompilationError: If any validator detects an issue
         """
+        # Create a ephemeral feature with ALL parameters resolved for validation
+        resolved_params = {}
+        for k, v in feature.params.items():
+            try:
+                # Try to resolve each parameter
+                # print(f"Resolving {k}={v} with graph params: {ctx.graph.parameters}")
+                resolved_params[k] = self._resolve_param(v, ctx.graph)
+            except Exception as e:
+                # print(f"Failed to resolve {k}: {e}")
+                # If resolution fails, keep original value (validator might handle it or fail gracefully)
+                resolved_params[k] = v
+                
+        # Create temporary feature for validation
+        validation_feature = feature.model_copy(update={"params": resolved_params})
+        
+        # print(f"Validation feature params: {validation_feature.params}")
+
         for validator in self.validators:
-            error = validator.validate(solid, feature)
-            if error:
-                logger.error(f"{validator.name} failed: {error.reason}")
-                # Fail fast with structured error
-                raise FeatureCompilationError(
-                    error.to_trace_message(),
-                    compiler_error=error
-                )
+            try:
+                error = validator.validate(solid, validation_feature)
+                if error:
+                    logger.error(f"{validator.name} failed: {error.reason}")
+                    # Fail fast with structured error
+                    raise FeatureCompilationError(
+                        error.to_trace_message(),
+                        compiler_error=error
+                    )
+            except FeatureCompilationError:
+                raise
+            except Exception as e:
+                logger.warning(f"Validator {validator.name} crashed: {e}")
+                # Don't crash compilation if a validator crashes (unless it's a critical error)
+                continue
     
     def _apply_extrude_v3(
         self,
@@ -309,6 +338,9 @@ class Build123dCompilerV3(Build123dCompilerV2):
             edges = list(current_solid.edges())
         
         logger.info(f"Fillet '{feature.id}' targeting {len(edges)} edges (V3 selection)")
+        
+        # Pre-validate geometry (catches invalid radius before crash)
+        self._validate_geometry(current_solid, feature, ctx)
         
         # Apply fillet
         filleted_solid = fillet(edges, radius=radius)

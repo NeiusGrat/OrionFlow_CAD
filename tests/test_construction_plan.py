@@ -85,28 +85,27 @@ class TestConstructionPlan:
     
     def test_circular_dependency_validation(self):
         """Test that circular dependencies are caught."""
-        plan = ConstructionPlan(
-            base_reference="XY plane",
-            construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
-            parameters={
-                "width": PlanParameter(default=50, depends_on="width")  # Self-reference
-            }
-        )
-        errors = plan.validate_plan()
-        assert any("circular dependency" in e for e in errors)
-        assert not plan.is_valid()
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="circular dependency"):
+            ConstructionPlan(
+                base_reference="XY plane",
+                construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
+                parameters={
+                    "width": PlanParameter(default=50, depends_on="width")  # Self-reference
+                }
+            )
     
     def test_unknown_dependency_validation(self):
         """Test that unknown dependencies are caught."""
-        plan = ConstructionPlan(
-            base_reference="XY plane",
-            construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
-            parameters={
-                "width": PlanParameter(default=50, depends_on="nonexistent")
-            }
-        )
-        errors = plan.validate_plan()
-        assert any("unknown parameter" in e for e in errors)
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="depends on unknown"):
+            ConstructionPlan(
+                base_reference="XY plane",
+                construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
+                parameters={
+                    "width": PlanParameter(default=50, depends_on="nonexistent")
+                }
+            )
     
     def test_invalid_range_validation(self):
         """Test that invalid min/max ranges are caught."""

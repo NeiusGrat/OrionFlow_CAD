@@ -43,7 +43,7 @@ class SelfIntersectionValidator(GeometryValidator):
             # build123d Solid may have is_valid() method
             # This wraps OCCT's BRepCheck_Analyzer
             if hasattr(solid, 'is_valid'):
-                if not solid.is_valid():
+                if not solid.is_valid:
                     return CompilerError(
                         error_type=ErrorType.SELF_INTERSECTION,
                         feature_id=feature.id,

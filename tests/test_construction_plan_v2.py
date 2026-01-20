@@ -352,15 +352,23 @@ class TestPlanPersistence:
 
     def test_list_plans_by_status(self, persistence, sample_plan):
         """Should filter plans by status."""
-        approved = sample_plan.approve()
-        persistence.save(sample_plan)
-        persistence.save(approved)
+        # Create a second plan that is approved
+        approved_plan = ConstructionPlan(
+            prompt="Approved plan",
+            status=PlanStatus.APPROVED,
+            construction_sequence=[
+                ConstructionStep(order=1, description="Step 1")
+            ]
+        )
+        
+        persistence.save(sample_plan)   # Draft
+        persistence.save(approved_plan) # Approved
 
         draft_plans = persistence.list_plans(status=PlanStatus.DRAFT)
         approved_plans = persistence.list_plans(status=PlanStatus.APPROVED)
 
         assert sample_plan.id in draft_plans
-        assert approved.id in approved_plans
+        assert approved_plan.id in approved_plans
 
 
 class TestPromptContext:
