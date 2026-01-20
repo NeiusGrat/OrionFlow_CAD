@@ -39,6 +39,11 @@ from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
 from app.services.dataset_writer import write_dataset_sample
 from app.domain.dataset_sample import DatasetSample
 
+# Step 6: Training data pipeline
+from app.domain.training_sample import TrainingSample, GeometryMetrics
+from app.services.training_writer import write_training_sample
+from app.validation.geometry_metrics import calculate_geometry_metrics
+
 # Import enhanced ConstructionPlan (Intelligence Boundary)
 from app.domain.construction_plan import (
     ConstructionPlan,
@@ -567,6 +572,31 @@ class GenerationService:
                     except Exception as e:
                         logger.warning(f"Failed to log dataset sample: {e}")
                     # -----------------------
+                    
+                    # --- TRAINING DATA LOGGING (Step 6: Gold dataset) ---
+                    try:
+                        # Calculate geometry metrics for successful compilation
+                        geometry_metrics = None
+                        if backend != "onshape" and solid:
+                            geometry_metrics = calculate_geometry_metrics(solid)
+                        
+                        training_sample = TrainingSample(
+                            prompt=prompt,
+                            construction_plan=construction_plan.model_dump(),
+                            feature_graph=fg_v3.to_dataset_dict(),
+                            feature_graph_version="v3",
+                            compile_success=True,
+                            execution_trace=trace.model_dump(),
+                            retry_count=attempt,
+                            geometry_metrics=geometry_metrics,
+                            llm_model=settings.llm_model,
+                            backend=backend,
+                        )
+                        write_training_sample(training_sample)
+                        logger.info(f"Training sample logged: {training_sample.sample_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to log training sample: {e}")
+                    # -----------------------
 
                     if backend == "onshape":
                         # Onshape result (no local geometry to return)
@@ -606,6 +636,27 @@ class GenerationService:
                         write_dataset_sample(sample)
                     except Exception as e:
                         logger.warning(f"Failed to log dataset sample: {e}")
+                    # -----------------------
+                    
+                    # --- TRAINING DATA LOGGING (Step 6: Failure samples) ---
+                    try:
+                        training_sample = TrainingSample(
+                            prompt=prompt,
+                            construction_plan=construction_plan.model_dump(),
+                            feature_graph=fg_v3.to_dataset_dict(),
+                            feature_graph_version="v3",
+                            compile_success=False,
+                            compile_error=str(trace.events[-1].message if trace.events else "Unknown error"),
+                            execution_trace=trace.model_dump(),
+                            retry_count=attempt,
+                            geometry_metrics=None,
+                            llm_model=settings.llm_model,
+                            backend=backend,
+                        )
+                        write_training_sample(training_sample)
+                        logger.info(f"Training sample (failure) logged: {training_sample.sample_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to log training sample: {e}")
                     # -----------------------
 
                     return GenerationResult(
