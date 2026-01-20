@@ -2,7 +2,7 @@
 Tests for ConstructionPlan domain model.
 """
 import pytest
-from app.domain.construction_plan import ConstructionPlan, PlanParameter
+from app.domain.construction_plan import ConstructionPlan, PlanParameter, ConstructionStep
 
 
 class TestPlanParameter:
@@ -39,7 +39,10 @@ class TestConstructionPlan:
         """Test minimal valid construction plan."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create base sketch", "Extrude"]
+            construction_sequence=[
+                ConstructionStep(order=1, description="Create base sketch"),
+                ConstructionStep(order=2, description="Extrude")
+            ]
         )
         assert plan.base_reference == "XY plane"
         assert len(plan.construction_sequence) == 2
@@ -50,14 +53,14 @@ class TestConstructionPlan:
         plan = ConstructionPlan(
             base_reference="XY plane",
             construction_sequence=[
-                "Create base sketch: rectangle",
-                "Extrude symmetrically",
-                "Apply fillet only on top edges"
+                ConstructionStep(order=1, description="Create base sketch: rectangle", feature_type="sketch"),
+                ConstructionStep(order=2, description="Extrude symmetrically", feature_type="extrude"),
+                ConstructionStep(order=3, description="Apply fillet only on top edges", feature_type="fillet")
             ],
             parameters={
                 "length": PlanParameter(unit="mm", default=50),
                 "width": PlanParameter(unit="mm", default=30),
-                "height": PlanParameter(unit="mm", default=20),  # Added for fillet_radius dependency
+                "height": PlanParameter(unit="mm", default=20),
                 "fillet_radius": PlanParameter(unit="mm", default=5, depends_on="height")
             },
             assumptions=["Sharp edges allowed on bottom"],
@@ -75,7 +78,7 @@ class TestConstructionPlan:
         """Test plan with open questions."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create base sketch"],
+            construction_sequence=[ConstructionStep(order=1, description="Create base sketch")],
             open_questions=["What is the preferred fillet radius?"]
         )
         assert plan.has_open_questions()
@@ -84,7 +87,7 @@ class TestConstructionPlan:
         """Test that circular dependencies are caught."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create sketch"],
+            construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
             parameters={
                 "width": PlanParameter(default=50, depends_on="width")  # Self-reference
             }
@@ -97,7 +100,7 @@ class TestConstructionPlan:
         """Test that unknown dependencies are caught."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create sketch"],
+            construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
             parameters={
                 "width": PlanParameter(default=50, depends_on="nonexistent")
             }
@@ -109,7 +112,7 @@ class TestConstructionPlan:
         """Test that invalid min/max ranges are caught."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create sketch"],
+            construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
             parameters={
                 "width": PlanParameter(default=50, min_value=100, max_value=10)  # min > max
             }
@@ -121,7 +124,7 @@ class TestConstructionPlan:
         """Test that default below min is caught."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create sketch"],
+            construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
             parameters={
                 "width": PlanParameter(default=5, min_value=10, max_value=100)
             }
@@ -133,7 +136,10 @@ class TestConstructionPlan:
         """Test conversion to prompt context string."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create rectangle", "Extrude"],
+            construction_sequence=[
+                ConstructionStep(order=1, description="Create rectangle"),
+                ConstructionStep(order=2, description="Extrude")
+            ],
             parameters={
                 "width": PlanParameter(unit="mm", default=50)
             },
@@ -150,7 +156,7 @@ class TestConstructionPlan:
         """Test parameter resolution."""
         plan = ConstructionPlan(
             base_reference="XY plane",
-            construction_sequence=["Create sketch"],
+            construction_sequence=[ConstructionStep(order=1, description="Create sketch")],
             parameters={
                 "width": PlanParameter(default=50),
                 "height": PlanParameter(default=30),
@@ -172,8 +178,8 @@ class TestConstructionPlanIntegration:
         plan = ConstructionPlan(
             base_reference="XY plane",
             construction_sequence=[
-                "Create base sketch: rectangle with width and height parameters",
-                "Extrude to depth"
+                ConstructionStep(order=1, description="Create base sketch: rectangle with width and height parameters", feature_type="sketch"),
+                ConstructionStep(order=2, description="Extrude to depth", feature_type="extrude")
             ],
             parameters={
                 "width": PlanParameter(unit="mm", default=50),
@@ -189,3 +195,4 @@ class TestConstructionPlanIntegration:
         assert "height" in resolved
         assert "depth" in resolved
         assert all(isinstance(v, (int, float)) for v in resolved.values())
+
