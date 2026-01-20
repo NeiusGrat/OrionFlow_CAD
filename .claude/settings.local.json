@@ -3,7 +3,13 @@
     "allow": [
       "Skill(frontend-design)",
       "Bash(dir:*)",
-      "Bash(copy \"c:\\\\Users\\\\Legion\\\\Downloads\\\\Orionflowlogo.png\" \"E:\\\\OrionFLow_CAD\\\\orionflow-ui\\\\public\\\\logo.png\")"
+      "Bash(copy \"c:\\\\Users\\\\Legion\\\\Downloads\\\\Orionflowlogo.png\" \"E:\\\\OrionFLow_CAD\\\\orionflow-ui\\\\public\\\\logo.png\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(git -C e:\\\\OrionFLow_CAD status:*)",
+      "Bash(git -C e:OrionFLow_CAD log --oneline -5)"
     ]
   }
 }
