@@ -13,7 +13,7 @@ from typing import Optional, List
 from build123d import Solid, Edge
 from app.domain.feature_graph_v2 import FeatureV2
 from app.domain.compiler_errors import CompilerError, ErrorType
-from app.compilers.validators import GeometryValidator
+from app.compilers.validators.base import GeometryValidator
 
 logger = logging.getLogger(__name__)
 
