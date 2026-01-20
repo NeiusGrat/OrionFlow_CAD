@@ -15,7 +15,7 @@ from typing import Optional
 from build123d import Solid
 from app.domain.feature_graph_v2 import FeatureV2
 from app.domain.compiler_errors import CompilerError, ErrorType
-from app.compilers.validators import GeometryValidator
+from app.compilers.validators.base import GeometryValidator
 
 logger = logging.getLogger(__name__)
 
