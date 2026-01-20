@@ -143,7 +143,7 @@ class FeatureV2(BaseModel):
     - dependencies: Explicit feature dependencies
     """
     id: str
-    type: Literal["extrude", "fillet", "chamfer", "revolve", "shell", "pattern"]
+    type: Literal["extrude", "fillet", "chamfer", "revolve", "shell", "pattern", "hole"]
     
     # Parameters for the feature operation
     params: Dict[str, Any] = Field(default_factory=dict)

@@ -74,7 +74,8 @@ class TestSketchPrimitiveIR:
 
     def test_unresolved_param_fails(self):
         """String parameter reference should fail."""
-        with pytest.raises(ValueError, match="IR violation"):
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="Input should be a valid number"):
             SketchPrimitiveIR(
                 id="p1",
                 type=PrimitiveType.RECTANGLE,
@@ -107,7 +108,8 @@ class TestFeatureIR:
 
     def test_unresolved_feature_param_fails(self):
         """String parameter in feature should fail."""
-        with pytest.raises(ValueError, match="IR violation"):
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError, match="Input should be a valid number"):
             FeatureIR(
                 id="f1",
                 type=FeatureType.EXTRUDE,

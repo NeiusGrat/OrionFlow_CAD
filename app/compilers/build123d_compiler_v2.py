@@ -478,7 +478,8 @@ class Build123dCompilerV2:
                 if param_name in graph.parameters:
                     param = graph.parameters[param_name]
                     if isinstance(param, dict):
-                        return float(param.get("value", 0))
+                        return float(param.get("value", param.get("default", 0)))
+                    # Handle direct value (float/int)
                     return float(param)
                 raise FeatureCompilationError(f"Parameter '{raw_value}' not found")
             

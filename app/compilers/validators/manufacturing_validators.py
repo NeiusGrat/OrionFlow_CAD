@@ -47,6 +47,11 @@ class CNCFilletValidator(GeometryValidator):
             return None  # No constraint set
         
         radius = feature.params.get("radius", 0)
+        
+        # Skip validation if parameter is not a number
+        if isinstance(radius, str):
+            return None
+        
         min_radius = self.constraints.min_fillet_radius
         
         if radius < min_radius:
@@ -92,6 +97,10 @@ class WallThicknessValidator(GeometryValidator):
         if feature.type == "extrude":
             depth = feature.params.get("depth") or feature.params.get("distance", 0)
             
+            # Skip validation if parameter is not a number
+            if isinstance(depth, str):
+                return None
+            
             if self.constraints.min_wall_thickness and depth < self.constraints.min_wall_thickness:
                 return CompilerError(
                     error_type=ErrorType.ZERO_THICKNESS,
@@ -107,6 +116,10 @@ class WallThicknessValidator(GeometryValidator):
         
         elif feature.type == "shell":
             thickness = feature.params.get("thickness", 0)
+            
+            # Skip validation if parameter is not a number
+            if isinstance(thickness, str):
+                return None
             
             if self.constraints.min_wall_thickness and thickness < self.constraints.min_wall_thickness:
                 return CompilerError(
@@ -148,6 +161,11 @@ class HoleStandardsValidator(GeometryValidator):
             return None  # Not a hole feature
         
         diameter = feature.params.get("diameter")
+        
+        # Skip validation if parameter is not a number
+        if isinstance(diameter, str):
+            return None
+            
         if not diameter:
             return None
         
@@ -210,6 +228,10 @@ class ToolAccessValidator(GeometryValidator):
         # Simplified: check extrude depth vs tool length
         if feature.type == "extrude":
             depth = feature.params.get("depth") or feature.params.get("distance", 0)
+            
+            # Skip validation if parameter is not a number
+            if isinstance(depth, str):
+                return None
             
             if self.constraints.max_tool_length and depth > self.constraints.max_tool_length:
                 return CompilerError(
