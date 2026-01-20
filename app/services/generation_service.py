@@ -1,18 +1,31 @@
 """
 Generation Service Layer - Orchestrates CAD generation pipelines.
-Isolates business logic from HTTP routing layer.
+
+==============================================================================
+ARCHITECTURE: Pipeline with Intelligence Boundary
+==============================================================================
+
+The generation pipeline enforces a strict separation between:
+1. Intelligence Layer (ConstructionPlan) - All reasoning happens here
+2. Execution Layer (FeatureGraphIR) - Pure mechanical operations
+
+HARD CONTRACT:
+    FeatureGraph should NEVER exist without a ConstructionPlan upstream.
+
+Pipeline:
+    Prompt → DecomposedIntent → ConstructionPlan → FeatureGraph → IR → Compiler
 """
 import uuid
 import datetime
 import json
 from pathlib import Path
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Optional
 import logging
 
 from app.config import settings
 from app.domain.generation_result import GenerationResult
 from app.domain.feature_graph import FeatureGraph, Feature
-# [NEW] Import V1 Schema
+# Import V1 Schema
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from app.domain.feature_graph_v3 import FeatureGraphV3
 from pydantic import ValidationError
@@ -25,7 +38,16 @@ from app.services.intent_contract import DecomposedIntent
 from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
 from app.services.dataset_writer import write_dataset_sample
 from app.domain.dataset_sample import DatasetSample
-from app.domain.construction_plan import ConstructionPlan, PlanParameter
+
+# Import enhanced ConstructionPlan (Intelligence Boundary)
+from app.domain.construction_plan import (
+    ConstructionPlan,
+    ConstructionStep,
+    PlanParameter,
+    PlanStatus,
+    PlanSource,
+    PlanPersistence
+)
 
 # Use centralized configuration
 MAX_RETRIES = settings.max_llm_retries
@@ -107,83 +129,211 @@ class GenerationService:
     def generate_construction_plan(prompt: str, intent: DecomposedIntent) -> ConstructionPlan:
         """
         Generate a ConstructionPlan from decomposed intent.
-        
-        This is the intermediate reasoning layer between DecomposedIntent and FeatureGraph.
-        It captures explicit construction steps, parameters, and assumptions.
-        
+
+        ===========================================================================
+        THIS IS THE INTELLIGENCE BOUNDARY
+        ===========================================================================
+
+        All reasoning, design decisions, and intent interpretation happens HERE.
+        The output ConstructionPlan is:
+        - Persisted for traceability
+        - Inspectable by users
+        - Rejectable if incorrect
+        - Editable before execution
+
         Args:
             prompt: Original user prompt
             intent: Decomposed intent from prompt analysis
-            
+
         Returns:
             ConstructionPlan with construction sequence and parameters
         """
-        construction_sequence = []
+        import re
+
+        steps = []
         parameters = {}
         assumptions = []
         open_questions = []
-        
+        warnings = []
+        step_order = 1
+
         keywords = prompt.lower()
-        
-        # Build construction sequence from intent
+
+        # Build construction sequence from intent with structured steps
         if "base_profile" in intent.sketch_intent:
-            construction_sequence.append("Create base sketch on XY plane")
-            
+            steps.append(ConstructionStep(
+                order=step_order,
+                description="Create base sketch on XY plane",
+                feature_type=None,
+                sketch_required=True,
+                reasoning="Starting with 2D profile for extrusion"
+            ))
+            step_order += 1
+
             # Detect shape type for more specific instructions
             if "box" in keywords or "rectangle" in keywords:
-                construction_sequence.append("Draw rectangle with width and height parameters")
-                parameters["width"] = PlanParameter(unit="mm", default=50.0, min_value=1.0)
-                parameters["height"] = PlanParameter(unit="mm", default=50.0, min_value=1.0)
+                steps.append(ConstructionStep(
+                    order=step_order,
+                    description="Draw rectangle with width and height parameters",
+                    feature_type="sketch",
+                    sketch_required=True,
+                    parameters_used=["width", "height"],
+                    reasoning="Box requires rectangular base profile"
+                ))
+                step_order += 1
+                parameters["width"] = PlanParameter(
+                    unit="mm",
+                    default=50.0,
+                    min_value=1.0,
+                    semantic_name="Base Width",
+                    reasoning="Default size, will be overridden by prompt values"
+                )
+                parameters["height"] = PlanParameter(
+                    unit="mm",
+                    default=50.0,
+                    min_value=1.0,
+                    semantic_name="Base Height",
+                    reasoning="Default size, will be overridden by prompt values"
+                )
             elif "plate" in keywords:
-                construction_sequence.append("Draw rectangle for plate base")
-                parameters["length"] = PlanParameter(unit="mm", default=100.0, min_value=1.0)
-                parameters["width"] = PlanParameter(unit="mm", default=50.0, min_value=1.0)
-        
+                steps.append(ConstructionStep(
+                    order=step_order,
+                    description="Draw rectangle for plate base",
+                    feature_type="sketch",
+                    sketch_required=True,
+                    parameters_used=["length", "width"],
+                    reasoning="Plate is a flat rectangular shape"
+                ))
+                step_order += 1
+                parameters["length"] = PlanParameter(
+                    unit="mm",
+                    default=100.0,
+                    min_value=1.0,
+                    semantic_name="Plate Length"
+                )
+                parameters["width"] = PlanParameter(
+                    unit="mm",
+                    default=50.0,
+                    min_value=1.0,
+                    semantic_name="Plate Width"
+                )
+
         if "circle" in intent.sketch_intent:
             if "hole" in keywords:
-                construction_sequence.append("Add circular cutout sketch")
-                parameters["hole_diameter"] = PlanParameter(unit="mm", default=10.0, min_value=0.5)
+                steps.append(ConstructionStep(
+                    order=step_order,
+                    description="Add circular cutout sketch",
+                    feature_type="cut",
+                    sketch_required=True,
+                    parameters_used=["hole_diameter"],
+                    reasoning="Hole requires circular profile for cut operation"
+                ))
+                step_order += 1
+                parameters["hole_diameter"] = PlanParameter(
+                    unit="mm",
+                    default=10.0,
+                    min_value=0.5,
+                    semantic_name="Hole Diameter",
+                    is_critical=True
+                )
             elif "cylinder" in keywords or "shaft" in keywords:
-                construction_sequence.append("Create circular profile sketch")
-                parameters["diameter"] = PlanParameter(unit="mm", default=20.0, min_value=1.0)
-        
+                steps.append(ConstructionStep(
+                    order=step_order,
+                    description="Create circular profile sketch",
+                    feature_type="sketch",
+                    sketch_required=True,
+                    parameters_used=["diameter"],
+                    reasoning="Cylinder requires circular base profile"
+                ))
+                step_order += 1
+                parameters["diameter"] = PlanParameter(
+                    unit="mm",
+                    default=20.0,
+                    min_value=1.0,
+                    semantic_name="Cylinder Diameter"
+                )
+
         if "extrude" in intent.feature_intent:
-            construction_sequence.append("Extrude sketch to depth")
-            parameters["depth"] = PlanParameter(unit="mm", default=20.0, min_value=0.1)
-        
+            steps.append(ConstructionStep(
+                order=step_order,
+                description="Extrude sketch to depth",
+                feature_type="extrude",
+                sketch_required=False,
+                parameters_used=["depth"],
+                reasoning="Create 3D solid from 2D profile"
+            ))
+            step_order += 1
+            parameters["depth"] = PlanParameter(
+                unit="mm",
+                default=20.0,
+                min_value=0.1,
+                semantic_name="Extrusion Depth"
+            )
+
         # Extract numeric values from prompt if present
-        import re
         numbers = re.findall(r'(\d+(?:\.\d+)?)\s*(?:mm|cm|inch|in)?', keywords)
         if len(numbers) >= 1 and "width" in parameters:
-            parameters["width"] = PlanParameter(unit="mm", default=float(numbers[0]), min_value=1.0)
+            parameters["width"] = parameters["width"].model_copy(update={
+                "default": float(numbers[0]),
+                "reasoning": f"Extracted from prompt: {numbers[0]}"
+            })
         if len(numbers) >= 2 and "height" in parameters:
-            parameters["height"] = PlanParameter(unit="mm", default=float(numbers[1]), min_value=1.0)
+            parameters["height"] = parameters["height"].model_copy(update={
+                "default": float(numbers[1]),
+                "reasoning": f"Extracted from prompt: {numbers[1]}"
+            })
         if len(numbers) >= 3 and "depth" in parameters:
-            parameters["depth"] = PlanParameter(unit="mm", default=float(numbers[2]), min_value=0.1)
-        
+            parameters["depth"] = parameters["depth"].model_copy(update={
+                "default": float(numbers[2]),
+                "reasoning": f"Extracted from prompt: {numbers[2]}"
+            })
+
         # Add default assumptions
-        if construction_sequence:
+        if steps:
             assumptions.append("Part centered on origin")
             assumptions.append("All dimensions in millimeters")
-        
+            assumptions.append("Using Build123d as primary CAD kernel")
+
         # If we couldn't determine construction steps, flag as open question
-        if not construction_sequence:
-            construction_sequence.append("Determine base geometry from user input")
-            open_questions.append("Unable to determine specific geometry - please provide more details")
-        
-        return ConstructionPlan(
+        if not steps:
+            steps.append(ConstructionStep(
+                order=1,
+                description="Determine base geometry from user input",
+                feature_type=None,
+                sketch_required=False,
+                reasoning="Unable to parse specific geometry from prompt"
+            ))
+            open_questions.append(
+                "Unable to determine specific geometry - please provide more details"
+            )
+
+        # Check for unsupported features and add warnings
+        if intent.unsupported_intent:
+            for unsupported in intent.unsupported_intent:
+                warnings.append(
+                    f"Feature '{unsupported}' was requested but is not fully supported"
+                )
+
+        # Create the plan with unique ID and full traceability
+        plan = ConstructionPlan(
+            prompt=prompt,
+            source=PlanSource.HEURISTIC,
+            status=PlanStatus.DRAFT,
             base_reference="XY plane",
-            construction_sequence=construction_sequence,
+            construction_sequence=steps,
             parameters=parameters,
             assumptions=assumptions,
             open_questions=open_questions,
+            warnings=warnings,
             design_rationale=f"Generated from prompt: {prompt[:100]}..."
         )
-    
+
+        return plan
+
     def __init__(self, output_dir: Path = Path("outputs"), llm_client: LLMClient = None, use_v3_compiler: bool = False, use_two_stage: bool = False):
         """
         Initialize the generation service.
-        
+
         Args:
             output_dir: Directory for output files
             llm_client: Optional injected LLM client
@@ -192,11 +342,10 @@ class GenerationService:
         """
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
-        
-        # Dependencies
-        self.output_dir = output_dir
-        self.output_dir.mkdir(exist_ok=True)
-        
+
+        # Plan Persistence (Intelligence Boundary traceability)
+        self.plan_persistence = PlanPersistence(storage_dir="data/plans")
+
         # Core Components
         # Build123d is the primary CAD compiler
         if use_v3_compiler:
@@ -206,10 +355,10 @@ class GenerationService:
         else:
             self.compiler = Build123dCompiler(output_dir=output_dir)
             logger.info("Using Build123dCompiler (Standard)")
-        
+
         self.v1_compiler = FeatureGraphCompilerV1()
         self.llm_client = llm_client or LLMClient()
-        
+
         # Phase 4: Two-stage mode
         self.use_two_stage = use_two_stage
         if use_two_stage:
