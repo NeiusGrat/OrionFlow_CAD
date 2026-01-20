@@ -1,10 +1,24 @@
 """
-Canonical Feature Graph (CFG) v1 - OrionFlow's Core Data Model
+Canonical Feature Graph (CFG) v1 - LLM Output Schema
 
-A declarative, order-aware, parametric representation of CAD models.
-Designed for portability (Build123d, Onshape, SketchGraphs).
+==============================================================================
+IMPORTANT: This is the LLM OUTPUT schema, NOT the compiler input.
+==============================================================================
 
-Version: v1 (FINAL)
+This schema defines what the LLM produces. It may contain:
+- Parameter REFERENCES ("$param_name") - not resolved yet
+- Minimal metadata for tracking
+
+PIPELINE POSITION:
+    LLM → FeatureGraph (this file) → IRBuilder → FeatureGraphIR → Compiler
+
+For the compiled Execution IR (what the compiler sees), use:
+    app.domain.feature_graph_ir.FeatureGraphIR
+
+This schema will be DEPRECATED in favor of FeatureGraphIR once the
+full pipeline migration is complete.
+
+Version: v1 (LEGACY - prefer FeatureGraphIR for new code)
 """
 from typing import List, Dict, Optional, Literal, Union, Any
 from pydantic import BaseModel, Field, validator
@@ -122,3 +136,102 @@ class FeatureGraph(BaseModel):
             if not isinstance(val, (int, float)):
                 raise ValueError(f"Parameter '{name}' must be a number, got {type(val)}")
         return v
+
+    # -------------------------------------------------------------------------
+    # IR Conversion Methods
+    # -------------------------------------------------------------------------
+
+    def to_ir(self, source_plan_id: Optional[str] = None):
+        """
+        Convert this FeatureGraph to FeatureGraphIR (Execution IR).
+
+        This resolves all "$param" references and validates the result.
+        Use this before passing to the compiler.
+
+        Args:
+            source_plan_id: Optional ID of source ConstructionPlan for tracing
+
+        Returns:
+            FeatureGraphIR with all parameters resolved
+
+        Raises:
+            ValueError: If parameter resolution fails
+        """
+        from app.domain.feature_graph_ir import IRBuilder
+        return IRBuilder.from_feature_graph_v1(self, source_plan_id)
+
+    def validate_for_ir(self) -> List[str]:
+        """
+        Validate this FeatureGraph against IR rules.
+
+        Returns list of violations (empty if valid).
+        Call this to check if the graph can be converted to IR.
+        """
+        violations = []
+
+        # Check for forbidden metadata fields (should be in ConstructionPlan)
+        forbidden_metadata = [
+            "symmetry", "manufacturing_intent", "functional_requirements",
+            "design_rationale", "material_preference", "assumptions",
+            "open_questions", "manufacturing_constraints"
+        ]
+
+        if self.metadata:
+            for key in forbidden_metadata:
+                if key in self.metadata:
+                    violations.append(
+                        f"Metadata contains forbidden field '{key}' - "
+                        f"this belongs in ConstructionPlan, not FeatureGraph"
+                    )
+
+        # Check for undefined parameter references
+        param_names = set(self.parameters.keys())
+
+        for sketch in self.sketches:
+            for entity in sketch.entities:
+                for key, val in entity.params.items():
+                    if isinstance(val, str) and val.startswith("$"):
+                        ref_name = val[1:]
+                        if ref_name not in param_names:
+                            violations.append(
+                                f"Sketch entity '{entity.id}' references "
+                                f"undefined parameter '{ref_name}'"
+                            )
+
+        for feature in self.features:
+            for key, val in feature.params.items():
+                if isinstance(val, str) and val.startswith("$"):
+                    ref_name = val[1:]
+                    if ref_name not in param_names:
+                        violations.append(
+                            f"Feature '{feature.id}' references "
+                            f"undefined parameter '{ref_name}'"
+                        )
+
+        return violations
+
+    def strip_forbidden_fields(self) -> "FeatureGraph":
+        """
+        Return a copy with forbidden metadata fields removed.
+
+        Use this to clean LLM output before conversion to IR.
+        """
+        forbidden = {
+            "symmetry", "manufacturing_intent", "functional_requirements",
+            "design_rationale", "material_preference", "assumptions",
+            "open_questions", "manufacturing_constraints"
+        }
+
+        clean_metadata = {
+            k: v for k, v in (self.metadata or {}).items()
+            if k not in forbidden
+        }
+
+        return FeatureGraph(
+            version=self.version,
+            units=self.units,
+            parameters=self.parameters.copy(),
+            sketches=self.sketches.copy(),
+            features=self.features.copy(),
+            metadata=clean_metadata
+        )
