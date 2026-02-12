@@ -9,6 +9,10 @@ import { useAuthStore } from "./store/authStore";
 import { ArrowRight } from "lucide-react";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
+import BlogPage from "./pages/BlogPage";
+import AboutPage from "./pages/AboutPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 import OrionFlowLogo from "./components/OrionFlowLogo";
 
 // Protected route wrapper
@@ -328,6 +332,10 @@ export default function App() {
         <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/app" element={
                 <ProtectedRoute>
                     <CADApp />

@@ -1,0 +1,120 @@
+# OrionFlow CAD Engine - Development Docker Compose
+# Simplified setup for local development
+
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # API Service (Development)
+  # ===========================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: orionflow-api-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=orionflow
+      - DB_PASSWORD=orionflow
+      - DB_NAME=orionflow
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+    volumes:
+      - ./app:/app/app:ro  # Mount source for hot reload
+      - outputs:/app/outputs
+      - data:/app/data
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - orionflow-dev
+
+  # ===========================================================================
+  # Celery Worker (Development)
+  # ===========================================================================
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    container_name: orionflow-worker-dev
+    command: celery -A app.workers.celery_app worker --loglevel=debug --concurrency=2
+    environment:
+      - ENVIRONMENT=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=orionflow
+      - DB_PASSWORD=orionflow
+      - DB_NAME=orionflow
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - ./app:/app/app:ro
+      - outputs:/app/outputs
+      - data:/app/data
+    depends_on:
+      - api
+      - redis
+      - postgres
+    networks:
+      - orionflow-dev
+
+  # ===========================================================================
+  # PostgreSQL Database
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: orionflow-postgres-dev
+    environment:
+      - POSTGRES_USER=orionflow
+      - POSTGRES_PASSWORD=orionflow
+      - POSTGRES_DB=orionflow
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - orionflow-dev
+
+  # ===========================================================================
+  # Redis
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: orionflow-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - orionflow-dev
+
+  # ===========================================================================
+  # Adminer (Database UI)
+  # ===========================================================================
+  adminer:
+    image: adminer:latest
+    container_name: orionflow-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - orionflow-dev
+
+networks:
+  orionflow-dev:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+  outputs:
+  data:
