@@ -29,11 +29,22 @@ from app.domain.feature_graph import FeatureGraph, Feature
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from app.domain.feature_graph_v3 import FeatureGraphV3
 from pydantic import ValidationError
-from app.compilers.build123d_compiler import Build123dCompiler
-from app.compilers.v1.compiler import FeatureGraphCompilerV1
 from app.services.retry_policy import is_retryable
-from build123d import export_gltf, export_step, export_stl
 from app.llm import LLMClient
+
+# Conditional CAD imports
+try:
+    from app.compilers.build123d_compiler import Build123dCompiler
+    from app.compilers.v1.compiler import FeatureGraphCompilerV1
+    from build123d import export_gltf, export_step, export_stl
+    BUILD123D_AVAILABLE = True
+except ImportError:
+    BUILD123D_AVAILABLE = False
+    Build123dCompiler = None
+    FeatureGraphCompilerV1 = None
+    export_gltf = None
+    export_step = None
+    export_stl = None
 from app.services.intent_contract import DecomposedIntent
 from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
 from app.services.dataset_writer import write_dataset_sample
@@ -353,15 +364,20 @@ class GenerationService:
 
         # Core Components
         # Build123d is the primary CAD compiler
-        if use_v3_compiler:
-            from app.compilers import Build123dCompilerV3
-            self.compiler = Build123dCompilerV3(output_dir=output_dir)
-            logger.info("Using Build123dCompilerV3 (Phase 2: Topological Identity)")
-        else:
-            self.compiler = Build123dCompiler(output_dir=output_dir)
-            logger.info("Using Build123dCompiler (Standard)")
+        self.compiler = None
+        self.v1_compiler = None
 
-        self.v1_compiler = FeatureGraphCompilerV1()
+        if BUILD123D_AVAILABLE:
+            if use_v3_compiler:
+                from app.compilers import Build123dCompilerV3
+                self.compiler = Build123dCompilerV3(output_dir=output_dir)
+                logger.info("Using Build123dCompilerV3 (Phase 2: Topological Identity)")
+            else:
+                self.compiler = Build123dCompiler(output_dir=output_dir)
+                logger.info("Using Build123dCompiler (Standard)")
+            self.v1_compiler = FeatureGraphCompilerV1()
+        else:
+            logger.warning("CAD compilers not available - build123d not installed")
         self.llm_client = llm_client or LLMClient()
 
         # Phase 4: Two-stage mode

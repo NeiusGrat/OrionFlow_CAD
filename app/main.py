@@ -14,7 +14,14 @@ API Endpoints:
     GET  /health                   - Health check endpoint
     GET  /docs                     - OpenAPI documentation (Swagger UI)
     GET  /redoc                    - ReDoc documentation
+
+    /api/v1/auth/*    - Authentication endpoints
+    /api/v1/users/*   - User management endpoints
+    /api/v1/designs/* - Design management endpoints
+    /api/v1/billing/* - Billing and subscription endpoints
+    /api/v1/jobs/*    - Async job management endpoints
 """
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -23,6 +30,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from prometheus_client import make_asgi_app
 
 # Centralized Configuration
 from app.config import settings
@@ -40,9 +48,82 @@ from app.services.generation_service import GenerationService
 from app.domain.feature_graph import FeatureGraph
 from app.cad.describe import describe_feature_graph
 
+# API Routes
+from app.api.v1 import api_router
+
+# Middleware
+from app.middleware.rate_limit import limiter, RateLimitMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
+
 # Configure structured logging
 configure_logging()
 logger = get_logger(__name__)
+
+
+# =============================================================================
+# Lifespan Management
+# =============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan management."""
+    # Startup
+    logger.info("=" * 60)
+    logger.info("OrionFlow CAD Engine Starting")
+    logger.info("=" * 60)
+    logger.info(f"Environment: {settings.environment}")
+    logger.info(f"API Version: {settings.app_version}")
+    logger.info(f"Output Directory: {settings.output_dir}")
+    logger.info(f"LLM Provider: {settings.llm_provider}")
+    logger.info(f"LLM Configured: {settings.has_llm_api_key}")
+    logger.info(f"Database: {settings.db_host}:{settings.db_port}/{settings.db_name}")
+    logger.info(f"Redis: {settings.redis_host}:{settings.redis_port}")
+    logger.info(f"Stripe: {'configured' if settings.is_stripe_configured else 'not configured'}")
+    logger.info(f"Debug Mode: {settings.debug}")
+    logger.info("=" * 60)
+
+    # Initialize database
+    if not settings.testing:
+        try:
+            from app.db.session import init_db
+            await init_db()
+            logger.info("Database initialized")
+        except Exception as e:
+            logger.error(f"Database initialization failed: {e}")
+
+    # Initialize Sentry
+    if settings.sentry_dsn:
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.fastapi import FastApiIntegration
+            from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+            sentry_sdk.init(
+                dsn=settings.sentry_dsn,
+                environment=settings.sentry_environment or settings.environment,
+                integrations=[
+                    FastApiIntegration(),
+                    SqlalchemyIntegration(),
+                ],
+                traces_sample_rate=0.1 if settings.is_production else 1.0,
+            )
+            logger.info("Sentry initialized")
+        except Exception as e:
+            logger.warning(f"Sentry initialization failed: {e}")
+
+    yield
+
+    # Shutdown
+    logger.info("OrionFlow CAD Engine Shutting Down")
+
+    # Close database connections
+    if not settings.testing:
+        try:
+            from app.db.session import close_db
+            await close_db()
+            logger.info("Database connections closed")
+        except Exception as e:
+            logger.error(f"Database shutdown error: {e}")
 
 
 # =============================================================================
@@ -51,7 +132,7 @@ logger = get_logger(__name__)
 
 class GenerateRequest(BaseModel):
     """Request body for CAD generation from natural language."""
-    
+
     prompt: str = Field(
         ...,
         min_length=3,
@@ -61,7 +142,7 @@ class GenerateRequest(BaseModel):
             "example": "Create a 20mm tall cylinder with 10mm radius"
         }
     )
-    
+
     backend: Optional[str] = Field(
         default="build123d",
         description="CAD backend to use: 'build123d' (local) or 'onshape' (cloud)"
@@ -70,12 +151,12 @@ class GenerateRequest(BaseModel):
 
 class RegenerateRequest(BaseModel):
     """Request body for regenerating CAD from edited feature graph."""
-    
+
     feature_graph: Dict = Field(
         ...,
         description="The edited FeatureGraph JSON structure"
     )
-    
+
     prompt: str = Field(
         default="",
         description="Optional prompt context for feedback logging"
@@ -84,7 +165,7 @@ class RegenerateRequest(BaseModel):
 
 class DescribeRequest(BaseModel):
     """Request body for describing a feature graph in plain text."""
-    
+
     feature_graph: Dict = Field(
         ...,
         description="The FeatureGraph JSON to describe"
@@ -104,12 +185,12 @@ class DownloadLinks(BaseModel):
 
 class GenerateResponse(BaseModel):
     """Response from CAD generation endpoint."""
-    
+
     model_id: str = Field(..., description="Unique identifier for the generated model")
     viewer: ViewerInfo = Field(..., description="3D viewer information")
     downloads: DownloadLinks = Field(..., description="Download links for CAD files")
     cfg: Dict = Field(..., description="The generated FeatureGraph (CFG)")
-    
+
     model_config = {
         "json_schema_extra": {
             "example": {
@@ -140,7 +221,10 @@ class HealthResponse(BaseModel):
     """Response from health check endpoint."""
     status: str = Field(..., description="Service status")
     version: str = Field(..., description="API version")
+    environment: str = Field(..., description="Environment name")
     llm_configured: bool = Field(..., description="Whether LLM API is configured")
+    database_connected: bool = Field(..., description="Whether database is connected")
+    redis_connected: bool = Field(..., description="Whether Redis is connected")
     onshape_configured: bool = Field(..., description="Whether Onshape integration is configured")
 
 
@@ -167,6 +251,8 @@ OrionFlow converts natural language descriptions into parametric CAD models.
 - **Parametric Output**: Edit dimensions after generation
 - **Multiple Formats**: Export to STEP, STL, and GLB
 - **Cloud Sync**: Optional Onshape integration
+- **User Accounts**: Save and manage your designs
+- **API Access**: Programmatic access with API keys
 
 ### Quick Start
 ```bash
@@ -175,12 +261,16 @@ curl -X POST http://localhost:8000/generate \\
   -d '{"prompt": "Create a 20mm cube"}'
 ```
 
+### Authentication
+- Use JWT Bearer tokens for user authentication
+- Use API keys (X-API-Key header) for programmatic access
+
 ### Supported Primitives
 - Rectangle, Circle, Polygon profiles
 - Extrude, Revolve operations
 - Fillet, Chamfer features (coming soon)
     """,
-    version="0.2.0",
+    version=settings.app_version,
     contact={
         "name": "OrionFlow Team",
         "url": "https://github.com/sahilmaniyar888/OrionFlow_CAD"
@@ -190,9 +280,15 @@ curl -X POST http://localhost:8000/generate \\
     },
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
     openapi_tags=[
         {"name": "Generation", "description": "CAD generation endpoints"},
         {"name": "Downloads", "description": "File download endpoints"},
+        {"name": "Authentication", "description": "User authentication endpoints"},
+        {"name": "Users", "description": "User management endpoints"},
+        {"name": "Designs", "description": "Design management endpoints"},
+        {"name": "Billing", "description": "Billing and subscription endpoints"},
+        {"name": "Jobs", "description": "Async job management endpoints"},
         {"name": "Utilities", "description": "Utility endpoints"},
     ]
 )
@@ -206,6 +302,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add rate limiting (state stored in app)
+app.state.limiter = limiter
+
 
 # =============================================================================
 # Middleware: Request ID Tracking
@@ -216,17 +318,17 @@ async def request_id_middleware(request: Request, call_next):
     """Add request ID to each request for tracing."""
     request_id = request.headers.get("X-Request-ID") or generate_request_id()
     set_request_id(request_id)
-    
+
     logger.info(
         "request_started",
         method=request.method,
         path=request.url.path,
         request_id=request_id
     )
-    
+
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
-    
+
     logger.info(
         "request_completed",
         method=request.method,
@@ -234,7 +336,7 @@ async def request_id_middleware(request: Request, call_next):
         status_code=response.status_code,
         request_id=request_id
     )
-    
+
     return response
 
 
@@ -302,6 +404,13 @@ async def general_exception_handler(request: Request, exc: Exception):
 settings.output_dir.mkdir(exist_ok=True)
 app.mount("/outputs", StaticFiles(directory=str(settings.output_dir)), name="outputs")
 
+# Mount Prometheus metrics
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
+# Include API v1 routes
+app.include_router(api_router)
+
 # Initialize Generation Service with configuration
 generation_service = GenerationService(
     output_dir=settings.output_dir,
@@ -309,13 +418,9 @@ generation_service = GenerationService(
     use_two_stage=settings.use_two_stage_pipeline
 )
 
-# Log startup configuration
-if settings.debug:
-    settings.print_config_summary()
-
 
 # =============================================================================
-# API Endpoints
+# Core API Endpoints (Legacy - for backwards compatibility)
 # =============================================================================
 
 @app.get(
@@ -327,13 +432,34 @@ if settings.debug:
 async def health_check():
     """
     Check service health and configuration status.
-    
+
     Returns current API version and configuration state.
     """
+    # Check database connectivity
+    db_connected = False
+    if not settings.testing:
+        try:
+            from app.db.session import check_db_health
+            db_connected = await check_db_health()
+        except Exception:
+            pass
+
+    # Check Redis connectivity
+    redis_connected = False
+    try:
+        import redis
+        r = redis.from_url(settings.redis_url)
+        redis_connected = r.ping()
+    except Exception:
+        pass
+
     return HealthResponse(
         status="healthy",
-        version="0.2.0",
+        version=settings.app_version,
+        environment=settings.environment,
         llm_configured=settings.has_llm_api_key,
+        database_connected=db_connected,
+        redis_connected=redis_connected,
         onshape_configured=settings.is_onshape_configured
     )
 
@@ -351,15 +477,15 @@ async def health_check():
 async def generate_cad(request: GenerateRequest):
     """
     Generate a parametric CAD model from natural language prompt.
-    
+
     This endpoint uses LLM to interpret the prompt and generate a FeatureGraph,
     which is then compiled to geometry (STEP, STL, GLB files).
-    
+
     **Example prompts:**
     - "Create a 20mm tall cylinder with 10mm radius"
     - "Make a rectangular plate 50mm x 30mm x 5mm thick"
     - "Design a box with rounded corners"
-    
+
     **Response includes:**
     - `model_id`: Unique identifier for the generated model
     - `viewer.glb_url`: URL to GLB file for 3D preview
@@ -367,25 +493,25 @@ async def generate_cad(request: GenerateRequest):
     - `cfg`: The generated FeatureGraph (editable parameters)
     """
     logger.info(f"Generate request: prompt='{request.prompt[:50]}...'")
-    
+
     try:
         result = await generation_service.generate(
-            request.prompt, 
+            request.prompt,
             backend=request.backend
         )
     except ValueError as e:
         logger.warning(f"Generation validation error: {e}")
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail={"error": str(e), "code": "VALIDATION_ERROR", "retryable": False}
         )
     except Exception as e:
         logger.error(f"Generation failed: {e}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail={"error": str(e), "code": "GENERATION_FAILED", "retryable": True}
         )
-    
+
     # Build response
     fg_data = result.metadata.get("feature_graph", {})
     if "parameters" not in fg_data and "parameters" in result.metadata:
@@ -416,47 +542,37 @@ async def generate_cad(request: GenerateRequest):
 async def regenerate_cad(request: RegenerateRequest):
     """
     Regenerate CAD geometry from an edited FeatureGraph.
-    
+
     Use this endpoint after modifying parameters in the `cfg` object
     returned from `/generate`. This enables parametric editing without
     re-invoking the LLM.
-    
-    **Workflow:**
-    1. Call `/generate` to create initial model
-    2. Modify `cfg.parameters` (e.g., increase `height` from 20 to 30)
-    3. Call `/regenerate` with modified `cfg`
-    4. Receive new geometry files
-    
-    **Supports conversational edits:**
-    - Include `prompt` to apply natural language edits
-    - Example: `{"prompt": "make it taller", "feature_graph": {...}}`
     """
     from app.services.conversational_editor import ConversationalEditor
     from app.domain.feature_graph import FeatureGraph
-    
+
     try:
         # Parse feature graph
         feature_graph = FeatureGraph(**request.feature_graph)
-        
+
         # Apply conversational edit if prompted
         if request.prompt and request.prompt.strip():
             editor = ConversationalEditor()
             feature_graph = await editor.apply_edit(feature_graph, request.prompt)
             logger.info(f"Applied conversational edit: '{request.prompt}'")
-        
+
         # Regenerate geometry
         result = await generation_service.regenerate(
-            feature_graph.model_dump(), 
+            feature_graph.model_dump(),
             request.prompt
         )
-        
+
     except Exception as e:
         logger.error(f"Regeneration failed: {e}")
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail={"error": str(e), "code": "REGENERATION_FAILED", "retryable": False}
         )
-    
+
     return GenerateResponse(
         model_id=result.metadata["job_id"],
         viewer=ViewerInfo(
@@ -479,11 +595,6 @@ async def regenerate_cad(request: RegenerateRequest):
 def describe_cad(request: DescribeRequest):
     """
     Convert a FeatureGraph to human-readable description.
-    
-    Useful for:
-    - Generating documentation
-    - Accessibility features
-    - Debugging CAD structures
     """
     try:
         graph = FeatureGraph(**request.feature_graph)
@@ -492,7 +603,7 @@ def describe_cad(request: DescribeRequest):
     except Exception as e:
         logger.error(f"Describe failed: {e}")
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail={"error": str(e), "code": "DESCRIBE_FAILED", "retryable": False}
         )
 
@@ -503,14 +614,7 @@ def describe_cad(request: DescribeRequest):
     summary="Download STEP file"
 )
 def download_step(filename: str):
-    """
-    Download a STEP file by filename.
-    
-    STEP files contain exact B-Rep geometry suitable for:
-    - CNC machining
-    - Professional CAD software import
-    - Manufacturing workflows
-    """
+    """Download a STEP file by filename."""
     file_path = settings.output_dir / filename
 
     if not file_path.exists():
@@ -529,14 +633,7 @@ def download_step(filename: str):
     summary="Download STL file"
 )
 def download_stl(filename: str):
-    """
-    Download an STL file by filename.
-    
-    STL files contain tessellated mesh geometry suitable for:
-    - 3D printing (FDM, SLA, SLS)
-    - Rendering and visualization
-    - Mesh processing
-    """
+    """Download an STL file by filename."""
     file_path = settings.output_dir / filename
 
     if not file_path.exists():
@@ -547,29 +644,3 @@ def download_stl(filename: str):
         media_type="application/sla",
         filename=filename,
     )
-
-
-# =============================================================================
-# Startup/Shutdown Events
-# =============================================================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Log startup information."""
-    logger.info("=" * 60)
-    logger.info("OrionFlow CAD Engine Starting")
-    logger.info("=" * 60)
-    logger.info(f"API Version: 0.2.0")
-    logger.info(f"Output Directory: {settings.output_dir}")
-    logger.info(f"LLM Provider: {settings.llm_provider}")
-    logger.info(f"LLM Configured: {settings.has_llm_api_key}")
-    logger.info(f"Onshape Configured: {settings.is_onshape_configured}")
-    logger.info(f"CORS Origins: {settings.cors_origins_list}")
-    logger.info(f"Debug Mode: {settings.debug}")
-    logger.info("=" * 60)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Log shutdown."""
-    logger.info("OrionFlow CAD Engine Shutting Down")

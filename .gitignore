@@ -2,6 +2,11 @@
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
 
 # CAD outputs
 outputs/
@@ -12,7 +17,25 @@ outputs/
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Env (keep .env.example for documentation)
 .env
 !.env.example
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Node (frontend)
+orionflow-ui/node_modules/
+
+# Data (local only)
+data/
+archive/
