@@ -11,7 +11,10 @@
       "Bash(git -C e:\\\\OrionFLow_CAD status:*)",
       "Bash(git -C e:OrionFLow_CAD log --oneline -5)",
       "Bash(E:)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(wc:*)",
+      "Bash(pip install:*)",
+      "Bash(where:*)"
     ]
   }
 }

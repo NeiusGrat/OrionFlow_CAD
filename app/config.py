@@ -105,6 +105,24 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
+    # OFL (OrionFlow Language) Configuration
+    # -------------------------------------------------------------------------
+    ofl_llm_provider: str = Field(
+        default="groq",
+        description="OFL LLM provider: groq or local"
+    )
+
+    ofl_groq_model: str = Field(
+        default="llama-3.3-70b-versatile",
+        description="Groq model for OFL code generation"
+    )
+
+    ofl_local_model_path: Optional[str] = Field(
+        default=None,
+        description="Local model path (for fine-tuned OFL model)"
+    )
+
+    # -------------------------------------------------------------------------
     # Server Configuration
     # -------------------------------------------------------------------------
     api_host: str = Field(
