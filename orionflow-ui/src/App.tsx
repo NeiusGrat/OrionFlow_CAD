@@ -3,9 +3,12 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import LeftSidebar from "./components/Panels/LeftSidebar";
 import ChatPanel from "./components/Panels/ChatPanel";
 import Viewer from "./components/Viewer/Viewer";
+import OFLCodePanel from "./components/Panels/OFLCodePanel";
 import { useDesignStore } from "./store/designStore";
 import { useChatStore, type ChatMessage } from "./store/chatStore";
 import { useAuthStore } from "./store/authStore";
+import { useOFLStore } from "./store/oflStore";
+import { generateOFL, getFullUrl } from "./services/oflApi";
 import { ArrowRight } from "lucide-react";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
@@ -86,30 +89,26 @@ function CADApp() {
         }
 
         try {
-            const response = await fetch("http://127.0.0.1:8000/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: finalPrompt }),
-            });
+            const data = await generateOFL(finalPrompt);
 
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.detail || "Generation failed");
+            // Update OFL store with code/params
+            useOFLStore.getState().setFromResponse(data);
+
+            if (!data.success) {
+                throw new Error(data.error || "Generation failed");
             }
 
-            const data = await response.json();
+            const glbUrl = getFullUrl(data.files.glb) || "";
+            const stepFile = getFullUrl(data.files.step) || "";
+            const stlFile = getFullUrl(data.files.stl) || "";
 
             const assistantMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
-                content: "Here is your updated part:",
+                content: "Part generated! Check the 3D viewer and code panel.",
                 timestamp: Date.now(),
                 partVersion: (useChatStore.getState().getHistory(activeId).filter(m => m.role === 'assistant').length || 0) + 1,
-                files: {
-                    glb: "http://127.0.0.1:8000/" + data.viewer.glb_url,
-                    step: "http://127.0.0.1:8000/" + data.downloads.step,
-                    stl: "http://127.0.0.1:8000/" + data.downloads.stl,
-                }
+                files: { glb: glbUrl, step: stepFile, stl: stlFile },
             };
 
             addMessage(activeId, assistantMsg);
@@ -120,12 +119,11 @@ function CADApp() {
                         return {
                             ...c,
                             files: assistantMsg.files!,
-                            featureGraph: data.cfg,
-                            parameters: data.cfg.parameters || {}
+                            parameters: Object.fromEntries(data.parameters.map(p => [p.name, p.value])),
                         };
                     }
                     return c;
-                })
+                });
                 const curr = state.current?.id === activeId ? updated.find(c => c.id === activeId) : state.current;
                 return { creations: updated, current: curr || null };
             });
@@ -323,6 +321,7 @@ function CADApp() {
             </div>
 
             <ChatPanel onGenerate={handleGenerate} />
+            <OFLCodePanel />
         </div>
     );
 }
