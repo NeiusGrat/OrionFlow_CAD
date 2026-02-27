@@ -23,7 +23,7 @@ def _convert_one_model(
     scale: float,
     text_annotation: str | None,
 ) -> dict:
-    """Process a single DeepCAD JSON file → result dict.
+    """Process a single DeepCAD JSON file -> result dict.
 
     Returns:
         dict with keys: model_id, ok, code (optional), texts (optional).
@@ -155,7 +155,7 @@ class DatasetBuilder:
         Path(report_path).write_text(json.dumps(report, indent=2))
         print(
             f"DeepCAD: {converted} converted, {skipped} skipped, "
-            f"{pairs_written} pairs → {out_path}"
+            f"{pairs_written} pairs -> {out_path}"
         )
 
         # clean up checkpoint on successful completion
@@ -251,7 +251,7 @@ class DatasetBuilder:
         """Process models in parallel via ProcessPoolExecutor.
 
         Uses executor.map() for deterministic (submission-order) output.
-        Main process handles all I/O — no file-handle contention.
+        Main process handles all I/O - no file-handle contention.
         """
         converted = 0
         skipped = 0
@@ -273,41 +273,72 @@ class DatasetBuilder:
         with open(out_path, write_mode, encoding="utf-8") as out_f, \
              open(checkpoint_path, "a", encoding="utf-8") as cp_f:
 
+            if chunk_size == 0:
+                return pairs_written, converted, skipped
+
             print(f"[parallel] Starting {workers} workers for {chunk_size} models")
 
-            with ProcessPoolExecutor(max_workers=workers) as executor:
-                results = executor.map(
-                    _convert_one_model,
-                    *zip(*worker_args),
-                )
+            def _write_result(result: dict) -> tuple[int, int]:
+                model_id = result["model_id"]
 
-                for result in results:
-                    model_id = result["model_id"]
-
-                    if not result["ok"]:
-                        skipped += 1
-                        cp_f.write(model_id + "\n")
-                        cp_f.flush()
-                        continue
-
-                    converted += 1
-                    code = result["code"]
-
-                    for text in result["texts"]:
-                        pair = {
-                            "text": text,
-                            "code": code,
-                            "source": "deepcad",
-                            "complexity": self._estimate_complexity(code),
-                        }
-                        out_f.write(
-                            json.dumps(pair, ensure_ascii=False) + "\n"
-                        )
-                        pairs_written += 1
-
-                    out_f.flush()
+                if not result["ok"]:
                     cp_f.write(model_id + "\n")
                     cp_f.flush()
+                    return 0, 1
+
+                code = result["code"]
+                written = 0
+                for text in result["texts"]:
+                    pair = {
+                        "text": text,
+                        "code": code,
+                        "source": "deepcad",
+                        "complexity": self._estimate_complexity(code),
+                    }
+                    out_f.write(json.dumps(pair, ensure_ascii=False) + "\n")
+                    written += 1
+
+                out_f.flush()
+                cp_f.write(model_id + "\n")
+                cp_f.flush()
+                return written, 0
+
+            try:
+                with ProcessPoolExecutor(max_workers=workers) as executor:
+                    results = executor.map(
+                        _convert_one_model,
+                        *zip(*worker_args),
+                    )
+
+                    for result in results:
+                        wrote, did_skip = _write_result(result)
+                        pairs_written += wrote
+                        if did_skip:
+                            skipped += 1
+                        else:
+                            converted += 1
+
+                        processed = converted + skipped
+                        if log_every > 0 and processed % log_every == 0:
+                            print(
+                                f"[progress] {processed}/{chunk_size} "
+                                f"({converted} ok, {skipped} skip, "
+                                f"{pairs_written} pairs written)"
+                            )
+            except (PermissionError, OSError) as exc:
+                print(f"[parallel] unavailable ({exc}); falling back to sequential")
+                for jf in pending_files:
+                    result = _convert_one_model(
+                        str(jf),
+                        scale,
+                        (text_annotations or {}).get(jf.stem),
+                    )
+                    wrote, did_skip = _write_result(result)
+                    pairs_written += wrote
+                    if did_skip:
+                        skipped += 1
+                    else:
+                        converted += 1
 
                     processed = converted + skipped
                     if log_every > 0 and processed % log_every == 0:
@@ -316,7 +347,6 @@ class DatasetBuilder:
                             f"({converted} ok, {skipped} skip, "
                             f"{pairs_written} pairs written)"
                         )
-
         return pairs_written, converted, skipped
 
     # ------------------------------------------------------------------
