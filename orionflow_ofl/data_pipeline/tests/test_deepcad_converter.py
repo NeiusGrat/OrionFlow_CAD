@@ -136,8 +136,8 @@ class TestSkipCases:
         code = converter.convert(deepcad, model_id="test_plane")
         assert code is None
 
-    def test_skip_join(self, converter):
-        """Join operations should be skipped but base preserved."""
+    def test_additive_join(self, converter):
+        """Join operations should generate additive features."""
         deepcad = {
             "sequence": [
                 _make_rect_sketch(-0.5, -0.5, 0.5, 0.5),
@@ -148,7 +148,9 @@ class TestSkipCases:
         }
         code = converter.convert(deepcad, model_id="test_join")
         assert code is not None
-        assert "skipped 1 join" in code
+        assert "part +=" in code
+        assert ".rect(30.0, 30.0)" in code
+        assert ".extrude(5.0)" in code
 
     def test_empty_sequence(self, converter):
         code = converter.convert({"sequence": []}, model_id="empty")
