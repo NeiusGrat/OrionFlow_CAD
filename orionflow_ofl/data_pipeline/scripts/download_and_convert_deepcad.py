@@ -77,6 +77,27 @@ def _reservoir_add(sample: list[dict], item: dict, seen: int, limit: int) -> Non
         sample[replace_idx] = item
 
 
+def _iter_conversion_results(tasks: list[tuple[str, float]], workers: int):
+    """Yield conversion results using process pool when available, else sequential."""
+    if workers <= 1:
+        for task in tasks:
+            yield _convert_single(task)
+        return
+
+    try:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(_convert_single, t): t for t in tasks}
+            for future in as_completed(futures):
+                try:
+                    yield future.result()
+                except Exception:
+                    yield None
+    except (PermissionError, OSError) as exc:
+        print(f"Process pool unavailable ({exc}); falling back to sequential conversion")
+        for task in tasks:
+            yield _convert_single(task)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Convert DeepCAD JSON to OFL training pairs")
     parser.add_argument("--input-dir", required=True)
@@ -118,43 +139,36 @@ def main() -> None:
     with open(args.output, "w", encoding="utf-8") as outfile:
         tasks = [(str(f), args.scale) for f in json_files]
 
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            futures = {executor.submit(_convert_single, t): t for t in tasks}
+        for result in _iter_conversion_results(tasks, args.workers):
+            total += 1
 
-            for future in as_completed(futures):
-                total += 1
-                try:
-                    result = future.result()
-                except Exception:
-                    result = None
+            if result is None:
+                failed += 1
+            else:
+                success += 1
+                code = result["code"]
+                complexity = _estimate_complexity(code)
 
-                if result is None:
-                    failed += 1
-                else:
-                    success += 1
-                    code = result["code"]
-                    complexity = _estimate_complexity(code)
+                for desc in result["descriptions"]:
+                    pair = {
+                        "text": desc,
+                        "code": code,
+                        "source": "deepcad",
+                        "complexity": complexity,
+                    }
+                    outfile.write(json.dumps(pair, ensure_ascii=False) + "\n")
+                    pair_count += 1
 
-                    for desc in result["descriptions"]:
-                        pair = {
-                            "text": desc,
-                            "code": code,
-                            "source": "deepcad",
-                            "complexity": complexity,
-                        }
-                        outfile.write(json.dumps(pair, ensure_ascii=False) + "\n")
-                        pair_count += 1
+                _reservoir_add(
+                    validation_sample,
+                    {"code": code, "model_id": result["model_id"]},
+                    success,
+                    validate_cap,
+                )
 
-                    _reservoir_add(
-                        validation_sample,
-                        {"code": code, "model_id": result["model_id"]},
-                        success,
-                        validate_cap,
-                    )
-
-                if total % 1000 == 0:
-                    rate = success / total * 100
-                    print(f"{total}: {success} converted ({rate:.1f}%)")
+            if total % 1000 == 0:
+                rate = success / total * 100
+                print(f"{total}: {success} converted ({rate:.1f}%)")
 
     print("\nConversion complete.")
     print(f"Success: {success}")
