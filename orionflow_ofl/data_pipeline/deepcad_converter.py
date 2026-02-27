@@ -33,6 +33,7 @@ class DeepCADConverter:
 
         base = None
         holes: list[dict] = []
+        joins: list[dict] = []
         skipped_cuts = 0
         skipped_joins = 0
 
@@ -94,8 +95,31 @@ class DeepCADConverter:
                 )
 
             elif boolean == "join":
-                skipped_joins += 1
-                continue
+                if base is None:
+                    return None  # Cannot join without base
+
+                profile = self._detect_profile(curves)
+                if profile is None:
+                    skipped_joins += 1
+                    continue
+
+                # SAFETY RULE 1: Only allow joins on same plane as base
+                if plane_name != base["plane"]:
+                    skipped_joins += 1
+                    continue
+
+                extent = extrude_data.get("extent_one", 0)
+
+                # SAFETY RULE 2: Only allow positive thickness
+                if extent <= 0:
+                    skipped_joins += 1
+                    continue
+
+                joins.append({
+                    "plane": plane_name,
+                    "profile": profile,
+                    "thickness": round(extent * self.scale, 1),
+                })
             else:
                 logger.debug("skip %s: unknown boolean '%s'", model_id, boolean)
                 return None
@@ -104,7 +128,7 @@ class DeepCADConverter:
             logger.debug("skip %s: no base shape found", model_id)
             return None
 
-        return self._generate_ofl_code(base, holes, skipped_cuts, skipped_joins, model_id)
+        return self._generate_ofl_code(base, holes, joins, skipped_cuts, skipped_joins, model_id)
 
     # ------------------------------------------------------------------
     # profile detection
@@ -217,6 +241,7 @@ class DeepCADConverter:
         self,
         base: dict,
         holes: list[dict],
+        joins: list[dict],
         skipped_cuts: int,
         skipped_joins: int,
         model_id: str,
@@ -249,6 +274,31 @@ class DeepCADConverter:
             lines.append(f'    .circle(diameter)')
             lines.append(f'    .extrude(thickness)')
             lines.append(f')')
+
+        # Additive geometry (joins)
+        if joins:
+            lines.append('')
+            lines.append('# ── Additive Features ──────────────────────────')
+            for j in joins:
+                j_plane = j["plane"]
+                j_prof = j["profile"]
+                thickness = j["thickness"]
+
+                if j_prof["type"] == "rect":
+                    lines.append('part += (')
+                    lines.append(f'    Sketch(Plane.{j_plane})')
+                    lines.append(f'    .rect({j_prof["width"]}, {j_prof["height"]})')
+                    lines.append(f'    .extrude({thickness})')
+                    lines.append(')')
+                    lines.append('')
+
+                elif j_prof["type"] == "circle":
+                    lines.append('part += (')
+                    lines.append(f'    Sketch(Plane.{j_plane})')
+                    lines.append(f'    .circle({j_prof["diameter"]})')
+                    lines.append(f'    .extrude({thickness})')
+                    lines.append(')')
+                    lines.append('')
 
         # group holes by diameter and through/depth
         if holes:
