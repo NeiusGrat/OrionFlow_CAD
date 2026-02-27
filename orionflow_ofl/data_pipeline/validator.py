@@ -276,35 +276,57 @@ class OFLValidator:
         invalid_pairs: list[dict] = []
         error_summary: dict[str, int] = {}
 
-        with ProcessPoolExecutor(max_workers=max_workers) as pool:
-            future_map = {
-                pool.submit(
-                    _validate_one,
-                    p["code"],
-                    30,
-                    self.min_step_size_bytes,
-                    self.strict_geometry,
-                    self.min_volume,
-                    self.min_bbox_extent,
-                    self.max_face_count,
-                    self.require_single_solid,
-                ): idx
-                for idx, p in enumerate(pairs)
-            }
-            done_count = 0
-            for future in as_completed(future_map):
-                idx = future_map[future]
-                res = future.result()
-                pair_with_result = {**pairs[idx], **res}
-                if res["valid"]:
-                    valid_pairs.append(pair_with_result)
-                else:
-                    invalid_pairs.append(pair_with_result)
-                    err_key = (res.get("error") or "unknown")[:80]
-                    error_summary[err_key] = error_summary.get(err_key, 0) + 1
+        def _consume_result(idx: int, res: dict) -> None:
+            pair_with_result = {**pairs[idx], **res}
+            if res["valid"]:
+                valid_pairs.append(pair_with_result)
+            else:
+                invalid_pairs.append(pair_with_result)
+                err_key = (res.get("error") or "unknown")[:80]
+                error_summary[err_key] = error_summary.get(err_key, 0) + 1
+
+        done_count = 0
+
+        if max_workers <= 1:
+            for idx, pair in enumerate(pairs):
+                res = self.validate(pair["code"], timeout=30)
+                _consume_result(idx, res)
                 done_count += 1
                 if progress and done_count % 10 == 0:
                     print(f"  validated {done_count}/{total}")
+        else:
+            try:
+                with ProcessPoolExecutor(max_workers=max_workers) as pool:
+                    future_map = {
+                        pool.submit(
+                            _validate_one,
+                            p["code"],
+                            30,
+                            self.min_step_size_bytes,
+                            self.strict_geometry,
+                            self.min_volume,
+                            self.min_bbox_extent,
+                            self.max_face_count,
+                            self.require_single_solid,
+                        ): idx
+                        for idx, p in enumerate(pairs)
+                    }
+                    for future in as_completed(future_map):
+                        idx = future_map[future]
+                        res = future.result()
+                        _consume_result(idx, res)
+                        done_count += 1
+                        if progress and done_count % 10 == 0:
+                            print(f"  validated {done_count}/{total}")
+            except (PermissionError, OSError) as exc:
+                if progress:
+                    print(f"  process pool unavailable ({exc}); falling back to sequential validation")
+                for idx, pair in enumerate(pairs):
+                    res = self.validate(pair["code"], timeout=30)
+                    _consume_result(idx, res)
+                    done_count += 1
+                    if progress and done_count % 10 == 0:
+                        print(f"  validated {done_count}/{total}")
 
         return {
             "total": total,
