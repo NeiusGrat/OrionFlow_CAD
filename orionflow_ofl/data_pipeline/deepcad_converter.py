@@ -1,4 +1,4 @@
-"""Convert DeepCAD JSON models to OFL Python code strings."""
+﻿"""Convert DeepCAD JSON models to OFL Python code strings."""
 
 from __future__ import annotations
 
@@ -45,10 +45,14 @@ class DeepCADConverter:
                 return None
 
             loops = sketch_data.get("loops", [])
-            if len(loops) != 1:
-                logger.debug("skip %s: multiple loops", model_id)
+            if not loops:
+                logger.debug("skip %s: no loops", model_id)
                 return None
-            curves = loops[0].get("curves", [])
+            
+            outer_loop = loops[0]
+            inner_loops = loops[1:]
+            
+            curves = outer_loop.get("curves", [])
 
             if boolean == "new":
                 if base is not None:
@@ -58,10 +62,70 @@ class DeepCADConverter:
                 if profile is None:
                     logger.debug("skip %s: non-convertible base profile", model_id)
                     return None
+                
+                # compute bounding box of outer loop to validate inner loops
+                min_x = min_y = float("inf")
+                max_x = max_y = float("-inf")
+                for c in curves:
+                    # For circles, use center +/- radius to get a meaningful envelope.
+                    if c.get("type") == "circle" and "center" in c and "radius" in c:
+                        cx, cy = c["center"][0], c["center"][1]
+                        radius = abs(c.get("radius", 0))
+                        min_x = min(min_x, cx - radius)
+                        max_x = max(max_x, cx + radius)
+                        min_y = min(min_y, cy - radius)
+                        max_y = max(max_y, cy + radius)
+                        continue
+
+                    for pt_key in ("start", "end", "center"):
+                        if pt_key in c:
+                            pt = c[pt_key]
+                            min_x = min(min_x, pt[0])
+                            max_x = max(max_x, pt[0])
+                            min_y = min(min_y, pt[1])
+                            max_y = max(max_y, pt[1])
+
+                if min_x == float("inf"):
+                    logger.debug("skip %s: could not determine outer loop bounds", model_id)
+                    return None
+
+                cutouts: list[dict] = []
+                if len(inner_loops) > 5:
+                    logger.debug("skip %s: more than 5 inner loops", model_id)
+                    return None
+
+                for inner in inner_loops:
+                    inner_curves = inner.get("curves", [])
+                    rect = self._detect_rectangle(inner_curves)
+                    inner_center = self._loop_center(inner_curves)
+                    
+                    # Ensure inner center is inside outer bounding box
+                    if not (min_x <= inner_center[0] <= max_x and min_y <= inner_center[1] <= max_y):
+                        logger.debug("skip %s: inner loop outside outer bounding box", model_id)
+                        return None # Abort everything
+
+                    if rect is not None:
+                        cutouts.append({
+                            "type": "rect",
+                            "width": rect[0],
+                            "height": rect[1]
+                        })
+                    else:
+                        circ = self._detect_circle(inner_curves)
+                        if circ is not None:
+                            cutouts.append({
+                                "type": "circle",
+                                "diameter": circ
+                            })
+                        else:
+                            logger.debug("skip %s: non-convertible internal cutout", model_id)
+                            return None # abort everything
+                            
                 extent = extrude_data.get("extent_one", 0)
                 base = {
                     "plane": plane_name,
                     "profile": profile,
+                    "cutouts": cutouts,
                     "thickness": round(extent * self.scale, 1),
                 }
 
@@ -175,7 +239,7 @@ class DeepCADConverter:
         if c.get("type") == "circle":
             radius = c.get("radius", 0)
             return round(radius * 2 * self.scale, 1)
-        # full arc (360°)
+        # full arc (360Â°)
         if c.get("type") == "arc":
             # check if it's a full circle arc
             start = c.get("start", [0, 0])
@@ -266,19 +330,29 @@ class DeepCADConverter:
             lines.append(f'part = (')
             lines.append(f'    Sketch(Plane.{plane})')
             lines.append(f'    .rect(width, height)')
+            for cutout in base.get("cutouts", []):
+                if cutout["type"] == "rect":
+                    lines.append(f'    .rect({cutout["width"]}, {cutout["height"]}).cut()')
+                elif cutout["type"] == "circle":
+                    lines.append(f'    .circle({cutout["diameter"]}).cut()')
             lines.append(f'    .extrude(thickness)')
             lines.append(f')')
         elif ptype == "circle":
             lines.append(f'part = (')
             lines.append(f'    Sketch(Plane.{plane})')
             lines.append(f'    .circle(diameter)')
+            for cutout in base.get("cutouts", []):
+                if cutout["type"] == "rect":
+                    lines.append(f'    .rect({cutout["width"]}, {cutout["height"]}).cut()')
+                elif cutout["type"] == "circle":
+                    lines.append(f'    .circle({cutout["diameter"]}).cut()')
             lines.append(f'    .extrude(thickness)')
             lines.append(f')')
 
         # Additive geometry (joins)
         if joins:
             lines.append('')
-            lines.append('# ── Additive Features ──────────────────────────')
+            lines.append('# â”€â”€ Additive Features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€')
             for j in joins:
                 j_plane = j["plane"]
                 j_prof = j["profile"]
