@@ -26,6 +26,14 @@ export(part, "test.step")'''
         result = validator.validate(code)
         assert result["valid"] is True
 
+    def test_with_additive_join(self, validator):
+        code = '''from orionflow_ofl import *
+part = Sketch(Plane.XY).rect(40, 40).extrude(5)
+part += Sketch(Plane.XY).circle(20).extrude(3)
+export(part, "test.step")'''
+        result = validator.validate(code)
+        assert result["valid"] is True
+
 
 class TestInvalidCode:
     def test_syntax_error(self, validator):

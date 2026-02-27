@@ -92,6 +92,71 @@ class TestCircleWithHole:
         assert ".through()" in code or ".to_depth(" in code
 
 
+class TestProfileWithCutouts:
+    def test_rect_with_circular_cutout(self, converter):
+        deepcad = {
+            "sequence": [
+                {
+                    "type": "sketch",
+                    "plane": {"x": 0, "y": 0, "z": 0, "nx": 0, "ny": 0, "nz": 1},
+                    "loops": [
+                        {
+                            "curves": [
+                                {"type": "line", "start": [-0.5, -0.5], "end": [0.5, -0.5]},
+                                {"type": "line", "start": [0.5, -0.5], "end": [0.5, 0.5]},
+                                {"type": "line", "start": [0.5, 0.5], "end": [-0.5, 0.5]},
+                                {"type": "line", "start": [-0.5, 0.5], "end": [-0.5, -0.5]},
+                            ]
+                        },
+                        {
+                            "curves": [
+                                {"type": "circle", "center": [0, 0], "radius": 0.2}
+                            ]
+                        }
+                    ]
+                },
+                {"type": "extrude", "extent_one": 0.2, "boolean": "new"},
+            ]
+        }
+        code = converter.convert(deepcad, model_id="test_cutout")
+        assert code is not None
+        assert "width = 50.0" in code
+        assert "height = 50.0" in code
+        assert ".rect(width, height)" in code
+        assert ".circle(20.0).cut()" in code
+
+    def test_circle_with_rect_cutout(self, converter):
+        deepcad = {
+            "sequence": [
+                {
+                    "type": "sketch",
+                    "plane": {"x": 0, "y": 0, "z": 0, "nx": 0, "ny": 0, "nz": 1},
+                    "loops": [
+                        {
+                            "curves": [
+                                {"type": "circle", "center": [0, 0], "radius": 0.5}
+                            ]
+                        },
+                        {
+                            "curves": [
+                                {"type": "line", "start": [-0.2, -0.2], "end": [0.2, -0.2]},
+                                {"type": "line", "start": [0.2, -0.2], "end": [0.2, 0.2]},
+                                {"type": "line", "start": [0.2, 0.2], "end": [-0.2, 0.2]},
+                                {"type": "line", "start": [-0.2, 0.2], "end": [-0.2, -0.2]},
+                            ]
+                        }
+                    ]
+                },
+                {"type": "extrude", "extent_one": 0.2, "boolean": "new"},
+            ]
+        }
+        code = converter.convert(deepcad, model_id="test_cutout2")
+        assert code is not None
+        assert "diameter = 50.0" in code
+        assert ".circle(diameter)" in code
+        assert ".rect(20.0, 20.0).cut()" in code
+
+
 class TestSkipCases:
     def test_skip_complex_sketch(self, converter):
         """Sketch with arcs should return None."""

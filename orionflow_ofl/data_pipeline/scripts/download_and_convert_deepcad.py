@@ -1,4 +1,4 @@
-"""Download (if needed) and batch convert DeepCAD JSON -> OFL training pairs.
+﻿"""Download (if needed) and batch convert DeepCAD JSON -> OFL training pairs.
 
 DeepCAD dataset: https://github.com/ChrisWu1997/DeepCAD
 Processed JSON files (~246MB) should be placed at: data/deepcad_raw/
@@ -10,6 +10,8 @@ Usage:
         --workers 8
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -19,10 +21,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 
-def _convert_single(args_tuple: tuple) -> dict | None:
+def _convert_single(args_tuple: tuple[str, float]) -> dict | None:
     """Convert one DeepCAD JSON -> dict with code + descriptions, or None."""
     json_path, scale = args_tuple
-    # import inside worker to avoid pickling issues
+    # Import inside worker to avoid pickling issues.
     from orionflow_ofl.data_pipeline.deepcad_converter import DeepCADConverter
     from orionflow_ofl.data_pipeline.text_annotator import TextAnnotator
 
@@ -63,101 +65,145 @@ def _estimate_complexity(code: str) -> int:
     return 2
 
 
-def main():
+def _reservoir_add(sample: list[dict], item: dict, seen: int, limit: int) -> None:
+    """Keep a uniform random sample of at most ``limit`` items from a stream."""
+    if limit <= 0:
+        return
+    if len(sample) < limit:
+        sample.append(item)
+        return
+    replace_idx = random.randint(0, seen - 1)
+    if replace_idx < limit:
+        sample[replace_idx] = item
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(description="Convert DeepCAD JSON to OFL training pairs")
-    parser.add_argument("--input-dir", required=True, help="Directory with DeepCAD JSON files")
+    parser.add_argument("--input-dir", required=True)
     parser.add_argument("--output", default="data/training/deepcad_pairs.jsonl")
     parser.add_argument("--scale", type=float, default=50.0)
     parser.add_argument("--max-models", type=int, default=None)
+    parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--workers", type=int, default=8)
-    parser.add_argument("--validate-sample", type=int, default=100)
+    parser.add_argument("--validate-sample", type=int, default=0)
     args = parser.parse_args()
 
     json_files = sorted(Path(args.input_dir).glob("**/*.json"))
     if not json_files:
-        print(f"ERROR: No JSON files found in {args.input_dir}")
-        print("Download DeepCAD processed data and place JSON files there.")
-        print("See: https://github.com/ChrisWu1997/DeepCAD")
+        print(f"No JSON files found in {args.input_dir}")
         sys.exit(1)
 
-    if args.max_models:
+    if args.offset > 0:
+        json_files = json_files[args.offset :]
+
+    if args.max_models and args.max_models > 0:
         json_files = json_files[: args.max_models]
 
-    print(f"Found {len(json_files)} DeepCAD models")
-    print(f"Converting with scale={args.scale}x ...")
+    if not json_files:
+        print("No JSON files selected after applying offset/max-models")
+        sys.exit(1)
 
-    converted: list[dict] = []
-    failed = 0
-    tasks = [(str(f), args.scale) for f in json_files]
+    print(f"Processing {len(json_files)} models (offset={args.offset})")
 
-    with ProcessPoolExecutor(max_workers=args.workers) as executor:
-        futures = {executor.submit(_convert_single, t): t for t in tasks}
-        for i, future in enumerate(as_completed(futures)):
-            result = future.result()
-            if result:
-                converted.append(result)
-            else:
-                failed += 1
-            if (i + 1) % 1000 == 0:
-                rate = len(converted) / (i + 1) * 100
-                print(f"  {i + 1}/{len(tasks)}: {len(converted)} converted ({rate:.0f}%)")
-
-    total = len(converted) + failed
-    print(
-        f"\nConversion: {len(converted)} success, {failed} failed "
-        f"({len(converted) / max(total, 1) * 100:.0f}% rate)"
-    )
-
-    # build training pairs
-    pairs: list[dict] = []
-    for item in converted:
-        for desc in item["descriptions"]:
-            pairs.append({
-                "text": desc,
-                "code": item["code"],
-                "source": "deepcad",
-                "complexity": _estimate_complexity(item["code"]),
-            })
-
-    # save
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
-        for pair in pairs:
-            f.write(json.dumps(pair, ensure_ascii=False) + "\n")
 
-    print(f"Saved {len(pairs)} training pairs to {args.output}")
+    total = 0
+    success = 0
+    failed = 0
+    pair_count = 0
 
-    # validate sample
-    if args.validate_sample and converted:
+    validate_cap = max(0, args.validate_sample)
+    validation_sample: list[dict] = []
+
+    with open(args.output, "w", encoding="utf-8") as outfile:
+        tasks = [(str(f), args.scale) for f in json_files]
+
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+            futures = {executor.submit(_convert_single, t): t for t in tasks}
+
+            for future in as_completed(futures):
+                total += 1
+                try:
+                    result = future.result()
+                except Exception:
+                    result = None
+
+                if result is None:
+                    failed += 1
+                else:
+                    success += 1
+                    code = result["code"]
+                    complexity = _estimate_complexity(code)
+
+                    for desc in result["descriptions"]:
+                        pair = {
+                            "text": desc,
+                            "code": code,
+                            "source": "deepcad",
+                            "complexity": complexity,
+                        }
+                        outfile.write(json.dumps(pair, ensure_ascii=False) + "\n")
+                        pair_count += 1
+
+                    _reservoir_add(
+                        validation_sample,
+                        {"code": code, "model_id": result["model_id"]},
+                        success,
+                        validate_cap,
+                    )
+
+                if total % 1000 == 0:
+                    rate = success / total * 100
+                    print(f"{total}: {success} converted ({rate:.1f}%)")
+
+    print("\nConversion complete.")
+    print(f"Success: {success}")
+    print(f"Failed: {failed}")
+    print(f"Rate: {success / max(total, 1) * 100:.1f}%")
+
+    validation_report = None
+    if validate_cap and validation_sample:
         from orionflow_ofl.data_pipeline.validator import OFLValidator
 
-        print(f"\nValidating {args.validate_sample} samples...")
+        print(f"\nValidating {len(validation_sample)} samples...")
         validator = OFLValidator()
-        random.seed(42)
-        sample = random.sample(converted, min(args.validate_sample, len(converted)))
-        valid = sum(1 for item in sample if validator.validate(item["code"])["valid"])
-        print(f"Validation: {valid}/{len(sample)} produce valid STEP ({valid / len(sample) * 100:.0f}%)")
+        results = validator.batch_validate(validation_sample, max_workers=args.workers)
 
-    # summary
+        valid = results["valid"]
+        sample_size = len(validation_sample)
+        print(f"Validation: {valid}/{sample_size} produce valid STEP ({valid / sample_size * 100:.0f}%)")
+
+        validation_report = {
+            "sample_size": sample_size,
+            "valid": valid,
+            "invalid": results["invalid"],
+            "error_summary": results["error_summary"],
+        }
+
     print(f"\n{'=' * 50}")
     print("DeepCAD Conversion Summary")
     print(f"{'=' * 50}")
     print(f"Total models:     {len(json_files)}")
-    print(f"Converted:        {len(converted)}")
-    print(f"Training pairs:   {len(pairs)}")
-    print(f"Conversion rate:  {len(converted) / max(len(json_files), 1) * 100:.0f}%")
+    print(f"Converted:        {success}")
+    print(f"Training pairs:   {pair_count}")
+    print(f"Conversion rate:  {success / max(len(json_files), 1) * 100:.0f}%")
 
-    # save report
-    report_path = args.output.replace(".jsonl", "_report.json")
-    Path(report_path).write_text(
-        json.dumps({
-            "total_models": len(json_files),
-            "converted": len(converted),
-            "failed": failed,
-            "training_pairs": len(pairs),
-            "conversion_rate_pct": round(len(converted) / max(total, 1) * 100, 1),
-        }, indent=2)
-    )
+    output_path = Path(args.output)
+    report_path = output_path.with_name(f"{output_path.stem}_report.json")
+    report = {
+        "total_models": len(json_files),
+        "converted": success,
+        "failed": failed,
+        "training_pairs": pair_count,
+        "conversion_rate_pct": round(success / max(total, 1) * 100, 1),
+    }
+    if validation_report is not None:
+        report["validation"] = validation_report
+
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+    print(f"Saved {pair_count} training pairs to {args.output}")
+    print(f"Report saved to {report_path}")
 
 
 if __name__ == "__main__":
