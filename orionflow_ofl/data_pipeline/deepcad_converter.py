@@ -239,7 +239,7 @@ class DeepCADConverter:
         if c.get("type") == "circle":
             radius = c.get("radius", 0)
             return round(radius * 2 * self.scale, 1)
-        # full arc (360Â°)
+        # full arc (360 degrees)
         if c.get("type") == "arc":
             # check if it's a full circle arc
             start = c.get("start", [0, 0])
@@ -352,7 +352,7 @@ class DeepCADConverter:
         # Additive geometry (joins)
         if joins:
             lines.append('')
-            lines.append('# â”€â”€ Additive Features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€')
+            lines.append('# Additive Features')
             for j in joins:
                 j_plane = j["plane"]
                 j_prof = j["profile"]
