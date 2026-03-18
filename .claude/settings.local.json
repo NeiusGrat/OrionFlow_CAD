@@ -14,7 +14,9 @@
       "Bash(python:*)",
       "Bash(wc:*)",
       "Bash(pip install:*)",
-      "Bash(where:*)"
+      "Bash(where:*)",
+      "Bash(claude doctor:*)",
+      "Read(//c/Users/Legion/**)"
     ]
   }
 }

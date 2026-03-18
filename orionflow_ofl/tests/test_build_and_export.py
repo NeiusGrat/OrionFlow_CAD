@@ -18,6 +18,7 @@ EXAMPLES = [
     "spacer.py",
     "four_hole_plate.py",
     "washer.py",
+    "advanced_housing.py",
 ]
 
 
