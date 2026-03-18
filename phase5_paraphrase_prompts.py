@@ -1,31 +1,25 @@
 import os
 import json
 import time
+import asyncio
+import aiohttp
 import random
-import google.generativeai as genai
 from pathlib import Path
-from tqdm import tqdm
-from dotenv import load_dotenv
+from dotenv import dotenv_values
+from tqdm.asyncio import tqdm
 
-load_dotenv()
+# ---- CONFIG ----
+ENV_VARS = dotenv_values(".env")
+API_KEYS = [v for k, v in ENV_VARS.items() if 'GEMINI' in k and v]
 
-# Verify API Key
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY not found in .env file.")
+if not API_KEYS:
+    raise ValueError("No GEMINI API keys found in .env file!")
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
-
+BATCH_SIZE = 10
 INPUT_FILE = Path("data/training/ofl_finetune_data.jsonl")      # 42k baseline
 OUTPUT_FILE = Path("data/training/ofl_finetune_data_hybrid.jsonl") # 54k hybrid
 CHECKPOINT_FILE = Path("data/training/phase5_paraphrase_checkpoint.json")
-
 TARGET_LLM_SAMPLES = 12000
-BATCH_SIZE = 15     # Number of prompts per LLM call
-SAVE_EVERY = 5      # Batches to process before writing to disk
-RPM_LIMIT = 13      # Free tier limit (safe margin)
-SLEEP_TIME = 60.0 / RPM_LIMIT 
 
 SYSTEM_PROMPT = """You are a senior mechanical design engineer with 15+ years experience.
 I will give you {batch_size} basic, boring CAD descriptions. Your job is to PARAPHRASE each of them into exactly ONE realistic natural-language prompt that a real engineer would type into an AI CAD system.
@@ -50,34 +44,6 @@ def extract_json(text):
     if text.endswith("```"): text = text[:-3]
     return json.loads(text.strip())
 
-def process_batch(prompts):
-    prompts_text = ""
-    for i, p in enumerate(prompts):
-        prompts_text += f"\n--- PROMPT {i+1} ---\n{p}\n"
-    
-    prompt = SYSTEM_PROMPT.format(batch_size=len(prompts), prompts=prompts_text)
-    
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = model.generate_content(prompt, generation_config={"temperature": 0.5})
-            results = extract_json(response.text)
-            
-            if len(results) != len(prompts):
-                raise ValueError(f"Expected {len(prompts)} prompts, but received {len(results)}.")
-                
-            return results
-            
-        except Exception as e:
-            if attempt < max_retries - 1:
-                # If it's a quota error or simple timeout, we need a long backoff
-                wait_time = 65.0 
-                print(f"\n[Warning] API call failed ({str(e)}). Retrying in {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                print(f"\n[Error] Batch failed after {max_retries} attempts: {str(e)}")
-                return None
-
 def load_checkpoint():
     if CHECKPOINT_FILE.exists():
         with open(CHECKPOINT_FILE, "r") as f:
@@ -86,63 +52,142 @@ def load_checkpoint():
     return 0, set()
 
 def save_checkpoint(count, sampled_indices):
-    with open(CHECKPOINT_FILE, "w") as f:
+    tmp = str(CHECKPOINT_FILE) + ".tmp"
+    with open(tmp, "w") as f:
         json.dump({"processed_count": count, "sampled_indices": list(sampled_indices)}, f)
+    os.replace(tmp, CHECKPOINT_FILE)
 
 def perform_stratified_sampling(all_pairs, target_size):
-    """Samples exactly target_size pairs while maintaining geometric diversity."""
     print("Performing stratified sampling based on geometric features...")
-    
     strata = {}
     for i, pair in enumerate(all_pairs):
         meta = pair.get("metadata", {})
-        
-        # Create a unique key for the strata based on the features
-        # E.g. "rect_True-circ_False-hole_True-add_False-plane_XY"
         key = f"rect_{meta.get('has_rect', False)}-circ_{meta.get('has_circ', False)}-hole_{meta.get('has_hole', False)}-add_{meta.get('has_additive', False)}-plane_{meta.get('plane', 'XY')}"
-        
-        if key not in strata:
-            strata[key] = []
+        if key not in strata: strata[key] = []
         strata[key].append(i)
         
-    print(f"Found {len(strata)} unique geometric strata.")
-    
     sampled_indices = []
-    
-    # Calculate how many to take from each stratum proportionally
     total_population = len(all_pairs)
     for key, indices in strata.items():
         proportion = len(indices) / total_population
-        take_count = int(proportion * target_size)
-        
-        # Ensure we take at least 1 if the stratum exists, unless target size is reached
-        take_count = max(1, take_count)
-        
+        take_count = max(1, int(proportion * target_size))
         if len(indices) <= take_count:
             sampled_indices.extend(indices)
         else:
             sampled_indices.extend(random.sample(indices, take_count))
             
-    # Adjust to exact target size
     if len(sampled_indices) > target_size:
         sampled_indices = random.sample(sampled_indices, target_size)
     elif len(sampled_indices) < target_size:
-        # Fill the remainder randomly from unsampled items
         unsampled = list(set(range(total_population)) - set(sampled_indices))
         sampled_indices.extend(random.sample(unsampled, target_size - len(sampled_indices)))
         
     random.shuffle(sampled_indices)
-    print(f"Sampling complete. Selected {len(sampled_indices)} robust examples.")
     return sampled_indices
 
-def main():
-    if not INPUT_FILE.exists():
-        print(f"Error: {INPUT_FILE} not found. Run phase4 first.")
-        return
+# --- ASYNC WORKER ---
+WRITE_LOCK = asyncio.Lock()
+PROCESSED_COUNT = 0
 
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+async def worker(worker_id, api_key, queue, pbar, all_pairs, sampled_indices):
+    global PROCESSED_COUNT
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
     
-    # Load all baseline pairs
+    # Stagger workers so they don't blast the server at the exact same millisecond
+    await asyncio.sleep(worker_id * 7.5)
+    
+    async with aiohttp.ClientSession() as session:
+        while True:
+            batch_indices = await queue.get()
+            if batch_indices is None:
+                break
+                
+            prompts_text = ""
+            for i, idx in enumerate(batch_indices):
+                msgs = all_pairs[idx]["messages"]
+                user_msg = next(m["content"] for m in msgs if m["role"] == "user")
+                prompts_text += f"\n--- PROMPT {i+1} ---\n{user_msg}\n"
+                
+            prompt = SYSTEM_PROMPT.format(batch_size=len(batch_indices), prompts=prompts_text)
+            
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.5}
+            }
+            
+            retry = 0
+            while True:
+                try:
+                    async with session.post(url, json=payload, headers={'Content-Type': 'application/json'}) as resp:
+                        if resp.status == 429:
+                            retry += 1
+                            sleep_time = min(2.0 ** retry, 60.0) + random.uniform(0, 2)
+                            print(f"\\n[Worker {worker_id}] 429 Quota Exceeded. Sleeping {sleep_time:.2f}s (Retry {retry})")
+                            await asyncio.sleep(sleep_time)
+                            continue
+                        
+                        if resp.status != 200:
+                            err_txt = await resp.text()
+                            if "quota" in err_txt.lower() or "exhausted" in err_txt.lower():
+                                retry += 1
+                                sleep_time = min(2.0 ** retry, 60.0) + random.uniform(0, 2)
+                                await asyncio.sleep(sleep_time)
+                                continue
+                            print(f"\n[Worker {worker_id}] API Error {resp.status}: {err_txt}")
+                            break
+                            
+                        data = await resp.json()
+                        if 'candidates' not in data or not data['candidates']:
+                            retry += 1
+                            await asyncio.sleep(2)
+                            continue
+                            
+                        text_response = data['candidates'][0]['content']['parts'][0]['text']
+                        results = extract_json(text_response)
+                        
+                        if len(results) != len(batch_indices):
+                            if retry < 3:
+                                retry += 1
+                                await asyncio.sleep(1)
+                                continue
+                            else:
+                                break
+                                
+                        # Successful Output
+                        async with WRITE_LOCK:
+                            with open(OUTPUT_FILE, "a", encoding="utf-8") as f_out:
+                                for i, idx in enumerate(batch_indices):
+                                    original_pair = all_pairs[idx]
+                                    code = next(m["content"] for m in original_pair["messages"] if m["role"] == "assistant")
+                                    sys_prompt = next(m["content"] for m in original_pair["messages"] if m["role"] == "system")
+                                    sharegpt_record = {
+                                        "messages": [
+                                            {"role": "system", "content": sys_prompt},
+                                            {"role": "user", "content": results[i]},
+                                            {"role": "assistant", "content": code}
+                                        ]
+                                    }
+                                    f_out.write(json.dumps(sharegpt_record, ensure_ascii=False) + "\\n")
+                            
+                            PROCESSED_COUNT += len(batch_indices)
+                            save_checkpoint(PROCESSED_COUNT, sampled_indices)
+                            pbar.update(len(batch_indices))
+                            
+                        # Add a hard delay between SUCCESSFUL calls to prevent instant spike locks
+                        await asyncio.sleep(25 + random.uniform(0, 10))
+                        break # exit retry loop
+                        
+                except Exception as e:
+                    print(f"\\n[Worker {worker_id}] Exception: {e}")
+                    retry += 1
+                    await asyncio.sleep(5)
+                    if retry > 10:
+                        break
+                        
+            queue.task_done()
+
+async def async_main():
+    global PROCESSED_COUNT
     all_pairs = []
     with open(INPUT_FILE, "r", encoding="utf-8") as f:
         for line in f:
@@ -151,79 +196,46 @@ def main():
                 
     total_baseline = len(all_pairs)
     print(f"Loaded {total_baseline} baseline pairs.")
+    print(f"Starting with {len(API_KEYS)} API keys! Commencing Threadpool...")
     
-    processed_count, previously_sampled_indices = load_checkpoint()
+    PROCESSED_COUNT, previously_sampled_indices = load_checkpoint()
     
-    # Stratified Sampling Strategy
     if previously_sampled_indices:
-        print(f"Resuming with {len(previously_sampled_indices)} previously sampled indices.")
         sampled_indices = list(previously_sampled_indices)
     else:
-        # Initialize Output File with all 42k deterministic pairs first!
-        # Because we want a 54k hybrid file (42k original + 12k paraphrased)
-        print("Writing the 42,200 baseline pairs to the hybrid output file...")
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f_out:
             for pair in all_pairs:
-                # Remove metadata to keep dataset clean
                 clean_pair = {"messages": pair["messages"]}
                 f_out.write(json.dumps(clean_pair, ensure_ascii=False) + "\n")
         
         val_target = min(TARGET_LLM_SAMPLES, total_baseline)
         sampled_indices = perform_stratified_sampling(all_pairs, val_target)
         save_checkpoint(0, sampled_indices)
-    
-    # We only process the LLM generated ones now
-    remaining_indices = sampled_indices[processed_count:]
-    print(f"Generating paraphrased prompts for {len(remaining_indices)} remaining sampled models...")
-    
-    with open(OUTPUT_FILE, "a", encoding="utf-8") as f_out:
         
-        batches_processed_since_save = 0
+    remaining_indices = sampled_indices[PROCESSED_COUNT:]
+    print(f"Generating paraphrased prompts for {len(remaining_indices)} models...")
+    
+    queue = asyncio.Queue()
+    for i in range(0, len(remaining_indices), BATCH_SIZE):
+        queue.put_nowait(remaining_indices[i:i+BATCH_SIZE])
         
-        with tqdm(total=TARGET_LLM_SAMPLES, initial=processed_count, desc="LLM Paraphrasing") as pbar:
-            for ptr in range(0, len(remaining_indices), BATCH_SIZE):
-                batch_indices = remaining_indices[ptr:ptr + BATCH_SIZE]
-                
-                # Extract just the user prompts
-                batch_prompts = []
-                for idx in batch_indices:
-                    msgs = all_pairs[idx]["messages"]
-                    user_msg = next(m["content"] for m in msgs if m["role"] == "user")
-                    batch_prompts.append(user_msg)
-                
-                time.sleep(SLEEP_TIME)
-                
-                paraphrased_prompts = process_batch(batch_prompts)
-                
-                if paraphrased_prompts:
-                    for i, idx in enumerate(batch_indices):
-                        # Construct a NEW pair with the paraphrased prompt, but original code
-                        original_pair = all_pairs[idx]
-                        code = next(m["content"] for m in original_pair["messages"] if m["role"] == "assistant")
-                        sys_prompt = next(m["content"] for m in original_pair["messages"] if m["role"] == "system")
-                        
-                        sharegpt_record = {
-                            "messages": [
-                                {"role": "system", "content": sys_prompt},
-                                {"role": "user", "content": paraphrased_prompts[i]},
-                                {"role": "assistant", "content": code}
-                            ]
-                        }
-                        f_out.write(json.dumps(sharegpt_record, ensure_ascii=False) + "\n")
-                        
-                    processed_count += len(batch_indices)
-                    batches_processed_since_save += 1
-                    pbar.update(len(batch_indices))
-                    
-                    if batches_processed_since_save >= SAVE_EVERY:
-                        f_out.flush()
-                        save_checkpoint(processed_count, sampled_indices)
-                else:
-                    print(f"\n[FATAL] API failed repeatedly. Stopping at {processed_count}.")
-                    break
-                    
-    save_checkpoint(processed_count, sampled_indices)
-    print(f"\nFinished hybrid generation! Total file lines: {len(all_pairs) + processed_count}")
+    pbar = tqdm(total=TARGET_LLM_SAMPLES, initial=PROCESSED_COUNT, desc="LLM Paraphrasing")
+    
+    workers = []
+    for i, key in enumerate(API_KEYS):
+        workers.append(asyncio.create_task(worker(i, key, queue, pbar, all_pairs, sampled_indices)))
+        
+    await queue.join()
+    
+    for _ in workers:
+        queue.put_nowait(None)
+    await asyncio.gather(*workers)
+    
+    pbar.close()
+    print(f"\nFinished hybrid generation! Total file lines: {len(all_pairs) + PROCESSED_COUNT}")
+    
+def main():
+    asyncio.run(async_main())
 
 if __name__ == "__main__":
     main()
