@@ -15,4 +15,4 @@ from .hole import Hole
 from .export import export
 
 __all__ = ["Plane", "Sketch", "Part", "Hole", "export"]
-__version__ = "0.1.0"
+__version__ = "0.2.0"

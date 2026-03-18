@@ -1,4 +1,4 @@
-﻿"""OFL Part - wraps a build123d solid with boolean add/subtract support."""
+"""OFL Part - wraps a build123d solid with boolean add/subtract support."""
 
 from __future__ import annotations
 
@@ -30,6 +30,55 @@ class Part:
         self._solid = solid
         return self
 
+    def fillet(self, radius: float, edges: str = "all") -> Part:
+        """Round edges of the solid. edges: 'all' | 'top' | 'bottom' | 'vertical'"""
+        from build123d import fillet as _fillet, Axis as _Axis
+        
+        target_edges = self._solid.edges()
+        if edges == "vertical":
+            target_edges = target_edges.filter_by(_Axis.Z)
+        elif edges == "top":
+            target_edges = self._solid.faces().sort_by(_Axis.Z)[-1].edges()
+        elif edges == "bottom":
+            target_edges = self._solid.faces().sort_by(_Axis.Z)[0].edges()
+        elif edges != "all":
+            raise ValueError(f"Unknown edge selector: {edges}")
+            
+        self._solid = _fillet(target_edges, radius=radius)
+        return self
+
+    def chamfer(self, distance: float, edges: str = "all") -> Part:
+        """Chamfer edges of the solid. edges: 'all' | 'top' | 'bottom' | 'vertical'"""
+        from build123d import chamfer as _chamfer, Axis as _Axis
+        
+        target_edges = self._solid.edges()
+        if edges == "vertical":
+            target_edges = target_edges.filter_by(_Axis.Z)
+        elif edges == "top":
+            target_edges = self._solid.faces().sort_by(_Axis.Z)[-1].edges()
+        elif edges == "bottom":
+            target_edges = self._solid.faces().sort_by(_Axis.Z)[0].edges()
+        elif edges != "all":
+            raise ValueError(f"Unknown edge selector: {edges}")
+            
+        self._solid = _chamfer(target_edges, length=distance)
+        return self
+
+    def shell(self, wall_thickness: float, open_face: str | None = "top") -> Part:
+        """Hollow out the solid. open_face: 'top' | 'bottom' | None"""
+        from build123d import offset as _offset, Axis as _Axis
+        
+        openings = []
+        if open_face == "top":
+            openings = self._solid.faces().sort_by(_Axis.Z)[-1:]
+        elif open_face == "bottom":
+            openings = self._solid.faces().sort_by(_Axis.Z)[0:1]
+        elif open_face is not None:
+            raise ValueError(f"Unknown face selector: {open_face}")
+            
+        # build123d offset: negative amount = hollow inwards
+        self._solid = _offset(self._solid, amount=-wall_thickness, openings=openings)
+        return self
     def __isub__(self, hole):
         from .hole import Hole
 

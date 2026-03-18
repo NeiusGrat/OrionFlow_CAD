@@ -6,8 +6,11 @@ from .internal.errors import GeometryError
 class Sketch:
     """Define a 2D profile on a plane, then extrude to a solid Part."""
 
-    def __init__(self, plane):
-        self._plane = plane
+    def __init__(self, plane, offset=0):
+        if offset != 0:
+            self._plane = plane.offset(offset)
+        else:
+            self._plane = plane
         self._profile = None
 
     # ── profile methods (mutually exclusive, last wins) ──────────
