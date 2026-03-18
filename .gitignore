@@ -39,3 +39,13 @@ orionflow-ui/node_modules/
 # Data (local only)
 data/
 archive/
+
+# Temporary and unnecessary files
+_tmp_fix_paths.py
+_tmp_r/
+_tmp_result/
+deepcad-ofl-validation/
+example_dump.txt
+fine_tuning/
+result.txt
+temp_validation_output.txt
