@@ -37,6 +37,9 @@ class PartTemplate(ABC):
     name: str = ""
     complexity: int = 1
 
+    def supported_variants(self) -> list[str]:
+        return ["basic"]
+
     def generate(self) -> tuple[str, str]:
         params = self.randomize_params()
         text = self.generate_description(params)
@@ -50,6 +53,10 @@ class PartTemplate(ABC):
     @abstractmethod
     def generate_description(self, params: dict) -> str:
         ...
+
+    def generate_descriptions(self, params: dict) -> list[str]:
+        text = self.generate_description(params)
+        return [text, text, text]
 
     @abstractmethod
     def generate_code(self, params: dict) -> str:
@@ -1265,3 +1272,12 @@ ALL_TEMPLATES: list[type[PartTemplate]] = [
     BlindHolePlate,
     MultiPatternPlate,
 ]
+
+# Expanded Task 2 catalog.
+#
+# The original 20 templates remain defined above for backward compatibility,
+# but the active registry now exposes the expanded 50-template set requested
+# for final dataset generation.
+from .template_catalog_v2 import EXPANDED_TEMPLATES as _EXPANDED_TEMPLATES  # noqa: E402
+
+ALL_TEMPLATES = _EXPANDED_TEMPLATES
