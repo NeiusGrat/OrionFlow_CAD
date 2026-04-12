@@ -17,11 +17,16 @@ AI-powered text-to-CAD. FastAPI service that turns natural-language prompts into
   - `data_pipeline/` — dataset generation for fine-tuning (DeepCAD converter, synthetic templates, text annotator, validator, dataset builder)
   - `ir/exporter.py` — AST-based IR exporter (offline)
   - Isolated from `app/`; has its own tests
-- `tests/` — main test suite (316 tests, `pytest tests/`)
+- `tests/` — main test suite (330 tests, `pytest tests/`)
 - `orionflow_ofl/tests/` — OFL core tests (5)
 - `orionflow_ofl/data_pipeline/tests/` — pipeline tests (28)
-- `scripts/` — dataset + validation scripts (`run_full_validation.py`, `validate_all_templates.py`, `merge_final.py`, ...)
-- `fine_tuning/`, `data/`, `outputs/`, `archive/` — datasets, runtime outputs, archived experiments
+- `scripts/` — Build123d-FTC dataset pipeline (see `scripts/README.md`)
+  - `p1_template_generator.py` → `p2_convert_deepcad_to_b123d.py` → `p3_generate_edit_samples.py` → `p4_generate_complex_examples.py` → `p5_generate_rejections.py` → `p6_assemble_final_dataset.py`
+  - Validation: `validate_build123d.py`, `validate_all_templates.py`, `run_full_validation.py`
+  - Converters: `cq_to_ofl.py`, `ofl_to_b123d.py`
+- `fine_tuning/` — AMD fine-tuning script (`train_qwen_amd.py`)
+- `data/build123d_ftc/final/` — production training dataset (train/val/test splits)
+- `archive/` — archived experiments and obsolete pipeline scripts
 - `orionflow-ui/` — frontend (separate npm project)
 - `alembic/` — DB migrations
 - `docker/`, `docker-compose*.yml`, `Dockerfile`, `Makefile`

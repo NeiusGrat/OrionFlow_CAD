@@ -26,6 +26,7 @@ nul
 # IDE
 .vscode/
 .idea/
+.claude/
 
 # Testing
 .pytest_cache/
@@ -36,16 +37,17 @@ coverage.xml
 # Node (frontend)
 orionflow-ui/node_modules/
 
-# Data (local only)
+# Data & archive (local only, not tracked)
 data/
 archive/
+caddata/
 
-# Temporary and unnecessary files
+# Fine-tuning (large model files)
+fine_tuning/
+
+# Temporary files
 _tmp_fix_paths.py
 _tmp_r/
 _tmp_result/
 deepcad-ofl-validation/
-example_dump.txt
-fine_tuning/
-result.txt
 temp_validation_output.txt
