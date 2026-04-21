@@ -52,3 +52,6 @@ _tmp_result/
 deepcad-ofl-validation/
 temp_validation_output.txt
 live_test_output.step
+
+
+hanomi.py
