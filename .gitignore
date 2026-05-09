@@ -48,6 +48,9 @@ CAD_DATA/zero_to_cad/images/
 CAD_DATA/zero_to_cad/analyzed/
 CAD_DATA/zero_to_cad/prompts/
 CAD_DATA/zero_to_cad/dataset/
+CAD_DATA/zero_to_cad/dataset_final/
+CAD_DATA/zero_to_cad/b123d/
+CAD_DATA/zero_to_cad/b123d_validated/
 CAD_DATA/zero_to_cad/logs/
 
 # Fine-tuning (large model files)
