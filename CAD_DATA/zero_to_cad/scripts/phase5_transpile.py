@@ -205,15 +205,47 @@ class HoleSpec:
 
 
 @dataclass
+class PocketSpec:
+    """Subtractive rectangular pocket cut from a face."""
+    width_src: str
+    height_src: str
+    depth_src: str
+    face_sel: str   # ">Z", "<Z", ">X", etc.
+    center_x_src: str = "0"
+    center_y_src: str = "0"
+    through: bool = False  # True for cutThruAll
+
+
+@dataclass
+class CircularPocketSpec:
+    """Subtractive circular pocket cut from a face."""
+    radius_src: str
+    depth_src: str
+    face_sel: str
+    center_x_src: str = "0"
+    center_y_src: str = "0"
+    through: bool = False
+
+
+@dataclass
+class EdgeOpSpec:
+    value_src: str
+    selector: str | None = None  # raw CadQuery selector e.g. "|Z", ">Z"
+
+
+@dataclass
 class Body:
     """A single base solid plus its post-ops, in order."""
     name: str = ""
     base_op: str = ""           # 'box' | 'cylinder'
     base_args: list[str] = field(default_factory=list)
     translate: str | None = None  # source for (x, y, z)
+    centered_xy: bool = True      # whether base is centered in XY (CadQuery default)
+    centered_z: bool = True       # whether base is centered in Z
     holes: list[HoleSpec] = field(default_factory=list)
-    fillets: list[str] = field(default_factory=list)
-    chamfers: list[str] = field(default_factory=list)
+    pockets: list[PocketSpec | CircularPocketSpec] = field(default_factory=list)
+    fillets: list[EdgeOpSpec] = field(default_factory=list)
+    chamfers: list[EdgeOpSpec] = field(default_factory=list)
 
 
 @dataclass
@@ -273,6 +305,12 @@ def _parse_chain_to_body(
 
     # Pending sketch state for rect+extrude / circle+extrude patterns
     pending_sketch: tuple[str, list[str]] | None = None
+    # Current face selector and center for sketch-on-face operations
+    current_face_sel: str | None = None
+    current_center_x: str = "0"
+    current_center_y: str = "0"
+    # Most-recent edges selector for fillet/chamfer
+    current_edge_sel: str | None = None
 
     i = start_idx
     while i < len(chain):
@@ -342,7 +380,58 @@ def _parse_chain_to_body(
 
         # cutBlind / cutThruAll consume pending sketch -> SUBTRACT pocket
         if m in ("cutBlind", "cutThruAll"):
-            raise TranspileError("pocket via cutBlind not in v1")
+            if pending_sketch is None:
+                raise TranspileError(f"{m} without pending sketch")
+            if not body.base_op:
+                raise TranspileError(f"{m} before base solid")
+            face_sel = current_face_sel or ">Z"
+            if face_sel not in (">Z", "<Z"):
+                # Other faces require complex orientation we don't do in v1.5
+                raise TranspileError(f"cut on non-Z face: {face_sel}")
+            kind, sk_args = pending_sketch
+            if m == "cutBlind":
+                if not c.args:
+                    raise TranspileError("cutBlind without depth")
+                depth_src = env.to_source(c.args[0])
+                if depth_src is None:
+                    raise TranspileError("unresolvable cutBlind depth")
+                # cutBlind(-d) cuts in the negative-Z direction relative to the face.
+                # Use abs() in the emitted code so depth is always positive.
+                depth_src = f"abs({depth_src})"
+                through = False
+            else:  # cutThruAll
+                # depth must equal base height (we'll emit 'base_height' or actual value)
+                if body.base_op == "box" and len(body.base_args) >= 3:
+                    depth_src = body.base_args[2]
+                else:
+                    raise TranspileError("cutThruAll on non-box base")
+                through = True
+
+            if kind == "rect":
+                body.pockets.append(PocketSpec(
+                    width_src=sk_args[0],
+                    height_src=sk_args[1],
+                    depth_src=depth_src,
+                    face_sel=face_sel,
+                    center_x_src=current_center_x,
+                    center_y_src=current_center_y,
+                    through=through,
+                ))
+            elif kind == "circle":
+                body.pockets.append(CircularPocketSpec(
+                    radius_src=sk_args[0],
+                    depth_src=depth_src,
+                    face_sel=face_sel,
+                    center_x_src=current_center_x,
+                    center_y_src=current_center_y,
+                    through=through,
+                ))
+            pending_sketch = None
+            # Reset center but keep face context
+            current_center_x = "0"
+            current_center_y = "0"
+            i += 1
+            continue
 
         if m == "translate":
             if not c.args:
@@ -354,8 +443,40 @@ def _parse_chain_to_body(
             i += 1
             continue
 
-        if m in ("faces", "edges", "workplane", "vertices", "center"):
-            # Selectors that establish a hole/fillet context. Validate selectors.
+        if m == "faces":
+            if c.args and _is_str_const(c.args[0]):
+                sel = c.args[0].value
+                if any(tok in sel for tok in (" and ", " or ", "<<", ">>")):
+                    raise TranspileError(f"complex selector: {sel}")
+                current_face_sel = sel
+                # New face context resets center
+                current_center_x = "0"
+                current_center_y = "0"
+            i += 1
+            continue
+
+        if m == "center" and len(c.args) >= 2:
+            cx = env.to_source(c.args[0])
+            cy = env.to_source(c.args[1])
+            if cx is None or cy is None:
+                raise TranspileError("unresolvable center args")
+            current_center_x = cx
+            current_center_y = cy
+            i += 1
+            continue
+
+        if m == "edges":
+            if c.args and _is_str_const(c.args[0]):
+                sel = c.args[0].value
+                if any(tok in sel for tok in (" and ", " or ", "<<", ">>")):
+                    raise TranspileError(f"complex selector: {sel}")
+                current_edge_sel = sel
+            else:
+                current_edge_sel = None
+            i += 1
+            continue
+
+        if m in ("workplane", "vertices"):
             if c.args and _is_str_const(c.args[0]):
                 sel = c.args[0].value
                 if any(tok in sel for tok in (" and ", " or ", "<<", ">>")):
@@ -407,7 +528,7 @@ def _parse_chain_to_body(
             src = env.to_source(c.args[0])
             if src is None:
                 raise TranspileError("unresolvable fillet")
-            body.fillets.append(src)
+            body.fillets.append(EdgeOpSpec(value_src=src, selector=current_edge_sel))
             i += 1
             continue
 
@@ -417,7 +538,7 @@ def _parse_chain_to_body(
             src = env.to_source(c.args[0])
             if src is None:
                 raise TranspileError("unresolvable chamfer")
-            body.chamfers.append(src)
+            body.chamfers.append(EdgeOpSpec(value_src=src, selector=current_edge_sel))
             i += 1
             continue
 
@@ -438,13 +559,47 @@ def _parse_chain_to_body(
     return body
 
 
+def _flatten_body(tree: ast.Module) -> list[ast.stmt]:
+    """Return the list of statements to walk.
+
+    If the module's last meaningful node is a class with a single build()
+    method, or a single FunctionDef returning a Workplane chain, expand its
+    body so transpile sees the actual operations.
+    """
+    stmts: list[ast.stmt] = []
+    fn_bodies: list[list[ast.stmt]] = []
+
+    for n in tree.body:
+        stmts.append(n)
+        if isinstance(n, ast.FunctionDef):
+            fn_bodies.append(n.body)
+        if isinstance(n, ast.ClassDef):
+            for sub in n.body:
+                if isinstance(sub, ast.FunctionDef):
+                    fn_bodies.append(sub.body)
+
+    # Append all function bodies AFTER top-level so dims/Measures resolve first
+    for fb in fn_bodies:
+        stmts.extend(fb)
+    return stmts
+
+
 def _parse_program(tree: ast.Module, env: DimEnv) -> Composition:
     """Walk top-level statements, producing a Composition (primary + ops)."""
     comp = Composition()
     bodies: dict[str, Body] = {}
     final_var: str | None = None
 
-    for node in tree.body:
+    walk_body = _flatten_body(tree)
+    for node in walk_body:
+        # Handle 'return some_expr' inside function bodies as final assignment
+        if isinstance(node, ast.Return) and node.value is not None:
+            rhs = node.value
+            if isinstance(rhs, ast.Name) and rhs.id in bodies:
+                final_var = rhs.id
+            continue
+        # Now treat the rest as Assign-like statements; the loop body below
+        # takes Assign nodes; non-Assigns are skipped.
         if not isinstance(node, ast.Assign):
             continue
         if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
@@ -560,6 +715,41 @@ def _emit_program(comp: Composition, dims: dict[str, float]) -> str:
         mode = "SUBTRACT" if op == "sub" else "ADD"
         lines.extend(_emit_body(body, indent="    ", mode=mode))
 
+    # Pockets (subtract Box/Cylinder at right Z based on face selector)
+    for p in primary.pockets:
+        # Compute Z position of the pocket center.
+        # CadQuery default centered=(True,True,False) means base Z extends 0..h.
+        # build123d Box is centered at origin so it extends -h/2..+h/2.
+        # We translated Box up by 0 (no translate) so it's centered.
+        # For >Z: top face is at z = base_h/2; pocket extends from top down by depth
+        #   pocket_center_z = base_h/2 - depth/2
+        # For <Z: bottom face is at z = -base_h/2; pocket extends from bottom up
+        #   pocket_center_z = -base_h/2 + depth/2
+        if primary.base_op == "box" and len(primary.base_args) >= 3:
+            base_h = primary.base_args[2]
+        elif primary.base_op == "cylinder" and len(primary.base_args) >= 2:
+            base_h = primary.base_args[1]
+        else:
+            continue  # can't position; skip
+        depth = p.depth_src
+        if p.face_sel == ">Z":
+            z_expr = f"({base_h}) / 2 - ({depth}) / 2"
+        else:  # <Z
+            z_expr = f"-({base_h}) / 2 + ({depth}) / 2"
+
+        if isinstance(p, PocketSpec):
+            w, h_, d = p.width_src, p.height_src, p.depth_src
+            lines.append(
+                f"    with Locations(({p.center_x_src}, {p.center_y_src}, {z_expr})):"
+            )
+            lines.append(f"        Box({w}, {h_}, {d}, mode=Mode.SUBTRACT)")
+        elif isinstance(p, CircularPocketSpec):
+            r, d = p.radius_src, p.depth_src
+            lines.append(
+                f"    with Locations(({p.center_x_src}, {p.center_y_src}, {z_expr})):"
+            )
+            lines.append(f"        Cylinder({r}, {d}, mode=Mode.SUBTRACT)")
+
     # Holes (apply to primary at top face by default)
     for h in primary.holes:
         if len(h.locations) == 1:
@@ -569,10 +759,34 @@ def _emit_program(comp: Composition, dims: dict[str, float]) -> str:
         lines.append(f"        Hole(({h.diameter_src}) / 2)")
 
     # Edge ops on primary
-    for r in primary.fillets:
-        lines.append(f"    fillet(part.edges(), radius={r})")
-    for c in primary.chamfers:
-        lines.append(f"    chamfer(part.edges(), length={c})")
+    def _edge_expr(sel: str | None) -> str:
+        if not sel:
+            return "part.edges()"
+        s = sel.strip()
+        if s == "|Z":
+            return "part.edges().filter_by(Axis.Z)"
+        if s == "|X":
+            return "part.edges().filter_by(Axis.X)"
+        if s == "|Y":
+            return "part.edges().filter_by(Axis.Y)"
+        if s == ">Z":
+            return "part.faces().sort_by(Axis.Z)[-1].edges()"
+        if s == "<Z":
+            return "part.faces().sort_by(Axis.Z)[0].edges()"
+        if s == ">X":
+            return "part.faces().sort_by(Axis.X)[-1].edges()"
+        if s == "<X":
+            return "part.faces().sort_by(Axis.X)[0].edges()"
+        if s == ">Y":
+            return "part.faces().sort_by(Axis.Y)[-1].edges()"
+        if s == "<Y":
+            return "part.faces().sort_by(Axis.Y)[0].edges()"
+        return "part.edges()"
+
+    for f_op in primary.fillets:
+        lines.append(f"    fillet({_edge_expr(f_op.selector)}, radius={f_op.value_src})")
+    for c_op in primary.chamfers:
+        lines.append(f"    chamfer({_edge_expr(c_op.selector)}, length={c_op.value_src})")
 
     lines.append("")
     lines.append("result = part.part")
