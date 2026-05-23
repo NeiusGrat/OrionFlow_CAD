@@ -482,21 +482,41 @@ def validate_code(code: str) -> dict:
 # ---------------------------------------------------------------------------
 
 def load_annotations(csv_path: Path) -> dict[str, dict[str, str]]:
-    """Load text annotations CSV → {uid: {abstract: ..., beginner: ..., ...}}."""
-    annotations = {}
-    with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            uid = row.get("uid", "").strip()
-            if not uid:
-                continue
-            annot = {}
-            for level in TEXT_LEVELS:
-                text = row.get(level, "").strip()
-                if text:
-                    annot[level] = text
-            if annot:
-                annotations[uid] = annot
+    """Load text annotations from CSV or parquet → {uid: {level: text}}."""
+    annotations: dict[str, dict[str, str]] = {}
+    suffix = csv_path.suffix.lower()
+
+    if suffix == ".parquet":
+        import pandas as pd
+        df = pd.read_parquet(csv_path, columns=["uid"] + list(TEXT_LEVELS))
+    elif suffix in (".csv", ".tsv"):
+        import pandas as pd
+        usecols = ["uid"] + list(TEXT_LEVELS)
+        df = pd.read_csv(csv_path, usecols=usecols, dtype=str, keep_default_na=False)
+    else:
+        with open(csv_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                uid = row.get("uid", "").strip()
+                if not uid:
+                    continue
+                annot = {lvl: row[lvl].strip() for lvl in TEXT_LEVELS
+                         if lvl in row and row[lvl].strip()}
+                if annot:
+                    annotations[uid] = annot
+        return annotations
+
+    for row in df.itertuples(index=False):
+        uid = str(row.uid).strip()
+        if not uid:
+            continue
+        annot = {}
+        for lvl in TEXT_LEVELS:
+            val = getattr(row, lvl, None)
+            if val is not None and str(val).strip() and str(val) != "nan":
+                annot[lvl] = str(val).strip()
+        if annot:
+            annotations[uid] = annot
     return annotations
 
 
@@ -677,7 +697,11 @@ def main():
             if p.exists():
                 json_files.append((p, uid))
     else:
-        json_files = [(p, p.stem) for p in sorted(input_dir.rglob("*.json"))]
+        json_files = []
+        for p in sorted(input_dir.rglob("*.json")):
+            rel = p.relative_to(input_dir).with_suffix("")
+            uid = str(rel).replace("\\", "/")
+            json_files.append((p, uid))
 
     if args.max_scan > 0:
         json_files = json_files[: args.max_scan]
@@ -701,7 +725,8 @@ def main():
                 continue
 
             translated += 1
-            if result.get("valid", False):
+            accept = result.get("valid", False) if do_validate else True
+            if accept:
                 valid += 1
                 samples = format_training_samples(result)
                 for s in samples:

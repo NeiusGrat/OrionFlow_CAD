@@ -1,9 +1,12 @@
 """LLM client for generating OFL code from text prompts.
 
-Currently uses Groq API. When fine-tuned model is ready, swap OFL_LLM_PROVIDER.
+Supports Groq for hosted inference and Ollama for local open-source models.
 """
 
 import logging
+
+import requests
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -60,15 +63,17 @@ FEW_SHOT = [
 
 
 class OFLLLMClient:
-    """Generates OFL code from text. Pluggable backend (groq / local)."""
+    """Generates OFL code from text. Pluggable backend (groq / ollama / local)."""
 
     def __init__(self, provider: str = None):
-        self.provider = provider or getattr(settings, "ofl_llm_provider", "groq")
+        self.provider = (provider or getattr(settings, "ofl_llm_provider", "groq")).lower()
 
         if self.provider == "groq":
             self._init_groq()
+        elif self.provider == "ollama":
+            self._init_ollama()
         elif self.provider == "local":
-            raise NotImplementedError("Local model not yet available. Use provider='groq'.")
+            raise NotImplementedError("Local model path inference not yet available. Use provider='ollama'.")
         else:
             raise ValueError(f"Unknown OFL LLM provider: {self.provider}")
 
@@ -85,27 +90,64 @@ class OFLLLMClient:
         self.client = Groq(api_key=api_key)
         self.model = getattr(settings, "ofl_groq_model", "llama-3.3-70b-versatile")
 
+    def _init_ollama(self):
+        self.base_url = getattr(settings, "ollama_base_url", "http://localhost:11434").rstrip("/")
+        self.model = getattr(settings, "ofl_ollama_model", "qwen2.5-coder:7b")
+        self.timeout = getattr(settings, "ofl_ollama_timeout_seconds", 600)
+
     def generate(self, prompt: str) -> str:
         """Generate OFL code from natural language. Returns code string."""
         if self.provider == "groq":
             return self._generate_groq(prompt)
+        if self.provider == "ollama":
+            return self._generate_ollama(prompt)
         raise NotImplementedError
 
-    def _generate_groq(self, prompt: str) -> str:
+    def _build_messages(self, prompt: str) -> list[dict[str, str]]:
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for ex in FEW_SHOT:
             messages.append({"role": "user", "content": ex["user"]})
             messages.append({"role": "assistant", "content": ex["assistant"]})
         messages.append({"role": "user", "content": prompt})
+        return messages
 
+    def _generate_groq(self, prompt: str) -> str:
         response = self.client.chat.completions.create(
             model=self.model,
-            messages=messages,
+            messages=self._build_messages(prompt),
             temperature=0.1,
             max_tokens=1024,
         )
         raw = response.choices[0].message.content
         return self._clean_code(raw)
+
+    def _generate_ollama(self, prompt: str) -> str:
+        raw = self._chat_ollama(self._build_messages(prompt))
+        return self._clean_code(raw)
+
+    def _chat_ollama(self, messages: list[dict[str, str]], max_tokens: int = 1024) -> str:
+        """Call Ollama's local chat API."""
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/chat",
+                json={
+                    "model": self.model,
+                    "messages": messages,
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.1,
+                        "num_predict": max_tokens,
+                    },
+                },
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["message"]["content"]
+        except requests.RequestException as e:
+            raise RuntimeError(f"Ollama request failed: {e}") from e
+        except (KeyError, TypeError) as e:
+            raise RuntimeError("Ollama returned an unexpected response shape") from e
 
     def generate_edit(self, current_code: str, edit_instruction: str) -> str:
         """Apply a natural language edit to existing OFL code."""
@@ -119,11 +161,17 @@ class OFLLLMClient:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": edit_prompt},
         ]
-        response = self.client.chat.completions.create(
-            model=self.model, messages=messages,
-            temperature=0.1, max_tokens=1024,
-        )
-        return self._clean_code(response.choices[0].message.content)
+        if self.provider == "groq":
+            response = self.client.chat.completions.create(
+                model=self.model, messages=messages,
+                temperature=0.1, max_tokens=1024,
+            )
+            raw = response.choices[0].message.content
+        elif self.provider == "ollama":
+            raw = self._chat_ollama(messages)
+        else:
+            raise NotImplementedError
+        return self._clean_code(raw)
 
     @staticmethod
     def _clean_code(raw: str) -> str:

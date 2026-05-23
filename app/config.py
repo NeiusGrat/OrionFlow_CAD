@@ -109,12 +109,29 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     ofl_llm_provider: str = Field(
         default="groq",
-        description="OFL LLM provider: groq or local"
+        description="OFL LLM provider: groq, ollama, or local"
     )
 
     ofl_groq_model: str = Field(
         default="llama-3.3-70b-versatile",
         description="Groq model for OFL code generation"
+    )
+
+    ofl_ollama_model: str = Field(
+        default="qwen2.5-coder:7b",
+        description="Ollama model for local OFL code generation"
+    )
+
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        description="Base URL for local Ollama API"
+    )
+
+    ofl_ollama_timeout_seconds: int = Field(
+        default=600,
+        ge=10,
+        le=3600,
+        description="Timeout for local Ollama OFL generation"
     )
 
     ofl_local_model_path: Optional[str] = Field(
@@ -409,6 +426,15 @@ class Settings(BaseSettings):
         valid_providers = ["groq", "openai", "local"]
         if v.lower() not in valid_providers:
             raise ValueError(f"LLM provider must be one of: {valid_providers}")
+        return v.lower()
+
+    @field_validator("ofl_llm_provider")
+    @classmethod
+    def validate_ofl_provider(cls, v: str) -> str:
+        """Validate OFL LLM provider is supported."""
+        valid_providers = ["groq", "ollama", "local"]
+        if v.lower() not in valid_providers:
+            raise ValueError(f"OFL LLM provider must be one of: {valid_providers}")
         return v.lower()
 
     @field_validator("log_level")
