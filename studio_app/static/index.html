@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>OrionFlow Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" type="image/png" href="/static/logo.png" />
+<link rel="stylesheet" href="/static/style.css?v=5" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-badge">
+      <img class="brand-logo" src="/static/logo.png" alt="OrionFlow" />
+    </div>
+    <div class="brand-text">
+      <div class="brand-title">OrionFlow <span class="brand-sub">Studio</span></div>
+      <div class="brand-tag">Agentic CAD Workspace</div>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="header-pill" id="llm-pill" title="Copilot status">
+    <span class="dot"></span><span id="llm-pill-text">checking&hellip;</span>
+  </div>
+  <div class="actions">
+    <button type="button" class="ghost icon" id="code-toggle"
+            title="Show / hide source code"
+            onclick="window.studio.toggleSource()">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 18 22 12 16 6"></polyline>
+        <polyline points="8 6 2 12 8 18"></polyline>
+      </svg>
+      <span>Source</span>
+    </button>
+    <button class="ghost" id="reset-btn" title="Clear chat &amp; code">Clear</button>
+    <button class="primary" id="run-btn">
+      <svg viewBox="0 0 12 12" fill="currentColor" width="11" height="11"><path d="M3 1.5l7 4.5-7 4.5V1.5z"/></svg>
+      Run <kbd>Ctrl+Enter</kbd>
+    </button>
+  </div>
+</header>
+
+<main class="grid" id="grid">
+
+  <!-- ============ Chat pane ============ -->
+  <aside class="pane chat-pane">
+    <div class="pane-head">
+      <span>Copilot</span>
+      <span class="pane-head-right">
+        <span class="dim" id="history-count">0 runs</span>
+      </span>
+    </div>
+
+    <div class="chat-scroll" id="chat-scroll">
+      <div class="chat-empty" id="chat-empty">
+        <img src="/static/logo.png" alt="" class="chat-logo" />
+        <h3>Describe a part</h3>
+        <p>I'll model it, render it, and let you refine it in plain English.</p>
+        <div class="chat-suggestions">
+          <button class="chip" data-suggest="M4 flat washer, 0.8mm thick">M4 washer</button>
+          <button class="chip" data-suggest="L bracket, 80x60x40mm, 4mm thick, 5mm holes in each face">L bracket</button>
+          <button class="chip" data-suggest="Round flange, 50mm OD, 5mm thick, 4 mounting holes on 36mm PCD">Flange</button>
+          <button class="chip" data-suggest="Spur gear, 20 teeth, module 2, 6mm thick, 8mm bore">Spur gear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="history-strip" id="history-strip"></div>
+
+    <form class="chat-input" id="chat-form" autocomplete="off">
+      <div class="selection-hint" id="selection-hint"></div>
+      <div class="composer">
+        <textarea id="chat-input" rows="1" placeholder="Message OrionFlow Copilot&hellip;"></textarea>
+        <div class="composer-row">
+          <div class="mode-pills" id="mode-pills" role="tablist" aria-label="Routing mode">
+            <button type="button" class="mode-pill active" data-mode="generate"
+                    onclick="window.studio.setMode('generate')">Generate</button>
+            <button type="button" class="mode-pill" data-mode="edit"
+                    onclick="window.studio.setMode('edit')">Edit</button>
+          </div>
+          <button type="submit" class="send-btn" id="send-btn" title="Send (Enter)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </form>
+  </aside>
+
+  <!-- ============ Editor drawer ============ -->
+  <section class="pane editor-pane" id="editor-pane">
+    <div class="pane-head">
+      <span class="pane-title">Source</span>
+      <div class="examples">
+        <a href="javascript:void(0)" onclick="window.studio.loadExample('washer')">washer</a>
+        <a href="javascript:void(0)" onclick="window.studio.loadExample('bracket')">bracket</a>
+        <a href="javascript:void(0)" onclick="window.studio.loadExample('flange')">flange</a>
+        <a href="javascript:void(0)" onclick="window.studio.loadExample('gear')">gear</a>
+      </div>
+      <button type="button" class="pane-close" id="pane-close"
+              title="Hide source" onclick="window.studio.closeSource()">&times;</button>
+    </div>
+
+    <div class="params-strip" id="params-strip"></div>
+
+    <textarea id="editor" spellcheck="false"></textarea>
+  </section>
+
+  <!-- ============ Viewport pane ============ -->
+  <section class="pane viewport-pane">
+    <canvas id="canvas"></canvas>
+    <div class="loading-bar" id="loading-bar"></div>
+
+    <div class="empty-state" id="empty-state">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <div class="title">No model yet</div>
+      <div class="hint">Chat a part or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to compile</div>
+    </div>
+
+    <div class="vp-overlay vp-tl">
+      <div class="vp-group" id="view-presets">
+        <button data-view="iso" class="active">ISO</button>
+        <button data-view="top">Top</button>
+        <button data-view="front">Front</button>
+        <button data-view="right">Right</button>
+      </div>
+    </div>
+
+    <div class="vp-overlay vp-tr">
+      <div class="vp-group" id="render-modes">
+        <button data-mode="shaded-edges" class="active">Shaded + Edges</button>
+        <button data-mode="shaded">Shaded</button>
+        <button data-mode="wireframe">Wireframe</button>
+      </div>
+    </div>
+
+    <div class="vp-overlay vp-bl">
+      <div class="stats-card" id="stats">
+        <div class="ttl">Geometry</div>
+        <div class="row"><span class="lbl">Volume</span><span class="val" id="s-vol">&mdash;</span></div>
+        <div class="row"><span class="lbl">Bbox</span><span class="val" id="s-bbox">&mdash;</span></div>
+        <div class="row"><span class="lbl">Center</span><span class="val" id="s-center">&mdash;</span></div>
+        <div class="row"><span class="lbl">Topology</span><span class="val" id="s-topo">&mdash;</span></div>
+        <div class="row"><span class="lbl">Watertight</span><span class="val" id="s-wt">&mdash;</span></div>
+      </div>
+    </div>
+
+    <div class="vp-overlay vp-br">
+      <canvas id="gizmo"></canvas>
+    </div>
+
+    <div class="vp-overlay vp-tools">
+      <div class="vp-group col">
+        <button id="fit-btn"   title="Fit view">&#9974;</button>
+        <button id="dim-btn"   class="active" title="Toggle dimensions">D</button>
+        <button id="grid-btn"  class="active" title="Toggle grid">&#9638;</button>
+        <button id="axes-btn"  class="active" title="Toggle origin XYZ">&#10010;</button>
+        <button id="ortho-btn" title="Toggle ortho / perspective">&#9633;</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="statusbar">
+  <span class="pill idle" id="status-pill">idle</span>
+  <span id="status-text">Ready</span>
+  <span class="sep"></span>
+  <span id="elapsed"></span>
+  <span class="err-detail" id="err-detail"></span>
+  <div class="downloads" id="downloads">
+    <a id="dl-step" target="_blank" download>STEP</a>
+    <a id="dl-stl" target="_blank" download>STL</a>
+    <a id="dl-glb" target="_blank" download>GLB</a>
+  </div>
+</div>
+
+<div class="console" id="console">
+  <span class="close" id="console-close">close &#x2715;</span>
+  <div class="head" id="console-head"></div>
+  <pre id="console-body"></pre>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="/static/main.js?v=5"></script>
+</body>
+</html>
