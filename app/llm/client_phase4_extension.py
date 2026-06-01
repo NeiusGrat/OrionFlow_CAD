@@ -1,3 +1,8 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 async def generate_design_intent(self, user_prompt: str):
         """
         Phase 4 Stage 1: Extract design intent from user prompt.
