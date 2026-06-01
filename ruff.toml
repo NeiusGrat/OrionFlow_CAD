@@ -1,0 +1,4 @@
+[lint.per-file-ignores]
+"app/compilers/build123d_compiler.py" = ["F403", "F405"]
+"app/compilers/v1/feature_compiler.py" = ["F403", "F405"]
+"app/compilers/v1/sketch_compiler.py" = ["F403", "F405"]

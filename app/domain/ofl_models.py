@@ -5,8 +5,12 @@ from typing import Optional
 
 
 class OFLGenerateRequest(BaseModel):
-    prompt: str = Field(..., min_length=5, max_length=2000,
-                        description="Natural language part description")
+    prompt: str = Field(
+        ...,
+        min_length=5,
+        max_length=2000,
+        description="Natural language part description",
+    )
 
 
 class OFLRebuildRequest(BaseModel):

@@ -20,14 +20,11 @@ from sqlalchemy import (
     String,
     Text,
     Integer,
-    Float,
     Boolean,
     DateTime,
     ForeignKey,
     Index,
-    JSON,
     Enum as SQLEnum,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -36,6 +33,7 @@ import enum
 
 class Base(DeclarativeBase):
     """Base class for all models."""
+
     pass
 
 
@@ -43,8 +41,10 @@ class Base(DeclarativeBase):
 # Enums
 # =============================================================================
 
+
 class UserRole(str, enum.Enum):
     """User roles for RBAC."""
+
     USER = "user"
     ADMIN = "admin"
     DEVELOPER = "developer"
@@ -52,6 +52,7 @@ class UserRole(str, enum.Enum):
 
 class UserStatus(str, enum.Enum):
     """User account status."""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     SUSPENDED = "suspended"
@@ -60,6 +61,7 @@ class UserStatus(str, enum.Enum):
 
 class SubscriptionStatus(str, enum.Enum):
     """Subscription status."""
+
     ACTIVE = "active"
     PAUSED = "paused"
     CANCELLED = "cancelled"
@@ -69,6 +71,7 @@ class SubscriptionStatus(str, enum.Enum):
 
 class GenerationStatus(str, enum.Enum):
     """CAD generation status."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -77,6 +80,7 @@ class GenerationStatus(str, enum.Enum):
 
 class AuditAction(str, enum.Enum):
     """Audit log action types."""
+
     LOGIN = "login"
     LOGOUT = "logout"
     SIGNUP = "signup"
@@ -96,38 +100,31 @@ class AuditAction(str, enum.Enum):
 # User Model
 # =============================================================================
 
+
 class User(Base):
     """
     User account model.
 
     Stores authentication credentials, profile info, and settings.
     """
+
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str] = mapped_column(
-        String(255),
-        unique=True,
-        nullable=False,
-        index=True
+        String(255), unique=True, nullable=False, index=True
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Account status
     role: Mapped[UserRole] = mapped_column(
-        SQLEnum(UserRole),
-        default=UserRole.USER,
-        nullable=False
+        SQLEnum(UserRole), default=UserRole.USER, nullable=False
     )
     status: Mapped[UserStatus] = mapped_column(
-        SQLEnum(UserStatus),
-        default=UserStatus.PENDING_VERIFICATION,
-        nullable=False
+        SQLEnum(UserStatus), default=UserStatus.PENDING_VERIFICATION, nullable=False
     )
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     email_verification_token: Mapped[Optional[str]] = mapped_column(String(255))
@@ -141,19 +138,20 @@ class User(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        onupdate=lambda: datetime.now(timezone.utc),
     )
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # Password reset
     password_reset_token: Mapped[Optional[str]] = mapped_column(String(255))
-    password_reset_expires: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    password_reset_expires: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     # Relationships
     designs: Mapped[List["Design"]] = relationship(
@@ -169,9 +167,7 @@ class User(Base):
         "UsageRecord", back_populates="user", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (
-        Index("ix_users_email_status", "email", "status"),
-    )
+    __table_args__ = (Index("ix_users_email_status", "email", "status"),)
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"
@@ -181,24 +177,24 @@ class User(Base):
 # Design Model
 # =============================================================================
 
+
 class Design(Base):
     """
     CAD design model.
 
     Stores design metadata and feature graphs.
     """
+
     __tablename__ = "designs"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Design metadata
@@ -221,13 +217,12 @@ class Design(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -249,29 +244,27 @@ class Design(Base):
 # Generation History Model
 # =============================================================================
 
+
 class GenerationHistory(Base):
     """
     History of CAD generation attempts.
 
     Tracks each generation request for analytics and debugging.
     """
+
     __tablename__ = "generation_history"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     design_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("designs.id", ondelete="SET NULL"),
-        index=True
+        UUID(as_uuid=True), ForeignKey("designs.id", ondelete="SET NULL"), index=True
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Request data
@@ -280,8 +273,7 @@ class GenerationHistory(Base):
 
     # Response data
     status: Mapped[GenerationStatus] = mapped_column(
-        SQLEnum(GenerationStatus),
-        default=GenerationStatus.PENDING
+        SQLEnum(GenerationStatus), default=GenerationStatus.PENDING
     )
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     error_code: Mapped[Optional[str]] = mapped_column(String(50))
@@ -296,8 +288,7 @@ class GenerationHistory(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
@@ -319,29 +310,31 @@ class GenerationHistory(Base):
 # API Key Model
 # =============================================================================
 
+
 class APIKey(Base):
     """
     API key for programmatic access.
 
     Supports key rotation and usage tracking.
     """
+
     __tablename__ = "api_keys"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Key data (store hash, not plaintext)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    key_prefix: Mapped[str] = mapped_column(String(10), nullable=False)  # First 8 chars for identification
+    key_prefix: Mapped[str] = mapped_column(
+        String(10), nullable=False
+    )  # First 8 chars for identification
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
 
     # Permissions (JSON array of scopes)
@@ -359,8 +352,7 @@ class APIKey(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
@@ -380,23 +372,21 @@ class APIKey(Base):
 # Audit Log Model
 # =============================================================================
 
+
 class AuditLog(Base):
     """
     Audit trail for security and compliance.
 
     Tracks all significant user actions.
     """
+
     __tablename__ = "audit_logs"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
-        index=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
 
     # Action details
@@ -418,9 +408,7 @@ class AuditLog(Base):
 
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
     __table_args__ = (
@@ -436,18 +424,18 @@ class AuditLog(Base):
 # Pricing Plan Model
 # =============================================================================
 
+
 class PricingPlan(Base):
     """
     Subscription pricing plans.
 
     Defines available plans and their limits.
     """
+
     __tablename__ = "pricing_plans"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
 
     # Plan details
@@ -477,8 +465,7 @@ class PricingPlan(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships
@@ -494,29 +481,27 @@ class PricingPlan(Base):
 # Subscription Model
 # =============================================================================
 
+
 class Subscription(Base):
     """
     User subscription to a pricing plan.
 
     Tracks billing cycle and usage limits.
     """
+
     __tablename__ = "subscriptions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True
+        unique=True,
     )
     plan_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("pricing_plans.id"),
-        nullable=False
+        UUID(as_uuid=True), ForeignKey("pricing_plans.id"), nullable=False
     )
 
     # Stripe integration
@@ -525,14 +510,12 @@ class Subscription(Base):
 
     # Status
     status: Mapped[SubscriptionStatus] = mapped_column(
-        SQLEnum(SubscriptionStatus),
-        default=SubscriptionStatus.TRIALING
+        SQLEnum(SubscriptionStatus), default=SubscriptionStatus.TRIALING
     )
 
     # Billing cycle
     current_period_start: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     current_period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -548,18 +531,19 @@ class Subscription(Base):
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc)
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="subscription")
-    plan: Mapped["PricingPlan"] = relationship("PricingPlan", back_populates="subscriptions")
+    plan: Mapped["PricingPlan"] = relationship(
+        "PricingPlan", back_populates="subscriptions"
+    )
 
     __table_args__ = (
         Index("ix_subscriptions_status", "status"),
@@ -574,24 +558,24 @@ class Subscription(Base):
 # Usage Record Model
 # =============================================================================
 
+
 class UsageRecord(Base):
     """
     Detailed usage tracking for metered billing.
 
     Tracks each generation for usage-based billing.
     """
+
     __tablename__ = "usage_records"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Usage details
@@ -608,9 +592,7 @@ class UsageRecord(Base):
 
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        index=True
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
     # Relationships

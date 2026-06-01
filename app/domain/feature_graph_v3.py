@@ -14,6 +14,7 @@ Primary usage in Phase 1:
 - Provide a stable, constraint-aware projection to FeatureGraphV1 for
   the existing Build123d compiler.
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -259,9 +260,7 @@ class FeatureGraphV3(BaseModel):
         # Sketches: map V1 SketchGraph → V2-style SketchGraphV2
         sketches_v3: List[SketchGraphV2] = []
         for s in graph_v1.sketches:
-            primitives_v2 = [
-                SketchPrimitiveV2(**p.model_dump()) for p in s.primitives
-            ]
+            primitives_v2 = [SketchPrimitiveV2(**p.model_dump()) for p in s.primitives]
             constraints_v2 = [
                 SketchConstraintV2(**c.model_dump()) for c in s.constraints
             ]
@@ -328,9 +327,7 @@ class FeatureGraphV3(BaseModel):
         # Sketches: convert V2-style back to V1 SketchGraph
         sketches_v1: List[SketchGraphV1] = []
         for s in self.sketches:
-            primitives_v1 = [
-                SketchPrimitiveV1(**p.model_dump()) for p in s.primitives
-            ]
+            primitives_v1 = [SketchPrimitiveV1(**p.model_dump()) for p in s.primitives]
             constraints_v1 = [
                 SketchConstraintV1(**c.model_dump()) for c in s.constraints
             ]

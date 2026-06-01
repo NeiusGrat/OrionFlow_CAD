@@ -10,24 +10,14 @@ class OnshapeSketchAdapter:
 
     def create_sketch(self, sketch_id):
         endpoint = f"/api/sketches/d/{self.document_id}/w/{self.workspace_id}/e/{self.element_id}"
-        payload = {
-            "name": sketch_id,
-            "plane": "TOP"
-        }
+        payload = {"name": sketch_id, "plane": "TOP"}
         return self.client.post(endpoint, payload)
 
     def add_rectangle(self, width, height):
         # Simplified placeholder
-        payload = {
-            "type": "rectangle",
-            "width": width,
-            "height": height
-        }
+        payload = {"type": "rectangle", "width": width, "height": height}
         return self.client.post("/api/sketch/geometry", payload)
 
     def add_circle(self, radius):
-        payload = {
-            "type": "circle",
-            "radius": radius
-        }
+        payload = {"type": "circle", "radius": radius}
         return self.client.post("/api/sketch/geometry", payload)

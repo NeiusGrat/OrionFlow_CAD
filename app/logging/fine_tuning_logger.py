@@ -48,6 +48,7 @@ FINE-TUNING FORMATS:
 
 Version: 1.0
 """
+
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
@@ -64,8 +65,10 @@ logger = logging.getLogger(__name__)
 # Record Status
 # =============================================================================
 
+
 class RecordStatus(str, Enum):
     """Status of a fine-tuning record."""
+
     STARTED = "started"
     PLAN_SET = "plan_set"
     IR_SET = "ir_set"
@@ -76,6 +79,7 @@ class RecordStatus(str, Enum):
 
 class GenerationOutcome(str, Enum):
     """Outcome of generation attempt."""
+
     SUCCESS = "success"
     PLAN_FAILED = "plan_failed"
     IR_FAILED = "ir_failed"
@@ -86,6 +90,7 @@ class GenerationOutcome(str, Enum):
 # =============================================================================
 # Fine-Tuning Record
 # =============================================================================
+
 
 @dataclass
 class FineTuningRecord:
@@ -173,10 +178,7 @@ class FineTuningRecord:
         return "ftr_" + hashlib.sha256(content.encode()).hexdigest()[:16]
 
     def set_plan(
-        self,
-        plan_dict: Dict[str, Any],
-        generation_ms: float = 0.0,
-        source: str = "LLM"
+        self, plan_dict: Dict[str, Any], generation_ms: float = 0.0, source: str = "LLM"
     ) -> "FineTuningRecord":
         """Set the ConstructionPlan data."""
         self.plan = self._sanitize_dict(plan_dict)
@@ -186,9 +188,7 @@ class FineTuningRecord:
         return self
 
     def set_ir(
-        self,
-        ir_dict: Dict[str, Any],
-        generation_ms: float = 0.0
+        self, ir_dict: Dict[str, Any], generation_ms: float = 0.0
     ) -> "FineTuningRecord":
         """Set the FeatureGraphIR data."""
         self.ir = self._sanitize_dict(ir_dict)
@@ -210,7 +210,7 @@ class FineTuningRecord:
         compilation_ms: float,
         compiled_features: int = 0,
         cache_hits: int = 0,
-        cache_misses: int = 0
+        cache_misses: int = 0,
     ) -> "FineTuningRecord":
         """Set compilation results."""
         self.compilation_success = success
@@ -221,10 +221,7 @@ class FineTuningRecord:
         self.status = RecordStatus.COMPILED.value
         return self
 
-    def set_validation(
-        self,
-        validation_result: Dict[str, Any]
-    ) -> "FineTuningRecord":
+    def set_validation(self, validation_result: Dict[str, Any]) -> "FineTuningRecord":
         """Set validation results."""
         self.validation = self._sanitize_dict(validation_result)
         self.validation_errors = validation_result.get("errors", 0)
@@ -236,7 +233,7 @@ class FineTuningRecord:
         model: str,
         temperature: float = 0.0,
         tokens_used: int = 0,
-        latency_ms: float = 0.0
+        latency_ms: float = 0.0,
     ) -> "FineTuningRecord":
         """Set LLM metadata."""
         self.llm_model = model
@@ -249,7 +246,7 @@ class FineTuningRecord:
         self,
         rating: Optional[int] = None,
         feedback: Optional[str] = None,
-        edited: bool = False
+        edited: bool = False,
     ) -> "FineTuningRecord":
         """Set user feedback (ground truth)."""
         self.user_rating = rating
@@ -258,10 +255,7 @@ class FineTuningRecord:
         return self
 
     def set_error(
-        self,
-        message: str,
-        stage: str,
-        outcome: GenerationOutcome
+        self, message: str, stage: str, outcome: GenerationOutcome
     ) -> "FineTuningRecord":
         """Record an error."""
         self.error_message = message
@@ -274,7 +268,7 @@ class FineTuningRecord:
         self,
         outcome: GenerationOutcome = GenerationOutcome.SUCCESS,
         output_files: Optional[List[str]] = None,
-        output_format: str = ""
+        output_format: str = "",
     ) -> "FineTuningRecord":
         """Finalize the record."""
         self.finished_at = datetime.utcnow().isoformat() + "Z"
@@ -312,8 +306,7 @@ class FineTuningRecord:
         # Feature type diversity (if IR available)
         if self.ir:
             feature_types = set(
-                f.get("type") for f in self.ir.get("features", [])
-                if f.get("type")
+                f.get("type") for f in self.ir.get("features", []) if f.get("type")
             )
             score += len(feature_types) * 0.15
 
@@ -336,8 +329,7 @@ class FineTuningRecord:
                 result[key] = self._sanitize_dict(value)
             elif isinstance(value, list):
                 result[key] = [
-                    self._sanitize_dict(v) if isinstance(v, dict) else v
-                    for v in value
+                    self._sanitize_dict(v) if isinstance(v, dict) else v for v in value
                 ]
             elif isinstance(value, (str, int, float, bool, type(None))):
                 result[key] = value
@@ -368,16 +360,10 @@ class FineTuningRecord:
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a CAD generation assistant. Given a prompt describing a 3D model, generate the FeatureGraphIR JSON."
+                    "content": "You are a CAD generation assistant. Given a prompt describing a 3D model, generate the FeatureGraphIR JSON.",
                 },
-                {
-                    "role": "user",
-                    "content": self.prompt
-                },
-                {
-                    "role": "assistant",
-                    "content": ir_json
-                }
+                {"role": "user", "content": self.prompt},
+                {"role": "assistant", "content": ir_json},
             ]
         }
 
@@ -391,7 +377,7 @@ class FineTuningRecord:
 
         return {
             "prompt": f"Human: Generate a FeatureGraphIR for: {self.prompt}\n\nAssistant:",
-            "completion": f" {ir_json}"
+            "completion": f" {ir_json}",
         }
 
     def to_full_format(self) -> Dict[str, Any]:
@@ -412,25 +398,30 @@ class FineTuningRecord:
                 "complexity_score": self.complexity_score,
                 "feature_count": self.feature_count,
                 "validation_errors": self.validation_errors,
-                "validation_warnings": self.validation_warnings
+                "validation_warnings": self.validation_warnings,
             },
             "outcome": self.outcome,
-            "user_feedback": {
-                "rating": self.user_rating,
-                "feedback": self.user_feedback,
-                "edited": self.user_edited
-            } if self.user_rating or self.user_feedback else None,
+            "user_feedback": (
+                {
+                    "rating": self.user_rating,
+                    "feedback": self.user_feedback,
+                    "edited": self.user_edited,
+                }
+                if self.user_rating or self.user_feedback
+                else None
+            ),
             "llm": {
                 "model": self.llm_model,
                 "tokens_used": self.llm_tokens_used,
-                "latency_ms": self.llm_latency_ms
-            }
+                "latency_ms": self.llm_latency_ms,
+            },
         }
 
 
 # =============================================================================
 # Fine-Tuning Logger
 # =============================================================================
+
 
 class FineTuningLogger:
     """
@@ -443,7 +434,7 @@ class FineTuningLogger:
     def __init__(
         self,
         output_dir: Path = Path("data/fine_tuning"),
-        format: str = "full"  # openai, anthropic, full
+        format: str = "full",  # openai, anthropic, full
     ):
         """
         Initialize logger.
@@ -475,7 +466,11 @@ class FineTuningLogger:
             Path to the log file
         """
         # Determine success/failure directory
-        subdir = "success" if record.outcome == GenerationOutcome.SUCCESS.value else "failure"
+        subdir = (
+            "success"
+            if record.outcome == GenerationOutcome.SUCCESS.value
+            else "failure"
+        )
 
         # Generate filename with date
         date_str = datetime.utcnow().strftime("%Y-%m-%d")
@@ -536,13 +531,14 @@ class FineTuningLogger:
             "total_success": success_count,
             "total_failure": failure_count,
             "output_dir": str(self.output_dir),
-            "format": self.format
+            "format": self.format,
         }
 
 
 # =============================================================================
 # Context Manager for Easy Use
 # =============================================================================
+
 
 class FineTuningContext:
     """
@@ -569,7 +565,7 @@ class FineTuningContext:
         prompt: str,
         job_id: str = "",
         session_id: str = "",
-        logger_instance: Optional[FineTuningLogger] = None
+        logger_instance: Optional[FineTuningLogger] = None,
     ):
         """
         Initialize context.
@@ -581,9 +577,7 @@ class FineTuningContext:
             logger_instance: Optional logger instance
         """
         self.record = FineTuningRecord(
-            prompt=prompt,
-            job_id=job_id,
-            session_id=session_id
+            prompt=prompt, job_id=job_id, session_id=session_id
         )
         self._logger_instance = logger_instance
 
@@ -596,7 +590,7 @@ class FineTuningContext:
             self.record.set_error(
                 message=str(exc_val),
                 stage="exception",
-                outcome=GenerationOutcome.COMPILATION_FAILED
+                outcome=GenerationOutcome.COMPILATION_FAILED,
             )
         elif self.record.status != RecordStatus.FINALIZED.value:
             self.record.finalize()
@@ -619,6 +613,7 @@ class FineTuningContext:
 # Utility Functions
 # =============================================================================
 
+
 def create_fine_tuning_record(
     prompt: str,
     plan_dict: Optional[Dict] = None,
@@ -626,7 +621,7 @@ def create_fine_tuning_record(
     compilation_success: bool = False,
     compilation_ms: float = 0.0,
     validation_result: Optional[Dict] = None,
-    outcome: GenerationOutcome = GenerationOutcome.SUCCESS
+    outcome: GenerationOutcome = GenerationOutcome.SUCCESS,
 ) -> FineTuningRecord:
     """
     Create a complete fine-tuning record in one call.
@@ -642,8 +637,7 @@ def create_fine_tuning_record(
         record.set_ir(ir_dict)
 
     record.set_compilation_result(
-        success=compilation_success,
-        compilation_ms=compilation_ms
+        success=compilation_success, compilation_ms=compilation_ms
     )
 
     if validation_result:
@@ -659,7 +653,7 @@ def export_for_fine_tuning(
     output_path: Path,
     format: str = "openai",
     min_complexity: float = 0.2,
-    require_success: bool = True
+    require_success: bool = True,
 ) -> int:
     """
     Export collected records to fine-tuning dataset.
@@ -705,16 +699,19 @@ def export_for_fine_tuning(
                 ir_json = json.dumps(r.get("ir", {}), sort_keys=True)
                 record = {
                     "messages": [
-                        {"role": "system", "content": "Generate FeatureGraphIR from prompt."},
+                        {
+                            "role": "system",
+                            "content": "Generate FeatureGraphIR from prompt.",
+                        },
                         {"role": "user", "content": r.get("prompt", "")},
-                        {"role": "assistant", "content": ir_json}
+                        {"role": "assistant", "content": ir_json},
                     ]
                 }
             else:  # anthropic
                 ir_json = json.dumps(r.get("ir", {}), sort_keys=True)
                 record = {
                     "prompt": f"Human: {r.get('prompt', '')}\n\nAssistant:",
-                    "completion": f" {ir_json}"
+                    "completion": f" {ir_json}",
                 }
 
             f.write(json.dumps(record, ensure_ascii=False) + "\n")

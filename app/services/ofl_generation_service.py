@@ -36,7 +36,8 @@ class OFLGenerationService:
             ofl_code = self.llm.generate(prompt)
         except Exception as e:
             return OFLGenerateResponse(
-                success=False, error=f"LLM error: {e}",
+                success=False,
+                error=f"LLM error: {e}",
                 generation_time_ms=(time.time() - t0) * 1000,
             )
         return self._execute_and_respond(ofl_code, t0)
@@ -45,7 +46,9 @@ class OFLGenerationService:
         """Re-execute edited OFL code (no LLM call)."""
         return self._execute_and_respond(ofl_code, time.time())
 
-    def edit_from_instruction(self, current_code: str, edit_instruction: str) -> OFLGenerateResponse:
+    def edit_from_instruction(
+        self, current_code: str, edit_instruction: str
+    ) -> OFLGenerateResponse:
         """Apply NL edit to existing code, re-execute."""
         t0 = time.time()
         edited = self._try_rule_based_edit(current_code, edit_instruction)
@@ -54,7 +57,8 @@ class OFLGenerationService:
                 edited = self.llm.generate_edit(current_code, edit_instruction)
             except Exception as e:
                 return OFLGenerateResponse(
-                    success=False, error=f"Edit LLM error: {e}",
+                    success=False,
+                    error=f"Edit LLM error: {e}",
                     generation_time_ms=(time.time() - t0) * 1000,
                 )
         return self._execute_and_respond(edited, t0)
@@ -64,7 +68,9 @@ class OFLGenerationService:
 
         if not result["success"]:
             return OFLGenerateResponse(
-                success=False, ofl_code=ofl_code, error=result["error"],
+                success=False,
+                ofl_code=ofl_code,
+                error=result["error"],
                 generation_time_ms=(time.time() - t0) * 1000,
             )
 
@@ -81,12 +87,16 @@ class OFLGenerationService:
         if result["stl_file"]:
             files.stl = f"/api/v1/ofl/download/{request_id}/{os.path.basename(result['stl_file'])}"
         if glb_path:
-            files.glb = f"/api/v1/ofl/download/{request_id}/{os.path.basename(glb_path)}"
+            files.glb = (
+                f"/api/v1/ofl/download/{request_id}/{os.path.basename(glb_path)}"
+            )
 
         parameters = self._extract_parameters(ofl_code)
 
         return OFLGenerateResponse(
-            success=True, ofl_code=ofl_code, files=files,
+            success=True,
+            ofl_code=ofl_code,
+            files=files,
             parameters=parameters,
             generation_time_ms=(time.time() - t0) * 1000,
         )
@@ -98,13 +108,17 @@ class OFLGenerationService:
             stripped = line.strip()
             if not stripped or stripped.startswith("#") or stripped.startswith("from "):
                 continue
-            match = re.match(r"^([a-z_][a-z0-9_]*)\s*=\s*([0-9]+\.?[0-9]*)\s*(?:#.*)?$", stripped)
+            match = re.match(
+                r"^([a-z_][a-z0-9_]*)\s*=\s*([0-9]+\.?[0-9]*)\s*(?:#.*)?$", stripped
+            )
             if match:
-                params.append(OFLParameter(
-                    name=match.group(1),
-                    value=float(match.group(2)),
-                    line_number=i,
-                ))
+                params.append(
+                    OFLParameter(
+                        name=match.group(1),
+                        value=float(match.group(2)),
+                        line_number=i,
+                    )
+                )
             elif stripped.startswith("part") or stripped.startswith("export"):
                 break
         return params
@@ -114,12 +128,21 @@ class OFLGenerationService:
         instruction_lower = instruction.lower()
 
         bolt_clearances = {
-            "m2": 2.4, "m3": 3.4, "m4": 4.5, "m5": 5.5,
-            "m6": 6.6, "m8": 8.4, "m10": 10.5, "m12": 13.0,
-            "m14": 15.0, "m16": 17.5,
+            "m2": 2.4,
+            "m3": 3.4,
+            "m4": 4.5,
+            "m5": 5.5,
+            "m6": 6.6,
+            "m8": 8.4,
+            "m10": 10.5,
+            "m12": 13.0,
+            "m14": 15.0,
+            "m16": 17.5,
         }
 
-        bolt_match = re.search(r"change\s+(m\d+)\s+(?:holes?\s+)?to\s+(m\d+)", instruction_lower)
+        bolt_match = re.search(
+            r"change\s+(m\d+)\s+(?:holes?\s+)?to\s+(m\d+)", instruction_lower
+        )
         if bolt_match:
             old_bolt, new_bolt = bolt_match.group(1), bolt_match.group(2)
             if old_bolt in bolt_clearances and new_bolt in bolt_clearances:
@@ -127,12 +150,15 @@ class OFLGenerationService:
                 new_dia = bolt_clearances[new_bolt]
                 code = re.sub(
                     rf"(\w+_dia\s*=\s*){re.escape(str(old_dia))}",
-                    rf"\g<1>{new_dia}", code,
+                    rf"\g<1>{new_dia}",
+                    code,
                 )
                 code = code.replace(f'"{old_bolt.upper()}_', f'"{new_bolt.upper()}_')
                 return code
 
-        thickness_match = re.search(r"(?:change|set)\s+thickness\s+to\s+(\d+\.?\d*)", instruction_lower)
+        thickness_match = re.search(
+            r"(?:change|set)\s+thickness\s+to\s+(\d+\.?\d*)", instruction_lower
+        )
         if thickness_match:
             new_val = thickness_match.group(1)
             code = re.sub(r"(thickness\s*=\s*)\d+\.?\d*", rf"\g<1>{new_val}", code)

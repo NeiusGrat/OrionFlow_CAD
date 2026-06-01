@@ -5,8 +5,9 @@ PART_SYNONYMS = {
     "box": ["box", "cube", "rectangular", "rectangle", "plate", "block"],
     "cylinder": ["cylinder", "rod", "pipe", "tube", "pole"],
     "shaft": ["shaft", "axle", "spindle"],
-    "gear": ["gear", "helical gear", "spur gear", "cog"]
+    "gear": ["gear", "helical gear", "spur gear", "cog"],
 }
+
 
 def parse_intent(prompt: str) -> Intent:
     """
@@ -26,5 +27,6 @@ def parse_intent(prompt: str) -> Intent:
 
     # 3. No fallback allowed for advanced mode
     # If we get here, no intent was found.
-    raise ValueError("Unsupported part description. Please specify 'box', 'cylinder', 'shaft', or 'gear'.")
-
+    raise ValueError(
+        "Unsupported part description. Please specify 'box', 'cylinder', 'shaft', or 'gear'."
+    )

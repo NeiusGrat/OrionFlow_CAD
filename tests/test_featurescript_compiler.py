@@ -9,6 +9,7 @@ Tests IR → FeatureScript portability:
 5. Full program generation
 6. Validation checks
 """
+
 import pytest
 from app.cad.onshape.featurescript_compiler import (
     FeatureScriptCompiler,
@@ -20,7 +21,7 @@ from app.cad.onshape.featurescript_compiler import (
     FSBooleanOperation,
     FSParameter,
     compile_ir_to_featurescript,
-    validate_ir_portability
+    validate_ir_portability,
 )
 from app.domain.feature_graph_ir import (
     FeatureGraphIR,
@@ -30,13 +31,13 @@ from app.domain.feature_graph_ir import (
     ResolvedParameter,
     FeatureType,
     PrimitiveType,
-    SketchPlane
+    SketchPlane,
 )
-
 
 # =============================================================================
 # Test Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def simple_box_ir():
@@ -47,7 +48,7 @@ def simple_box_ir():
         parameters={
             "width": ResolvedParameter(value=50.0),
             "height": ResolvedParameter(value=30.0),
-            "depth": ResolvedParameter(value=20.0)
+            "depth": ResolvedParameter(value=20.0),
         },
         sketches=[
             SketchIR(
@@ -57,10 +58,10 @@ def simple_box_ir():
                     SketchPrimitiveIR(
                         id="rect1",
                         type=PrimitiveType.RECTANGLE,
-                        params={"width": 50.0, "height": 30.0}
+                        params={"width": 50.0, "height": 30.0},
                     )
                 ],
-                constraints=[]
+                constraints=[],
             )
         ],
         features=[
@@ -69,10 +70,10 @@ def simple_box_ir():
                 type=FeatureType.EXTRUDE,
                 sketch="sketch_base",
                 params={"depth": 20.0},
-                depends_on=[]
+                depends_on=[],
             )
         ],
-        metadata={"source": "test"}
+        metadata={"source": "test"},
     )
 
 
@@ -86,7 +87,7 @@ def box_with_fillet_ir():
             "width": ResolvedParameter(value=50.0),
             "height": ResolvedParameter(value=30.0),
             "depth": ResolvedParameter(value=20.0),
-            "fillet_radius": ResolvedParameter(value=3.0)
+            "fillet_radius": ResolvedParameter(value=3.0),
         },
         sketches=[
             SketchIR(
@@ -96,10 +97,10 @@ def box_with_fillet_ir():
                     SketchPrimitiveIR(
                         id="rect1",
                         type=PrimitiveType.RECTANGLE,
-                        params={"width": 50.0, "height": 30.0}
+                        params={"width": 50.0, "height": 30.0},
                     )
                 ],
-                constraints=[]
+                constraints=[],
             )
         ],
         features=[
@@ -108,17 +109,17 @@ def box_with_fillet_ir():
                 type=FeatureType.EXTRUDE,
                 sketch="sketch_base",
                 params={"depth": 20.0},
-                depends_on=[]
+                depends_on=[],
             ),
             FeatureIR(
                 id="fillet_edges",
                 type=FeatureType.FILLET,
                 sketch=None,
                 params={"radius": 3.0},
-                depends_on=["extrude_base"]
-            )
+                depends_on=["extrude_base"],
+            ),
         ],
-        metadata={"source": "test"}
+        metadata={"source": "test"},
     )
 
 
@@ -130,7 +131,7 @@ def cylinder_ir():
         units="mm",
         parameters={
             "radius": ResolvedParameter(value=10.0),
-            "height": ResolvedParameter(value=25.0)
+            "height": ResolvedParameter(value=25.0),
         },
         sketches=[
             SketchIR(
@@ -138,12 +139,10 @@ def cylinder_ir():
                 plane=SketchPlane.XY,
                 primitives=[
                     SketchPrimitiveIR(
-                        id="circle1",
-                        type=PrimitiveType.CIRCLE,
-                        params={"radius": 10.0}
+                        id="circle1", type=PrimitiveType.CIRCLE, params={"radius": 10.0}
                     )
                 ],
-                constraints=[]
+                constraints=[],
             )
         ],
         features=[
@@ -152,10 +151,10 @@ def cylinder_ir():
                 type=FeatureType.EXTRUDE,
                 sketch="sketch_circle",
                 params={"depth": 25.0},
-                depends_on=[]
+                depends_on=[],
             )
         ],
-        metadata={"source": "test"}
+        metadata={"source": "test"},
     )
 
 
@@ -169,7 +168,7 @@ def box_with_cut_ir():
             "width": ResolvedParameter(value=50.0),
             "height": ResolvedParameter(value=30.0),
             "depth": ResolvedParameter(value=20.0),
-            "hole_radius": ResolvedParameter(value=5.0)
+            "hole_radius": ResolvedParameter(value=5.0),
         },
         sketches=[
             SketchIR(
@@ -179,10 +178,10 @@ def box_with_cut_ir():
                     SketchPrimitiveIR(
                         id="rect1",
                         type=PrimitiveType.RECTANGLE,
-                        params={"width": 50.0, "height": 30.0}
+                        params={"width": 50.0, "height": 30.0},
                     )
                 ],
-                constraints=[]
+                constraints=[],
             ),
             SketchIR(
                 id="sketch_hole",
@@ -191,11 +190,11 @@ def box_with_cut_ir():
                     SketchPrimitiveIR(
                         id="circle_hole",
                         type=PrimitiveType.CIRCLE,
-                        params={"radius": 5.0}
+                        params={"radius": 5.0},
                     )
                 ],
-                constraints=[]
-            )
+                constraints=[],
+            ),
         ],
         features=[
             FeatureIR(
@@ -203,23 +202,24 @@ def box_with_cut_ir():
                 type=FeatureType.EXTRUDE,
                 sketch="sketch_base",
                 params={"depth": 20.0},
-                depends_on=[]
+                depends_on=[],
             ),
             FeatureIR(
                 id="cut_hole",
                 type=FeatureType.CUT,
                 sketch="sketch_hole",
                 params={"depth": 20.0},
-                depends_on=["extrude_base"]
-            )
+                depends_on=["extrude_base"],
+            ),
         ],
-        metadata={"source": "test"}
+        metadata={"source": "test"},
     )
 
 
 # =============================================================================
 # Test FeatureScript Compiler
 # =============================================================================
+
 
 class TestFeatureScriptCompiler:
     """Tests for FeatureScriptCompiler."""
@@ -297,10 +297,10 @@ class TestFeatureScriptCompiler:
                         type=FeatureType.EXTRUDE,
                         sketch="nonexistent_sketch",
                         params={"depth": 10.0},
-                        depends_on=[]
+                        depends_on=[],
                     )
                 ],
-                metadata={}
+                metadata={},
             )
 
         # Verify the error message
@@ -310,6 +310,7 @@ class TestFeatureScriptCompiler:
 # =============================================================================
 # Test FeatureScript AST Components
 # =============================================================================
+
 
 class TestFSParameter:
     """Tests for FSParameter."""
@@ -331,7 +332,7 @@ class TestFSSketchEntity:
         entity = FSSketchEntity(
             entity_id="rect1",
             entity_type="rectangle",
-            params={"width": 50.0, "height": 30.0}
+            params={"width": 50.0, "height": 30.0},
         )
         fs = entity.to_fs()
         assert "skRectangle" in fs
@@ -341,9 +342,7 @@ class TestFSSketchEntity:
     def test_circle_to_fs(self):
         """Generate circle FeatureScript."""
         entity = FSSketchEntity(
-            entity_id="circle1",
-            entity_type="circle",
-            params={"radius": 10.0}
+            entity_id="circle1", entity_type="circle", params={"radius": 10.0}
         )
         fs = entity.to_fs()
         assert "skCircle" in fs
@@ -354,7 +353,7 @@ class TestFSSketchEntity:
         entity = FSSketchEntity(
             entity_id="line1",
             entity_type="line",
-            params={"x1": 0, "y1": 0, "x2": 10, "y2": 10}
+            params={"x1": 0, "y1": 0, "x2": 10, "y2": 10},
         )
         fs = entity.to_fs()
         assert "skLineSegment" in fs
@@ -370,7 +369,7 @@ class TestFSOperation:
             operation_type=FSOperationType.OP_EXTRUDE,
             params={"depth": 20.0},
             sketch_ref="sketch1",
-            boolean_op=FSBooleanOperation.NEW
+            boolean_op=FSBooleanOperation.NEW,
         )
         fs = op.to_fs()
         assert "opExtrude" in fs
@@ -382,7 +381,7 @@ class TestFSOperation:
         op = FSOperation(
             operation_id="fillet1",
             operation_type=FSOperationType.OP_FILLET,
-            params={"radius": 3.0, "target": "extrude1"}
+            params={"radius": 3.0, "target": "extrude1"},
         )
         fs = op.to_fs()
         assert "opFillet" in fs
@@ -393,7 +392,7 @@ class TestFSOperation:
         op = FSOperation(
             operation_id="chamfer1",
             operation_type=FSOperationType.OP_CHAMFER,
-            params={"distance": 2.0, "target": "extrude1"}
+            params={"distance": 2.0, "target": "extrude1"},
         )
         fs = op.to_fs()
         assert "opChamfer" in fs
@@ -407,17 +406,16 @@ class TestFSProgram:
         """Generate complete FeatureScript program."""
         program = FSProgram(
             feature_name="TestFeature",
-            parameters=[
-                FSParameter("width", 50.0),
-                FSParameter("height", 30.0)
-            ],
+            parameters=[FSParameter("width", 50.0), FSParameter("height", 30.0)],
             sketches=[
                 FSSketch(
                     sketch_id="sketch1",
                     plane="XY",
                     entities=[
-                        FSSketchEntity("rect1", "rectangle", {"width": 50.0, "height": 30.0})
-                    ]
+                        FSSketchEntity(
+                            "rect1", "rectangle", {"width": 50.0, "height": 30.0}
+                        )
+                    ],
                 )
             ],
             operations=[
@@ -425,9 +423,9 @@ class TestFSProgram:
                     operation_id="extrude1",
                     operation_type=FSOperationType.OP_EXTRUDE,
                     params={"depth": 10.0},
-                    sketch_ref="sketch1"
+                    sketch_ref="sketch1",
                 )
-            ]
+            ],
         )
 
         fs = program.to_fs()
@@ -446,6 +444,7 @@ class TestFSProgram:
 # =============================================================================
 # Test Utility Functions
 # =============================================================================
+
 
 class TestUtilityFunctions:
     """Tests for utility functions."""
@@ -474,8 +473,12 @@ class TestUtilityFunctions:
                     id="s1",
                     plane=SketchPlane.XY,
                     primitives=[
-                        SketchPrimitiveIR(id="r1", type=PrimitiveType.RECTANGLE, params={"width": 10, "height": 10})
-                    ]
+                        SketchPrimitiveIR(
+                            id="r1",
+                            type=PrimitiveType.RECTANGLE,
+                            params={"width": 10, "height": 10},
+                        )
+                    ],
                 )
             ],
             features=[
@@ -483,10 +486,10 @@ class TestUtilityFunctions:
                     id="loft1",
                     type=FeatureType.LOFT,
                     params={"sections": 2.0},
-                    depends_on=[]
+                    depends_on=[],
                 )
             ],
-            metadata={}
+            metadata={},
         )
 
         report = validate_ir_portability(ir)
@@ -498,6 +501,7 @@ class TestUtilityFunctions:
 # Test Round-Trip Validation
 # =============================================================================
 
+
 class TestRoundTripValidation:
     """Tests that prove IR → FeatureScript portability."""
 
@@ -508,7 +512,7 @@ class TestRoundTripValidation:
             FeatureType.FILLET,
             FeatureType.CHAMFER,
             FeatureType.REVOLVE,
-            FeatureType.CUT
+            FeatureType.CUT,
         ]
 
         for ftype in supported_types:
@@ -524,24 +528,42 @@ class TestRoundTripValidation:
                             SketchPrimitiveIR(
                                 id="r1",
                                 type=PrimitiveType.RECTANGLE,
-                                params={"width": 10, "height": 10}
+                                params={"width": 10, "height": 10},
                             )
-                        ]
+                        ],
                     )
                 ],
                 features=[
                     FeatureIR(
                         id="f1",
                         type=ftype,
-                        sketch="s1" if ftype in (FeatureType.EXTRUDE, FeatureType.CUT, FeatureType.REVOLVE) else None,
-                        params={"depth": 10.0} if ftype in (FeatureType.EXTRUDE, FeatureType.CUT) else
-                               {"radius": 2.0} if ftype == FeatureType.FILLET else
-                               {"distance": 1.0} if ftype == FeatureType.CHAMFER else
-                               {"angle": 360.0},
-                        depends_on=[]
+                        sketch=(
+                            "s1"
+                            if ftype
+                            in (
+                                FeatureType.EXTRUDE,
+                                FeatureType.CUT,
+                                FeatureType.REVOLVE,
+                            )
+                            else None
+                        ),
+                        params=(
+                            {"depth": 10.0}
+                            if ftype in (FeatureType.EXTRUDE, FeatureType.CUT)
+                            else (
+                                {"radius": 2.0}
+                                if ftype == FeatureType.FILLET
+                                else (
+                                    {"distance": 1.0}
+                                    if ftype == FeatureType.CHAMFER
+                                    else {"angle": 360.0}
+                                )
+                            )
+                        ),
+                        depends_on=[],
                     )
                 ],
-                metadata={}
+                metadata={},
             )
 
             compiler = FeatureScriptCompiler()
@@ -557,7 +579,10 @@ class TestRoundTripValidation:
             (PrimitiveType.RECTANGLE, {"width": 10, "height": 10}),
             (PrimitiveType.CIRCLE, {"radius": 5}),
             (PrimitiveType.LINE, {"x1": 0, "y1": 0, "x2": 10, "y2": 10}),
-            (PrimitiveType.ARC, {"x1": 0, "y1": 0, "xm": 5, "ym": 5, "x2": 10, "y2": 0}),
+            (
+                PrimitiveType.ARC,
+                {"x1": 0, "y1": 0, "xm": 5, "ym": 5, "x2": 10, "y2": 0},
+            ),
         ]
 
         for ptype, params in primitives:
@@ -571,7 +596,7 @@ class TestRoundTripValidation:
                         plane=SketchPlane.XY,
                         primitives=[
                             SketchPrimitiveIR(id="p1", type=ptype, params=params)
-                        ]
+                        ],
                     )
                 ],
                 features=[
@@ -580,10 +605,10 @@ class TestRoundTripValidation:
                         type=FeatureType.EXTRUDE,
                         sketch="s1",
                         params={"depth": 10.0},
-                        depends_on=[]
+                        depends_on=[],
                     )
                 ],
-                metadata={}
+                metadata={},
             )
 
             compiler = FeatureScriptCompiler()

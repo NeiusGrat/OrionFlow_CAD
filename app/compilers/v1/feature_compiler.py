@@ -7,8 +7,10 @@ class FeatureCompiler:
     def compile(self, graph: FeatureGraphV1, sketches: dict):
         # Validate that we have features to compile
         if not graph.features:
-            raise FeatureCompilationError("No features provided - cannot generate geometry")
-        
+            raise FeatureCompilationError(
+                "No features provided - cannot generate geometry"
+            )
+
         solid = None
 
         for feature in graph.features:
@@ -19,7 +21,7 @@ class FeatureCompiler:
                 # The provided snippet returns `solid`.
                 # Let's implementation basic logic:
                 new_solid = self._extrude(feature, sketches, graph)
-                
+
                 if solid is None:
                     solid = new_solid
                 else:
@@ -27,7 +29,7 @@ class FeatureCompiler:
                     # Or is this intended to be a sequential modification?
                     # build123d algebra: solid + new_solid
                     solid = solid + new_solid
-                    
+
             else:
                 raise FeatureCompilationError(
                     f"Unsupported feature type: {feature.type}"
@@ -49,7 +51,7 @@ class FeatureCompiler:
     def _extrude(self, feature, sketches, graph):
         try:
             sketch = sketches[feature.sketch]
-            
+
             # Resolve depth
             depth_raw = feature.params["depth"]
             depth = self._resolve_param(depth_raw, graph)
@@ -58,20 +60,20 @@ class FeatureCompiler:
             # sketch is a Builder object (BuildSketch) or a Sketch object?
             # SketchCompiler returns `bs` which is a Builder.
             # We need the direct sketch object.
-            
+
             # BuildSketch context manager returns the builder.
             # To get the object, we use .sketch or ensure we are passing the object.
             # sketch_compiler.py returns `bs` (the builder instance).
             # `extrude(sketch, amount=depth)` works if sketch is a Sketch/Face.
-            
+
             # The builder object can be used if we access its `sketch` property or if `extrude` accepts it.
             # build123d `extrude` accepts `Compound`, `Sketch`, `Face`, `Wire`.
             # `bs.sketch` gives the underlying compound.
-            
+
             target_geo = sketch.sketch if hasattr(sketch, "sketch") else sketch
-            
+
             return extrude(target_geo, amount=depth)
-            
+
         except Exception as e:
             raise FeatureCompilationError(
                 f"Extrude failed for feature '{feature.id}': {e}"

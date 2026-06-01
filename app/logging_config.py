@@ -6,10 +6,11 @@ Includes request ID tracking for distributed tracing.
 
 Usage:
     from app.logging_config import get_logger
-    
+
     logger = get_logger(__name__)
     logger.info("generation_started", job_id=job_id, prompt=prompt[:50])
 """
+
 import sys
 import logging
 import uuid
@@ -40,11 +41,7 @@ def generate_request_id() -> str:
     return str(uuid.uuid4())[:8]
 
 
-def add_request_id(
-    logger: logging.Logger,
-    method_name: str,
-    event_dict: dict
-) -> dict:
+def add_request_id(logger: logging.Logger, method_name: str, event_dict: dict) -> dict:
     """Structlog processor to add request ID to log entries."""
     request_id = get_request_id()
     if request_id:
@@ -53,9 +50,7 @@ def add_request_id(
 
 
 def add_service_context(
-    logger: logging.Logger,
-    method_name: str,
-    event_dict: dict
+    logger: logging.Logger, method_name: str, event_dict: dict
 ) -> dict:
     """Add service-level context to all log entries."""
     event_dict["service"] = "orionflow-cad"
@@ -66,13 +61,13 @@ def add_service_context(
 def configure_logging() -> None:
     """
     Configure structured logging for the application.
-    
+
     Call this once at application startup.
     """
     # Determine if we're in debug mode
     debug = settings.debug
     log_level = settings.log_level
-    
+
     # Shared processors for all output
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -84,19 +79,17 @@ def configure_logging() -> None:
         structlog.processors.StackInfoRenderer(),
         structlog.processors.UnicodeDecoder(),
     ]
-    
+
     if debug:
         # Development: Pretty console output
-        processors = shared_processors + [
-            structlog.dev.ConsoleRenderer(colors=True)
-        ]
+        processors = shared_processors + [structlog.dev.ConsoleRenderer(colors=True)]
     else:
         # Production: JSON output for log aggregation
         processors = shared_processors + [
             structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer()
+            structlog.processors.JSONRenderer(),
         ]
-    
+
     # Configure structlog
     structlog.configure(
         processors=processors,
@@ -105,14 +98,14 @@ def configure_logging() -> None:
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard library logging
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=getattr(logging, log_level),
     )
-    
+
     # Set log levels for noisy libraries
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -122,10 +115,10 @@ def configure_logging() -> None:
 def get_logger(name: str = None) -> structlog.stdlib.BoundLogger:
     """
     Get a structured logger instance.
-    
+
     Args:
         name: Logger name (typically __name__)
-        
+
     Returns:
         Configured structlog logger
     """
@@ -135,27 +128,27 @@ def get_logger(name: str = None) -> structlog.stdlib.BoundLogger:
 # Pre-configured loggers for common modules
 class Loggers:
     """Pre-configured logger instances for common modules."""
-    
+
     @staticmethod
     def api() -> structlog.stdlib.BoundLogger:
         """Logger for API layer."""
         return get_logger("app.api")
-    
+
     @staticmethod
     def generation() -> structlog.stdlib.BoundLogger:
         """Logger for generation service."""
         return get_logger("app.services.generation")
-    
+
     @staticmethod
     def llm() -> structlog.stdlib.BoundLogger:
         """Logger for LLM client."""
         return get_logger("app.llm")
-    
+
     @staticmethod
     def compiler() -> structlog.stdlib.BoundLogger:
         """Logger for compilers."""
         return get_logger("app.compilers")
-    
+
     @staticmethod
     def dataset() -> structlog.stdlib.BoundLogger:
         """Logger for dataset operations."""

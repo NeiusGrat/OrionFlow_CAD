@@ -7,26 +7,43 @@ logger = logging.getLogger(__name__)
 
 # Stub constraints if missing in build123d environment
 if "Coincident" not in globals():
+
     class Coincident:
         def __init__(self, *args):
-            logger.warning("Coincident constraint not supported in this build123d version")
+            logger.warning(
+                "Coincident constraint not supported in this build123d version"
+            )
+
 
 if "Horizontal" not in globals():
+
     class Horizontal:
         def __init__(self, *args):
-            logger.warning("Horizontal constraint not supported in this build123d version")
+            logger.warning(
+                "Horizontal constraint not supported in this build123d version"
+            )
+
 
 if "Vertical" not in globals():
+
     class Vertical:
         def __init__(self, *args):
-            logger.warning("Vertical constraint not supported in this build123d version")
+            logger.warning(
+                "Vertical constraint not supported in this build123d version"
+            )
+
 
 if "Distance" not in globals():
+
     class Distance:
         def __init__(self, *args):
-            logger.warning("Distance constraint not supported in this build123d version")
+            logger.warning(
+                "Distance constraint not supported in this build123d version"
+            )
+
 
 if "Radius" not in globals():
+
     class Radius:
         def __init__(self, *args):
             logger.warning("Radius constraint not supported in this build123d version")
@@ -44,24 +61,18 @@ class SketchCompiler:
     def _compile_single_sketch(self, sketch: SketchGraph, graph: FeatureGraphV1):
         try:
             # Map string to Build123d Plane
-            plane_map = {
-                "XY": Plane.XY,
-                "YZ": Plane.YZ,
-                "XZ": Plane.XZ
-            }
+            plane_map = {"XY": Plane.XY, "YZ": Plane.YZ, "XZ": Plane.XZ}
             target_plane = plane_map.get(sketch.plane, Plane.XY)
-            
+
             with BuildSketch(target_plane) as bs:
                 # Initialize local entity registry for this sketch
                 self._entity_registry = {}
-                
+
                 self._add_primitives(bs, sketch, graph)
                 self._add_constraints(bs, sketch, graph)
             return bs
         except Exception as e:
-            raise SketchCompilationError(
-                f"Failed to compile sketch '{sketch.id}': {e}"
-            )
+            raise SketchCompilationError(f"Failed to compile sketch '{sketch.id}': {e}")
 
     def _add_primitives(self, bs, sketch: SketchGraph, graph: FeatureGraphV1):
         for prim in sketch.primitives:
@@ -70,13 +81,11 @@ class SketchCompiler:
             elif prim.type == "circle":
                 self._add_circle(bs, prim, graph)
             else:
-                raise SketchCompilationError(
-                    f"Unsupported primitive type: {prim.type}"
-                )
+                raise SketchCompilationError(f"Unsupported primitive type: {prim.type}")
 
     def _resolve_param(self, value, graph: FeatureGraphV1):
         if isinstance(value, str):
-            clean_val = value.lstrip("$") # Handle $ prefix if present
+            clean_val = value.lstrip("$")  # Handle $ prefix if present
             if clean_val in graph.parameters:
                 return graph.parameters[clean_val].value
             try:
@@ -90,10 +99,10 @@ class SketchCompiler:
         current_params = prim.params
         width = self._resolve_param(current_params["width"], graph)
         height = self._resolve_param(current_params["height"], graph)
-        
+
         # Create Primitive
         rect = Rectangle(width, height)
-        
+
         # Register Entities (Center, Edges)
         # Note: We rely on standard build123d selection filters
         self._entity_registry[f"{prim.id}.center"] = rect.center()
@@ -104,23 +113,25 @@ class SketchCompiler:
         sorted_x = rect.edges().sort_by(Axis.X)
         self._entity_registry[f"{prim.id}.left"] = sorted_x[0]
         self._entity_registry[f"{prim.id}.right"] = sorted_x[-1]
-        
+
         sorted_y = rect.edges().sort_by(Axis.Y)
         self._entity_registry[f"{prim.id}.bottom"] = sorted_y[0]
         self._entity_registry[f"{prim.id}.top"] = sorted_y[-1]
-        
+
         # Also register the object itself just in case
         self._entity_registry[prim.id] = rect
 
     def _add_circle(self, bs, prim, graph):
         current_params = prim.params
         radius = self._resolve_param(current_params["radius"], graph)
-        
+
         circle = Circle(radius)
-        
+
         # Register Entities
         self._entity_registry[f"{prim.id}.center"] = circle.center()
-        self._entity_registry[f"{prim.id}.radius"] = radius # Value, not entity, but might be needed? 
+        self._entity_registry[f"{prim.id}.radius"] = (
+            radius  # Value, not entity, but might be needed?
+        )
         # Constraints generally act on Geometry.
         # Radius constraint acts on the object.
         self._entity_registry[prim.id] = circle
@@ -144,16 +155,13 @@ class SketchCompiler:
 
     def _get_entity(self, key):
         if key not in self._entity_registry:
-             raise SketchCompilationError(f"Entity not found: {key}")
+            raise SketchCompilationError(f"Entity not found: {key}")
         return self._entity_registry[key]
 
     def _coincident(self, constraint):
         a, b = constraint.entities
         # build123d Coincident() takes Objects
-        Coincident(
-            self._get_entity(a),
-            self._get_entity(b)
-        )
+        Coincident(self._get_entity(a), self._get_entity(b))
 
     def _horizontal(self, constraint):
         (entity,) = constraint.entities
@@ -169,18 +177,11 @@ class SketchCompiler:
         value = constraint.value
         val = self._resolve_param(value, graph)
 
-        Distance(
-            self._get_entity(a),
-            self._get_entity(b),
-            val
-        )
+        Distance(self._get_entity(a), self._get_entity(b), val)
 
     def _radius(self, constraint, graph):
         (entity,) = constraint.entities
         value = constraint.value
         val = self._resolve_param(value, graph)
 
-        Radius(
-            self._get_entity(entity),
-            val
-        )
+        Radius(self._get_entity(entity), val)

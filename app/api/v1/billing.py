@@ -12,7 +12,6 @@ Endpoints:
 """
 
 from typing import List, Optional
-from datetime import datetime
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Header
@@ -21,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.session import get_db
-from app.db.models import User, PricingPlan, Subscription
+from app.db.models import User, PricingPlan
 from app.auth.dependencies import get_current_active_user
 from app.billing.stripe_service import (
     create_checkout_session,
@@ -31,7 +30,6 @@ from app.billing.stripe_service import (
 )
 from app.billing.usage import get_usage_stats, check_usage_limit
 from app.billing.webhooks import verify_webhook_signature, process_webhook_event
-from app.config import settings
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -42,8 +40,10 @@ router = APIRouter()
 # Request/Response Models
 # =============================================================================
 
+
 class PlanResponse(BaseModel):
     """Pricing plan response."""
+
     id: str
     name: str
     display_name: str
@@ -58,6 +58,7 @@ class PlanResponse(BaseModel):
 
 class SubscriptionResponse(BaseModel):
     """Subscription response."""
+
     id: str
     plan: PlanResponse
     status: str
@@ -69,6 +70,7 @@ class SubscriptionResponse(BaseModel):
 
 class CheckoutRequest(BaseModel):
     """Checkout session request."""
+
     plan_id: str
     billing_period: str = Field("monthly", pattern="^(monthly|yearly)$")
     success_url: Optional[str] = None
@@ -77,17 +79,20 @@ class CheckoutRequest(BaseModel):
 
 class CheckoutResponse(BaseModel):
     """Checkout session response."""
+
     session_id: str
     url: str
 
 
 class PortalResponse(BaseModel):
     """Customer portal response."""
+
     url: str
 
 
 class UsageResponse(BaseModel):
     """Usage statistics response."""
+
     period: dict
     generations: dict
     daily_usage: List[dict]
@@ -95,6 +100,7 @@ class UsageResponse(BaseModel):
 
 class UsageLimitResponse(BaseModel):
     """Usage limit check response."""
+
     allowed: bool
     reason: Optional[str] = None
     message: Optional[str] = None
@@ -105,12 +111,14 @@ class UsageLimitResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """Generic message response."""
+
     message: str
 
 
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get(
     "/plans",
@@ -125,7 +133,7 @@ async def list_plans(
     """
     result = await db.execute(
         select(PricingPlan)
-        .where(PricingPlan.is_active == True, PricingPlan.is_public == True)
+        .where(PricingPlan.is_active.is_(True), PricingPlan.is_public.is_(True))
         .order_by(PricingPlan.price_monthly_cents)
     )
     plans = result.scalars().all()
@@ -203,8 +211,7 @@ async def create_checkout(
         plan_uuid = uuid.UUID(request.plan_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid plan ID"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid plan ID"
         )
 
     try:
@@ -223,15 +230,12 @@ async def create_checkout(
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Checkout session creation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create checkout session"
+            detail="Failed to create checkout session",
         )
 
 
@@ -252,15 +256,12 @@ async def create_portal(
         return PortalResponse(url=session["url"])
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Portal session creation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create portal session"
+            detail="Failed to create portal session",
         )
 
 
@@ -283,15 +284,12 @@ async def cancel_user_subscription(
         )
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Subscription cancellation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to cancel subscription"
+            detail="Failed to cancel subscription",
         )
 
 
@@ -358,7 +356,7 @@ async def stripe_webhook(
     if not stripe_signature:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing Stripe-Signature header"
+            detail="Missing Stripe-Signature header",
         )
 
     # Get raw body for signature verification
@@ -368,8 +366,7 @@ async def stripe_webhook(
         event = verify_webhook_signature(payload, stripe_signature)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid webhook signature"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook signature"
         )
 
     # Process the event

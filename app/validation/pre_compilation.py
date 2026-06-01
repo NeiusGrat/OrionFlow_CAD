@@ -21,6 +21,7 @@ TIMING: Runs after FeatureGraphIR construction, before compilation.
 
 Version: 1.0
 """
+
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -33,24 +34,28 @@ logger = logging.getLogger(__name__)
 # Validation Result Types
 # =============================================================================
 
+
 class ValidationSeverity(str, Enum):
     """Severity level of validation issue."""
-    ERROR = "error"      # Blocks compilation
+
+    ERROR = "error"  # Blocks compilation
     WARNING = "warning"  # Proceeds with caution
-    INFO = "info"        # Informational only
+    INFO = "info"  # Informational only
 
 
 class ValidationCategory(str, Enum):
     """Category of validation check."""
-    PHYSICS = "physics"              # Geometric feasibility
+
+    PHYSICS = "physics"  # Geometric feasibility
     MANUFACTURING = "manufacturing"  # Producibility constraints
-    SANITY = "sanity"               # Basic validity checks
-    TOPOLOGY = "topology"           # Dependency/reference validity
+    SANITY = "sanity"  # Basic validity checks
+    TOPOLOGY = "topology"  # Dependency/reference validity
 
 
 @dataclass
 class ValidationIssue:
     """A single validation issue found."""
+
     code: str
     message: str
     severity: ValidationSeverity
@@ -70,13 +75,14 @@ class ValidationIssue:
             "feature_id": self.feature_id,
             "param_name": self.param_name,
             "actual_value": self.actual_value,
-            "allowed_range": self.allowed_range
+            "allowed_range": self.allowed_range,
         }
 
 
 @dataclass
 class ValidationResult:
     """Result of validation run."""
+
     is_valid: bool
     issues: List[ValidationIssue] = field(default_factory=list)
     errors: int = 0
@@ -97,13 +103,14 @@ class ValidationResult:
             "is_valid": self.is_valid,
             "errors": self.errors,
             "warnings": self.warnings,
-            "issues": [i.to_dict() for i in self.issues]
+            "issues": [i.to_dict() for i in self.issues],
         }
 
 
 # =============================================================================
 # Manufacturing Constraints (Configurable)
 # =============================================================================
+
 
 @dataclass
 class ManufacturingConstraints:
@@ -115,6 +122,7 @@ class ManufacturingConstraints:
     - CNC Milling: Minimum tool radius affects fillets
     - Casting: Draft angles, uniform thickness
     """
+
     # Minimum dimensions (mm)
     min_wall_thickness: float = 0.5
     min_hole_diameter: float = 0.5
@@ -139,7 +147,7 @@ class ManufacturingConstraints:
             min_hole_diameter=0.5,
             min_extrusion_depth=0.1,
             min_fillet_radius=0.2,
-            min_chamfer_distance=0.2
+            min_chamfer_distance=0.2,
         )
 
     @classmethod
@@ -150,7 +158,7 @@ class ManufacturingConstraints:
             min_hole_diameter=3.0,
             min_extrusion_depth=0.5,
             min_fillet_radius=1.5,  # Min tool radius
-            min_chamfer_distance=0.5
+            min_chamfer_distance=0.5,
         )
 
     @classmethod
@@ -162,13 +170,14 @@ class ManufacturingConstraints:
             min_extrusion_depth=0.5,
             min_fillet_radius=0.5,
             min_chamfer_distance=0.3,
-            min_draft_angle=1.0  # 1 degree draft
+            min_draft_angle=1.0,  # 1 degree draft
         )
 
 
 # =============================================================================
 # Validation Rules
 # =============================================================================
+
 
 class ValidationRule:
     """Base class for validation rules."""
@@ -177,9 +186,7 @@ class ValidationRule:
     category: ValidationCategory = ValidationCategory.SANITY
 
     def validate(
-        self,
-        ir: Any,
-        constraints: ManufacturingConstraints
+        self, ir: Any, constraints: ManufacturingConstraints
     ) -> List[ValidationIssue]:
         """
         Run validation.
@@ -198,6 +205,7 @@ class ValidationRule:
 # Sanity Rules (Basic Validity)
 # -----------------------------------------------------------------------------
 
+
 class PositiveDepthRule(ValidationRule):
     """Extrusion depth must be positive."""
 
@@ -211,16 +219,18 @@ class PositiveDepthRule(ValidationRule):
             if feature.type.value in ("extrude", "cut"):
                 depth = feature.params.get("depth", 0)
                 if depth <= 0:
-                    issues.append(ValidationIssue(
-                        code=self.code,
-                        message=f"Extrusion depth must be positive, got {depth}",
-                        severity=ValidationSeverity.ERROR,
-                        category=self.category,
-                        feature_id=feature.id,
-                        param_name="depth",
-                        actual_value=depth,
-                        allowed_range=(constraints.min_extrusion_depth, None)
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            code=self.code,
+                            message=f"Extrusion depth must be positive, got {depth}",
+                            severity=ValidationSeverity.ERROR,
+                            category=self.category,
+                            feature_id=feature.id,
+                            param_name="depth",
+                            actual_value=depth,
+                            allowed_range=(constraints.min_extrusion_depth, None),
+                        )
+                    )
 
         return issues
 
@@ -240,30 +250,34 @@ class PositiveRadiusRule(ValidationRule):
                 if prim.type.value == "circle":
                     radius = prim.params.get("radius", 0)
                     if radius <= 0:
-                        issues.append(ValidationIssue(
-                            code=self.code,
-                            message=f"Circle radius must be positive, got {radius}",
-                            severity=ValidationSeverity.ERROR,
-                            category=self.category,
-                            feature_id=sketch.id,
-                            param_name="radius",
-                            actual_value=radius
-                        ))
+                        issues.append(
+                            ValidationIssue(
+                                code=self.code,
+                                message=f"Circle radius must be positive, got {radius}",
+                                severity=ValidationSeverity.ERROR,
+                                category=self.category,
+                                feature_id=sketch.id,
+                                param_name="radius",
+                                actual_value=radius,
+                            )
+                        )
 
         # Check fillet features
         for feature in ir.features:
             if feature.type.value == "fillet":
                 radius = feature.params.get("radius", 0)
                 if radius <= 0:
-                    issues.append(ValidationIssue(
-                        code=self.code,
-                        message=f"Fillet radius must be positive, got {radius}",
-                        severity=ValidationSeverity.ERROR,
-                        category=self.category,
-                        feature_id=feature.id,
-                        param_name="radius",
-                        actual_value=radius
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            code=self.code,
+                            message=f"Fillet radius must be positive, got {radius}",
+                            severity=ValidationSeverity.ERROR,
+                            category=self.category,
+                            feature_id=feature.id,
+                            param_name="radius",
+                            actual_value=radius,
+                        )
+                    )
 
         return issues
 
@@ -284,26 +298,30 @@ class PositiveDimensionRule(ValidationRule):
                     height = prim.params.get("height", 0)
 
                     if width <= 0:
-                        issues.append(ValidationIssue(
-                            code=self.code,
-                            message=f"Rectangle width must be positive, got {width}",
-                            severity=ValidationSeverity.ERROR,
-                            category=self.category,
-                            feature_id=sketch.id,
-                            param_name="width",
-                            actual_value=width
-                        ))
+                        issues.append(
+                            ValidationIssue(
+                                code=self.code,
+                                message=f"Rectangle width must be positive, got {width}",
+                                severity=ValidationSeverity.ERROR,
+                                category=self.category,
+                                feature_id=sketch.id,
+                                param_name="width",
+                                actual_value=width,
+                            )
+                        )
 
                     if height <= 0:
-                        issues.append(ValidationIssue(
-                            code=self.code,
-                            message=f"Rectangle height must be positive, got {height}",
-                            severity=ValidationSeverity.ERROR,
-                            category=self.category,
-                            feature_id=sketch.id,
-                            param_name="height",
-                            actual_value=height
-                        ))
+                        issues.append(
+                            ValidationIssue(
+                                code=self.code,
+                                message=f"Rectangle height must be positive, got {height}",
+                                severity=ValidationSeverity.ERROR,
+                                category=self.category,
+                                feature_id=sketch.id,
+                                param_name="height",
+                                actual_value=height,
+                            )
+                        )
 
         return issues
 
@@ -321,15 +339,17 @@ class MaxDimensionRule(ValidationRule):
         # Check all parameters
         for param_name, param in ir.parameters.items():
             if param.value > max_dim:
-                issues.append(ValidationIssue(
-                    code=self.code,
-                    message=f"Parameter {param_name} exceeds maximum ({param.value} > {max_dim})",
-                    severity=ValidationSeverity.ERROR,
-                    category=self.category,
-                    param_name=param_name,
-                    actual_value=param.value,
-                    allowed_range=(0, max_dim)
-                ))
+                issues.append(
+                    ValidationIssue(
+                        code=self.code,
+                        message=f"Parameter {param_name} exceeds maximum ({param.value} > {max_dim})",
+                        severity=ValidationSeverity.ERROR,
+                        category=self.category,
+                        param_name=param_name,
+                        actual_value=param.value,
+                        allowed_range=(0, max_dim),
+                    )
+                )
 
         return issues
 
@@ -337,6 +357,7 @@ class MaxDimensionRule(ValidationRule):
 # -----------------------------------------------------------------------------
 # Physics Rules (Geometric Feasibility)
 # -----------------------------------------------------------------------------
+
 
 class FilletRadiusRule(ValidationRule):
     """Fillet radius must be feasible for geometry."""
@@ -353,16 +374,18 @@ class FilletRadiusRule(ValidationRule):
 
                 # Without full geometry, we can only check minimum
                 if radius < constraints.min_fillet_radius:
-                    issues.append(ValidationIssue(
-                        code=self.code,
-                        message=f"Fillet radius {radius}mm is below minimum {constraints.min_fillet_radius}mm",
-                        severity=ValidationSeverity.WARNING,
-                        category=self.category,
-                        feature_id=feature.id,
-                        param_name="radius",
-                        actual_value=radius,
-                        allowed_range=(constraints.min_fillet_radius, None)
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            code=self.code,
+                            message=f"Fillet radius {radius}mm is below minimum {constraints.min_fillet_radius}mm",
+                            severity=ValidationSeverity.WARNING,
+                            category=self.category,
+                            feature_id=feature.id,
+                            param_name="radius",
+                            actual_value=radius,
+                            allowed_range=(constraints.min_fillet_radius, None),
+                        )
+                    )
 
         return issues
 
@@ -381,16 +404,18 @@ class ChamferDistanceRule(ValidationRule):
                 distance = feature.params.get("distance", 0)
 
                 if distance < constraints.min_chamfer_distance:
-                    issues.append(ValidationIssue(
-                        code=self.code,
-                        message=f"Chamfer distance {distance}mm is below minimum {constraints.min_chamfer_distance}mm",
-                        severity=ValidationSeverity.WARNING,
-                        category=self.category,
-                        feature_id=feature.id,
-                        param_name="distance",
-                        actual_value=distance,
-                        allowed_range=(constraints.min_chamfer_distance, None)
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            code=self.code,
+                            message=f"Chamfer distance {distance}mm is below minimum {constraints.min_chamfer_distance}mm",
+                            severity=ValidationSeverity.WARNING,
+                            category=self.category,
+                            feature_id=feature.id,
+                            param_name="distance",
+                            actual_value=distance,
+                            allowed_range=(constraints.min_chamfer_distance, None),
+                        )
+                    )
 
         return issues
 
@@ -398,6 +423,7 @@ class ChamferDistanceRule(ValidationRule):
 # -----------------------------------------------------------------------------
 # Manufacturing Rules (Producibility)
 # -----------------------------------------------------------------------------
+
 
 class MinWallThicknessRule(ValidationRule):
     """
@@ -419,16 +445,18 @@ class MinWallThicknessRule(ValidationRule):
 
                 # Heuristic: if extrusion is very thin, warn
                 if 0 < depth < constraints.min_wall_thickness:
-                    issues.append(ValidationIssue(
-                        code=self.code,
-                        message=f"Extrusion depth {depth}mm may be below minimum wall thickness {constraints.min_wall_thickness}mm",
-                        severity=ValidationSeverity.WARNING,
-                        category=self.category,
-                        feature_id=feature.id,
-                        param_name="depth",
-                        actual_value=depth,
-                        allowed_range=(constraints.min_wall_thickness, None)
-                    ))
+                    issues.append(
+                        ValidationIssue(
+                            code=self.code,
+                            message=f"Extrusion depth {depth}mm may be below minimum wall thickness {constraints.min_wall_thickness}mm",
+                            severity=ValidationSeverity.WARNING,
+                            category=self.category,
+                            feature_id=feature.id,
+                            param_name="depth",
+                            actual_value=depth,
+                            allowed_range=(constraints.min_wall_thickness, None),
+                        )
+                    )
 
         return issues
 
@@ -449,16 +477,18 @@ class MinHoleDiameterRule(ValidationRule):
 
                     # Heuristic: small circles might be holes
                     if 0 < diameter < constraints.min_hole_diameter:
-                        issues.append(ValidationIssue(
-                            code=self.code,
-                            message=f"Circle diameter {diameter}mm may be below minimum hole size {constraints.min_hole_diameter}mm",
-                            severity=ValidationSeverity.WARNING,
-                            category=self.category,
-                            feature_id=sketch.id,
-                            param_name="diameter",
-                            actual_value=diameter,
-                            allowed_range=(constraints.min_hole_diameter, None)
-                        ))
+                        issues.append(
+                            ValidationIssue(
+                                code=self.code,
+                                message=f"Circle diameter {diameter}mm may be below minimum hole size {constraints.min_hole_diameter}mm",
+                                severity=ValidationSeverity.WARNING,
+                                category=self.category,
+                                feature_id=sketch.id,
+                                param_name="diameter",
+                                actual_value=diameter,
+                                allowed_range=(constraints.min_hole_diameter, None),
+                            )
+                        )
 
         return issues
 
@@ -466,6 +496,7 @@ class MinHoleDiameterRule(ValidationRule):
 # =============================================================================
 # Pre-Compilation Validator
 # =============================================================================
+
 
 class PreCompilationValidator:
     """
@@ -496,7 +527,7 @@ class PreCompilationValidator:
     def __init__(
         self,
         constraints: Optional[ManufacturingConstraints] = None,
-        rules: Optional[List[ValidationRule]] = None
+        rules: Optional[List[ValidationRule]] = None,
     ):
         """
         Initialize validator.
@@ -527,12 +558,14 @@ class PreCompilationValidator:
                     result.add_issue(issue)
             except Exception as e:
                 logger.error(f"Validation rule {rule.code} failed: {e}")
-                result.add_issue(ValidationIssue(
-                    code="VALIDATION_ERROR",
-                    message=f"Rule {rule.code} failed: {e}",
-                    severity=ValidationSeverity.ERROR,
-                    category=ValidationCategory.SANITY
-                ))
+                result.add_issue(
+                    ValidationIssue(
+                        code="VALIDATION_ERROR",
+                        message=f"Rule {rule.code} failed: {e}",
+                        severity=ValidationSeverity.ERROR,
+                        category=ValidationCategory.SANITY,
+                    )
+                )
 
         logger.info(
             f"Validation complete: {result.errors} errors, "
@@ -568,6 +601,7 @@ class PreCompilationValidator:
 # =============================================================================
 # Convenience Functions
 # =============================================================================
+
 
 def validate_for_3d_printing(ir: Any) -> ValidationResult:
     """Validate IR for 3D printing."""

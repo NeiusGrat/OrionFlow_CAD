@@ -3,6 +3,7 @@ Validators Package - Geometry Verification Passes
 
 Exports all validators for use in compilation pipeline.
 """
+
 # Import base class first
 from app.compilers.validators.base import GeometryValidator
 
@@ -17,6 +18,5 @@ __all__ = [
     "ZeroThicknessValidator",
     "FilletValidator",
     "SelfIntersectionValidator",
-    "DegenerateFaceValidator"
+    "DegenerateFaceValidator",
 ]
-

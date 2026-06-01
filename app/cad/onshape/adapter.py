@@ -22,13 +22,16 @@ class OnshapeFeatureGraphAdapter:
                 if prim.type == "rectangle":
                     w = prim.params["width"]
                     h = prim.params["height"]
-                    if isinstance(w, str): w = graph.parameters[w.lstrip("$")].value
-                    if isinstance(h, str): h = graph.parameters[h.lstrip("$")].value
-                    
+                    if isinstance(w, str):
+                        w = graph.parameters[w.lstrip("$")].value
+                    if isinstance(h, str):
+                        h = graph.parameters[h.lstrip("$")].value
+
                     self.sketch_adapter.add_rectangle(w, h)
                 elif prim.type == "circle":
                     r = prim.params["radius"]
-                    if isinstance(r, str): r = graph.parameters[r.lstrip("$")].value
+                    if isinstance(r, str):
+                        r = graph.parameters[r.lstrip("$")].value
                     self.sketch_adapter.add_circle(r)
 
         for feature in graph.features:

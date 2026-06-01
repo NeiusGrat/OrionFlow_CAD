@@ -24,12 +24,12 @@ PERFORMANCE:
 
 Version: 1.0
 """
+
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
 import hashlib
 import json
-import pickle
 import logging
 from datetime import datetime
 
@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Cache Entry
 # =============================================================================
+
 
 @dataclass
 class CacheEntry:
@@ -50,6 +51,7 @@ class CacheEntry:
     - The cache key that was used
     - Metadata for debugging
     """
+
     feature_id: str
     cache_key: str
     geometry: Any  # The compiled B-Rep or solid
@@ -65,6 +67,7 @@ class CacheEntry:
 # Dependency Graph
 # =============================================================================
 
+
 @dataclass
 class DependencyNode:
     """
@@ -75,16 +78,14 @@ class DependencyNode:
     - Dependents (downstream features that depend on this)
     - Computed cache key including transitive dependencies
     """
+
     feature_id: str
     param_hash: str  # Hash of this feature's params only
     dependencies: List[str] = field(default_factory=list)
     dependents: List[str] = field(default_factory=list)
     cache_key: Optional[str] = None  # Computed including dependencies
 
-    def compute_cache_key(
-        self,
-        upstream_keys: Dict[str, str]
-    ) -> str:
+    def compute_cache_key(self, upstream_keys: Dict[str, str]) -> str:
         """
         Compute cache key including upstream dependencies.
 
@@ -95,15 +96,9 @@ class DependencyNode:
         - Any change in upstream invalidates this node
         """
         # Collect upstream keys in deterministic order
-        dep_keys = [
-            upstream_keys.get(dep, "")
-            for dep in sorted(self.dependencies)
-        ]
+        dep_keys = [upstream_keys.get(dep, "") for dep in sorted(self.dependencies)]
 
-        combined = {
-            "param_hash": self.param_hash,
-            "dependencies": dep_keys
-        }
+        combined = {"param_hash": self.param_hash, "dependencies": dep_keys}
 
         combined_str = json.dumps(combined, sort_keys=True)
         self.cache_key = hashlib.sha256(combined_str.encode()).hexdigest()[:24]
@@ -121,16 +116,11 @@ class DependencyGraph:
         self.nodes: Dict[str, DependencyNode] = {}
 
     def add_node(
-        self,
-        feature_id: str,
-        param_hash: str,
-        dependencies: List[str]
+        self, feature_id: str, param_hash: str, dependencies: List[str]
     ) -> None:
         """Add a feature node to the graph."""
         node = DependencyNode(
-            feature_id=feature_id,
-            param_hash=param_hash,
-            dependencies=dependencies
+            feature_id=feature_id, param_hash=param_hash, dependencies=dependencies
         )
         self.nodes[feature_id] = node
 
@@ -159,10 +149,7 @@ class DependencyGraph:
 
         return cache_keys
 
-    def get_invalidated_features(
-        self,
-        changed_feature_id: str
-    ) -> List[str]:
+    def get_invalidated_features(self, changed_feature_id: str) -> List[str]:
         """
         Get all features that need recompilation due to a change.
 
@@ -224,6 +211,7 @@ class DependencyGraph:
 # Incremental Compilation Cache
 # =============================================================================
 
+
 class IncrementalCache:
     """
     Cache for incremental compilation.
@@ -251,11 +239,7 @@ class IncrementalCache:
                 cache.put(feature.id, solid)
     """
 
-    def __init__(
-        self,
-        max_entries: int = 1000,
-        persist_path: Optional[Path] = None
-    ):
+    def __init__(self, max_entries: int = 1000, persist_path: Optional[Path] = None):
         """
         Initialize the cache.
 
@@ -274,10 +258,7 @@ class IncrementalCache:
         self._misses = 0
 
     def register_feature(
-        self,
-        feature_id: str,
-        param_hash: str,
-        dependencies: List[str]
+        self, feature_id: str, param_hash: str, dependencies: List[str]
     ) -> None:
         """
         Register a feature in the dependency graph.
@@ -285,9 +266,7 @@ class IncrementalCache:
         Must be called before get/put.
         """
         self.dependency_graph.add_node(
-            feature_id=feature_id,
-            param_hash=param_hash,
-            dependencies=dependencies
+            feature_id=feature_id, param_hash=param_hash, dependencies=dependencies
         )
 
     def compute_cache_keys(self) -> Dict[str, str]:
@@ -322,11 +301,7 @@ class IncrementalCache:
         logger.debug(f"Cache MISS for feature {feature_id}")
         return None
 
-    def put(
-        self,
-        feature_id: str,
-        geometry: Any
-    ) -> None:
+    def put(self, feature_id: str, geometry: Any) -> None:
         """
         Store compiled geometry for a feature.
 
@@ -336,9 +311,7 @@ class IncrementalCache:
         """
         cache_key = self.cache_keys.get(feature_id)
         if not cache_key:
-            logger.warning(
-                f"Cannot cache {feature_id}: no cache key computed"
-            )
+            logger.warning(f"Cannot cache {feature_id}: no cache key computed")
             return
 
         # LRU eviction
@@ -346,9 +319,7 @@ class IncrementalCache:
             self._evict_lru()
 
         self.entries[feature_id] = CacheEntry(
-            feature_id=feature_id,
-            cache_key=cache_key,
-            geometry=geometry
+            feature_id=feature_id, cache_key=cache_key, geometry=geometry
         )
         logger.debug(f"Cached feature {feature_id} with key {cache_key[:8]}...")
 
@@ -359,9 +330,7 @@ class IncrementalCache:
         Returns:
             List of invalidated feature IDs
         """
-        invalidated = self.dependency_graph.get_invalidated_features(
-            feature_id
-        )
+        invalidated = self.dependency_graph.get_invalidated_features(feature_id)
 
         for fid in invalidated:
             if fid in self.entries:
@@ -386,7 +355,7 @@ class IncrementalCache:
             "max_entries": self.max_entries,
             "hits": self._hits,
             "misses": self._misses,
-            "hit_rate": f"{hit_rate:.2%}"
+            "hit_rate": f"{hit_rate:.2%}",
         }
 
     def _evict_lru(self) -> None:
@@ -395,10 +364,7 @@ class IncrementalCache:
             return
 
         # Find entry with oldest timestamp
-        oldest_id = min(
-            self.entries,
-            key=lambda k: self.entries[k].timestamp
-        )
+        oldest_id = min(self.entries, key=lambda k: self.entries[k].timestamp)
         del self.entries[oldest_id]
         logger.debug(f"Evicted LRU cache entry: {oldest_id}")
 
@@ -406,6 +372,7 @@ class IncrementalCache:
 # =============================================================================
 # Incremental Compiler Wrapper
 # =============================================================================
+
 
 class IncrementalCompiler:
     """
@@ -437,9 +404,7 @@ class IncrementalCompiler:
         self.cache = cache or IncrementalCache()
 
     def compile_incremental(
-        self,
-        ir: Any,  # FeatureGraphIR
-        job_id: str
+        self, ir: Any, job_id: str  # FeatureGraphIR
     ) -> Tuple[Any, Dict[str, Any]]:
         """
         Compile with incremental caching.
@@ -451,7 +416,6 @@ class IncrementalCompiler:
         Returns:
             Tuple of (final_solid, compilation_stats)
         """
-        from app.domain.feature_graph_ir import FeatureGraphIR
 
         # Register all features in cache
         self.cache.dependency_graph = DependencyGraph()
@@ -461,7 +425,7 @@ class IncrementalCompiler:
             self.cache.register_feature(
                 feature_id=feature.id,
                 param_hash=feature.compute_param_hash(),
-                dependencies=list(feature.depends_on)
+                dependencies=list(feature.depends_on),
             )
 
         # Compute cache keys
@@ -473,7 +437,7 @@ class IncrementalCompiler:
             "total_features": len(ir.features),
             "cache_hits": 0,
             "cache_misses": 0,
-            "recompiled": []
+            "recompiled": [],
         }
 
         sorted_features = ir.topological_sort_features()
@@ -490,11 +454,7 @@ class IncrementalCompiler:
                 # The base compiler needs to compile single feature
                 # This is a simplified version - real implementation
                 # would need feature-by-feature compilation
-                geometry = self._compile_single_feature(
-                    feature,
-                    compiled_features,
-                    ir
-                )
+                geometry = self._compile_single_feature(feature, compiled_features, ir)
                 compiled_features[feature.id] = geometry
                 self.cache.put(feature.id, geometry)
                 stats["cache_misses"] += 1
@@ -515,10 +475,7 @@ class IncrementalCompiler:
         return final_solid, stats
 
     def _compile_single_feature(
-        self,
-        feature: Any,
-        compiled_features: Dict[str, Any],
-        ir: Any
+        self, feature: Any, compiled_features: Dict[str, Any], ir: Any
     ) -> Any:
         """
         Compile a single feature.
@@ -535,16 +492,14 @@ class IncrementalCompiler:
 # Utility Functions
 # =============================================================================
 
+
 def compute_param_hash(params: Dict[str, float]) -> str:
     """Compute deterministic hash for feature parameters."""
     param_str = json.dumps(params, sort_keys=True)
     return hashlib.sha256(param_str.encode()).hexdigest()[:16]
 
 
-def get_changed_features(
-    old_ir: Any,
-    new_ir: Any
-) -> List[str]:
+def get_changed_features(old_ir: Any, new_ir: Any) -> List[str]:
     """
     Find features that changed between two IR versions.
 
@@ -555,14 +510,8 @@ def get_changed_features(
     Returns:
         List of feature IDs that changed
     """
-    old_hashes = {
-        f.id: compute_param_hash(f.params)
-        for f in old_ir.features
-    }
-    new_hashes = {
-        f.id: compute_param_hash(f.params)
-        for f in new_ir.features
-    }
+    old_hashes = {f.id: compute_param_hash(f.params) for f in old_ir.features}
+    new_hashes = {f.id: compute_param_hash(f.params) for f in new_ir.features}
 
     changed = []
 

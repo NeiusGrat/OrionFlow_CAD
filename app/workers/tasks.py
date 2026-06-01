@@ -70,7 +70,7 @@ def generate_cad_task(
             "progress": 0,
             "stage": "initializing",
             "message": "Starting CAD generation...",
-        }
+        },
     )
 
     try:
@@ -82,7 +82,7 @@ def generate_cad_task(
                 "progress": 10,
                 "stage": "parsing",
                 "message": "Analyzing your design request...",
-            }
+            },
         )
 
         async def _generate():
@@ -114,7 +114,10 @@ def generate_cad_task(
                 # Update history with success
                 async with get_db_context() as db:
                     from sqlalchemy import select
-                    stmt = select(GenerationHistory).where(GenerationHistory.id == history_id)
+
+                    stmt = select(GenerationHistory).where(
+                        GenerationHistory.id == history_id
+                    )
                     result_row = await db.execute(stmt)
                     history = result_row.scalar_one()
 
@@ -122,12 +125,14 @@ def generate_cad_task(
                     history.feature_graph = result.metadata.get("feature_graph", {})
                     history.completed_at = datetime.now(timezone.utc)
                     history.duration_ms = int(
-                        (history.completed_at - history.created_at).total_seconds() * 1000
+                        (history.completed_at - history.created_at).total_seconds()
+                        * 1000
                     )
                     await db.commit()
 
                 # Track usage
                 from app.billing.usage import track_usage
+
                 async with get_db_context() as db:
                     await track_usage(
                         db,
@@ -142,7 +147,10 @@ def generate_cad_task(
                 # Update history with failure
                 async with get_db_context() as db:
                     from sqlalchemy import select
-                    stmt = select(GenerationHistory).where(GenerationHistory.id == history_id)
+
+                    stmt = select(GenerationHistory).where(
+                        GenerationHistory.id == history_id
+                    )
                     result_row = await db.execute(stmt)
                     history = result_row.scalar_one()
 
@@ -163,7 +171,7 @@ def generate_cad_task(
                 "progress": 100,
                 "stage": "completed",
                 "message": "CAD generation complete!",
-            }
+            },
         )
 
         return {
@@ -228,10 +236,11 @@ def regenerate_cad_task(
             "progress": 0,
             "stage": "initializing",
             "message": "Starting regeneration...",
-        }
+        },
     )
 
     try:
+
         async def _regenerate():
             from app.services.generation_service import GenerationService
 
@@ -299,13 +308,12 @@ def export_cad_task(
             "progress": 0,
             "stage": "exporting",
             "message": f"Exporting to {', '.join(formats)}...",
-        }
+        },
     )
 
     try:
         # Export logic would go here
         # For now, return existing paths
-        from pathlib import Path
 
         output_dir = settings.output_dir
         results = {}

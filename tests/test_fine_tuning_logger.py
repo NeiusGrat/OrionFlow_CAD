@@ -9,6 +9,7 @@ Tests structured pipeline capture for LLM fine-tuning:
 5. Statistics and filtering
 6. Context manager usage
 """
+
 import pytest
 import json
 import tempfile
@@ -22,13 +23,13 @@ from app.logging.fine_tuning_logger import (
     RecordStatus,
     GenerationOutcome,
     create_fine_tuning_record,
-    export_for_fine_tuning
+    export_for_fine_tuning,
 )
-
 
 # =============================================================================
 # Test FineTuningRecord
 # =============================================================================
+
 
 class TestFineTuningRecord:
     """Tests for FineTuningRecord."""
@@ -46,10 +47,8 @@ class TestFineTuningRecord:
         record = FineTuningRecord(prompt="test")
         plan_dict = {
             "id": "plan_123",
-            "construction_sequence": [
-                {"order": 1, "description": "Create sketch"}
-            ],
-            "parameters": {"width": 50.0}
+            "construction_sequence": [{"order": 1, "description": "Create sketch"}],
+            "parameters": {"width": 50.0},
         }
 
         record.set_plan(plan_dict, generation_ms=120.0, source="LLM")
@@ -64,13 +63,9 @@ class TestFineTuningRecord:
         record = FineTuningRecord(prompt="test")
         ir_dict = {
             "version": "1.0-IR",
-            "features": [
-                {"id": "f1", "type": "extrude", "params": {"depth": 10.0}}
-            ],
-            "sketches": [
-                {"id": "s1", "primitives": []}
-            ],
-            "parameters": {"depth": 10.0}
+            "features": [{"id": "f1", "type": "extrude", "params": {"depth": 10.0}}],
+            "sketches": [{"id": "s1", "primitives": []}],
+            "parameters": {"depth": 10.0},
         }
 
         record.set_ir(ir_dict, generation_ms=50.0)
@@ -90,7 +85,7 @@ class TestFineTuningRecord:
             compilation_ms=230.5,
             compiled_features=3,
             cache_hits=2,
-            cache_misses=1
+            cache_misses=1,
         )
 
         assert record.compilation_success is True
@@ -107,9 +102,7 @@ class TestFineTuningRecord:
             "is_valid": True,
             "errors": 0,
             "warnings": 2,
-            "issues": [
-                {"severity": "WARNING", "message": "Small fillet radius"}
-            ]
+            "issues": [{"severity": "WARNING", "message": "Small fillet radius"}],
         }
 
         record.set_validation(validation_result)
@@ -125,7 +118,7 @@ class TestFineTuningRecord:
             model="llama-3.3-70b-versatile",
             temperature=0.7,
             tokens_used=1500,
-            latency_ms=850.0
+            latency_ms=850.0,
         )
 
         assert record.llm_model == "llama-3.3-70b-versatile"
@@ -136,11 +129,7 @@ class TestFineTuningRecord:
     def test_set_user_feedback(self):
         """Should capture user feedback."""
         record = FineTuningRecord(prompt="test")
-        record.set_user_feedback(
-            rating=5,
-            feedback="Perfect result!",
-            edited=False
-        )
+        record.set_user_feedback(rating=5, feedback="Perfect result!", edited=False)
 
         assert record.user_rating == 5
         assert record.user_feedback == "Perfect result!"
@@ -152,7 +141,7 @@ class TestFineTuningRecord:
         record.set_error(
             message="Compilation failed: negative depth",
             stage="compilation",
-            outcome=GenerationOutcome.COMPILATION_FAILED
+            outcome=GenerationOutcome.COMPILATION_FAILED,
         )
 
         assert record.error_message == "Compilation failed: negative depth"
@@ -166,7 +155,7 @@ class TestFineTuningRecord:
         record.finalize(
             outcome=GenerationOutcome.SUCCESS,
             output_files=["output.step", "output.glb"],
-            output_format="STEP"
+            output_format="STEP",
         )
 
         assert record.finished_at != ""
@@ -179,25 +168,28 @@ class TestFineTuningRecord:
     def test_complexity_calculation(self):
         """Should calculate complexity score."""
         record = FineTuningRecord(prompt="test")
-        record.set_ir({
-            "version": "1.0-IR",
-            "features": [
-                {"id": "f1", "type": "extrude"},
-                {"id": "f2", "type": "fillet"}
-            ],
-            "sketches": [{"id": "s1"}],
-            "parameters": {"width": 10, "height": 20}
-        })
+        record.set_ir(
+            {
+                "version": "1.0-IR",
+                "features": [
+                    {"id": "f1", "type": "extrude"},
+                    {"id": "f2", "type": "fillet"},
+                ],
+                "sketches": [{"id": "s1"}],
+                "parameters": {"width": 10, "height": 20},
+            }
+        )
         record.finalize()
 
         # 2 features * 0.15 + 1 sketch * 0.1 + 2 params * 0.05 + 2 types * 0.15
-        expected = min(2*0.15 + 1*0.1 + 2*0.05 + 2*0.15, 1.0)
+        expected = min(2 * 0.15 + 1 * 0.1 + 2 * 0.05 + 2 * 0.15, 1.0)
         assert abs(record.complexity_score - expected) < 0.01
 
 
 # =============================================================================
 # Test Output Formats
 # =============================================================================
+
 
 class TestOutputFormats:
     """Tests for different output formats."""
@@ -206,15 +198,19 @@ class TestOutputFormats:
     def complete_record(self):
         """Create a complete record."""
         record = FineTuningRecord(prompt="Create a 50mm cube")
-        record.set_plan({
-            "construction_sequence": [{"order": 1, "description": "Extrude"}]
-        })
-        record.set_ir({
-            "version": "1.0-IR",
-            "features": [{"id": "f1", "type": "extrude", "params": {"depth": 50.0}}],
-            "sketches": [],
-            "parameters": {}
-        })
+        record.set_plan(
+            {"construction_sequence": [{"order": 1, "description": "Extrude"}]}
+        )
+        record.set_ir(
+            {
+                "version": "1.0-IR",
+                "features": [
+                    {"id": "f1", "type": "extrude", "params": {"depth": 50.0}}
+                ],
+                "sketches": [],
+                "parameters": {},
+            }
+        )
         record.finalize(outcome=GenerationOutcome.SUCCESS)
         return record
 
@@ -276,6 +272,7 @@ class TestOutputFormats:
 # Test FineTuningLogger
 # =============================================================================
 
+
 class TestFineTuningLogger:
     """Tests for FineTuningLogger."""
 
@@ -297,7 +294,7 @@ class TestFineTuningLogger:
 
     def test_logger_initialization(self, temp_dir):
         """Logger should initialize with directories."""
-        logger = FineTuningLogger(output_dir=temp_dir)
+        FineTuningLogger(output_dir=temp_dir)
 
         assert (temp_dir / "success").exists()
         assert (temp_dir / "failure").exists()
@@ -305,7 +302,9 @@ class TestFineTuningLogger:
     def test_log_success_record(self, logger_openai):
         """Should log successful generation."""
         record = FineTuningRecord(prompt="Create a cylinder")
-        record.set_ir({"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}})
+        record.set_ir(
+            {"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}}
+        )
         record.finalize(outcome=GenerationOutcome.SUCCESS)
 
         filepath = logger_openai.log(record)
@@ -325,7 +324,7 @@ class TestFineTuningLogger:
         record.set_error(
             message="Compilation failed",
             stage="compilation",
-            outcome=GenerationOutcome.COMPILATION_FAILED
+            outcome=GenerationOutcome.COMPILATION_FAILED,
         )
         record.finalize(outcome=GenerationOutcome.COMPILATION_FAILED)
 
@@ -395,6 +394,7 @@ class TestFineTuningLogger:
 # Test Context Manager
 # =============================================================================
 
+
 class TestFineTuningContext:
     """Tests for FineTuningContext."""
 
@@ -412,7 +412,9 @@ class TestFineTuningContext:
         with FineTuningContext("Create a box", job_id="job_123") as record:
             assert record.prompt == "Create a box"
             assert record.job_id == "job_123"
-            record.set_ir({"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}})
+            record.set_ir(
+                {"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}}
+            )
 
         # Should be logged automatically
         stats = logger.get_statistics()
@@ -424,7 +426,14 @@ class TestFineTuningContext:
 
         try:
             with FineTuningContext("Test", logger_instance=logger) as record:
-                record.set_ir({"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}})
+                record.set_ir(
+                    {
+                        "version": "1.0-IR",
+                        "features": [],
+                        "sketches": [],
+                        "parameters": {},
+                    }
+                )
                 raise ValueError("Test error")
         except ValueError:
             pass
@@ -438,7 +447,9 @@ class TestFineTuningContext:
         logger = FineTuningLogger(output_dir=temp_dir)
 
         with FineTuningContext("Test", logger_instance=logger) as record:
-            record.set_ir({"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}})
+            record.set_ir(
+                {"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}}
+            )
             # Don't manually finalize
 
         # Should be finalized automatically
@@ -449,6 +460,7 @@ class TestFineTuningContext:
 # Test Utility Functions
 # =============================================================================
 
+
 class TestUtilityFunctions:
     """Tests for utility functions."""
 
@@ -457,11 +469,16 @@ class TestUtilityFunctions:
         record = create_fine_tuning_record(
             prompt="Create a box",
             plan_dict={"construction_sequence": []},
-            ir_dict={"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}},
+            ir_dict={
+                "version": "1.0-IR",
+                "features": [],
+                "sketches": [],
+                "parameters": {},
+            },
             compilation_success=True,
             compilation_ms=150.0,
             validation_result={"is_valid": True, "errors": 0, "warnings": 0},
-            outcome=GenerationOutcome.SUCCESS
+            outcome=GenerationOutcome.SUCCESS,
         )
 
         assert record.prompt == "Create a box"
@@ -480,9 +497,14 @@ class TestUtilityFunctions:
         for i in range(5):
             record = {
                 "prompt": f"Prompt {i}",
-                "ir": {"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}},
+                "ir": {
+                    "version": "1.0-IR",
+                    "features": [],
+                    "sketches": [],
+                    "parameters": {},
+                },
                 "outcome": "success",
-                "metrics": {"complexity_score": 0.5 + i * 0.1}
+                "metrics": {"complexity_score": 0.5 + i * 0.1},
             }
             records.append(record)
 
@@ -499,7 +521,7 @@ class TestUtilityFunctions:
             output_path=output_path,
             format="openai",
             min_complexity=0.6,
-            require_success=True
+            require_success=True,
         )
 
         # Should filter to 4 records (complexity >= 0.6)
@@ -518,6 +540,7 @@ class TestUtilityFunctions:
 # Test JSON Serialization
 # =============================================================================
 
+
 class TestJSONSerialization:
     """Tests for JSON serialization requirements."""
 
@@ -525,7 +548,9 @@ class TestJSONSerialization:
         """Record should be fully JSON-serializable."""
         record = FineTuningRecord(prompt="Test")
         record.set_plan({"test": "value"})
-        record.set_ir({"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}})
+        record.set_ir(
+            {"version": "1.0-IR", "features": [], "sketches": [], "parameters": {}}
+        )
         record.finalize()
 
         # Should serialize without errors
@@ -548,13 +573,7 @@ class TestJSONSerialization:
     def test_nested_dicts_sanitized(self):
         """Nested dicts should be sanitized."""
         record = FineTuningRecord(prompt="Test")
-        record.set_plan({
-            "nested": {
-                "deeply": {
-                    "nested": "value"
-                }
-            }
-        })
+        record.set_plan({"nested": {"deeply": {"nested": "value"}}})
 
         d = record.to_dict()
         assert d["plan"]["nested"]["deeply"]["nested"] == "value"
@@ -564,6 +583,7 @@ class TestJSONSerialization:
 # Test Pipeline Integration
 # =============================================================================
 
+
 class TestPipelineIntegration:
     """Tests for full pipeline integration."""
 
@@ -571,14 +591,16 @@ class TestPipelineIntegration:
         """Should capture entire pipeline flow."""
         logger = FineTuningLogger(output_dir=tmp_path, format="full")
 
-        with FineTuningContext("Create a 50mm cube", job_id="job_xyz", logger_instance=logger) as record:
+        with FineTuningContext(
+            "Create a 50mm cube", job_id="job_xyz", logger_instance=logger
+        ) as record:
             # Stage 1: Planning
             plan = {
                 "construction_sequence": [
                     {"order": 1, "description": "Create base sketch"},
-                    {"order": 2, "description": "Extrude to depth"}
+                    {"order": 2, "description": "Extrude to depth"},
                 ],
-                "parameters": {"size": 50.0}
+                "parameters": {"size": 50.0},
             }
             record.set_plan(plan, generation_ms=120.0, source="LLM")
 
@@ -588,34 +610,34 @@ class TestPipelineIntegration:
                 "units": "mm",
                 "parameters": {"size": 50.0},
                 "sketches": [{"id": "s1", "primitives": []}],
-                "features": [{"id": "f1", "type": "extrude", "params": {"depth": 50.0}}]
+                "features": [
+                    {"id": "f1", "type": "extrude", "params": {"depth": 50.0}}
+                ],
             }
             record.set_ir(ir, generation_ms=50.0)
 
             # Stage 3: Compilation
             record.set_compilation_result(
-                success=True,
-                compilation_ms=200.0,
-                compiled_features=1
+                success=True, compilation_ms=200.0, compiled_features=1
             )
 
             # Stage 4: Validation
-            record.set_validation({
-                "is_valid": True,
-                "errors": 0,
-                "warnings": 0
-            })
+            record.set_validation({"is_valid": True, "errors": 0, "warnings": 0})
 
             # Stage 5: Metadata
             record.set_llm_metadata(
                 model="llama-3.3-70b",
                 temperature=0.7,
                 tokens_used=1200,
-                latency_ms=300.0
+                latency_ms=300.0,
             )
 
         # Verify logged
-        log_file = tmp_path / "success" / f"records_{datetime.utcnow().strftime('%Y-%m-%d')}.jsonl"
+        log_file = (
+            tmp_path
+            / "success"
+            / f"records_{datetime.utcnow().strftime('%Y-%m-%d')}.jsonl"
+        )
         assert log_file.exists()
 
         with open(log_file, "r") as f:

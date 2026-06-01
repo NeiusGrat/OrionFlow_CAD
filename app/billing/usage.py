@@ -15,7 +15,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from app.db.models import User, Subscription, PricingPlan, UsageRecord
+from app.db.models import Subscription, PricingPlan, UsageRecord
 from app.config import settings
 from app.logging_config import get_logger
 
@@ -62,12 +62,7 @@ async def track_usage(
     await db.commit()
     await db.refresh(record)
 
-    logger.info(
-        "usage_tracked",
-        user_id=str(user_id),
-        action=action,
-        quantity=quantity
-    )
+    logger.info("usage_tracked", user_id=str(user_id), action=action, quantity=quantity)
 
     return record
 
@@ -114,8 +109,7 @@ async def get_usage_stats(
         limit = settings.free_tier_generations
         # Count usage for free users
         result = await db.execute(
-            select(func.sum(UsageRecord.quantity))
-            .where(
+            select(func.sum(UsageRecord.quantity)).where(
                 UsageRecord.user_id == user_id,
                 UsageRecord.action == "generation",
                 UsageRecord.created_at >= start_date,
@@ -128,7 +122,7 @@ async def get_usage_stats(
     result = await db.execute(
         select(
             func.date(UsageRecord.created_at).label("date"),
-            func.sum(UsageRecord.quantity).label("count")
+            func.sum(UsageRecord.quantity).label("count"),
         )
         .where(
             UsageRecord.user_id == user_id,
@@ -139,7 +133,9 @@ async def get_usage_stats(
         .group_by(func.date(UsageRecord.created_at))
         .order_by(func.date(UsageRecord.created_at))
     )
-    daily_usage = [{"date": row.date.isoformat(), "count": row.count} for row in result.all()]
+    daily_usage = [
+        {"date": row.date.isoformat(), "count": row.count} for row in result.all()
+    ]
 
     return {
         "period": {
@@ -212,8 +208,7 @@ async def check_usage_limit(
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     result = await db.execute(
-        select(func.sum(UsageRecord.quantity))
-        .where(
+        select(func.sum(UsageRecord.quantity)).where(
             UsageRecord.user_id == user_id,
             UsageRecord.action == "generation",
             UsageRecord.created_at >= start_of_month,
@@ -269,14 +264,14 @@ async def reset_monthly_usage(
 
     # Update billing period
     subscription.current_period_start = datetime.now(timezone.utc)
-    subscription.current_period_end = subscription.current_period_start + timedelta(days=30)
+    subscription.current_period_end = subscription.current_period_start + timedelta(
+        days=30
+    )
 
     await db.commit()
 
     logger.info(
-        "monthly_usage_reset",
-        subscription_id=str(subscription_id),
-        old_usage=old_usage
+        "monthly_usage_reset", subscription_id=str(subscription_id), old_usage=old_usage
     )
 
     return True
@@ -312,11 +307,10 @@ async def report_usage_to_stripe(
 
     # Get unreported usage records
     result = await db.execute(
-        select(UsageRecord)
-        .where(
+        select(UsageRecord).where(
             UsageRecord.user_id == subscription.user_id,
-            UsageRecord.reported_to_stripe == False,
-            UsageRecord.billable == True,
+            UsageRecord.reported_to_stripe.is_(False),
+            UsageRecord.billable.is_(True),
         )
     )
     records = result.scalars().all()
@@ -332,7 +326,7 @@ async def report_usage_to_stripe(
         logger.error(
             "stripe_subscription_retrieve_failed",
             subscription_id=str(subscription_id),
-            error=str(e)
+            error=str(e),
         )
         return False
 
@@ -350,9 +344,7 @@ async def report_usage_to_stripe(
 
         except Exception as e:
             logger.error(
-                "stripe_usage_report_failed",
-                record_id=str(record.id),
-                error=str(e)
+                "stripe_usage_report_failed", record_id=str(record.id), error=str(e)
             )
 
     await db.commit()
@@ -360,7 +352,7 @@ async def report_usage_to_stripe(
     logger.info(
         "usage_reported_to_stripe",
         subscription_id=str(subscription_id),
-        records_count=len(records)
+        records_count=len(records),
     )
 
     return True

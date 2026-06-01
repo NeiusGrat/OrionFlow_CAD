@@ -6,6 +6,7 @@ Covers:
 - Feature dependency topological sorting
 - Round-trip conversion V1 -> V3 -> V1
 """
+
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from app.domain.feature_graph_v3 import (
     FeatureGraphV3,
@@ -123,9 +124,15 @@ class TestV3FeatureDependencies:
     def test_topological_sort_respects_dependencies(self):
         """Features are ordered according to their dependency graph."""
 
-        f1 = FeatureV2(id="f1", type="extrude", sketch="s1", params={"depth": 10}, dependencies=[])
-        f2 = FeatureV2(id="f2", type="fillet", params={"radius": 2}, dependencies=["f1"])
-        f3 = FeatureV2(id="f3", type="chamfer", params={"distance": 1}, dependencies=["f2"])
+        f1 = FeatureV2(
+            id="f1", type="extrude", sketch="s1", params={"depth": 10}, dependencies=[]
+        )
+        f2 = FeatureV2(
+            id="f2", type="fillet", params={"radius": 2}, dependencies=["f1"]
+        )
+        f3 = FeatureV2(
+            id="f3", type="chamfer", params={"distance": 1}, dependencies=["f2"]
+        )
 
         g = FeatureGraphV3(features=[f2, f3, f1])  # Intentionally shuffled
 

@@ -1,15 +1,14 @@
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from app.compilers.v1.compiler import FeatureGraphCompilerV1
 
+
 def test_trace_on_success():
     """Verify trace is emitted on successful compilation."""
     graph = FeatureGraphV1(
         schema_version="1.0",
         units="mm",
         metadata={"intent": "box"},
-        parameters={
-            "w": {"type": "float", "value": 10}
-        },
+        parameters={"w": {"type": "float", "value": 10}},
         sketches=[
             {
                 "id": "s1",
@@ -18,20 +17,15 @@ def test_trace_on_success():
                     {
                         "id": "r1",
                         "type": "rectangle",
-                        "params": {"width": "w", "height": "w"}
+                        "params": {"width": "w", "height": "w"},
                     }
                 ],
-                "constraints": []
+                "constraints": [],
             }
         ],
         features=[
-            {
-                "id": "f1",
-                "type": "extrude",
-                "sketch": "s1",
-                "params": {"depth": 5}
-            }
-        ]
+            {"id": "f1", "type": "extrude", "sketch": "s1", "params": {"depth": 5}}
+        ],
     )
 
     solid, trace = FeatureGraphCompilerV1().compile(graph)
@@ -50,7 +44,7 @@ def test_trace_on_failure():
         metadata={"intent": "bad graph"},
         parameters={},
         sketches=[],
-        features=[]
+        features=[],
     )
 
     solid, trace = FeatureGraphCompilerV1().compile(graph)

@@ -32,7 +32,6 @@ function Gear({
         // Create gear profile
         for (let i = 0; i < teeth; i++) {
             const angle = (i / teeth) * Math.PI * 2;
-            const nextAngle = ((i + 1) / teeth) * Math.PI * 2;
             const midAngle = angle + toothWidth;
 
             const innerX1 = Math.cos(angle) * innerRadius;
@@ -71,7 +70,7 @@ function Gear({
         return new THREE.ExtrudeGeometry(shape, extrudeSettings);
     }, [teeth, innerRadius, outerRadius, thickness]);
 
-    useFrame((state) => {
+    useFrame(() => {
         if (meshRef.current) {
             meshRef.current.rotation.z += rotationSpeed;
         }
@@ -140,9 +139,7 @@ function TechGrid() {
             <bufferGeometry>
                 <bufferAttribute
                     attach="attributes-position"
-                    count={points.length}
-                    array={new Float32Array(points.flatMap(p => [p.x, p.y, p.z]))}
-                    itemSize={3}
+                    args={[new Float32Array(points.flatMap(p => [p.x, p.y, p.z])), 3]}
                 />
             </bufferGeometry>
             <lineBasicMaterial color="#1e3a5f" transparent opacity={0.15} />
@@ -192,9 +189,7 @@ function Particles() {
             <bufferGeometry>
                 <bufferAttribute
                     attach="attributes-position"
-                    count={positions.length / 3}
-                    array={positions}
-                    itemSize={3}
+                    args={[positions, 3]}
                 />
             </bufferGeometry>
             <pointsMaterial
