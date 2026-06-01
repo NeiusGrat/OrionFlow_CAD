@@ -30,9 +30,9 @@ FEW_SHOT = [
     {
         "user": "Flat washer, 24mm outer diameter, 13mm center hole, 2.5mm thick",
         "assistant": (
-            'from orionflow_ofl import *\n\n'
-            'od = 24\nhole_dia = 13\nthickness = 2.5\n\n'
-            'part = Sketch(Plane.XY).circle(od).extrude(thickness)\n'
+            "from orionflow_ofl import *\n\n"
+            "od = 24\nhole_dia = 13\nthickness = 2.5\n\n"
+            "part = Sketch(Plane.XY).circle(od).extrude(thickness)\n"
             'part -= Hole(hole_dia).at(0, 0).through().label("center_bore")\n\n'
             'export(part, "part.step")'
         ),
@@ -40,9 +40,9 @@ FEW_SHOT = [
     {
         "user": "NEMA-17 motor mount. 60mm square, 6mm thick, 3mm corner radius. Center bore 22mm. Four M5 holes on 31mm PCD at 45 degrees.",
         "assistant": (
-            'from orionflow_ofl import *\n\n'
-            'plate_size = 60\nthickness = 6\ncorner_r = 3\nbore_dia = 22\nbolt_dia = 5.5\nbolt_pcd = 31\n\n'
-            'part = Sketch(Plane.XY).rounded_rect(plate_size, plate_size, corner_r).extrude(thickness)\n\n'
+            "from orionflow_ofl import *\n\n"
+            "plate_size = 60\nthickness = 6\ncorner_r = 3\nbore_dia = 22\nbolt_dia = 5.5\nbolt_pcd = 31\n\n"
+            "part = Sketch(Plane.XY).rounded_rect(plate_size, plate_size, corner_r).extrude(thickness)\n\n"
             'part -= Hole(bore_dia).at(0, 0).through().label("shaft_bore")\n'
             'part -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=4, start_angle=45).through().label("M5_mount")\n\n'
             'export(part, "part.step")'
@@ -51,9 +51,9 @@ FEW_SHOT = [
     {
         "user": "Circular flange. 100mm diameter, 8mm thick. 50mm center bore. Six M8 bolt holes on 75mm PCD.",
         "assistant": (
-            'from orionflow_ofl import *\n\n'
-            'plate_dia = 100\nthickness = 8\nbore_dia = 50\nbolt_dia = 8.4\nbolt_pcd = 75\nbolt_count = 6\n\n'
-            'part = Sketch(Plane.XY).circle(plate_dia).extrude(thickness)\n\n'
+            "from orionflow_ofl import *\n\n"
+            "plate_dia = 100\nthickness = 8\nbore_dia = 50\nbolt_dia = 8.4\nbolt_pcd = 75\nbolt_count = 6\n\n"
+            "part = Sketch(Plane.XY).circle(plate_dia).extrude(thickness)\n\n"
             'part -= Hole(bore_dia).at(0, 0).through().label("center_bore")\n'
             'part -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=bolt_count, start_angle=0).through().label("M8_mount")\n\n'
             'export(part, "part.step")'
@@ -66,14 +66,18 @@ class OFLLLMClient:
     """Generates OFL code from text. Pluggable backend (groq / ollama / local)."""
 
     def __init__(self, provider: str = None):
-        self.provider = (provider or getattr(settings, "ofl_llm_provider", "groq")).lower()
+        self.provider = (
+            provider or getattr(settings, "ofl_llm_provider", "groq")
+        ).lower()
 
         if self.provider == "groq":
             self._init_groq()
         elif self.provider == "ollama":
             self._init_ollama()
         elif self.provider == "local":
-            raise NotImplementedError("Local model path inference not yet available. Use provider='ollama'.")
+            raise NotImplementedError(
+                "Local model path inference not yet available. Use provider='ollama'."
+            )
         else:
             raise ValueError(f"Unknown OFL LLM provider: {self.provider}")
 
@@ -91,7 +95,9 @@ class OFLLLMClient:
         self.model = getattr(settings, "ofl_groq_model", "llama-3.3-70b-versatile")
 
     def _init_ollama(self):
-        self.base_url = getattr(settings, "ollama_base_url", "http://localhost:11434").rstrip("/")
+        self.base_url = getattr(
+            settings, "ollama_base_url", "http://localhost:11434"
+        ).rstrip("/")
         self.model = getattr(settings, "ofl_ollama_model", "qwen2.5-coder:7b")
         self.timeout = getattr(settings, "ofl_ollama_timeout_seconds", 600)
 
@@ -125,7 +131,9 @@ class OFLLLMClient:
         raw = self._chat_ollama(self._build_messages(prompt))
         return self._clean_code(raw)
 
-    def _chat_ollama(self, messages: list[dict[str, str]], max_tokens: int = 1024) -> str:
+    def _chat_ollama(
+        self, messages: list[dict[str, str]], max_tokens: int = 1024
+    ) -> str:
         """Call Ollama's local chat API."""
         try:
             response = requests.post(
@@ -163,8 +171,10 @@ class OFLLLMClient:
         ]
         if self.provider == "groq":
             response = self.client.chat.completions.create(
-                model=self.model, messages=messages,
-                temperature=0.1, max_tokens=1024,
+                model=self.model,
+                messages=messages,
+                temperature=0.1,
+                max_tokens=1024,
             )
             raw = response.choices[0].message.content
         elif self.provider == "ollama":

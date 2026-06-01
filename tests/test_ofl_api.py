@@ -37,13 +37,16 @@ def client():
 
 def test_rebuild_endpoint(client):
     """Test rebuild with known-good OFL code (no LLM needed)."""
-    response = client.post("/api/v1/ofl/rebuild", json={
-        "ofl_code": (
-            'from orionflow_ofl import *\n'
-            'part = Sketch(Plane.XY).rect(50, 50).extrude(5)\n'
-            'export(part, "test.step")'
-        )
-    })
+    response = client.post(
+        "/api/v1/ofl/rebuild",
+        json={
+            "ofl_code": (
+                "from orionflow_ofl import *\n"
+                "part = Sketch(Plane.XY).rect(50, 50).extrude(5)\n"
+                'export(part, "test.step")'
+            )
+        },
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -53,13 +56,16 @@ def test_rebuild_endpoint(client):
 
 def test_rebuild_bad_code(client):
     """Test rebuild with invalid OFL code returns error, not crash."""
-    response = client.post("/api/v1/ofl/rebuild", json={
-        "ofl_code": (
-            'from orionflow_ofl import *\n'
-            'part = Sketch(Plane.XY).rect("bad", 50).extrude(5)\n'
-            'export(part, "test.step")'
-        )
-    })
+    response = client.post(
+        "/api/v1/ofl/rebuild",
+        json={
+            "ofl_code": (
+                "from orionflow_ofl import *\n"
+                'part = Sketch(Plane.XY).rect("bad", 50).extrude(5)\n'
+                'export(part, "test.step")'
+            )
+        },
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is False
@@ -68,9 +74,9 @@ def test_rebuild_bad_code(client):
 
 def test_rebuild_blocks_dangerous_code(client):
     """Ensure sandbox blocks dangerous code via API."""
-    response = client.post("/api/v1/ofl/rebuild", json={
-        "ofl_code": "import os; os.system('echo pwned')"
-    })
+    response = client.post(
+        "/api/v1/ofl/rebuild", json={"ofl_code": "import os; os.system('echo pwned')"}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is False

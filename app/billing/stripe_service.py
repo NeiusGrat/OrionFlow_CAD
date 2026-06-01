@@ -52,22 +52,18 @@ class StripeService:
                 metadata={
                     "user_id": str(user.id),
                     "created_by": "orionflow",
-                }
+                },
             )
 
             logger.info(
-                "stripe_customer_created",
-                user_id=str(user.id),
-                customer_id=customer.id
+                "stripe_customer_created", user_id=str(user.id), customer_id=customer.id
             )
 
             return customer.id
 
         except stripe.error.StripeError as e:
             logger.error(
-                "stripe_customer_creation_failed",
-                user_id=str(user.id),
-                error=str(e)
+                "stripe_customer_creation_failed", user_id=str(user.id), error=str(e)
             )
             raise
 
@@ -95,9 +91,7 @@ class StripeService:
             Checkout session details with URL
         """
         # Get pricing plan
-        result = await db.execute(
-            select(PricingPlan).where(PricingPlan.id == plan_id)
-        )
+        result = await db.execute(select(PricingPlan).where(PricingPlan.id == plan_id))
         plan = result.scalar_one_or_none()
 
         if not plan:
@@ -130,7 +124,8 @@ class StripeService:
                 customer=customer_id,
                 mode="subscription",
                 line_items=[{"price": price_id, "quantity": 1}],
-                success_url=success_url or f"{settings.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
+                success_url=success_url
+                or f"{settings.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=cancel_url or f"{settings.frontend_url}/billing/cancel",
                 metadata={
                     "user_id": str(user.id),
@@ -147,9 +142,7 @@ class StripeService:
             )
 
             logger.info(
-                "checkout_session_created",
-                user_id=str(user.id),
-                session_id=session.id
+                "checkout_session_created", user_id=str(user.id), session_id=session.id
             )
 
             return {
@@ -159,9 +152,7 @@ class StripeService:
 
         except stripe.error.StripeError as e:
             logger.error(
-                "checkout_session_creation_failed",
-                user_id=str(user.id),
-                error=str(e)
+                "checkout_session_creation_failed", user_id=str(user.id), error=str(e)
             )
             raise
 
@@ -202,9 +193,7 @@ class StripeService:
 
         except stripe.error.StripeError as e:
             logger.error(
-                "portal_session_creation_failed",
-                user_id=str(user.id),
-                error=str(e)
+                "portal_session_creation_failed", user_id=str(user.id), error=str(e)
             )
             raise
 
@@ -250,16 +239,14 @@ class StripeService:
             logger.info(
                 "subscription_cancelled",
                 user_id=str(user.id),
-                at_period_end=at_period_end
+                at_period_end=at_period_end,
             )
 
             return True
 
         except stripe.error.StripeError as e:
             logger.error(
-                "subscription_cancellation_failed",
-                user_id=str(user.id),
-                error=str(e)
+                "subscription_cancellation_failed", user_id=str(user.id), error=str(e)
             )
             raise
 
@@ -321,7 +308,7 @@ async def create_checkout_session(
     user: User,
     plan_id: uuid.UUID,
     billing_period: str = "monthly",
-    **kwargs
+    **kwargs,
 ) -> Dict[str, Any]:
     """Create a checkout session."""
     return await StripeService.create_checkout_session(
@@ -330,9 +317,7 @@ async def create_checkout_session(
 
 
 async def create_portal_session(
-    db: AsyncSession,
-    user: User,
-    **kwargs
+    db: AsyncSession, user: User, **kwargs
 ) -> Dict[str, str]:
     """Create a customer portal session."""
     return await StripeService.create_portal_session(db, user, **kwargs)

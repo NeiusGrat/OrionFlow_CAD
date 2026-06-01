@@ -42,8 +42,7 @@ def cleanup_old_files(max_age_hours: int = 24) -> dict:
             if file_path.is_file():
                 # Get file modification time
                 mtime = datetime.fromtimestamp(
-                    file_path.stat().st_mtime,
-                    tz=timezone.utc
+                    file_path.stat().st_mtime, tz=timezone.utc
                 )
 
                 if mtime < cutoff:
@@ -102,9 +101,7 @@ def report_usage() -> dict:
                     await report_usage_to_stripe(db, subscription.id)
                     reported_count += 1
                 except Exception as e:
-                    logger.error(
-                        f"Failed to report usage for {subscription.id}: {e}"
-                    )
+                    logger.error(f"Failed to report usage for {subscription.id}: {e}")
 
         return reported_count
 
@@ -151,7 +148,7 @@ def reset_monthly_usage() -> dict:
             result = await db.execute(
                 select(Subscription).where(
                     Subscription.current_period_end < now,
-                    Subscription.status.in_(["active", "trialing"])
+                    Subscription.status.in_(["active", "trialing"]),
                 )
             )
             subscriptions = result.scalars().all()
@@ -161,9 +158,7 @@ def reset_monthly_usage() -> dict:
                     await do_reset(db, subscription.id)
                     reset_count += 1
                 except Exception as e:
-                    logger.error(
-                        f"Failed to reset usage for {subscription.id}: {e}"
-                    )
+                    logger.error(f"Failed to reset usage for {subscription.id}: {e}")
 
         return reset_count
 
@@ -213,6 +208,7 @@ def health_check() -> dict:
         # Check database
         try:
             from app.db.session import check_db_health
+
             results["database"] = await check_db_health()
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
@@ -220,6 +216,7 @@ def health_check() -> dict:
         # Check Redis
         try:
             import redis
+
             r = redis.from_url(settings.redis_url)
             r.ping()
             results["redis"] = True
@@ -298,9 +295,7 @@ def send_usage_alerts() -> dict:
 
                 if usage_percent >= 80 and usage_percent < 100:
                     # TODO: Send email alert
-                    logger.info(
-                        f"Usage alert for {user.email}: {usage_percent:.0f}%"
-                    )
+                    logger.info(f"Usage alert for {user.email}: {usage_percent:.0f}%")
                     alerts_sent += 1
 
         return alerts_sent

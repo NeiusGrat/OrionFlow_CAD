@@ -10,7 +10,7 @@ Usage:
     print(settings.llm_model)
     print(settings.output_dir)
 """
-import os
+
 import secrets
 from pathlib import Path
 from typing import List, Optional
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore"  # Ignore extra env vars
+        extra="ignore",  # Ignore extra env vars
     )
 
     # -------------------------------------------------------------------------
@@ -40,138 +40,107 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     app_name: str = Field(default="OrionFlow CAD", description="Application name")
     app_version: str = Field(default="0.3.0", description="Application version")
-    environment: str = Field(default="development", description="Environment (development, staging, production)")
+    environment: str = Field(
+        default="development",
+        description="Environment (development, staging, production)",
+    )
 
     # -------------------------------------------------------------------------
     # LLM Configuration
     # -------------------------------------------------------------------------
     groq_api_key: Optional[str] = Field(
-        default=None,
-        description="Groq API key for LLM access"
+        default=None, description="Groq API key for LLM access"
     )
 
     gemini_api_key: Optional[str] = Field(
-        default=None,
-        description="Google Gemini API key (alternative provider)"
+        default=None, description="Google Gemini API key (alternative provider)"
     )
 
     llm_provider: str = Field(
-        default="groq",
-        description="LLM provider: groq, openai, or local"
+        default="groq", description="LLM provider: groq, openai, or local"
     )
 
     llm_model: str = Field(
-        default="llama-3.3-70b-versatile",
-        description="LLM model name for generation"
+        default="llama-3.3-70b-versatile", description="LLM model name for generation"
     )
 
     llm_temperature: float = Field(
-        default=0.1,
-        ge=0.0,
-        le=2.0,
-        description="LLM temperature (0.0-2.0)"
+        default=0.1, ge=0.0, le=2.0, description="LLM temperature (0.0-2.0)"
     )
 
     llm_max_tokens: int = Field(
-        default=2048,
-        ge=100,
-        le=8192,
-        description="Maximum tokens for LLM response"
+        default=2048, ge=100, le=8192, description="Maximum tokens for LLM response"
     )
 
     # -------------------------------------------------------------------------
     # CAD Generation
     # -------------------------------------------------------------------------
     output_dir: Path = Field(
-        default=Path("outputs"),
-        description="Directory for generated CAD files"
+        default=Path("outputs"), description="Directory for generated CAD files"
     )
 
     max_llm_retries: int = Field(
-        default=1,
-        ge=0,
-        le=5,
-        description="Maximum LLM retry attempts on failure"
+        default=1, ge=0, le=5, description="Maximum LLM retry attempts on failure"
     )
 
     use_v3_compiler: bool = Field(
-        default=False,
-        description="Enable V3 compiler with topological identity"
+        default=False, description="Enable V3 compiler with topological identity"
     )
 
     use_two_stage_pipeline: bool = Field(
-        default=False,
-        description="Enable two-stage LLM pipeline"
+        default=False, description="Enable two-stage LLM pipeline"
     )
 
     # -------------------------------------------------------------------------
     # OFL (OrionFlow Language) Configuration
     # -------------------------------------------------------------------------
     ofl_llm_provider: str = Field(
-        default="groq",
-        description="OFL LLM provider: groq, ollama, or local"
+        default="groq", description="OFL LLM provider: groq, ollama, or local"
     )
 
     ofl_groq_model: str = Field(
         default="llama-3.3-70b-versatile",
-        description="Groq model for OFL code generation"
+        description="Groq model for OFL code generation",
     )
 
     ofl_ollama_model: str = Field(
         default="qwen2.5-coder:7b",
-        description="Ollama model for local OFL code generation"
+        description="Ollama model for local OFL code generation",
     )
 
     ollama_base_url: str = Field(
-        default="http://localhost:11434",
-        description="Base URL for local Ollama API"
+        default="http://localhost:11434", description="Base URL for local Ollama API"
     )
 
     ofl_ollama_timeout_seconds: int = Field(
         default=600,
         ge=10,
         le=3600,
-        description="Timeout for local Ollama OFL generation"
+        description="Timeout for local Ollama OFL generation",
     )
 
     ofl_local_model_path: Optional[str] = Field(
-        default=None,
-        description="Local model path (for fine-tuned OFL model)"
+        default=None, description="Local model path (for fine-tuned OFL model)"
     )
 
     # -------------------------------------------------------------------------
     # Server Configuration
     # -------------------------------------------------------------------------
-    api_host: str = Field(
-        default="0.0.0.0",
-        description="API server host"
-    )
+    api_host: str = Field(default="0.0.0.0", description="API server host")
 
-    api_port: int = Field(
-        default=8000,
-        ge=1,
-        le=65535,
-        description="API server port"
-    )
+    api_port: int = Field(default=8000, ge=1, le=65535, description="API server port")
 
     cors_origins: str = Field(
         default="http://localhost:5173,http://localhost:3000",
-        description="CORS allowed origins (comma-separated)"
+        description="CORS allowed origins (comma-separated)",
     )
 
-    debug: bool = Field(
-        default=False,
-        description="Enable debug mode"
-    )
+    debug: bool = Field(default=False, description="Enable debug mode")
 
-    testing: bool = Field(
-        default=False,
-        description="Enable testing mode"
-    )
+    testing: bool = Field(default=False, description="Enable testing mode")
 
     frontend_url: str = Field(
-        default="http://localhost:5173",
-        description="Frontend URL for redirects"
+        default="http://localhost:5173", description="Frontend URL for redirects"
     )
 
     # -------------------------------------------------------------------------
@@ -209,16 +178,13 @@ class Settings(BaseSettings):
     # Celery Configuration
     # -------------------------------------------------------------------------
     celery_broker_url: Optional[str] = Field(
-        default=None,
-        description="Celery broker URL (defaults to Redis URL)"
+        default=None, description="Celery broker URL (defaults to Redis URL)"
     )
     celery_result_backend: Optional[str] = Field(
-        default=None,
-        description="Celery result backend URL (defaults to Redis URL)"
+        default=None, description="Celery result backend URL (defaults to Redis URL)"
     )
     celery_worker_concurrency: int = Field(
-        default=4,
-        description="Number of Celery worker processes"
+        default=4, description="Number of Celery worker processes"
     )
 
     @property
@@ -236,77 +202,70 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     jwt_secret_key: str = Field(
         default_factory=lambda: secrets.token_urlsafe(32),
-        description="JWT secret key (CHANGE IN PRODUCTION!)"
+        description="JWT secret key (CHANGE IN PRODUCTION!)",
     )
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
     jwt_access_token_expire_minutes: int = Field(
-        default=15,
-        description="Access token expiration in minutes"
+        default=15, description="Access token expiration in minutes"
     )
     jwt_refresh_token_expire_days: int = Field(
-        default=7,
-        description="Refresh token expiration in days"
+        default=7, description="Refresh token expiration in days"
     )
 
     # -------------------------------------------------------------------------
     # Stripe Configuration
     # -------------------------------------------------------------------------
     stripe_secret_key: Optional[str] = Field(
-        default=None,
-        description="Stripe secret API key"
+        default=None, description="Stripe secret API key"
     )
     stripe_publishable_key: Optional[str] = Field(
-        default=None,
-        description="Stripe publishable API key"
+        default=None, description="Stripe publishable API key"
     )
     stripe_webhook_secret: Optional[str] = Field(
-        default=None,
-        description="Stripe webhook signing secret"
+        default=None, description="Stripe webhook signing secret"
     )
 
     # -------------------------------------------------------------------------
     # Rate Limiting
     # -------------------------------------------------------------------------
     rate_limit_default: str = Field(
-        default="100/minute",
-        description="Default rate limit"
+        default="100/minute", description="Default rate limit"
     )
     rate_limit_generation: str = Field(
-        default="10/minute",
-        description="Rate limit for generation endpoint"
+        default="10/minute", description="Rate limit for generation endpoint"
     )
 
     # -------------------------------------------------------------------------
     # Free Tier
     # -------------------------------------------------------------------------
     free_tier_generations: int = Field(
-        default=10,
-        description="Free tier generations per month"
+        default=10, description="Free tier generations per month"
     )
     free_tier_max_designs: int = Field(
-        default=5,
-        description="Free tier max saved designs"
+        default=5, description="Free tier max saved designs"
     )
 
     # -------------------------------------------------------------------------
     # Sentry Error Tracking
     # -------------------------------------------------------------------------
     sentry_dsn: Optional[str] = Field(
-        default=None,
-        description="Sentry DSN for error tracking"
+        default=None, description="Sentry DSN for error tracking"
     )
     sentry_environment: Optional[str] = Field(
-        default=None,
-        description="Sentry environment name"
+        default=None, description="Sentry environment name"
     )
 
     # -------------------------------------------------------------------------
     # AWS S3 Storage
     # -------------------------------------------------------------------------
     aws_access_key_id: Optional[str] = Field(default=None, description="AWS access key")
-    aws_secret_access_key: Optional[str] = Field(default=None, description="AWS secret key")
+    aws_secret_access_key: Optional[str] = Field(
+        default=None, description="AWS secret key"
+    )
     aws_region: str = Field(default="us-east-1", description="AWS region")
-    s3_bucket: Optional[str] = Field(default=None, description="S3 bucket for file storage")
+    s3_bucket: Optional[str] = Field(
+        default=None, description="S3 bucket for file storage"
+    )
 
     # -------------------------------------------------------------------------
     # Email (SMTP)
@@ -315,64 +274,52 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=587, description="SMTP server port")
     smtp_user: Optional[str] = Field(default=None, description="SMTP username")
     smtp_password: Optional[str] = Field(default=None, description="SMTP password")
-    smtp_from_email: str = Field(default="noreply@orionflow.dev", description="From email address")
+    smtp_from_email: str = Field(
+        default="noreply@orionflow.dev", description="From email address"
+    )
     smtp_from_name: str = Field(default="OrionFlow", description="From name")
 
     # -------------------------------------------------------------------------
     # Onshape Integration
     # -------------------------------------------------------------------------
     onshape_doc_id: Optional[str] = Field(
-        default=None,
-        description="Onshape document ID"
+        default=None, description="Onshape document ID"
     )
 
     onshape_workspace_id: Optional[str] = Field(
-        default=None,
-        description="Onshape workspace ID"
+        default=None, description="Onshape workspace ID"
     )
 
     onshape_element_id: Optional[str] = Field(
-        default=None,
-        description="Onshape element ID"
+        default=None, description="Onshape element ID"
     )
 
     onshape_access_key: Optional[str] = Field(
-        default=None,
-        description="Onshape API access key"
+        default=None, description="Onshape API access key"
     )
 
     onshape_secret_key: Optional[str] = Field(
-        default=None,
-        description="Onshape API secret key"
+        default=None, description="Onshape API secret key"
     )
 
     # -------------------------------------------------------------------------
     # Dataset & Logging
     # -------------------------------------------------------------------------
     dataset_dir: Path = Field(
-        default=Path("data"),
-        description="Directory for dataset storage"
+        default=Path("data"), description="Directory for dataset storage"
     )
 
     feedback_log_path: Path = Field(
-        default=Path("data/feedback.jsonl"),
-        description="Path for feedback log file"
+        default=Path("data/feedback.jsonl"), description="Path for feedback log file"
     )
 
     enable_dataset_logging: bool = Field(
-        default=True,
-        description="Enable dataset sample logging"
+        default=True, description="Enable dataset sample logging"
     )
 
-    log_level: str = Field(
-        default="INFO",
-        description="Logging level"
-    )
+    log_level: str = Field(default="INFO", description="Logging level")
 
-    log_format: str = Field(
-        default="json",
-        description="Log format: json or console"
-    )
+    log_format: str = Field(default="json", description="Log format: json or console")
 
     # -------------------------------------------------------------------------
     # Computed Properties
@@ -385,11 +332,9 @@ class Settings(BaseSettings):
     @property
     def is_onshape_configured(self) -> bool:
         """Check if Onshape integration is configured."""
-        return all([
-            self.onshape_doc_id,
-            self.onshape_workspace_id,
-            self.onshape_element_id
-        ])
+        return all(
+            [self.onshape_doc_id, self.onshape_workspace_id, self.onshape_element_id]
+        )
 
     @property
     def has_llm_api_key(self) -> bool:
@@ -419,6 +364,28 @@ class Settings(BaseSettings):
     # -------------------------------------------------------------------------
     # Validators
     # -------------------------------------------------------------------------
+    @field_validator(
+        "debug", "testing", "use_v3_compiler", "use_two_stage_pipeline", mode="before"
+    )
+    @classmethod
+    def parse_boolish(cls, v):
+        """Accept common environment-style switches for boolean settings."""
+        if isinstance(v, str):
+            normalized = v.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "dev", "development"}:
+                return True
+            if normalized in {
+                "0",
+                "false",
+                "no",
+                "off",
+                "release",
+                "prod",
+                "production",
+            }:
+                return False
+        return v
+
     @field_validator("llm_provider")
     @classmethod
     def validate_provider(cls, v: str) -> str:
@@ -514,10 +481,18 @@ class Settings(BaseSettings):
         print(f"Output Dir:      {self.output_dir}")
         print(f"Database:        {self.db_host}:{self.db_port}/{self.db_name}")
         print(f"Redis:           {self.redis_host}:{self.redis_port}")
-        print(f"Stripe:          {'configured' if self.is_stripe_configured else 'not configured'}")
-        print(f"S3:              {'configured' if self.is_s3_configured else 'not configured'}")
-        print(f"Email:           {'configured' if self.is_email_configured else 'not configured'}")
-        print(f"Sentry:          {'configured' if self.sentry_dsn else 'not configured'}")
+        print(
+            f"Stripe:          {'configured' if self.is_stripe_configured else 'not configured'}"
+        )
+        print(
+            f"S3:              {'configured' if self.is_s3_configured else 'not configured'}"
+        )
+        print(
+            f"Email:           {'configured' if self.is_email_configured else 'not configured'}"
+        )
+        print(
+            f"Sentry:          {'configured' if self.sentry_dsn else 'not configured'}"
+        )
         print(f"Onshape:         {self.is_onshape_configured}")
         print(f"Log Level:       {self.log_level}")
         print("=" * 60)

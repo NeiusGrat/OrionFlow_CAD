@@ -10,29 +10,21 @@ Provides:
 from typing import Optional
 import uuid
 
-from fastapi import Depends, HTTPException, status, Header
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.config import settings
 from app.db.session import get_db
 from app.db.models import User, APIKey, UserStatus, UserRole
-from app.auth.jwt import verify_token, TokenPayload
+from app.auth.jwt import verify_token
 from app.auth.password import verify_api_key
 
-
 # OAuth2 scheme for JWT authentication
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/login",
-    auto_error=False
-)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 # API key header scheme
-api_key_header = APIKeyHeader(
-    name="X-API-Key",
-    auto_error=False
-)
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def get_current_user(
@@ -114,10 +106,7 @@ async def get_api_key_user(db: AsyncSession, key: str) -> User:
 
     # Find API keys with matching prefix
     result = await db.execute(
-        select(APIKey).where(
-            APIKey.key_prefix == prefix,
-            APIKey.is_active == True
-        )
+        select(APIKey).where(APIKey.key_prefix == prefix, APIKey.is_active.is_(True))
     )
     api_keys = result.scalars().all()
 
@@ -126,14 +115,13 @@ async def get_api_key_user(db: AsyncSession, key: str) -> User:
         if verify_api_key(key, api_key.key_hash):
             # Update last used timestamp
             from datetime import datetime, timezone
+
             api_key.last_used_at = datetime.now(timezone.utc)
             api_key.usage_count += 1
             await db.commit()
 
             # Get associated user
-            result = await db.execute(
-                select(User).where(User.id == api_key.user_id)
-            )
+            result = await db.execute(select(User).where(User.id == api_key.user_id))
             user = result.scalar_one_or_none()
 
             if user is None:
@@ -161,8 +149,7 @@ async def get_current_active_user(
     """
     if current_user.status != UserStatus.ACTIVE:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is not active"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is not active"
         )
     return current_user
 
@@ -184,8 +171,7 @@ async def get_current_admin_user(
     """
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
         )
     return current_user
 
@@ -229,6 +215,7 @@ def require_scope(required_scope: str):
         ):
             ...
     """
+
     async def scope_checker(
         db: AsyncSession = Depends(get_db),
         api_key: Optional[str] = Depends(api_key_header),
@@ -239,8 +226,7 @@ def require_scope(required_scope: str):
             prefix = api_key[:10] if len(api_key) >= 10 else api_key
             result = await db.execute(
                 select(APIKey).where(
-                    APIKey.key_prefix == prefix,
-                    APIKey.is_active == True
+                    APIKey.key_prefix == prefix, APIKey.is_active.is_(True)
                 )
             )
             api_key_obj = result.scalar_one_or_none()
@@ -248,7 +234,7 @@ def require_scope(required_scope: str):
             if api_key_obj and required_scope not in api_key_obj.scopes:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"API key missing required scope: {required_scope}"
+                    detail=f"API key missing required scope: {required_scope}",
                 )
 
         return current_user
@@ -276,10 +262,7 @@ async def get_api_key(
     prefix = api_key[:10] if len(api_key) >= 10 else api_key
 
     result = await db.execute(
-        select(APIKey).where(
-            APIKey.key_prefix == prefix,
-            APIKey.is_active == True
-        )
+        select(APIKey).where(APIKey.key_prefix == prefix, APIKey.is_active.is_(True))
     )
     api_keys = result.scalars().all()
 

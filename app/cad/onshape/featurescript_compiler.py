@@ -27,26 +27,26 @@ FeatureScript Reference:
 
 Version: 1.0
 """
+
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 from app.domain.feature_graph_ir import (
     FeatureGraphIR,
     FeatureIR,
-    SketchIR,
     FeatureType,
-    PrimitiveType
+    PrimitiveType,
 )
-
 
 # =============================================================================
 # FeatureScript Types
 # =============================================================================
 
+
 class FSOperationType(str, Enum):
     """FeatureScript operation types."""
+
     OP_EXTRUDE = "opExtrude"
     OP_FILLET = "opFillet"
     OP_CHAMFER = "opChamfer"
@@ -57,6 +57,7 @@ class FSOperationType(str, Enum):
 
 class FSBooleanOperation(str, Enum):
     """FeatureScript boolean operation types."""
+
     NEW = "NEW"
     ADD = "ADD"
     REMOVE = "REMOVE"
@@ -65,6 +66,7 @@ class FSBooleanOperation(str, Enum):
 
 class FSPlane(str, Enum):
     """FeatureScript standard planes."""
+
     XY = "XY"
     XZ = "XZ"
     YZ = "YZ"
@@ -77,9 +79,11 @@ class FSPlane(str, Enum):
 # FeatureScript AST Nodes
 # =============================================================================
 
+
 @dataclass
 class FSParameter:
     """A FeatureScript parameter declaration."""
+
     name: str
     value: float
     unit: str = "millimeter"
@@ -92,6 +96,7 @@ class FSParameter:
 @dataclass
 class FSSketchEntity:
     """A FeatureScript sketch entity."""
+
     entity_id: str
     entity_type: str
     params: Dict[str, float]
@@ -104,21 +109,21 @@ class FSSketchEntity:
                 f'    "firstCorner": vector(0, 0) * millimeter,\n'
                 f'    "secondCorner": vector({self.params.get("width", 10)}, '
                 f'{self.params.get("height", 10)}) * millimeter\n'
-                f'}});'
+                f"}});"
             )
         elif self.entity_type == "circle":
             return (
                 f'skCircle(sketch, "{self.entity_id}", {{\n'
                 f'    "center": vector(0, 0) * millimeter,\n'
                 f'    "radius": {self.params.get("radius", 5)} * millimeter\n'
-                f'}});'
+                f"}});"
             )
         elif self.entity_type == "line":
             return (
                 f'skLineSegment(sketch, "{self.entity_id}", {{\n'
                 f'    "start": vector({self.params.get("x1", 0)}, {self.params.get("y1", 0)}) * millimeter,\n'
                 f'    "end": vector({self.params.get("x2", 10)}, {self.params.get("y2", 10)}) * millimeter\n'
-                f'}});'
+                f"}});"
             )
         elif self.entity_type == "arc":
             return (
@@ -126,48 +131,43 @@ class FSSketchEntity:
                 f'    "start": vector({self.params.get("x1", 0)}, {self.params.get("y1", 0)}) * millimeter,\n'
                 f'    "mid": vector({self.params.get("xm", 5)}, {self.params.get("ym", 5)}) * millimeter,\n'
                 f'    "end": vector({self.params.get("x2", 10)}, {self.params.get("y2", 0)}) * millimeter\n'
-                f'}});'
+                f"}});"
             )
         else:
-            return f'// Unsupported entity type: {self.entity_type}'
+            return f"// Unsupported entity type: {self.entity_type}"
 
 
 @dataclass
 class FSSketch:
     """A FeatureScript sketch definition."""
+
     sketch_id: str
     plane: str
     entities: List[FSSketchEntity] = field(default_factory=list)
 
     def to_fs(self) -> str:
         """Generate FeatureScript sketch block."""
-        plane_map = {
-            "XY": "XY",
-            "XZ": "XZ",
-            "YZ": "YZ"
-        }
-        fs_plane = plane_map.get(self.plane, "XY")
-
         lines = [
-            f'// Sketch: {self.sketch_id}',
+            f"// Sketch: {self.sketch_id}",
             f'var sketch_{self.sketch_id} = newSketchOnPlane(context, id + "{self.sketch_id}", {{',
-            f'    "sketchPlane": plane(vector(0, 0, 0) * millimeter, vector(0, 0, 1))',
-            f'}});',
-            f'var sketch = sketch_{self.sketch_id};',
-            ''
+            '    "sketchPlane": plane(vector(0, 0, 0) * millimeter, vector(0, 0, 1))',
+            "});",
+            f"var sketch = sketch_{self.sketch_id};",
+            "",
         ]
 
         for entity in self.entities:
             lines.append(entity.to_fs())
-            lines.append('')
+            lines.append("")
 
-        lines.append(f'skSolve(sketch);')
-        return '\n'.join(lines)
+        lines.append("skSolve(sketch);")
+        return "\n".join(lines)
 
 
 @dataclass
 class FSOperation:
     """A FeatureScript 3D operation."""
+
     operation_id: str
     operation_type: FSOperationType
     params: Dict[str, Any]
@@ -185,74 +185,71 @@ class FSOperation:
         elif self.operation_type == FSOperationType.OP_REVOLVE:
             return self._generate_revolve()
         else:
-            return f'// Unsupported operation: {self.operation_type}'
+            return f"// Unsupported operation: {self.operation_type}"
 
     def _generate_extrude(self) -> str:
         """Generate opExtrude call."""
         depth = self.params.get("depth", 10)
-        direction = self.params.get("direction", "FORWARD")
-
         # Map boolean operation
         bool_op_map = {
             FSBooleanOperation.NEW: "BooleanOperationType.NEW",
             FSBooleanOperation.ADD: "BooleanOperationType.ADD",
             FSBooleanOperation.REMOVE: "BooleanOperationType.SUBTRACTION",
-            FSBooleanOperation.INTERSECT: "BooleanOperationType.INTERSECTION"
+            FSBooleanOperation.INTERSECT: "BooleanOperationType.INTERSECTION",
         }
         bool_type = bool_op_map.get(self.boolean_op, "BooleanOperationType.NEW")
 
-        return f'''// Feature: {self.operation_id} (Extrude)
+        return f"""// Feature: {self.operation_id} (Extrude)
 opExtrude(context, id + "{self.operation_id}", {{
     "entities": qSketchRegion(id + "{self.sketch_ref}"),
     "direction": evOwnerSketchPlane(context, {{"entity": qSketchRegion(id + "{self.sketch_ref}")}}).normal,
     "endBound": BoundingType.BLIND,
     "endDepth": {depth} * millimeter,
     "operationType": {bool_type}
-}});'''
+}});"""
 
     def _generate_fillet(self) -> str:
         """Generate opFillet call."""
         radius = self.params.get("radius", 1)
 
-        # Edge selection - in real FeatureScript this would use qEdge queries
-        edge_query = self.params.get("edges", "qAllEdges()")
-
-        return f'''// Feature: {self.operation_id} (Fillet)
+        return f"""// Feature: {self.operation_id} (Fillet)
 opFillet(context, id + "{self.operation_id}", {{
     "entities": qCreatedBy(id + "{self.params.get('target', 'unknown')}", EntityType.EDGE),
     "radius": {radius} * millimeter
-}});'''
+}});"""
 
     def _generate_chamfer(self) -> str:
         """Generate opChamfer call."""
         distance = self.params.get("distance", 1)
 
-        return f'''// Feature: {self.operation_id} (Chamfer)
+        return f"""// Feature: {self.operation_id} (Chamfer)
 opChamfer(context, id + "{self.operation_id}", {{
     "entities": qCreatedBy(id + "{self.params.get('target', 'unknown')}", EntityType.EDGE),
     "chamferType": ChamferType.EQUAL_OFFSETS,
     "width": {distance} * millimeter
-}});'''
+}});"""
 
     def _generate_revolve(self) -> str:
         """Generate opRevolve call."""
         angle = self.params.get("angle", 360)
 
-        return f'''// Feature: {self.operation_id} (Revolve)
+        return f"""// Feature: {self.operation_id} (Revolve)
 opRevolve(context, id + "{self.operation_id}", {{
     "entities": qSketchRegion(id + "{self.sketch_ref}"),
     "axis": line(vector(0, 0, 0) * millimeter, vector(0, 1, 0)),
     "angleForward": {angle} * degree
-}});'''
+}});"""
 
 
 # =============================================================================
 # FeatureScript Program
 # =============================================================================
 
+
 @dataclass
 class FSProgram:
     """Complete FeatureScript program (Part Studio feature)."""
+
     feature_name: str
     parameters: List[FSParameter] = field(default_factory=list)
     sketches: List[FSSketch] = field(default_factory=list)
@@ -261,62 +258,55 @@ class FSProgram:
     def to_fs(self) -> str:
         """Generate complete FeatureScript code."""
         lines = [
-            f'// FeatureScript generated from FeatureGraphIR',
-            f'// Feature: {self.feature_name}',
-            f'// Generated by OrionFlow CAD',
-            f'',
-            f'FeatureScript 2240;',
-            f'import(path : "onshape/std/common.fs", version : "2240.0");',
-            f'',
+            "// FeatureScript generated from FeatureGraphIR",
+            f"// Feature: {self.feature_name}",
+            "// Generated by OrionFlow CAD",
+            "",
+            "FeatureScript 2240;",
+            'import(path : "onshape/std/common.fs", version : "2240.0");',
+            "",
             f'annotation {{ "Feature Type Name" : "{self.feature_name}" }}',
-            f'export const {self._safe_name()} = defineFeature(function(context is Context, id is Id, definition is map)',
-            f'    precondition',
-            f'    {{',
-            f'        // Feature parameters',
+            f"export const {self._safe_name()} = defineFeature(function(context is Context, id is Id, definition is map)",
+            "    precondition",
+            "    {",
+            "        // Feature parameters",
         ]
 
         # Add parameter definitions
         for param in self.parameters:
             lines.append(f'        annotation {{ "Name" : "{param.name}" }}')
-            lines.append(f'        isLength(definition.{param.name}, LENGTH_BOUNDS);')
+            lines.append(f"        isLength(definition.{param.name}, LENGTH_BOUNDS);")
 
-        lines.extend([
-            f'    }}',
-            f'    {{',
-            f'        // Feature body',
-            f''
-        ])
+        lines.extend(["    }", "    {", "        // Feature body", ""])
 
         # Add sketches
         for sketch in self.sketches:
             sketch_code = sketch.to_fs()
-            for line in sketch_code.split('\n'):
-                lines.append(f'        {line}')
-            lines.append('')
+            for line in sketch_code.split("\n"):
+                lines.append(f"        {line}")
+            lines.append("")
 
         # Add operations
         for op in self.operations:
             op_code = op.to_fs()
-            for line in op_code.split('\n'):
-                lines.append(f'        {line}')
-            lines.append('')
+            for line in op_code.split("\n"):
+                lines.append(f"        {line}")
+            lines.append("")
 
-        lines.extend([
-            f'    }});',
-            f''
-        ])
+        lines.extend(["    });", ""])
 
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def _safe_name(self) -> str:
         """Convert feature name to valid FeatureScript identifier."""
-        name = self.feature_name.replace(' ', '_').replace('-', '_')
-        return ''.join(c for c in name if c.isalnum() or c == '_')
+        name = self.feature_name.replace(" ", "_").replace("-", "_")
+        return "".join(c for c in name if c.isalnum() or c == "_")
 
 
 # =============================================================================
 # FeatureScript Compiler
 # =============================================================================
+
 
 class FeatureScriptCompiler:
     """
@@ -356,9 +346,7 @@ class FeatureScriptCompiler:
         self._warnings: List[str] = []
 
     def compile(
-        self,
-        ir: FeatureGraphIR,
-        feature_name: str = "GeneratedFeature"
+        self, ir: FeatureGraphIR, feature_name: str = "GeneratedFeature"
     ) -> str:
         """
         Compile FeatureGraphIR to FeatureScript code.
@@ -394,8 +382,8 @@ class FeatureScriptCompiler:
 
         # Add compilation report as comment
         if self._warnings:
-            warning_block = '\n'.join(f'// WARNING: {w}' for w in self._warnings)
-            fs_code = warning_block + '\n\n' + fs_code
+            warning_block = "\n".join(f"// WARNING: {w}" for w in self._warnings)
+            fs_code = warning_block + "\n\n" + fs_code
 
         return fs_code
 
@@ -409,37 +397,30 @@ class FeatureScriptCompiler:
             "feature_type": "custom",
             "parameters": {},
             "sketches": [],
-            "operations": []
+            "operations": [],
         }
 
         for name, param in ir.parameters.items():
-            result["parameters"][name] = {
-                "value": param.value,
-                "unit": str(ir.units)
-            }
+            result["parameters"][name] = {"value": param.value, "unit": str(ir.units)}
 
         for sketch in ir.sketches:
-            sketch_data = {
-                "id": sketch.id,
-                "plane": str(sketch.plane),
-                "entities": []
-            }
+            sketch_data = {"id": sketch.id, "plane": str(sketch.plane), "entities": []}
             for prim in sketch.primitives:
-                sketch_data["entities"].append({
-                    "id": prim.id,
-                    "type": str(prim.type),
-                    "params": prim.params
-                })
+                sketch_data["entities"].append(
+                    {"id": prim.id, "type": str(prim.type), "params": prim.params}
+                )
             result["sketches"].append(sketch_data)
 
         for feature in ir.topological_sort_features():
-            result["operations"].append({
-                "id": feature.id,
-                "type": str(feature.type),
-                "sketch": feature.sketch,
-                "params": feature.params,
-                "depends_on": feature.depends_on
-            })
+            result["operations"].append(
+                {
+                    "id": feature.id,
+                    "type": str(feature.type),
+                    "sketch": feature.sketch,
+                    "params": feature.params,
+                    "depends_on": feature.depends_on,
+                }
+            )
 
         return result
 
@@ -487,38 +468,35 @@ class FeatureScriptCompiler:
         """Convert IR parameters to FeatureScript parameters."""
         params = []
         for name, param in ir.parameters.items():
-            params.append(FSParameter(
-                name=name,
-                value=param.value,
-                unit="millimeter" if ir.units == "mm" else "inch"
-            ))
+            params.append(
+                FSParameter(
+                    name=name,
+                    value=param.value,
+                    unit="millimeter" if ir.units == "mm" else "inch",
+                )
+            )
         return params
 
     def _compile_sketches(self, ir: FeatureGraphIR) -> List[FSSketch]:
         """Convert IR sketches to FeatureScript sketches."""
         sketches = []
         for sketch in ir.sketches:
-            fs_sketch = FSSketch(
-                sketch_id=sketch.id,
-                plane=str(sketch.plane)
-            )
+            fs_sketch = FSSketch(sketch_id=sketch.id, plane=str(sketch.plane))
 
             for prim in sketch.primitives:
                 entity_type = self.PRIMITIVE_MAP.get(prim.type, str(prim.type))
-                fs_sketch.entities.append(FSSketchEntity(
-                    entity_id=prim.id,
-                    entity_type=entity_type,
-                    params=prim.params
-                ))
+                fs_sketch.entities.append(
+                    FSSketchEntity(
+                        entity_id=prim.id, entity_type=entity_type, params=prim.params
+                    )
+                )
 
             sketches.append(fs_sketch)
 
         return sketches
 
     def _compile_features(
-        self,
-        features: List[FeatureIR],
-        ir: FeatureGraphIR
+        self, features: List[FeatureIR], ir: FeatureGraphIR
     ) -> List[FSOperation]:
         """Convert IR features to FeatureScript operations."""
         operations = []
@@ -544,13 +522,15 @@ class FeatureScriptCompiler:
                 if feature.depends_on:
                     params["target"] = feature.depends_on[0]
 
-            operations.append(FSOperation(
-                operation_id=feature.id,
-                operation_type=op_type,
-                params=params,
-                sketch_ref=feature.sketch,
-                boolean_op=boolean_op
-            ))
+            operations.append(
+                FSOperation(
+                    operation_id=feature.id,
+                    operation_type=op_type,
+                    params=params,
+                    sketch_ref=feature.sketch,
+                    boolean_op=boolean_op,
+                )
+            )
 
         return operations
 
@@ -559,9 +539,9 @@ class FeatureScriptCompiler:
 # Utility Functions
 # =============================================================================
 
+
 def compile_ir_to_featurescript(
-    ir: FeatureGraphIR,
-    feature_name: str = "GeneratedFeature"
+    ir: FeatureGraphIR, feature_name: str = "GeneratedFeature"
 ) -> str:
     """
     Convenience function to compile IR to FeatureScript.
@@ -590,11 +570,9 @@ def validate_ir_portability(ir: FeatureGraphIR) -> Dict[str, Any]:
         "is_portable": len(errors) == 0,
         "errors": errors,
         "supported_features": [
-            f.id for f in ir.features
-            if f.type in FeatureScriptCompiler.TYPE_MAP
+            f.id for f in ir.features if f.type in FeatureScriptCompiler.TYPE_MAP
         ],
         "unsupported_features": [
-            f.id for f in ir.features
-            if f.type not in FeatureScriptCompiler.TYPE_MAP
-        ]
+            f.id for f in ir.features if f.type not in FeatureScriptCompiler.TYPE_MAP
+        ],
     }

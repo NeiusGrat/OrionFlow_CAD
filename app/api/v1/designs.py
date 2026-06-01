@@ -11,7 +11,6 @@ Endpoints:
 """
 
 from typing import List, Optional
-from datetime import datetime
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -20,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.db.session import get_db
-from app.db.models import User, Design, GenerationHistory, GenerationStatus
+from app.db.models import User, Design, GenerationHistory
 from app.auth.dependencies import get_current_active_user
 from app.logging_config import get_logger
 
@@ -32,8 +31,10 @@ router = APIRouter()
 # Request/Response Models
 # =============================================================================
 
+
 class CreateDesignRequest(BaseModel):
     """Create design request."""
+
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     prompt: str = Field(..., min_length=3)
@@ -45,6 +46,7 @@ class CreateDesignRequest(BaseModel):
 
 class UpdateDesignRequest(BaseModel):
     """Update design request."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     feature_graph: Optional[dict] = None
@@ -54,6 +56,7 @@ class UpdateDesignRequest(BaseModel):
 
 class DesignResponse(BaseModel):
     """Design response."""
+
     id: str
     name: str
     description: Optional[str]
@@ -70,6 +73,7 @@ class DesignResponse(BaseModel):
 
 class DesignListResponse(BaseModel):
     """Paginated design list response."""
+
     items: List[DesignResponse]
     total: int
     page: int
@@ -79,6 +83,7 @@ class DesignListResponse(BaseModel):
 
 class GenerationHistoryResponse(BaseModel):
     """Generation history entry."""
+
     id: str
     prompt: str
     status: str
@@ -90,12 +95,14 @@ class GenerationHistoryResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """Generic message response."""
+
     message: str
 
 
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get(
     "",
@@ -119,8 +126,7 @@ async def list_designs(
 
     if search:
         query = query.where(
-            Design.name.ilike(f"%{search}%") |
-            Design.description.ilike(f"%{search}%")
+            Design.name.ilike(f"%{search}%") | Design.description.ilike(f"%{search}%")
         )
 
     # Get total count
@@ -227,8 +233,7 @@ async def get_design(
         design_uuid = uuid.UUID(design_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid design ID"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid design ID"
         )
 
     result = await db.execute(
@@ -241,8 +246,7 @@ async def get_design(
 
     if not design:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Design not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Design not found"
         )
 
     return DesignResponse(
@@ -279,8 +283,7 @@ async def update_design(
         design_uuid = uuid.UUID(design_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid design ID"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid design ID"
         )
 
     result = await db.execute(
@@ -293,8 +296,7 @@ async def update_design(
 
     if not design:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Design not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Design not found"
         )
 
     # Update fields
@@ -351,8 +353,7 @@ async def delete_design(
         design_uuid = uuid.UUID(design_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid design ID"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid design ID"
         )
 
     result = await db.execute(
@@ -365,8 +366,7 @@ async def delete_design(
 
     if not design:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Design not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Design not found"
         )
 
     # TODO: Delete associated files from storage
@@ -400,8 +400,7 @@ async def get_generation_history(
         design_uuid = uuid.UUID(design_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid design ID"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid design ID"
         )
 
     # Verify design ownership
@@ -413,8 +412,7 @@ async def get_generation_history(
     )
     if not result.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Design not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Design not found"
         )
 
     # Get history

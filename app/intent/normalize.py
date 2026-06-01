@@ -4,7 +4,7 @@ def normalize(prompt: str) -> str:
     """
     p = prompt.lower()
     p = p.replace("×", "x")
-    p = p.replace("*", "x") 
+    p = p.replace("*", "x")
     p = p.replace("millimeter", "mm")
     p = p.replace("centimeter", "cm")
     p = p.replace("meter", "m")

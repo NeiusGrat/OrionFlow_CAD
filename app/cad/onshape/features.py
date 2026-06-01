@@ -10,9 +10,5 @@ class OnshapeFeatureAdapter:
 
     def extrude(self, depth):
         endpoint = f"/api/features/d/{self.document_id}/w/{self.workspace_id}/e/{self.element_id}"
-        payload = {
-            "featureType": "extrude",
-            "depth": depth,
-            "operation": "NEW"
-        }
+        payload = {"featureType": "extrude", "depth": depth, "operation": "NEW"}
         return self.client.post(endpoint, payload)

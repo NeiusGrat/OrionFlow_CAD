@@ -7,7 +7,7 @@ Endpoints:
 - DELETE /{job_id} - Cancel job
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,20 +29,24 @@ router = APIRouter()
 # Request/Response Models
 # =============================================================================
 
+
 class GenerateJobRequest(BaseModel):
     """Async generation job request."""
+
     prompt: str = Field(..., min_length=3, max_length=1000)
     backend: str = Field(default="build123d")
 
 
 class RegenerateJobRequest(BaseModel):
     """Async regeneration job request."""
+
     feature_graph: dict
     prompt: str = Field(default="")
 
 
 class JobResponse(BaseModel):
     """Job submission response."""
+
     job_id: str
     task_id: str
     status: str
@@ -51,6 +55,7 @@ class JobResponse(BaseModel):
 
 class JobStatusResponse(BaseModel):
     """Job status response."""
+
     job_id: str
     task_id: str
     status: str
@@ -63,12 +68,14 @@ class JobStatusResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """Generic message response."""
+
     message: str
 
 
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.post(
     "/generate",
@@ -97,7 +104,7 @@ async def start_generation_job(
                 "code": limit_check.get("reason", "LIMIT_REACHED"),
                 "used": limit_check.get("used"),
                 "limit": limit_check.get("limit"),
-            }
+            },
         )
 
     # Create job
@@ -203,7 +210,7 @@ async def get_job_status(
         logger.error(f"Failed to get job status: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve job status"
+            detail="Failed to retrieve job status",
         )
 
 
@@ -246,5 +253,5 @@ async def cancel_job(
         logger.error(f"Failed to cancel job: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to cancel job"
+            detail="Failed to cancel job",
         )

@@ -20,6 +20,7 @@ from app.config import settings
 
 class TokenPayload(BaseModel):
     """JWT token payload."""
+
     sub: str  # User ID
     email: str
     role: str
@@ -31,6 +32,7 @@ class TokenPayload(BaseModel):
 
 class TokenPair(BaseModel):
     """Access and refresh token pair."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -41,7 +43,7 @@ def create_access_token(
     user_id: str,
     email: str,
     role: str = "user",
-    expires_delta: Optional[timedelta] = None
+    expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
     Create a JWT access token.
@@ -72,9 +74,7 @@ def create_access_token(
     }
 
     return jwt.encode(
-        payload,
-        settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm
+        payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
     )
 
 
@@ -82,7 +82,7 @@ def create_refresh_token(
     user_id: str,
     email: str,
     role: str = "user",
-    expires_delta: Optional[timedelta] = None
+    expires_delta: Optional[timedelta] = None,
 ) -> str:
     """
     Create a JWT refresh token.
@@ -113,17 +113,11 @@ def create_refresh_token(
     }
 
     return jwt.encode(
-        payload,
-        settings.jwt_secret_key,
-        algorithm=settings.jwt_algorithm
+        payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
     )
 
 
-def create_token_pair(
-    user_id: str,
-    email: str,
-    role: str = "user"
-) -> TokenPair:
+def create_token_pair(user_id: str, email: str, role: str = "user") -> TokenPair:
     """
     Create both access and refresh tokens.
 
@@ -142,7 +136,7 @@ def create_token_pair(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
-        expires_in=settings.jwt_access_token_expire_minutes * 60
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
     )
 
 
@@ -159,9 +153,7 @@ def verify_token(token: str, token_type: str = "access") -> Optional[TokenPayloa
     """
     try:
         payload = jwt.decode(
-            token,
-            settings.jwt_secret_key,
-            algorithms=[settings.jwt_algorithm]
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
         )
 
         # Verify token type
@@ -191,7 +183,7 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
             token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
-            options={"verify_exp": False}
+            options={"verify_exp": False},
         )
     except JWTError:
         return None

@@ -48,13 +48,15 @@ def create_engine() -> AsyncEngine:
     }
 
     if not settings.testing:
-        engine_kwargs.update({
-            "poolclass": pool_class,
-            "pool_size": settings.db_pool_size,
-            "max_overflow": settings.db_max_overflow,
-            "pool_timeout": 30,
-            "pool_recycle": 1800,
-        })
+        engine_kwargs.update(
+            {
+                "poolclass": pool_class,
+                "pool_size": settings.db_pool_size,
+                "max_overflow": settings.db_max_overflow,
+                "pool_timeout": 30,
+                "pool_recycle": 1800,
+            }
+        )
 
     return create_async_engine(get_database_url(), **engine_kwargs)
 

@@ -7,6 +7,7 @@ Tests the dependency-aware caching system for:
 3. Invalidation propagation
 4. Cache hit/miss behavior
 """
+
 import pytest
 from app.compilers.incremental_cache import (
     CacheEntry,
@@ -14,9 +15,8 @@ from app.compilers.incremental_cache import (
     DependencyGraph,
     IncrementalCache,
     compute_param_hash,
-    get_changed_features
+    get_changed_features,
 )
-from datetime import datetime
 
 
 class TestCacheEntry:
@@ -24,21 +24,13 @@ class TestCacheEntry:
 
     def test_valid_entry(self):
         """Valid cache entry."""
-        entry = CacheEntry(
-            feature_id="f1",
-            cache_key="abc123",
-            geometry="mock_solid"
-        )
+        entry = CacheEntry(feature_id="f1", cache_key="abc123", geometry="mock_solid")
         assert entry.feature_id == "f1"
         assert entry.hit_count == 0
 
     def test_is_valid_matching_key(self):
         """Entry is valid when key matches."""
-        entry = CacheEntry(
-            feature_id="f1",
-            cache_key="abc123",
-            geometry="mock_solid"
-        )
+        entry = CacheEntry(feature_id="f1", cache_key="abc123", geometry="mock_solid")
         assert entry.is_valid("abc123")
         assert not entry.is_valid("different")
 
@@ -48,10 +40,7 @@ class TestDependencyNode:
 
     def test_compute_cache_key_no_deps(self):
         """Node without dependencies uses only param hash."""
-        node = DependencyNode(
-            feature_id="f1",
-            param_hash="hash123"
-        )
+        node = DependencyNode(feature_id="f1", param_hash="hash123")
         key = node.compute_cache_key({})
         assert key is not None
         assert len(key) == 24
@@ -59,9 +48,7 @@ class TestDependencyNode:
     def test_compute_cache_key_with_deps(self):
         """Node with dependencies includes upstream keys."""
         node = DependencyNode(
-            feature_id="f2",
-            param_hash="hash456",
-            dependencies=["f1"]
+            feature_id="f2", param_hash="hash456", dependencies=["f1"]
         )
         key = node.compute_cache_key({"f1": "upstream_key"})
         assert key is not None
@@ -69,16 +56,12 @@ class TestDependencyNode:
     def test_different_deps_different_keys(self):
         """Different upstream keys produce different cache keys."""
         node = DependencyNode(
-            feature_id="f2",
-            param_hash="hash456",
-            dependencies=["f1"]
+            feature_id="f2", param_hash="hash456", dependencies=["f1"]
         )
         key1 = node.compute_cache_key({"f1": "key_a"})
 
         node2 = DependencyNode(
-            feature_id="f2",
-            param_hash="hash456",
-            dependencies=["f1"]
+            feature_id="f2", param_hash="hash456", dependencies=["f1"]
         )
         key2 = node2.compute_cache_key({"f1": "key_b"})
 
@@ -267,6 +250,7 @@ class TestChangedFeatureDetection:
 
     def test_detect_changed_feature(self):
         """Should detect feature with changed params."""
+
         # Create mock IR objects
         class MockFeature:
             def __init__(self, fid, params):
@@ -277,14 +261,15 @@ class TestChangedFeatureDetection:
             def __init__(self, features):
                 self.features = features
 
-        old_ir = MockIR([
-            MockFeature("f1", {"width": 10.0}),
-            MockFeature("f2", {"height": 20.0})
-        ])
-        new_ir = MockIR([
-            MockFeature("f1", {"width": 10.0}),  # Same
-            MockFeature("f2", {"height": 30.0})  # Changed
-        ])
+        old_ir = MockIR(
+            [MockFeature("f1", {"width": 10.0}), MockFeature("f2", {"height": 20.0})]
+        )
+        new_ir = MockIR(
+            [
+                MockFeature("f1", {"width": 10.0}),  # Same
+                MockFeature("f2", {"height": 30.0}),  # Changed
+            ]
+        )
 
         changed = get_changed_features(old_ir, new_ir)
         assert "f2" in changed
@@ -292,6 +277,7 @@ class TestChangedFeatureDetection:
 
     def test_detect_new_feature(self):
         """Should detect newly added feature."""
+
         class MockFeature:
             def __init__(self, fid, params):
                 self.id = fid
@@ -301,13 +287,13 @@ class TestChangedFeatureDetection:
             def __init__(self, features):
                 self.features = features
 
-        old_ir = MockIR([
-            MockFeature("f1", {"width": 10.0})
-        ])
-        new_ir = MockIR([
-            MockFeature("f1", {"width": 10.0}),
-            MockFeature("f2", {"height": 20.0})  # New
-        ])
+        old_ir = MockIR([MockFeature("f1", {"width": 10.0})])
+        new_ir = MockIR(
+            [
+                MockFeature("f1", {"width": 10.0}),
+                MockFeature("f2", {"height": 20.0}),  # New
+            ]
+        )
 
         changed = get_changed_features(old_ir, new_ir)
         assert "f2" in changed

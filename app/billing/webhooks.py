@@ -69,7 +69,7 @@ async def handle_checkout_session_completed(
         result = await db.execute(
             select(PricingPlan).where(PricingPlan.id == uuid.UUID(plan_id))
         )
-        plan = result.scalar_one()
+        result.scalar_one()
 
         subscription = Subscription(
             user_id=uuid.UUID(user_id),
@@ -78,17 +78,18 @@ async def handle_checkout_session_completed(
             stripe_subscription_id=session["subscription"],
             status=SubscriptionStatus.ACTIVE,
             current_period_start=datetime.now(timezone.utc),
-            current_period_end=datetime.now(timezone.utc),  # Will be updated by invoice event
+            current_period_end=datetime.now(
+                timezone.utc
+            ),  # Will be updated by invoice event
         )
         db.add(subscription)
 
     # Update user status to active
-    result = await db.execute(
-        select(User).where(User.id == uuid.UUID(user_id))
-    )
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
     if user:
         from app.db.models import UserStatus
+
         user.status = UserStatus.ACTIVE
 
     await db.commit()
@@ -97,7 +98,7 @@ async def handle_checkout_session_completed(
         "checkout_completed",
         user_id=user_id,
         plan_id=plan_id,
-        subscription_id=session["subscription"]
+        subscription_id=session["subscription"],
     )
 
     return True
@@ -130,7 +131,9 @@ async def handle_subscription_updated(
     subscription = result.scalar_one_or_none()
 
     if not subscription:
-        logger.warning("subscription_not_found", stripe_subscription_id=stripe_sub["id"])
+        logger.warning(
+            "subscription_not_found", stripe_subscription_id=stripe_sub["id"]
+        )
         return False
 
     # Update status
@@ -142,18 +145,15 @@ async def handle_subscription_updated(
         "paused": SubscriptionStatus.PAUSED,
     }
     subscription.status = status_map.get(
-        stripe_sub["status"],
-        SubscriptionStatus.ACTIVE
+        stripe_sub["status"], SubscriptionStatus.ACTIVE
     )
 
     # Update billing period
     subscription.current_period_start = datetime.fromtimestamp(
-        stripe_sub["current_period_start"],
-        tz=timezone.utc
+        stripe_sub["current_period_start"], tz=timezone.utc
     )
     subscription.current_period_end = datetime.fromtimestamp(
-        stripe_sub["current_period_end"],
-        tz=timezone.utc
+        stripe_sub["current_period_end"], tz=timezone.utc
     )
 
     # Handle cancellation
@@ -164,7 +164,7 @@ async def handle_subscription_updated(
     logger.info(
         "subscription_updated",
         subscription_id=str(subscription.id),
-        status=subscription.status.value
+        status=subscription.status.value,
     )
 
     return True
@@ -196,7 +196,9 @@ async def handle_subscription_deleted(
     subscription = result.scalar_one_or_none()
 
     if not subscription:
-        logger.warning("subscription_not_found", stripe_subscription_id=stripe_sub["id"])
+        logger.warning(
+            "subscription_not_found", stripe_subscription_id=stripe_sub["id"]
+        )
         return False
 
     subscription.status = SubscriptionStatus.CANCELLED
@@ -204,10 +206,7 @@ async def handle_subscription_deleted(
 
     await db.commit()
 
-    logger.info(
-        "subscription_deleted",
-        subscription_id=str(subscription.id)
-    )
+    logger.info("subscription_deleted", subscription_id=str(subscription.id))
 
     return True
 
@@ -253,20 +252,15 @@ async def handle_invoice_paid(
     if invoice.get("lines", {}).get("data"):
         line = invoice["lines"]["data"][0]
         subscription.current_period_start = datetime.fromtimestamp(
-            line["period"]["start"],
-            tz=timezone.utc
+            line["period"]["start"], tz=timezone.utc
         )
         subscription.current_period_end = datetime.fromtimestamp(
-            line["period"]["end"],
-            tz=timezone.utc
+            line["period"]["end"], tz=timezone.utc
         )
 
     await db.commit()
 
-    logger.info(
-        "invoice_paid_usage_reset",
-        subscription_id=str(subscription.id)
-    )
+    logger.info("invoice_paid_usage_reset", subscription_id=str(subscription.id))
 
     return True
 
@@ -311,7 +305,7 @@ async def handle_invoice_payment_failed(
     logger.warning(
         "payment_failed",
         subscription_id=str(subscription.id),
-        user_id=str(subscription.user_id)
+        user_id=str(subscription.user_id),
     )
 
     # TODO: Send payment failure email to user

@@ -1,6 +1,7 @@
 from app.services.retry_policy import is_retryable
 from app.domain.execution_trace import ExecutionTrace, TraceEvent
 
+
 def test_no_infinite_retry():
     attempts = 0
     MAX_RETRIES = 1
@@ -20,8 +21,10 @@ def test_is_retryable_logic():
     trace = ExecutionTrace(
         success=False,
         events=[
-            TraceEvent(stage="compile", target=None, status="failure", message="Random error")
-        ]
+            TraceEvent(
+                stage="compile", target=None, status="failure", message="Random error"
+            )
+        ],
     )
     assert is_retryable(trace) is False
 
@@ -29,8 +32,13 @@ def test_is_retryable_logic():
     trace = ExecutionTrace(
         success=False,
         events=[
-            TraceEvent(stage="compile", target=None, status="failure", message="Invalid FeatureGraph schema: foo")
-        ]
+            TraceEvent(
+                stage="compile",
+                target=None,
+                status="failure",
+                message="Invalid FeatureGraph schema: foo",
+            )
+        ],
     )
     assert is_retryable(trace) is True
 
@@ -38,7 +46,12 @@ def test_is_retryable_logic():
     trace = ExecutionTrace(
         success=False,
         events=[
-            TraceEvent(stage="sketch_compile", target="s1", status="failure", message="SketchCompilationError: bar")
-        ]
+            TraceEvent(
+                stage="sketch_compile",
+                target="s1",
+                status="failure",
+                message="SketchCompilationError: bar",
+            )
+        ],
     )
     assert is_retryable(trace) is True

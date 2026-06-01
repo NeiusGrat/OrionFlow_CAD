@@ -12,6 +12,7 @@ def _generate_uuid() -> str:
 # Parameters
 # -------------------------
 
+
 class Parameter(BaseModel):
     type: Literal["float", "int", "bool"]
     value: Union[float, int, bool]
@@ -23,16 +24,14 @@ class Parameter(BaseModel):
 # Sketch Layer (2D)
 # -------------------------
 
+
 class SketchPrimitive(BaseModel):
     id: str
-    uuid: str = Field(default_factory=_generate_uuid, description="Unique identifier for topological tracking")
-    type: Literal[
-        "line",
-        "circle",
-        "arc",
-        "rectangle",
-        "point"
-    ]
+    uuid: str = Field(
+        default_factory=_generate_uuid,
+        description="Unique identifier for topological tracking",
+    )
+    type: Literal["line", "circle", "arc", "rectangle", "point"]
     params: Dict[str, Union[str, float]]
     construction: bool = False
 
@@ -47,7 +46,7 @@ class SketchConstraint(BaseModel):
         "distance",
         "radius",
         "angle",
-        "symmetric"
+        "symmetric",
     ]
     entities: List[str]
     value: Optional[Union[str, float]] = None
@@ -55,7 +54,10 @@ class SketchConstraint(BaseModel):
 
 class SketchGraph(BaseModel):
     id: str
-    uuid: str = Field(default_factory=_generate_uuid, description="Unique identifier for topological tracking")
+    uuid: str = Field(
+        default_factory=_generate_uuid,
+        description="Unique identifier for topological tracking",
+    )
     plane: Literal["XY", "YZ", "XZ"]
     primitives: List[SketchPrimitive]
     constraints: List[SketchConstraint]
@@ -65,15 +67,14 @@ class SketchGraph(BaseModel):
 # Feature Layer (3D)
 # -------------------------
 
+
 class Feature(BaseModel):
     id: str
-    uuid: str = Field(default_factory=_generate_uuid, description="Unique identifier for topological tracking")
-    type: Literal[
-        "extrude",
-        "revolve",
-        "fillet",
-        "chamfer"
-    ]
+    uuid: str = Field(
+        default_factory=_generate_uuid,
+        description="Unique identifier for topological tracking",
+    )
+    type: Literal["extrude", "revolve", "fillet", "chamfer"]
     sketch: Optional[str] = None
     targets: Optional[List[str]] = None
     params: Dict[str, Union[str, float]]
@@ -82,6 +83,7 @@ class Feature(BaseModel):
 # -------------------------
 # FeatureGraph (Top-Level)
 # -------------------------
+
 
 class FeatureGraphV1(BaseModel):
     schema_version: Literal["1.0"]

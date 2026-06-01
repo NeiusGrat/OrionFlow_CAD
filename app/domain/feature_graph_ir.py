@@ -46,24 +46,27 @@ RULES FOR LLM:
 
 Version: 1.0-IR (Execution IR - FROZEN)
 """
+
 from typing import List, Dict, Optional, Literal, Union, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 from enum import Enum
 import hashlib
 import json
 
-
 # =============================================================================
 # IR Constants (Frozen - Do Not Extend Without Versioning)
 # =============================================================================
 
+
 class IRVersion(str, Enum):
     """Supported IR versions. New features require new version."""
+
     V1_0 = "1.0-IR"
 
 
 class SketchPlane(str, Enum):
     """Supported sketch planes."""
+
     XY = "XY"
     YZ = "YZ"
     XZ = "XZ"
@@ -71,6 +74,7 @@ class SketchPlane(str, Enum):
 
 class PrimitiveType(str, Enum):
     """Allowed sketch primitive types."""
+
     LINE = "line"
     CIRCLE = "circle"
     ARC = "arc"
@@ -80,6 +84,7 @@ class PrimitiveType(str, Enum):
 
 class ConstraintType(str, Enum):
     """Allowed sketch constraint types."""
+
     COINCIDENT = "coincident"
     HORIZONTAL = "horizontal"
     VERTICAL = "vertical"
@@ -96,6 +101,7 @@ class ConstraintType(str, Enum):
 
 class FeatureType(str, Enum):
     """Allowed 3D feature types."""
+
     EXTRUDE = "extrude"
     CUT = "cut"
     FILLET = "fillet"
@@ -107,6 +113,7 @@ class FeatureType(str, Enum):
 
 class UnitSystem(str, Enum):
     """Supported unit systems."""
+
     MM = "mm"
     INCH = "inch"
 
@@ -115,6 +122,7 @@ class UnitSystem(str, Enum):
 # Parameter System (Resolved Values Only)
 # =============================================================================
 
+
 class ResolvedParameter(BaseModel):
     """
     A fully resolved parameter value.
@@ -122,22 +130,24 @@ class ResolvedParameter(BaseModel):
     IR RULE: Parameters MUST be resolved to concrete numeric values.
     No symbolic references, no expressions, no ambiguity.
     """
+
     value: float = Field(..., description="Concrete numeric value (resolved)")
 
     # Optional bounds for validation (compiler can check)
     min_value: Optional[float] = Field(None, description="Minimum valid value")
     max_value: Optional[float] = Field(None, description="Maximum valid value")
 
-    @field_validator('value')
+    @field_validator("value")
     @classmethod
     def validate_finite(cls, v):
         """Ensure value is finite and not NaN."""
         import math
+
         if math.isnan(v) or math.isinf(v):
             raise ValueError(f"Parameter value must be finite, got {v}")
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_bounds(self):
         """Ensure value is within bounds if specified."""
         if self.min_value is not None and self.value < self.min_value:
@@ -151,6 +161,7 @@ class ResolvedParameter(BaseModel):
 # Sketch Layer (2D Primitives)
 # =============================================================================
 
+
 class SketchPrimitiveIR(BaseModel):
     """
     Atomic 2D geometric entity with RESOLVED parameters.
@@ -158,19 +169,19 @@ class SketchPrimitiveIR(BaseModel):
     IR RULE: All parameter references must be resolved to floats.
     The compiler receives concrete values, not "$param_name" strings.
     """
+
     id: str = Field(..., description="Unique entity ID within the sketch")
     type: PrimitiveType = Field(..., description="Primitive type from allowlist")
 
     # RESOLVED parameters - no "$param" references allowed
     params: Dict[str, float] = Field(
-        ...,
-        description="Geometric parameters - ALL values must be resolved floats"
+        ..., description="Geometric parameters - ALL values must be resolved floats"
     )
 
     # Construction geometry flag (not part of final profile)
     construction: bool = Field(False, description="True if construction geometry")
 
-    @field_validator('params')
+    @field_validator("params")
     @classmethod
     def validate_resolved_params(cls, v):
         """Ensure all parameter values are resolved (no string references)."""
@@ -191,13 +202,14 @@ class SketchConstraintIR(BaseModel):
     """
     Geometric constraint with RESOLVED values.
     """
+
     type: ConstraintType = Field(..., description="Constraint type from allowlist")
     entities: List[str] = Field(..., description="IDs of constrained entities")
 
     # RESOLVED value (if applicable)
     value: Optional[float] = Field(None, description="Constraint value (resolved)")
 
-    @field_validator('value')
+    @field_validator("value")
     @classmethod
     def validate_resolved_value(cls, v):
         """Ensure constraint value is resolved if present."""
@@ -212,15 +224,15 @@ class SketchIR(BaseModel):
     """
     2D Sketch with RESOLVED geometry.
     """
+
     id: str = Field(..., description="Unique sketch ID")
     plane: SketchPlane = Field(SketchPlane.XY, description="Construction plane")
     primitives: List[SketchPrimitiveIR] = Field(..., description="2D primitives")
     constraints: List[SketchConstraintIR] = Field(
-        default_factory=list,
-        description="Sketch constraints"
+        default_factory=list, description="Sketch constraints"
     )
 
-    @field_validator('primitives')
+    @field_validator("primitives")
     @classmethod
     def validate_non_empty(cls, v):
         """Sketch must have at least one primitive."""
@@ -233,12 +245,14 @@ class SketchIR(BaseModel):
 # Feature Layer (3D Operations)
 # =============================================================================
 
+
 class FeatureIR(BaseModel):
     """
     3D Operation with RESOLVED parameters and explicit dependencies.
 
     IR RULE: Features form a DAG. Compiler executes in dependency order.
     """
+
     id: str = Field(..., description="Unique feature ID")
     type: FeatureType = Field(..., description="Feature type from allowlist")
 
@@ -247,20 +261,19 @@ class FeatureIR(BaseModel):
 
     # RESOLVED parameters - no "$param" references
     params: Dict[str, float] = Field(
-        ...,
-        description="Operation parameters - ALL values must be resolved floats"
+        ..., description="Operation parameters - ALL values must be resolved floats"
     )
 
     # Explicit dependency chain (for incremental rebuild)
     depends_on: List[str] = Field(
         default_factory=list,
-        description="IDs of parent features (must execute before this)"
+        description="IDs of parent features (must execute before this)",
     )
 
     # Cache key for incremental compilation (STEP 3 preparation)
     _param_hash: Optional[str] = None
 
-    @field_validator('params')
+    @field_validator("params")
     @classmethod
     def validate_resolved_params(cls, v):
         """Ensure all parameter values are resolved."""
@@ -280,6 +293,7 @@ class FeatureIR(BaseModel):
 # =============================================================================
 # FeatureGraphIR (Root - Execution IR)
 # =============================================================================
+
 
 class FeatureGraphIR(BaseModel):
     """
@@ -307,10 +321,10 @@ class FeatureGraphIR(BaseModel):
     - New features require new version number
     - Breaking changes require migration path
     """
+
     # Version tag (frozen)
     version: Literal["1.0-IR"] = Field(
-        "1.0-IR",
-        description="IR version - FROZEN, do not change"
+        "1.0-IR", description="IR version - FROZEN, do not change"
     )
 
     # Unit system
@@ -318,29 +332,24 @@ class FeatureGraphIR(BaseModel):
 
     # RESOLVED parameter table
     parameters: Dict[str, ResolvedParameter] = Field(
-        default_factory=dict,
-        description="Global parameters with RESOLVED values"
+        default_factory=dict, description="Global parameters with RESOLVED values"
     )
 
     # 2D Sketches
     sketches: List[SketchIR] = Field(
-        default_factory=list,
-        description="2D sketch definitions"
+        default_factory=list, description="2D sketch definitions"
     )
 
     # 3D Features (operation history)
-    features: List[FeatureIR] = Field(
-        ...,
-        description="Ordered 3D operations"
-    )
+    features: List[FeatureIR] = Field(..., description="Ordered 3D operations")
 
     # Minimal metadata (for tracking only, not reasoning)
     metadata: Dict[str, str] = Field(
         default_factory=dict,
-        description="Tracking metadata only (job_id, timestamp, source_plan_id)"
+        description="Tracking metadata only (job_id, timestamp, source_plan_id)",
     )
 
-    @field_validator('features')
+    @field_validator("features")
     @classmethod
     def validate_non_empty(cls, v):
         """IR must have at least one feature."""
@@ -348,7 +357,7 @@ class FeatureGraphIR(BaseModel):
             raise ValueError("IR violation: Must have at least one feature")
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_dependencies(self):
         """Validate feature dependency DAG."""
         feature_ids = {f.id for f in self.features}
@@ -390,7 +399,7 @@ class FeatureGraphIR(BaseModel):
 
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_sketch_references(self):
         """Validate all sketch references exist."""
         sketch_ids = {s.id for s in self.sketches}
@@ -451,6 +460,7 @@ class FeatureGraphIR(BaseModel):
 # IR Builder (Resolves parameters from FeatureGraph + ConstructionPlan)
 # =============================================================================
 
+
 class IRBuilder:
     """
     Builds FeatureGraphIR from upstream planning artifacts.
@@ -461,8 +471,7 @@ class IRBuilder:
 
     @staticmethod
     def resolve_param_value(
-        raw_value: Union[str, float, int],
-        param_table: Dict[str, float]
+        raw_value: Union[str, float, int], param_table: Dict[str, float]
     ) -> float:
         """
         Resolve a parameter reference to a concrete value.
@@ -503,9 +512,7 @@ class IRBuilder:
 
     @classmethod
     def from_feature_graph_v1(
-        cls,
-        fg: Any,
-        source_plan_id: Optional[str] = None
+        cls, fg: Any, source_plan_id: Optional[str] = None
     ) -> FeatureGraphIR:
         """
         Build IR from FeatureGraphV1.
@@ -524,7 +531,7 @@ class IRBuilder:
         resolved_params: Dict[str, ResolvedParameter] = {}
 
         for name, param in fg.parameters.items():
-            if hasattr(param, 'value'):
+            if hasattr(param, "value"):
                 value = float(param.value)
             else:
                 value = float(param)
@@ -537,18 +544,24 @@ class IRBuilder:
         for sketch in fg.sketches:
             resolved_primitives = []
 
-            primitives = getattr(sketch, 'primitives', []) or getattr(sketch, 'entities', [])
+            primitives = getattr(sketch, "primitives", []) or getattr(
+                sketch, "entities", []
+            )
             for prim in primitives:
                 resolved_prim_params = {}
                 for key, val in prim.params.items():
-                    resolved_prim_params[key] = cls.resolve_param_value(val, param_table)
+                    resolved_prim_params[key] = cls.resolve_param_value(
+                        val, param_table
+                    )
 
-                resolved_primitives.append(SketchPrimitiveIR(
-                    id=prim.id,
-                    type=prim.type,
-                    params=resolved_prim_params,
-                    construction=getattr(prim, 'construction', False)
-                ))
+                resolved_primitives.append(
+                    SketchPrimitiveIR(
+                        id=prim.id,
+                        type=prim.type,
+                        params=resolved_prim_params,
+                        construction=getattr(prim, "construction", False),
+                    )
+                )
 
             resolved_constraints = []
             for constr in sketch.constraints:
@@ -556,18 +569,22 @@ class IRBuilder:
                 if constr.value is not None:
                     resolved_value = cls.resolve_param_value(constr.value, param_table)
 
-                resolved_constraints.append(SketchConstraintIR(
-                    type=constr.type,
-                    entities=list(constr.entities),
-                    value=resolved_value
-                ))
+                resolved_constraints.append(
+                    SketchConstraintIR(
+                        type=constr.type,
+                        entities=list(constr.entities),
+                        value=resolved_value,
+                    )
+                )
 
-            resolved_sketches.append(SketchIR(
-                id=sketch.id,
-                plane=sketch.plane,
-                primitives=resolved_primitives,
-                constraints=resolved_constraints
-            ))
+            resolved_sketches.append(
+                SketchIR(
+                    id=sketch.id,
+                    plane=sketch.plane,
+                    primitives=resolved_primitives,
+                    constraints=resolved_constraints,
+                )
+            )
 
         # Resolve features
         resolved_features: List[FeatureIR] = []
@@ -576,29 +593,28 @@ class IRBuilder:
             for key, val in feature.params.items():
                 resolved_feature_params[key] = cls.resolve_param_value(val, param_table)
 
-            depends_on = getattr(feature, 'depends_on', []) or []
+            depends_on = getattr(feature, "depends_on", []) or []
 
-            resolved_features.append(FeatureIR(
-                id=feature.id,
-                type=feature.type,
-                sketch=feature.sketch,
-                params=resolved_feature_params,
-                depends_on=list(depends_on)
-            ))
+            resolved_features.append(
+                FeatureIR(
+                    id=feature.id,
+                    type=feature.type,
+                    sketch=feature.sketch,
+                    params=resolved_feature_params,
+                    depends_on=list(depends_on),
+                )
+            )
 
         # Build metadata
-        metadata = {
-            "ir_version": "1.0-IR",
-            "source": "feature_graph_v1"
-        }
+        metadata = {"ir_version": "1.0-IR", "source": "feature_graph_v1"}
         if source_plan_id:
             metadata["source_plan_id"] = source_plan_id
 
         return FeatureGraphIR(
             version="1.0-IR",
-            units=fg.units if hasattr(fg, 'units') else "mm",
+            units=fg.units if hasattr(fg, "units") else "mm",
             parameters=resolved_params,
             sketches=resolved_sketches,
             features=resolved_features,
-            metadata=metadata
+            metadata=metadata,
         )

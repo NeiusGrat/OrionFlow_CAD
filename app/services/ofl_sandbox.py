@@ -12,11 +12,12 @@ import re
 import ast
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 OUTPUT_BASE = os.path.join(PROJECT_ROOT, "data", "ofl_outputs")
 
 
@@ -32,9 +33,13 @@ class OFLSandbox:
         validation = self._validate_code(ofl_code)
         if not validation["safe"]:
             return {
-                "success": False, "output_dir": "", "step_file": None,
-                "stl_file": None, "error": validation["reason"],
-                "stdout": "", "stderr": "",
+                "success": False,
+                "output_dir": "",
+                "step_file": None,
+                "stl_file": None,
+                "error": validation["reason"],
+                "stdout": "",
+                "stderr": "",
             }
 
         request_id = uuid.uuid4().hex[:12]
@@ -53,8 +58,11 @@ class OFLSandbox:
 
             result = subprocess.run(
                 [sys.executable, script_path],
-                capture_output=True, text=True,
-                timeout=self.timeout, cwd=output_dir, env=env,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout,
+                cwd=output_dir,
+                env=env,
             )
 
             step_files = list(Path(output_dir).glob("*.step"))
@@ -76,30 +84,54 @@ class OFLSandbox:
 
         except subprocess.TimeoutExpired:
             return {
-                "success": False, "output_dir": output_dir,
-                "step_file": None, "stl_file": None,
+                "success": False,
+                "output_dir": output_dir,
+                "step_file": None,
+                "stl_file": None,
                 "error": f"Execution timed out ({self.timeout}s)",
-                "stdout": "", "stderr": "",
+                "stdout": "",
+                "stderr": "",
             }
         except Exception as e:
             return {
-                "success": False, "output_dir": output_dir,
-                "step_file": None, "stl_file": None,
-                "error": str(e), "stdout": "", "stderr": "",
+                "success": False,
+                "output_dir": output_dir,
+                "step_file": None,
+                "stl_file": None,
+                "error": str(e),
+                "stdout": "",
+                "stderr": "",
             }
 
     def _validate_code(self, code: str) -> dict:
         """Check code for dangerous imports/calls before execution."""
         blocked_imports = {
-            "import os", "import sys", "import subprocess", "import shutil",
-            "import socket", "import http", "import urllib", "import requests",
-            "from os", "from sys", "from subprocess", "from shutil",
-            "import pathlib", "__import__",
+            "import os",
+            "import sys",
+            "import subprocess",
+            "import shutil",
+            "import socket",
+            "import http",
+            "import urllib",
+            "import requests",
+            "from os",
+            "from sys",
+            "from subprocess",
+            "from shutil",
+            "import pathlib",
+            "__import__",
         }
 
         blocked_calls = [
-            "open(", "exec(", "eval(", "compile(", "getattr(",
-            "setattr(", "delattr(", "globals(", "locals(",
+            "open(",
+            "exec(",
+            "eval(",
+            "compile(",
+            "getattr(",
+            "setattr(",
+            "delattr(",
+            "globals(",
+            "locals(",
         ]
 
         code_lower = code.lower()
@@ -111,7 +143,9 @@ class OFLSandbox:
             stripped = line.strip()
             if not stripped or stripped.startswith("#"):
                 continue
-            if stripped.startswith("import ") or (stripped.startswith("from ") and "import" in stripped):
+            if stripped.startswith("import ") or (
+                stripped.startswith("from ") and "import" in stripped
+            ):
                 if "orionflow_ofl" not in stripped and "math" not in stripped:
                     return {"safe": False, "reason": f"Blocked import: {stripped}"}
 
@@ -128,6 +162,7 @@ class OFLSandbox:
 
     def _rewrite_export_paths(self, code: str, output_dir: str) -> str:
         """Rewrite export() paths to output_dir and ensure STL is also generated."""
+
         def replace_export(match):
             var_name = match.group(1)
             filename = match.group(2)

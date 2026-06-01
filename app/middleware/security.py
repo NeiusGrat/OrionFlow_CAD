@@ -106,9 +106,10 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > self.MAX_CONTENT_LENGTH:
             from fastapi import HTTPException, status
+
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail="Request body too large"
+                detail="Request body too large",
             )
 
         # Validate Content-Type for POST/PUT/PATCH
@@ -116,15 +117,20 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             content_type = request.headers.get("content-type", "")
             if content_type and not any(
                 ct in content_type.lower()
-                for ct in ["application/json", "multipart/form-data", "application/x-www-form-urlencoded"]
+                for ct in [
+                    "application/json",
+                    "multipart/form-data",
+                    "application/x-www-form-urlencoded",
+                ]
             ):
                 # Allow but log unexpected content types
                 from app.logging_config import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(
                     "unexpected_content_type",
                     content_type=content_type,
-                    path=request.url.path
+                    path=request.url.path,
                 )
 
         return await call_next(request)

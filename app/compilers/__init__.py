@@ -10,6 +10,7 @@ Available compilers:
 - Build123dCompilerV2: V2 compiler with semantic selector support
 - Build123dCompilerV3: V3 compiler with topological identity tracking (Phase 2)
 """
+
 from .base_compiler import BaseCompiler, BuildContext
 from .build123d_compiler import Build123dCompiler
 from .build123d_compiler_v2 import Build123dCompilerV2
@@ -18,7 +19,7 @@ from .build123d_compiler_v3 import Build123dCompilerV3
 __all__ = [
     "BaseCompiler",
     "BuildContext",
-    "Build123dCompiler", 
-    "Build123dCompilerV2", 
-    "Build123dCompilerV3"
+    "Build123dCompiler",
+    "Build123dCompilerV2",
+    "Build123dCompilerV3",
 ]

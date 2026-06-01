@@ -7,18 +7,17 @@ These tests ensure the IR contract is enforced:
 3. Forbidden fields are rejected
 4. Conversion from FeatureGraph works correctly
 """
+
 import pytest
 from app.domain.feature_graph_ir import (
     FeatureGraphIR,
     FeatureIR,
     SketchIR,
     SketchPrimitiveIR,
-    SketchConstraintIR,
     ResolvedParameter,
     IRBuilder,
     FeatureType,
     PrimitiveType,
-    ConstraintType,
     SketchPlane,
 )
 from app.domain.feature_graph import FeatureGraph, Feature, Sketch, SketchEntity
@@ -50,12 +49,14 @@ class TestResolvedParameter:
     def test_nan_parameter(self):
         """NaN parameter should fail."""
         import math
+
         with pytest.raises(ValueError, match="must be finite"):
             ResolvedParameter(value=math.nan)
 
     def test_inf_parameter(self):
         """Infinite parameter should fail."""
         import math
+
         with pytest.raises(ValueError, match="must be finite"):
             ResolvedParameter(value=math.inf)
 
@@ -68,26 +69,25 @@ class TestSketchPrimitiveIR:
         prim = SketchPrimitiveIR(
             id="p1",
             type=PrimitiveType.RECTANGLE,
-            params={"width": 10.0, "height": 20.0}
+            params={"width": 10.0, "height": 20.0},
         )
         assert prim.params["width"] == 10.0
 
     def test_unresolved_param_fails(self):
         """String parameter reference should fail."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError, match="Input should be a valid number"):
             SketchPrimitiveIR(
                 id="p1",
                 type=PrimitiveType.RECTANGLE,
-                params={"width": "$width", "height": 20.0}
+                params={"width": "$width", "height": 20.0},
             )
 
     def test_int_params_converted_to_float(self):
         """Integer params should be converted to float."""
         prim = SketchPrimitiveIR(
-            id="p1",
-            type=PrimitiveType.CIRCLE,
-            params={"radius": 10}
+            id="p1", type=PrimitiveType.CIRCLE, params={"radius": 10}
         )
         assert isinstance(prim.params["radius"], float)
 
@@ -102,27 +102,20 @@ class TestFeatureIR:
             type=FeatureType.EXTRUDE,
             sketch="s1",
             params={"depth": 25.0},
-            depends_on=[]
+            depends_on=[],
         )
         assert feat.params["depth"] == 25.0
 
     def test_unresolved_feature_param_fails(self):
         """String parameter in feature should fail."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError, match="Input should be a valid number"):
-            FeatureIR(
-                id="f1",
-                type=FeatureType.EXTRUDE,
-                params={"depth": "$height"}
-            )
+            FeatureIR(id="f1", type=FeatureType.EXTRUDE, params={"depth": "$height"})
 
     def test_param_hash_computation(self):
         """Feature should compute deterministic param hash."""
-        feat = FeatureIR(
-            id="f1",
-            type=FeatureType.EXTRUDE,
-            params={"depth": 25.0}
-        )
+        feat = FeatureIR(id="f1", type=FeatureType.EXTRUDE, params={"depth": 25.0})
         hash1 = feat.compute_param_hash()
         hash2 = feat.compute_param_hash()
         assert hash1 == hash2
@@ -146,9 +139,9 @@ class TestFeatureGraphIR:
                         SketchPrimitiveIR(
                             id="p1",
                             type=PrimitiveType.RECTANGLE,
-                            params={"width": 10.0, "height": 10.0}
+                            params={"width": 10.0, "height": 10.0},
                         )
-                    ]
+                    ],
                 )
             ],
             features=[
@@ -156,9 +149,9 @@ class TestFeatureGraphIR:
                     id="f1",
                     type=FeatureType.EXTRUDE,
                     sketch="s1",
-                    params={"depth": 20.0}
+                    params={"depth": 20.0},
                 )
-            ]
+            ],
         )
         assert ir.version == "1.0-IR"
         assert ir.get_resolved_param("height") == 20.0
@@ -166,12 +159,7 @@ class TestFeatureGraphIR:
     def test_empty_features_fails(self):
         """IR must have at least one feature."""
         with pytest.raises(ValueError, match="at least one feature"):
-            FeatureGraphIR(
-                version="1.0-IR",
-                parameters={},
-                sketches=[],
-                features=[]
-            )
+            FeatureGraphIR(version="1.0-IR", parameters={}, sketches=[], features=[])
 
     def test_invalid_dependency_fails(self):
         """Feature depending on non-existent feature should fail."""
@@ -185,9 +173,9 @@ class TestFeatureGraphIR:
                         id="f1",
                         type=FeatureType.FILLET,
                         params={"radius": 2.0},
-                        depends_on=["nonexistent"]
+                        depends_on=["nonexistent"],
                     )
-                ]
+                ],
             )
 
     def test_invalid_sketch_reference_fails(self):
@@ -202,9 +190,9 @@ class TestFeatureGraphIR:
                         id="f1",
                         type=FeatureType.EXTRUDE,
                         sketch="nonexistent",
-                        params={"depth": 10.0}
+                        params={"depth": 10.0},
                     )
-                ]
+                ],
             )
 
     def test_dependency_cycle_fails(self):
@@ -219,15 +207,15 @@ class TestFeatureGraphIR:
                         id="f1",
                         type=FeatureType.EXTRUDE,
                         params={"depth": 10.0},
-                        depends_on=["f2"]
+                        depends_on=["f2"],
                     ),
                     FeatureIR(
                         id="f2",
                         type=FeatureType.FILLET,
                         params={"radius": 2.0},
-                        depends_on=["f1"]
-                    )
-                ]
+                        depends_on=["f1"],
+                    ),
+                ],
             )
 
     def test_topological_sort(self):
@@ -243,9 +231,9 @@ class TestFeatureGraphIR:
                         SketchPrimitiveIR(
                             id="p1",
                             type=PrimitiveType.RECTANGLE,
-                            params={"width": 10.0, "height": 10.0}
+                            params={"width": 10.0, "height": 10.0},
                         )
-                    ]
+                    ],
                 )
             ],
             features=[
@@ -253,16 +241,16 @@ class TestFeatureGraphIR:
                     id="f2",
                     type=FeatureType.FILLET,
                     params={"radius": 2.0},
-                    depends_on=["f1"]
+                    depends_on=["f1"],
                 ),
                 FeatureIR(
                     id="f1",
                     type=FeatureType.EXTRUDE,
                     sketch="s1",
                     params={"depth": 10.0},
-                    depends_on=[]
-                )
-            ]
+                    depends_on=[],
+                ),
+            ],
         )
         sorted_features = ir.topological_sort_features()
         assert sorted_features[0].id == "f1"
@@ -275,12 +263,8 @@ class TestFeatureGraphIR:
             parameters={"h": ResolvedParameter(value=20.0)},
             sketches=[],
             features=[
-                FeatureIR(
-                    id="f1",
-                    type=FeatureType.EXTRUDE,
-                    params={"depth": 20.0}
-                )
-            ]
+                FeatureIR(id="f1", type=FeatureType.EXTRUDE, params={"depth": 20.0})
+            ],
         )
         hash1 = ir.compute_graph_hash()
         hash2 = ir.compute_graph_hash()
@@ -333,20 +317,17 @@ class TestFeatureGraphIRConversion:
                         SketchEntity(
                             id="e1",
                             type="rectangle",
-                            params={"width": 10.0, "height": "$height"}
+                            params={"width": 10.0, "height": "$height"},
                         )
-                    ]
+                    ],
                 )
             ],
             features=[
                 Feature(
-                    id="f1",
-                    type="extrude",
-                    sketch="s1",
-                    params={"depth": "$height"}
+                    id="f1", type="extrude", sketch="s1", params={"depth": "$height"}
                 )
             ],
-            metadata={"source": "test"}
+            metadata={"source": "test"},
         )
         violations = fg.validate_for_ir()
         assert len(violations) == 0
@@ -358,17 +339,8 @@ class TestFeatureGraphIRConversion:
             units="mm",
             parameters={"height": 20.0},
             sketches=[],
-            features=[
-                Feature(
-                    id="f1",
-                    type="extrude",
-                    params={"depth": 20.0}
-                )
-            ],
-            metadata={
-                "symmetry": True,
-                "manufacturing_intent": "CNC"
-            }
+            features=[Feature(id="f1", type="extrude", params={"depth": 20.0})],
+            metadata={"symmetry": True, "manufacturing_intent": "CNC"},
         )
         violations = fg.validate_for_ir()
         assert len(violations) == 2
@@ -382,13 +354,7 @@ class TestFeatureGraphIRConversion:
             units="mm",
             parameters={},  # height not defined
             sketches=[],
-            features=[
-                Feature(
-                    id="f1",
-                    type="extrude",
-                    params={"depth": "$height"}
-                )
-            ]
+            features=[Feature(id="f1", type="extrude", params={"depth": "$height"})],
         )
         violations = fg.validate_for_ir()
         assert len(violations) == 1
@@ -401,14 +367,12 @@ class TestFeatureGraphIRConversion:
             units="mm",
             parameters={},
             sketches=[],
-            features=[
-                Feature(id="f1", type="extrude", params={"depth": 10.0})
-            ],
+            features=[Feature(id="f1", type="extrude", params={"depth": 10.0})],
             metadata={
                 "source": "test",
                 "symmetry": True,
-                "design_rationale": "because"
-            }
+                "design_rationale": "because",
+            },
         )
         clean = fg.strip_forbidden_fields()
         assert "source" in clean.metadata

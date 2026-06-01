@@ -5,7 +5,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from app.domain.ofl_models import (
-    OFLGenerateRequest, OFLRebuildRequest, OFLEditRequest, OFLGenerateResponse,
+    OFLGenerateRequest,
+    OFLRebuildRequest,
+    OFLEditRequest,
+    OFLGenerateResponse,
 )
 
 router = APIRouter(tags=["OFL"])
@@ -19,6 +22,7 @@ def _get_generate_service():
     global _generate_service
     if _generate_service is None:
         from app.services.ofl_generation_service import OFLGenerationService
+
         _generate_service = OFLGenerationService(require_llm=True)
     return _generate_service
 
@@ -28,6 +32,7 @@ def _get_rebuild_service():
     global _rebuild_service
     if _rebuild_service is None:
         from app.services.ofl_generation_service import OFLGenerationService
+
         _rebuild_service = OFLGenerationService(require_llm=False)
     return _rebuild_service
 
@@ -47,7 +52,9 @@ async def ofl_rebuild(request: OFLRebuildRequest):
 @router.post("/edit", response_model=OFLGenerateResponse)
 async def ofl_edit(request: OFLEditRequest):
     """Apply natural language edit to existing OFL code."""
-    return _get_generate_service().edit_from_instruction(request.ofl_code, request.edit_instruction)
+    return _get_generate_service().edit_from_instruction(
+        request.ofl_code, request.edit_instruction
+    )
 
 
 @router.get("/download/{request_id}/{filename}")
@@ -59,6 +66,7 @@ async def ofl_download(request_id: str, filename: str):
         raise HTTPException(400, "Invalid filename")
 
     from app.services.ofl_sandbox import OUTPUT_BASE
+
     filepath = os.path.join(OUTPUT_BASE, request_id, filename)
 
     if not os.path.exists(filepath):
@@ -70,4 +78,8 @@ async def ofl_download(request_id: str, filename: str):
         ".glb": "model/gltf-binary",
     }
     ext = os.path.splitext(filename)[1].lower()
-    return FileResponse(filepath, media_type=media_types.get(ext, "application/octet-stream"), filename=filename)
+    return FileResponse(
+        filepath,
+        media_type=media_types.get(ext, "application/octet-stream"),
+        filename=filename,
+    )

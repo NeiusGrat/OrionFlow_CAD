@@ -4,7 +4,7 @@ from app.domain.execution_trace import ExecutionTrace
 def is_retryable(trace: ExecutionTrace) -> bool:
     """
     Determines whether a failed execution is safe to retry.
-    
+
     Retryable errors include:
     - Schema validation errors
     - Sketch/Feature compilation errors
@@ -22,7 +22,7 @@ def is_retryable(trace: ExecutionTrace) -> bool:
                 return True
             if "FeatureCompilationError" in (event.message or ""):
                 return True
-            
+
             # Geometry validation errors are retryable (Agentic Self-Correction)
             if event.stage == "geometry_validation":
                 return True

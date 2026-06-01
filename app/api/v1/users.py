@@ -11,11 +11,10 @@ Endpoints:
 """
 
 from typing import List, Optional
-from datetime import datetime, timezone
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -33,8 +32,10 @@ router = APIRouter()
 # Request/Response Models
 # =============================================================================
 
+
 class UpdateProfileRequest(BaseModel):
     """Profile update request."""
+
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     company: Optional[str] = Field(None, max_length=255)
     avatar_url: Optional[str] = Field(None, max_length=500)
@@ -42,6 +43,7 @@ class UpdateProfileRequest(BaseModel):
 
 class UserProfileResponse(BaseModel):
     """User profile response."""
+
     id: str
     email: str
     name: str
@@ -56,12 +58,14 @@ class UserProfileResponse(BaseModel):
 
 class CreateAPIKeyRequest(BaseModel):
     """API key creation request."""
+
     name: str = Field(..., min_length=1, max_length=100)
     scopes: List[str] = Field(default=["read", "write"])
 
 
 class APIKeyResponse(BaseModel):
     """API key response (without full key)."""
+
     id: str
     name: str
     key_prefix: str
@@ -73,6 +77,7 @@ class APIKeyResponse(BaseModel):
 
 class APIKeyCreatedResponse(BaseModel):
     """Response when API key is created (includes full key)."""
+
     id: str
     name: str
     key: str  # Full key - only returned once
@@ -83,12 +88,14 @@ class APIKeyCreatedResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """Generic message response."""
+
     message: str
 
 
 # =============================================================================
 # Profile Endpoints
 # =============================================================================
+
 
 @router.get(
     "/me",
@@ -111,7 +118,11 @@ async def get_profile(
         status=current_user.status.value,
         email_verified=current_user.email_verified,
         created_at=current_user.created_at.isoformat(),
-        last_login_at=current_user.last_login_at.isoformat() if current_user.last_login_at else None,
+        last_login_at=(
+            current_user.last_login_at.isoformat()
+            if current_user.last_login_at
+            else None
+        ),
     )
 
 
@@ -151,7 +162,11 @@ async def update_profile(
         status=current_user.status.value,
         email_verified=current_user.email_verified,
         created_at=current_user.created_at.isoformat(),
-        last_login_at=current_user.last_login_at.isoformat() if current_user.last_login_at else None,
+        last_login_at=(
+            current_user.last_login_at.isoformat()
+            if current_user.last_login_at
+            else None
+        ),
     )
 
 
@@ -176,6 +191,7 @@ async def delete_account(
     # Cancel subscription if exists
     if current_user.subscription:
         from app.billing.stripe_service import cancel_subscription
+
         try:
             await cancel_subscription(db, current_user, at_period_end=False)
         except Exception as e:
@@ -202,6 +218,7 @@ async def delete_account(
 # =============================================================================
 # API Key Endpoints
 # =============================================================================
+
 
 @router.get(
     "/me/api-keys",
@@ -315,8 +332,7 @@ async def revoke_api_key(
         key_uuid = uuid.UUID(key_id)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid key ID"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid key ID"
         )
 
     result = await db.execute(
@@ -329,8 +345,7 @@ async def revoke_api_key(
 
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="API key not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
         )
 
     # Deactivate rather than delete (for audit purposes)

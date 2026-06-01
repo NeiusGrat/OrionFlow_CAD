@@ -21,8 +21,8 @@ API Endpoints:
     /api/v1/billing/* - Billing and subscription endpoints
     /api/v1/jobs/*    - Async job management endpoints
 """
+
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -36,10 +36,15 @@ from prometheus_client import make_asgi_app
 from app.config import settings
 
 # Structured Logging
-from app.logging_config import configure_logging, get_logger, set_request_id, generate_request_id
+from app.logging_config import (
+    configure_logging,
+    get_logger,
+    set_request_id,
+    generate_request_id,
+)
 
 # Exception Handling
-from app.exceptions import OrionFlowError, ValidationError, LLMError, CompilationError
+from app.exceptions import OrionFlowError
 
 # Service Layer
 from app.services.generation_service import GenerationService
@@ -52,7 +57,7 @@ from app.cad.describe import describe_feature_graph
 from app.api.v1 import api_router
 
 # Middleware
-from app.middleware.rate_limit import limiter, RateLimitMiddleware
+from app.middleware.rate_limit import limiter
 from app.middleware.security import SecurityHeadersMiddleware
 
 # Configure structured logging
@@ -63,6 +68,7 @@ logger = get_logger(__name__)
 # =============================================================================
 # Lifespan Management
 # =============================================================================
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -78,7 +84,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"LLM Configured: {settings.has_llm_api_key}")
     logger.info(f"Database: {settings.db_host}:{settings.db_port}/{settings.db_name}")
     logger.info(f"Redis: {settings.redis_host}:{settings.redis_port}")
-    logger.info(f"Stripe: {'configured' if settings.is_stripe_configured else 'not configured'}")
+    logger.info(
+        f"Stripe: {'configured' if settings.is_stripe_configured else 'not configured'}"
+    )
     logger.info(f"Debug Mode: {settings.debug}")
     logger.info("=" * 60)
 
@@ -86,6 +94,7 @@ async def lifespan(app: FastAPI):
     if not settings.testing:
         try:
             from app.db.session import init_db
+
             await init_db()
             logger.info("Database initialized")
         except Exception as e:
@@ -120,6 +129,7 @@ async def lifespan(app: FastAPI):
     if not settings.testing:
         try:
             from app.db.session import close_db
+
             await close_db()
             logger.info("Database connections closed")
         except Exception as e:
@@ -130,6 +140,7 @@ async def lifespan(app: FastAPI):
 # Request/Response Models with OpenAPI Documentation
 # =============================================================================
 
+
 class GenerateRequest(BaseModel):
     """Request body for CAD generation from natural language."""
 
@@ -138,14 +149,12 @@ class GenerateRequest(BaseModel):
         min_length=3,
         max_length=1000,
         description="Natural language description of the CAD model to generate",
-        json_schema_extra={
-            "example": "Create a 20mm tall cylinder with 10mm radius"
-        }
+        json_schema_extra={"example": "Create a 20mm tall cylinder with 10mm radius"},
     )
 
     backend: Optional[str] = Field(
         default="build123d",
-        description="CAD backend to use: 'build123d' (local) or 'onshape' (cloud)"
+        description="CAD backend to use: 'build123d' (local) or 'onshape' (cloud)",
     )
 
 
@@ -153,32 +162,29 @@ class RegenerateRequest(BaseModel):
     """Request body for regenerating CAD from edited feature graph."""
 
     feature_graph: Dict = Field(
-        ...,
-        description="The edited FeatureGraph JSON structure"
+        ..., description="The edited FeatureGraph JSON structure"
     )
 
     prompt: str = Field(
-        default="",
-        description="Optional prompt context for feedback logging"
+        default="", description="Optional prompt context for feedback logging"
     )
 
 
 class DescribeRequest(BaseModel):
     """Request body for describing a feature graph in plain text."""
 
-    feature_graph: Dict = Field(
-        ...,
-        description="The FeatureGraph JSON to describe"
-    )
+    feature_graph: Dict = Field(..., description="The FeatureGraph JSON to describe")
 
 
 class ViewerInfo(BaseModel):
     """3D viewer information."""
+
     glb_url: str = Field(..., description="URL to GLB file for 3D viewing")
 
 
 class DownloadLinks(BaseModel):
     """Download links for CAD files."""
+
     step: str = Field(..., description="URL to STEP file (B-Rep for manufacturing)")
     stl: str = Field(..., description="URL to STL file (mesh for 3D printing)")
 
@@ -198,15 +204,15 @@ class GenerateResponse(BaseModel):
                 "viewer": {"glb_url": "outputs/550e8400.glb"},
                 "downloads": {
                     "step": "outputs/550e8400.step",
-                    "stl": "outputs/550e8400.stl"
+                    "stl": "outputs/550e8400.stl",
                 },
                 "cfg": {
                     "version": "v1",
                     "units": "mm",
                     "sketches": [],
                     "features": [],
-                    "parameters": {"radius": 10.0, "height": 20.0}
-                }
+                    "parameters": {"radius": 10.0, "height": 20.0},
+                },
             }
         }
     }
@@ -214,22 +220,29 @@ class GenerateResponse(BaseModel):
 
 class DescribeResponse(BaseModel):
     """Response from describe endpoint."""
-    description: str = Field(..., description="Human-readable description of the CAD model")
+
+    description: str = Field(
+        ..., description="Human-readable description of the CAD model"
+    )
 
 
 class HealthResponse(BaseModel):
     """Response from health check endpoint."""
+
     status: str = Field(..., description="Service status")
     version: str = Field(..., description="API version")
     environment: str = Field(..., description="Environment name")
     llm_configured: bool = Field(..., description="Whether LLM API is configured")
     database_connected: bool = Field(..., description="Whether database is connected")
     redis_connected: bool = Field(..., description="Whether Redis is connected")
-    onshape_configured: bool = Field(..., description="Whether Onshape integration is configured")
+    onshape_configured: bool = Field(
+        ..., description="Whether Onshape integration is configured"
+    )
 
 
 class ErrorResponse(BaseModel):
     """Standardized error response."""
+
     error: str = Field(..., description="Error message")
     code: str = Field(..., description="Error code")
     retryable: bool = Field(default=False, description="Whether the error is retryable")
@@ -273,7 +286,7 @@ curl -X POST http://localhost:8000/generate \\
     version=settings.app_version,
     contact={
         "name": "OrionFlow Team",
-        "url": "https://github.com/sahilmaniyar888/OrionFlow_CAD"
+        "url": "https://github.com/sahilmaniyar888/OrionFlow_CAD",
     },
     license_info={
         "name": "MIT",
@@ -290,7 +303,7 @@ curl -X POST http://localhost:8000/generate \\
         {"name": "Billing", "description": "Billing and subscription endpoints"},
         {"name": "Jobs", "description": "Async job management endpoints"},
         {"name": "Utilities", "description": "Utility endpoints"},
-    ]
+    ],
 )
 
 # Configure CORS
@@ -313,6 +326,7 @@ app.state.limiter = limiter
 # Middleware: Request ID Tracking
 # =============================================================================
 
+
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     """Add request ID to each request for tracing."""
@@ -323,7 +337,7 @@ async def request_id_middleware(request: Request, call_next):
         "request_started",
         method=request.method,
         path=request.url.path,
-        request_id=request_id
+        request_id=request_id,
     )
 
     response = await call_next(request)
@@ -334,7 +348,7 @@ async def request_id_middleware(request: Request, call_next):
         method=request.method,
         path=request.url.path,
         status_code=response.status_code,
-        request_id=request_id
+        request_id=request_id,
     )
 
     return response
@@ -344,6 +358,7 @@ async def request_id_middleware(request: Request, call_next):
 # Exception Handlers
 # =============================================================================
 
+
 @app.exception_handler(OrionFlowError)
 async def orionflow_exception_handler(request: Request, exc: OrionFlowError):
     """Handle all OrionFlow custom exceptions."""
@@ -352,21 +367,16 @@ async def orionflow_exception_handler(request: Request, exc: OrionFlowError):
         error_code=exc.code.value,
         message=exc.message,
         retryable=exc.retryable,
-        details=exc.details
+        details=exc.details,
     )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=exc.to_dict()
-    )
+    return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle FastAPI HTTP exceptions."""
     logger.warning(
-        "http_exception",
-        status_code=exc.status_code,
-        detail=str(exc.detail)
+        "http_exception", status_code=exc.status_code, detail=str(exc.detail)
     )
     return JSONResponse(
         status_code=exc.status_code,
@@ -374,9 +384,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             "error": {
                 "code": "HTTP_ERROR",
                 "message": str(exc.detail),
-                "retryable": exc.status_code >= 500
+                "retryable": exc.status_code >= 500,
             }
-        }
+        },
     )
 
 
@@ -384,9 +394,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions."""
     logger.exception(
-        "unexpected_error",
-        error_type=type(exc).__name__,
-        message=str(exc)
+        "unexpected_error", error_type=type(exc).__name__, message=str(exc)
     )
     return JSONResponse(
         status_code=500,
@@ -394,9 +402,9 @@ async def general_exception_handler(request: Request, exc: Exception):
             "error": {
                 "code": "INTERNAL_ERROR",
                 "message": "An unexpected error occurred. Please try again.",
-                "retryable": True
+                "retryable": True,
             }
-        }
+        },
     )
 
 
@@ -415,7 +423,7 @@ app.include_router(api_router)
 generation_service = GenerationService(
     output_dir=settings.output_dir,
     use_v3_compiler=settings.use_v3_compiler,
-    use_two_stage=settings.use_two_stage_pipeline
+    use_two_stage=settings.use_two_stage_pipeline,
 )
 
 
@@ -423,11 +431,12 @@ generation_service = GenerationService(
 # Core API Endpoints (Legacy - for backwards compatibility)
 # =============================================================================
 
+
 @app.get(
     "/health",
     response_model=HealthResponse,
     tags=["Utilities"],
-    summary="Health check endpoint"
+    summary="Health check endpoint",
 )
 async def health_check():
     """
@@ -440,6 +449,7 @@ async def health_check():
     if not settings.testing:
         try:
             from app.db.session import check_db_health
+
             db_connected = await check_db_health()
         except Exception:
             pass
@@ -448,6 +458,7 @@ async def health_check():
     redis_connected = False
     try:
         import redis
+
         r = redis.from_url(settings.redis_url)
         redis_connected = r.ping()
     except Exception:
@@ -460,7 +471,7 @@ async def health_check():
         llm_configured=settings.has_llm_api_key,
         database_connected=db_connected,
         redis_connected=redis_connected,
-        onshape_configured=settings.is_onshape_configured
+        onshape_configured=settings.is_onshape_configured,
     )
 
 
@@ -469,10 +480,10 @@ async def health_check():
     response_model=GenerateResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Invalid request"},
-        500: {"model": ErrorResponse, "description": "Generation failed"}
+        500: {"model": ErrorResponse, "description": "Generation failed"},
     },
     tags=["Generation"],
-    summary="Generate CAD from natural language"
+    summary="Generate CAD from natural language",
 )
 async def generate_cad(request: GenerateRequest):
     """
@@ -496,20 +507,19 @@ async def generate_cad(request: GenerateRequest):
 
     try:
         result = await generation_service.generate(
-            request.prompt,
-            backend=request.backend
+            request.prompt, backend=request.backend
         )
     except ValueError as e:
         logger.warning(f"Generation validation error: {e}")
         raise HTTPException(
             status_code=400,
-            detail={"error": str(e), "code": "VALIDATION_ERROR", "retryable": False}
+            detail={"error": str(e), "code": "VALIDATION_ERROR", "retryable": False},
         )
     except Exception as e:
         logger.error(f"Generation failed: {e}")
         raise HTTPException(
             status_code=500,
-            detail={"error": str(e), "code": "GENERATION_FAILED", "retryable": True}
+            detail={"error": str(e), "code": "GENERATION_FAILED", "retryable": True},
         )
 
     # Build response
@@ -519,25 +529,21 @@ async def generate_cad(request: GenerateRequest):
 
     return GenerateResponse(
         model_id=result.metadata["job_id"],
-        viewer=ViewerInfo(
-            glb_url=str(result.geometry_path).replace("\\", "/")
-        ),
+        viewer=ViewerInfo(glb_url=str(result.geometry_path).replace("\\", "/")),
         downloads=DownloadLinks(
             step=str(result.metadata.get("step_path", "")).replace("\\", "/"),
-            stl=str(result.metadata.get("stl_path", "")).replace("\\", "/")
+            stl=str(result.metadata.get("stl_path", "")).replace("\\", "/"),
         ),
-        cfg=fg_data
+        cfg=fg_data,
     )
 
 
 @app.post(
     "/regenerate",
     response_model=GenerateResponse,
-    responses={
-        400: {"model": ErrorResponse, "description": "Invalid feature graph"}
-    },
+    responses={400: {"model": ErrorResponse, "description": "Invalid feature graph"}},
     tags=["Generation"],
-    summary="Regenerate CAD from edited feature graph"
+    summary="Regenerate CAD from edited feature graph",
 )
 async def regenerate_cad(request: RegenerateRequest):
     """
@@ -562,27 +568,24 @@ async def regenerate_cad(request: RegenerateRequest):
 
         # Regenerate geometry
         result = await generation_service.regenerate(
-            feature_graph.model_dump(),
-            request.prompt
+            feature_graph.model_dump(), request.prompt
         )
 
     except Exception as e:
         logger.error(f"Regeneration failed: {e}")
         raise HTTPException(
             status_code=400,
-            detail={"error": str(e), "code": "REGENERATION_FAILED", "retryable": False}
+            detail={"error": str(e), "code": "REGENERATION_FAILED", "retryable": False},
         )
 
     return GenerateResponse(
         model_id=result.metadata["job_id"],
-        viewer=ViewerInfo(
-            glb_url=str(result.geometry_path).replace("\\", "/")
-        ),
+        viewer=ViewerInfo(glb_url=str(result.geometry_path).replace("\\", "/")),
         downloads=DownloadLinks(
             step=str(result.metadata["step_path"]).replace("\\", "/"),
-            stl=str(result.metadata["stl_path"]).replace("\\", "/")
+            stl=str(result.metadata["stl_path"]).replace("\\", "/"),
         ),
-        cfg=result.metadata["feature_graph"]
+        cfg=result.metadata["feature_graph"],
     )
 
 
@@ -590,7 +593,7 @@ async def regenerate_cad(request: RegenerateRequest):
     "/describe",
     response_model=DescribeResponse,
     tags=["Utilities"],
-    summary="Describe feature graph in plain text"
+    summary="Describe feature graph in plain text",
 )
 def describe_cad(request: DescribeRequest):
     """
@@ -604,15 +607,11 @@ def describe_cad(request: DescribeRequest):
         logger.error(f"Describe failed: {e}")
         raise HTTPException(
             status_code=400,
-            detail={"error": str(e), "code": "DESCRIBE_FAILED", "retryable": False}
+            detail={"error": str(e), "code": "DESCRIBE_FAILED", "retryable": False},
         )
 
 
-@app.get(
-    "/download/step/{filename}",
-    tags=["Downloads"],
-    summary="Download STEP file"
-)
+@app.get("/download/step/{filename}", tags=["Downloads"], summary="Download STEP file")
 def download_step(filename: str):
     """Download a STEP file by filename."""
     file_path = settings.output_dir / filename
@@ -627,11 +626,7 @@ def download_step(filename: str):
     )
 
 
-@app.get(
-    "/download/stl/{filename}",
-    tags=["Downloads"],
-    summary="Download STL file"
-)
+@app.get("/download/stl/{filename}", tags=["Downloads"], summary="Download STL file")
 def download_stl(filename: str):
     """Download an STL file by filename."""
     file_path = settings.output_dir / filename

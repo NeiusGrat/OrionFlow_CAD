@@ -1,6 +1,6 @@
 from app.domain.feature_graph_v1 import FeatureGraphV1
 from app.compilers.v1.compiler import FeatureGraphCompilerV1
-from build123d import Part
+
 
 def test_basic_extrude():
     graph = FeatureGraphV1(
@@ -10,7 +10,7 @@ def test_basic_extrude():
         parameters={
             "w": {"type": "float", "value": 10},
             "h": {"type": "float", "value": 10},
-            "d": {"type": "float", "value": 5}
+            "d": {"type": "float", "value": 5},
         },
         sketches=[
             {
@@ -20,10 +20,10 @@ def test_basic_extrude():
                     {
                         "id": "r1",
                         "type": "rectangle",
-                        "params": {"width": "w", "height": "h"}
+                        "params": {"width": "w", "height": "h"},
                     }
                 ],
-                "constraints": []
+                "constraints": [],
             }
         ],
         features=[
@@ -32,9 +32,9 @@ def test_basic_extrude():
                 "type": "extrude",
                 "sketch": "s1",
                 "params": {"depth": "d"},
-                "targets": []
+                "targets": [],
             }
-        ]
+        ],
     )
 
     compiler = FeatureGraphCompilerV1()

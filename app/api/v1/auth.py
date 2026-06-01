@@ -12,7 +12,6 @@ Endpoints:
 """
 
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
@@ -23,7 +22,7 @@ from sqlalchemy import select
 
 from app.db.session import get_db
 from app.db.models import User, UserStatus, UserRole, AuditLog, AuditAction
-from app.auth.jwt import create_token_pair, verify_token, TokenPair
+from app.auth.jwt import create_token_pair, verify_token
 from app.auth.password import (
     hash_password,
     verify_password,
@@ -43,8 +42,10 @@ router = APIRouter()
 # Request/Response Models
 # =============================================================================
 
+
 class SignupRequest(BaseModel):
     """User registration request."""
+
     email: EmailStr
     password: str = Field(..., min_length=8)
     name: str = Field(..., min_length=2, max_length=100)
@@ -52,12 +53,14 @@ class SignupRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """Login request (alternative to OAuth2 form)."""
+
     email: EmailStr
     password: str
 
 
 class TokenResponse(BaseModel):
     """Token pair response."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -66,32 +69,38 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     """Token refresh request."""
+
     refresh_token: str
 
 
 class ForgotPasswordRequest(BaseModel):
     """Forgot password request."""
+
     email: EmailStr
 
 
 class ResetPasswordRequest(BaseModel):
     """Password reset request."""
+
     token: str
     new_password: str = Field(..., min_length=8)
 
 
 class VerifyEmailRequest(BaseModel):
     """Email verification request."""
+
     token: str
 
 
 class MessageResponse(BaseModel):
     """Generic message response."""
+
     message: str
 
 
 class UserResponse(BaseModel):
     """User data response."""
+
     id: str
     email: str
     name: str
@@ -104,6 +113,7 @@ class UserResponse(BaseModel):
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.post(
     "/signup",
@@ -127,19 +137,13 @@ async def signup(
     # Check password strength
     is_valid, error_msg = check_password_strength(request.password)
     if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     # Check if email already exists
-    result = await db.execute(
-        select(User).where(User.email == request.email.lower())
-    )
+    result = await db.execute(select(User).where(User.email == request.email.lower()))
     if result.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered"
+            status_code=status.HTTP_409_CONFLICT, detail="Email already registered"
         )
 
     # Create user
@@ -218,8 +222,7 @@ async def login(
     # Check account status
     if user.status == UserStatus.SUSPENDED:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account has been suspended"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account has been suspended"
         )
 
     # Update last login
@@ -305,9 +308,7 @@ async def refresh_token(
         )
 
     # Get user
-    result = await db.execute(
-        select(User).where(User.id == uuid.UUID(payload.sub))
-    )
+    result = await db.execute(select(User).where(User.id == uuid.UUID(payload.sub)))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -346,9 +347,7 @@ async def forgot_password(
 
     Always returns success to prevent email enumeration.
     """
-    result = await db.execute(
-        select(User).where(User.email == request.email.lower())
-    )
+    result = await db.execute(select(User).where(User.email == request.email.lower()))
     user = result.scalar_one_or_none()
 
     if user:
@@ -385,10 +384,7 @@ async def reset_password(
     # Check password strength
     is_valid, error_msg = check_password_strength(request.new_password)
     if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     # Find user by reset token
     result = await db.execute(
@@ -399,14 +395,13 @@ async def reset_password(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
+            detail="Invalid or expired reset token",
         )
 
     # Check token expiry
     if user.password_reset_expires < datetime.now(timezone.utc):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Reset token has expired"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Reset token has expired"
         )
 
     # Update password
@@ -448,8 +443,7 @@ async def verify_email(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid verification token"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification token"
         )
 
     # Mark email as verified

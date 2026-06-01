@@ -12,12 +12,11 @@ from typing import Tuple
 
 from passlib.context import CryptContext
 
-
 # Password hashing context using bcrypt
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
-    bcrypt__rounds=12  # Work factor (2^12 iterations)
+    bcrypt__rounds=12,  # Work factor (2^12 iterations)
 )
 
 

@@ -7,11 +7,11 @@ These tests ensure the ConstructionPlan is a proper first-class domain object:
 3. Editing support
 4. Validation
 """
+
 import pytest
 from datetime import datetime
 from pathlib import Path
 import tempfile
-import json
 
 from app.domain.construction_plan import (
     ConstructionPlan,
@@ -19,7 +19,7 @@ from app.domain.construction_plan import (
     PlanParameter,
     PlanStatus,
     PlanSource,
-    PlanPersistence
+    PlanPersistence,
 )
 
 
@@ -34,7 +34,7 @@ class TestPlanParameter:
             min_value=1.0,
             max_value=100.0,
             semantic_name="Test Width",
-            reasoning="Test reasoning"
+            reasoning="Test reasoning",
         )
         assert param.default == 50.0
         assert param.semantic_name == "Test Width"
@@ -70,7 +70,7 @@ class TestConstructionStep:
             feature_type="sketch",
             sketch_required=True,
             parameters_used=["width", "height"],
-            reasoning="Starting point for 3D geometry"
+            reasoning="Starting point for 3D geometry",
         )
         assert step.order == 1
         assert step.feature_type == "sketch"
@@ -93,23 +93,23 @@ class TestConstructionPlan:
                     description="Create base sketch on XY plane",
                     feature_type="sketch",
                     sketch_required=True,
-                    parameters_used=["width", "height"]
+                    parameters_used=["width", "height"],
                 ),
                 ConstructionStep(
                     order=2,
                     description="Extrude to depth",
                     feature_type="extrude",
                     sketch_required=False,
-                    parameters_used=["depth"]
-                )
+                    parameters_used=["depth"],
+                ),
             ],
             parameters={
                 "width": PlanParameter(unit="mm", default=50.0),
                 "height": PlanParameter(unit="mm", default=50.0),
-                "depth": PlanParameter(unit="mm", default=50.0)
+                "depth": PlanParameter(unit="mm", default=50.0),
             },
             assumptions=["Centered on origin"],
-            design_rationale="Simple cube per user request"
+            design_rationale="Simple cube per user request",
         )
 
     def test_plan_has_unique_id(self, sample_plan):
@@ -130,11 +130,7 @@ class TestConstructionPlan:
 
     def test_empty_construction_sequence_fails(self):
         """Plan with empty construction sequence should fail validation."""
-        plan = ConstructionPlan(
-            prompt="test",
-            construction_sequence=[],
-            parameters={}
-        )
+        plan = ConstructionPlan(prompt="test", construction_sequence=[], parameters={})
         errors = plan.validate_plan()
         assert any("empty" in e.lower() for e in errors)
 
@@ -144,12 +140,10 @@ class TestConstructionPlan:
             prompt="test",
             construction_sequence=[
                 ConstructionStep(
-                    order=1,
-                    description="Test",
-                    parameters_used=["nonexistent"]
+                    order=1, description="Test", parameters_used=["nonexistent"]
                 )
             ],
-            parameters={}
+            parameters={},
         )
         errors = plan.validate_plan()
         assert any("unknown parameter" in e.lower() for e in errors)
@@ -159,16 +153,12 @@ class TestConstructionPlan:
         with pytest.raises(ValueError, match="circular"):
             ConstructionPlan(
                 prompt="test",
-                construction_sequence=[
-                    ConstructionStep(order=1, description="Test")
-                ],
+                construction_sequence=[ConstructionStep(order=1, description="Test")],
                 parameters={
                     "width": PlanParameter(
-                        unit="mm",
-                        default=10.0,
-                        depends_on="width"  # Self-dependency
+                        unit="mm", default=10.0, depends_on="width"  # Self-dependency
                     )
-                }
+                },
             )
 
 
@@ -181,9 +171,7 @@ class TestPlanLifecycle:
         return ConstructionPlan(
             prompt="test",
             status=PlanStatus.DRAFT,
-            construction_sequence=[
-                ConstructionStep(order=1, description="Test step")
-            ]
+            construction_sequence=[ConstructionStep(order=1, description="Test step")],
         )
 
     def test_approve_plan(self, draft_plan):
@@ -198,10 +186,8 @@ class TestPlanLifecycle:
         """Cannot approve plan with open questions."""
         plan = ConstructionPlan(
             prompt="test",
-            construction_sequence=[
-                ConstructionStep(order=1, description="Test")
-            ],
-            open_questions=["What size?"]
+            construction_sequence=[ConstructionStep(order=1, description="Test")],
+            open_questions=["What size?"],
         )
         with pytest.raises(ValueError, match="open questions"):
             plan.approve()
@@ -240,12 +226,9 @@ class TestPlanEditing:
             ],
             parameters={
                 "width": PlanParameter(
-                    unit="mm",
-                    default=50.0,
-                    min_value=10.0,
-                    max_value=100.0
+                    unit="mm", default=50.0, min_value=10.0, max_value=100.0
                 )
-            }
+            },
         )
 
     def test_update_parameter(self, editable_plan):
@@ -270,8 +253,7 @@ class TestPlanEditing:
     def test_add_step(self, editable_plan):
         """Adding step should increment order."""
         updated = editable_plan.add_step(
-            description="Added step",
-            feature_type="fillet"
+            description="Added step", feature_type="fillet"
         )
         assert len(updated.construction_sequence) == 2
         assert updated.construction_sequence[-1].order == 2
@@ -281,15 +263,10 @@ class TestPlanEditing:
         """Resolving question should add to assumptions."""
         plan = ConstructionPlan(
             prompt="test",
-            construction_sequence=[
-                ConstructionStep(order=1, description="Test")
-            ],
-            open_questions=["What is the material?"]
+            construction_sequence=[ConstructionStep(order=1, description="Test")],
+            open_questions=["What is the material?"],
         )
-        resolved = plan.resolve_question(
-            "What is the material?",
-            "Aluminum 6061"
-        )
+        resolved = plan.resolve_question("What is the material?", "Aluminum 6061")
         assert len(resolved.open_questions) == 0
         assert any("Aluminum" in a for a in resolved.assumptions)
 
@@ -315,14 +292,10 @@ class TestPlanPersistence:
             prompt="Test persistence",
             construction_sequence=[
                 ConstructionStep(
-                    order=1,
-                    description="Test step",
-                    feature_type="extrude"
+                    order=1, description="Test step", feature_type="extrude"
                 )
             ],
-            parameters={
-                "height": PlanParameter(unit="mm", default=20.0)
-            }
+            parameters={"height": PlanParameter(unit="mm", default=20.0)},
         )
 
     def test_save_and_load(self, persistence, sample_plan):
@@ -356,13 +329,11 @@ class TestPlanPersistence:
         approved_plan = ConstructionPlan(
             prompt="Approved plan",
             status=PlanStatus.APPROVED,
-            construction_sequence=[
-                ConstructionStep(order=1, description="Step 1")
-            ]
+            construction_sequence=[ConstructionStep(order=1, description="Step 1")],
         )
-        
-        persistence.save(sample_plan)   # Draft
-        persistence.save(approved_plan) # Approved
+
+        persistence.save(sample_plan)  # Draft
+        persistence.save(approved_plan)  # Approved
 
         draft_plans = persistence.list_plans(status=PlanStatus.DRAFT)
         approved_plans = persistence.list_plans(status=PlanStatus.APPROVED)
@@ -380,20 +351,14 @@ class TestPromptContext:
             prompt="Test",
             construction_sequence=[
                 ConstructionStep(
-                    order=1,
-                    description="Create sketch",
-                    feature_type="sketch"
+                    order=1, description="Create sketch", feature_type="sketch"
                 ),
                 ConstructionStep(
-                    order=2,
-                    description="Extrude",
-                    feature_type="extrude"
-                )
+                    order=2, description="Extrude", feature_type="extrude"
+                ),
             ],
-            parameters={
-                "width": PlanParameter(unit="mm", default=50.0)
-            },
-            assumptions=["Centered"]
+            parameters={"width": PlanParameter(unit="mm", default=50.0)},
+            assumptions=["Centered"],
         )
         context = plan.to_prompt_context()
 
@@ -411,17 +376,13 @@ class TestHashAndDeduplication:
         """Plans with same content should have same hash."""
         plan1 = ConstructionPlan(
             prompt="Test 1",  # Different prompt
-            construction_sequence=[
-                ConstructionStep(order=1, description="Step 1")
-            ],
-            parameters={"width": PlanParameter(unit="mm", default=50.0)}
+            construction_sequence=[ConstructionStep(order=1, description="Step 1")],
+            parameters={"width": PlanParameter(unit="mm", default=50.0)},
         )
         plan2 = ConstructionPlan(
             prompt="Test 2",  # Different prompt
-            construction_sequence=[
-                ConstructionStep(order=1, description="Step 1")
-            ],
-            parameters={"width": PlanParameter(unit="mm", default=50.0)}
+            construction_sequence=[ConstructionStep(order=1, description="Step 1")],
+            parameters={"width": PlanParameter(unit="mm", default=50.0)},
         )
         # Hash based on content, not metadata
         assert plan1.compute_hash() == plan2.compute_hash()
@@ -430,16 +391,14 @@ class TestHashAndDeduplication:
         """Plans with different content should have different hash."""
         plan1 = ConstructionPlan(
             prompt="Test",
-            construction_sequence=[
-                ConstructionStep(order=1, description="Step 1")
-            ],
-            parameters={"width": PlanParameter(unit="mm", default=50.0)}
+            construction_sequence=[ConstructionStep(order=1, description="Step 1")],
+            parameters={"width": PlanParameter(unit="mm", default=50.0)},
         )
         plan2 = ConstructionPlan(
             prompt="Test",
             construction_sequence=[
                 ConstructionStep(order=1, description="Step 2")  # Different
             ],
-            parameters={"width": PlanParameter(unit="mm", default=50.0)}
+            parameters={"width": PlanParameter(unit="mm", default=50.0)},
         )
         assert plan1.compute_hash() != plan2.compute_hash()

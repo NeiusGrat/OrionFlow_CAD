@@ -8,8 +8,6 @@ Uses Redis for distributed rate limiting with:
 - Sliding window algorithm
 """
 
-from typing import Optional, Callable
-from datetime import datetime, timezone
 import time
 
 from fastapi import Request, HTTPException, status
@@ -50,6 +48,7 @@ def get_identifier(request: Request) -> str:
         token = auth_header[7:]
         try:
             from app.auth.jwt import decode_token
+
             payload = decode_token(token)
             if payload and payload.get("sub"):
                 return f"user:{payload['sub']}"
@@ -113,8 +112,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Apply rate limit
             response = await call_next(request)
 
-            # Add rate limit headers
-            identifier = get_identifier(request)
             # Headers would be added by slowapi limiter
 
             return response
@@ -131,7 +128,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "error": "Rate limit exceeded",
                     "code": "RATE_LIMIT_EXCEEDED",
                     "retry_after": getattr(e, "retry_after", 60),
-                }
+                },
             )
 
 

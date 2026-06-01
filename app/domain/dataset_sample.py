@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Dict
 
 from app.domain.feature_graph_v3 import FeatureGraphV3
 from app.domain.execution_trace import ExecutionTrace
