@@ -1,0 +1,273 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "83ca2dab2e",
+  "document": {
+    "name": "_83ca2dab2e",
+    "label": "83ca2dab2e",
+    "object_count": 14
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 2.95,
+        "Length2": 2.95,
+        "Type": "Length",
+        "Reversed": true,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "Sphere1",
+      "type": "AdditiveSphere",
+      "type_id": "PartDesign::AdditiveSphere",
+      "label": "Sphere1",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_2",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude2",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude2",
+      "parameters": {
+        "Length": 10.0,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -2.0,
+        "xmax": 2.0,
+        "ymin": -2.0,
+        "ymax": 2.0,
+        "span_x": 4.0,
+        "span_y": 4.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 2.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_2",
+      "plane": "face:Extrude0:Face3",
+      "support": "face:Extrude0:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          2.95
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          2.95
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -1.0,
+        "xmax": 1.0,
+        "ymin": -1.0,
+        "ymax": 1.0,
+        "span_x": 2.0,
+        "span_y": 2.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Sphere1",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_2",
+      "target": "Extrude2",
+      "kind": "profile"
+    },
+    {
+      "source": "Sphere1",
+      "target": "Extrude2",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "shaft_diameter",
+      "value": 4.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "shaft_length",
+      "value": 5.9,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "ball_diameter",
+      "value": 5.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "hole_diameter",
+      "value": 2.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_2",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_2:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "hole_depth",
+      "value": 10.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude2",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "Sphere1",
+    "sketch_2",
+    "Extrude2"
+  ]
+}

@@ -1,0 +1,659 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "b55517ee4b",
+  "document": {
+    "name": "b55517ee4b",
+    "label": "b55517ee4b",
+    "object_count": 19
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 30.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 50.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_2",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude2",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude2",
+      "parameters": {
+        "Length": 50.0,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_3",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_3",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude3",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude3",
+      "parameters": {
+        "Length": 50.0,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_4",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_4",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude4",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude4",
+      "parameters": {
+        "Length": 30.0,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -140.0,
+        "xmax": 140.0,
+        "ymin": -140.0,
+        "ymax": 140.0,
+        "span_x": 280.0,
+        "span_y": 280.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 140.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 70.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "face:Extrude0:Face3",
+      "support": "face:Extrude0:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -80.0,
+        "xmax": 80.0,
+        "ymin": -80.0,
+        "ymax": 80.0,
+        "span_x": 160.0,
+        "span_y": 160.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 80.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_2",
+      "plane": "face:Extrude1:Face6",
+      "support": "face:Extrude1:Face6",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -50.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -50.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -30.0,
+        "xmax": 30.0,
+        "ymin": -30.0,
+        "ymax": 30.0,
+        "span_x": 60.0,
+        "span_y": 60.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 30.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_3",
+      "plane": "face:Extrude1:Face6",
+      "support": "face:Extrude1:Face6",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -50.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -50.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -47.95085,
+        "xmax": 57.5,
+        "ymin": -55.052826,
+        "ymax": 55.052826,
+        "span_x": 105.45085,
+        "span_y": 110.105652
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 7.5,
+          "cx": 50.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 7.5,
+          "cx": 15.450849718747,
+          "cy": 47.552825814758,
+          "cz": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "Circle",
+          "radius": 7.5,
+          "cx": -40.450849718747,
+          "cy": 29.389262614624,
+          "cz": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "Circle",
+          "radius": 7.5,
+          "cx": -40.450849718747,
+          "cy": -29.389262614624,
+          "cz": 0.0
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "Circle",
+          "radius": 7.5,
+          "cx": 15.450849718747,
+          "cy": -47.552825814758,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_4",
+      "plane": "face:Extrude0:Face4",
+      "support": "face:Extrude0:Face4",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          30.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          30.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -108.0,
+        "xmax": 108.0,
+        "ymin": -108.0,
+        "ymax": 108.0,
+        "span_x": 216.0,
+        "span_y": 216.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 105.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 99.860934210991,
+          "cy": 32.446784409369,
+          "cz": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 84.946784409369,
+          "cy": 61.71745149071,
+          "cz": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 61.71745149071,
+          "cy": 84.946784409369,
+          "cz": 0.0
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 32.446784409369,
+          "cy": 99.860934210991,
+          "cz": 0.0
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 0.0,
+          "cy": 105.0,
+          "cz": 0.0
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -32.446784409369,
+          "cy": 99.860934210991,
+          "cz": 0.0
+        },
+        {
+          "index": 7,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -61.71745149071,
+          "cy": 84.946784409369,
+          "cz": 0.0
+        },
+        {
+          "index": 8,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -84.946784409369,
+          "cy": 61.71745149071,
+          "cz": 0.0
+        },
+        {
+          "index": 9,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -99.860934210991,
+          "cy": 32.446784409369,
+          "cz": 0.0
+        },
+        {
+          "index": 10,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -105.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 11,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -99.860934210991,
+          "cy": -32.446784409369,
+          "cz": 0.0
+        },
+        {
+          "index": 12,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -84.946784409369,
+          "cy": -61.71745149071,
+          "cz": 0.0
+        },
+        {
+          "index": 13,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -61.71745149071,
+          "cy": -84.946784409369,
+          "cz": 0.0
+        },
+        {
+          "index": 14,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -32.446784409369,
+          "cy": -99.860934210991,
+          "cz": 0.0
+        },
+        {
+          "index": 15,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": -0.0,
+          "cy": -105.0,
+          "cz": 0.0
+        },
+        {
+          "index": 16,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 32.446784409369,
+          "cy": -99.860934210991,
+          "cz": 0.0
+        },
+        {
+          "index": 17,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 61.71745149071,
+          "cy": -84.946784409369,
+          "cz": 0.0
+        },
+        {
+          "index": 18,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 84.946784409369,
+          "cy": -61.71745149071,
+          "cz": 0.0
+        },
+        {
+          "index": 19,
+          "construction": false,
+          "type": "Circle",
+          "radius": 3.0,
+          "cx": 99.860934210991,
+          "cy": -32.44678440937,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_2",
+      "target": "Extrude2",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude1",
+      "target": "Extrude2",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_3",
+      "target": "Extrude3",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude2",
+      "target": "Extrude3",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_4",
+      "target": "Extrude4",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude3",
+      "target": "Extrude4",
+      "kind": "base"
+    }
+  ],
+  "parameters": [],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1",
+    "sketch_2",
+    "Extrude2",
+    "sketch_3",
+    "Extrude3",
+    "sketch_4",
+    "Extrude4"
+  ]
+}

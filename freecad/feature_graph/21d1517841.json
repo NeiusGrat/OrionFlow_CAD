@@ -1,0 +1,163 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "21d1517841",
+  "document": {
+    "name": "_21d1517841",
+    "label": "21d1517841",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 0.8,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -4.5,
+        "xmax": 4.5,
+        "ymin": -4.5,
+        "ymax": 4.5,
+        "span_x": 9.0,
+        "span_y": 9.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.6,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 4.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "outer_diameter",
+      "value": 9.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0:geo1",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "inner_diameter",
+      "value": 3.2,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "thickness",
+      "value": 0.8,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0"
+  ]
+}

@@ -89,3 +89,6 @@ PROJECT_ORION/
 # Additional CAD_DATA dirs
 CAD_DATA/final_combined/
 CAD_DATA/zero_to_cad/scripts/
+
+# Consolidated dataset file (regenerable; large)
+freecad/orionflow_dataset_v1.jsonl

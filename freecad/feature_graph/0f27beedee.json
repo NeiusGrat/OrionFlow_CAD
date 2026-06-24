@@ -1,0 +1,269 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "0f27beedee",
+  "document": {
+    "name": "_0f27beedee",
+    "label": "0f27beedee",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 1200.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": 0.0,
+        "xmax": 1500.0,
+        "ymin": 0.0,
+        "ymax": 850.0,
+        "span_x": 1500.0,
+        "span_y": 850.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.0,
+          "ex": 0.0,
+          "ey": 170.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 170.0,
+          "ex": 300.0,
+          "ey": 170.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 300.0,
+          "sy": 170.0,
+          "ex": 300.0,
+          "ey": 340.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 300.0,
+          "sy": 340.0,
+          "ex": 600.0,
+          "ey": 340.0
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 600.0,
+          "sy": 340.0,
+          "ex": 600.0,
+          "ey": 510.0
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 600.0,
+          "sy": 510.0,
+          "ex": 900.0,
+          "ey": 510.0
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 900.0,
+          "sy": 510.0,
+          "ex": 900.0,
+          "ey": 680.0
+        },
+        {
+          "index": 7,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 900.0,
+          "sy": 680.0,
+          "ex": 1200.0,
+          "ey": 680.0
+        },
+        {
+          "index": 8,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 1200.0,
+          "sy": 680.0,
+          "ex": 1200.0,
+          "ey": 850.0
+        },
+        {
+          "index": 9,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 1200.0,
+          "sy": 850.0,
+          "ex": 1500.0,
+          "ey": 850.0
+        },
+        {
+          "index": 10,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 1500.0,
+          "sy": 850.0,
+          "ex": 1500.0,
+          "ey": 0.0
+        },
+        {
+          "index": 11,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 1500.0,
+          "sy": 0.0,
+          "ex": 0.0,
+          "ey": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "number_of_steps",
+      "value": 5,
+      "unit": null,
+      "bound_to": []
+    },
+    {
+      "name": "step_riser",
+      "value": 170.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "step_depth",
+      "value": 300.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo5",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo7",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo9",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "step_width",
+      "value": 1200.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0"
+  ]
+}

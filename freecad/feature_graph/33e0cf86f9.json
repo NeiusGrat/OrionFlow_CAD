@@ -1,0 +1,148 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "33e0cf86f9",
+  "document": {
+    "name": "_33e0cf86f9",
+    "label": "33e0cf86f9",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 1.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": -1.907878,
+        "xmax": 1.907878,
+        "ymin": -1.4,
+        "ymax": 0.0,
+        "span_x": 3.815757,
+        "span_y": 1.4
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 2.0,
+          "cx": 0.0,
+          "cy": 0.6,
+          "first": 3.446285307605,
+          "last": 5.978492653164
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -1.907878402834,
+          "sy": 0.0,
+          "ex": 1.907878402834,
+          "ey": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "diameter",
+      "value": 4.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "moon_height",
+      "value": 1.4,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "key_thickness",
+      "value": 1.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0"
+  ]
+}

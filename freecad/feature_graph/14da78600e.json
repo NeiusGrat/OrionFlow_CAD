@@ -1,0 +1,188 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "14da78600e",
+  "document": {
+    "name": "_14da78600e",
+    "label": "14da78600e",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Revolve0",
+      "type": "Revolution",
+      "type_id": "PartDesign::Revolution",
+      "label": "Revolve0",
+      "parameters": {
+        "Angle": 360.0,
+        "Midplane": false,
+        "Reversed": false,
+        "_ReferenceAxis": {
+          "object": "Z_Axis",
+          "type_id": "App::Line",
+          "subs": [
+            ""
+          ],
+          "role": "Z_Axis",
+          "is_sketch": false
+        }
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": 2.1,
+        "xmax": 4.0,
+        "ymin": 0.0,
+        "ymax": 0.6,
+        "span_x": 1.9,
+        "span_y": 0.6
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 2.1433387642,
+          "sy": 0.6,
+          "ex": 4.0,
+          "ey": 0.3976452584
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 4.0,
+          "sy": 0.3976452584,
+          "ex": 3.9566612358,
+          "ey": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 3.9566612358,
+          "sy": 0.0,
+          "ex": 2.1,
+          "ey": 0.2023547416
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 2.1,
+          "sy": 0.2023547416,
+          "ex": 2.1433387642,
+          "ey": 0.6
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Revolve0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "outside_diameter",
+      "value": 8.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "inner_diameter",
+      "value": 4.2,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "overall_height",
+      "value": 0.6,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "thickness",
+      "value": 0.4,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "cone_height",
+      "value": 0.2,
+      "unit": "mm",
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Revolve0"
+  ]
+}

@@ -1,0 +1,232 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "28177ca409",
+  "document": {
+    "name": "_28177ca409",
+    "label": "28177ca409",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 4.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": 0.0,
+        "xmax": 18.0,
+        "ymin": 0.0,
+        "ymax": 7.0,
+        "span_x": 18.0,
+        "span_y": 7.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 4.0,
+          "sy": 4.0,
+          "ex": 18.0,
+          "ey": 3.86
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 18.0,
+          "sy": 3.86,
+          "ex": 18.0,
+          "ey": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 18.0,
+          "sy": 0.0,
+          "ex": 0.0,
+          "ey": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.0,
+          "ex": 0.0,
+          "ey": 4.0
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 4.0,
+          "ex": 3.0,
+          "ey": 7.0
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 3.0,
+          "sy": 7.0,
+          "ex": 4.0,
+          "ey": 7.0
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 4.0,
+          "sy": 4.0,
+          "ex": 4.0,
+          "ey": 7.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "length",
+      "value": 14.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "width",
+      "value": 4.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "key_height",
+      "value": 4.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "height_with_head",
+      "value": 7.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "taper_angle",
+      "value": 45.0,
+      "unit": "degree",
+      "bound_to": []
+    },
+    {
+      "name": "key_taper_ratio",
+      "value": 0.01,
+      "unit": null,
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0"
+  ]
+}

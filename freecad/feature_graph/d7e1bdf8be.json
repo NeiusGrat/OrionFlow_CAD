@@ -1,0 +1,232 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "d7e1bdf8be",
+  "document": {
+    "name": "d7e1bdf8be",
+    "label": "d7e1bdf8be",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Revolve0",
+      "type": "Revolution",
+      "type_id": "PartDesign::Revolution",
+      "label": "Revolve0",
+      "parameters": {
+        "Angle": 360.0,
+        "Midplane": false,
+        "Reversed": true,
+        "_ReferenceAxis": {
+          "object": "X_Axis",
+          "type_id": "App::Line",
+          "subs": [
+            ""
+          ],
+          "role": "X_Axis",
+          "is_sketch": false
+        }
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": -1.0,
+        "xmax": 6.0,
+        "ymin": 0.0,
+        "ymax": 2.5,
+        "span_x": 7.0,
+        "span_y": 2.5
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 1.5,
+          "ex": 5.0,
+          "ey": 1.5
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 5.0,
+          "sy": 1.5,
+          "ex": 6.0,
+          "ey": 0.92264973081
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 6.0,
+          "sy": 0.92264973081,
+          "ex": 6.0,
+          "ey": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 6.0,
+          "sy": 0.0,
+          "ex": -1.0,
+          "ey": 0.0
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -1.0,
+          "sy": 0.0,
+          "ex": -1.0,
+          "ey": 2.5
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -1.0,
+          "sy": 2.5,
+          "ex": 0.0,
+          "ey": 2.5
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 2.5,
+          "ex": 0.0,
+          "ey": 1.5
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Revolve0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "pin_diameter",
+      "value": 3.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "pin_length",
+      "value": 6.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "head_diameter",
+      "value": 5.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "head_thickness",
+      "value": 1.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo5",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo6",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "chamfer_length",
+      "value": 1.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo5",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo6",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "chamfer_angle",
+      "value": 30.0,
+      "unit": "degree",
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Revolve0"
+  ]
+}

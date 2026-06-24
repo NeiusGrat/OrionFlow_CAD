@@ -1,0 +1,410 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "65bef2529b",
+  "document": {
+    "name": "_65bef2529b",
+    "label": "65bef2529b",
+    "object_count": 15
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 21.034,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 42.068,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_2",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude2",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude2",
+      "parameters": {
+        "Length": 42.068,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -53.578,
+        "xmax": 53.578,
+        "ymin": -53.578,
+        "ymax": 53.578,
+        "span_x": 107.156,
+        "span_y": 107.156
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 53.578,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "face:Extrude0:Face2",
+      "support": "face:Extrude0:Face2",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -24.6065,
+        "xmax": 24.6065,
+        "ymin": -24.6065,
+        "ymax": 24.6065,
+        "span_x": 49.213,
+        "span_y": 49.213
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 24.6065,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_2",
+      "plane": "face:Extrude0:Face2",
+      "support": "face:Extrude0:Face2",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -48.6175,
+        "xmax": 48.6175,
+        "ymin": -48.6175,
+        "ymax": 48.6175,
+        "span_x": 97.235,
+        "span_y": 97.235
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 4.961,
+          "cx": 0.0,
+          "cy": 43.6565,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 4.961,
+          "cx": -43.6565,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "Circle",
+          "radius": 4.961,
+          "cx": 0.0,
+          "cy": -43.6565,
+          "cz": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "Circle",
+          "radius": 4.961,
+          "cx": 43.6565,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_2",
+      "target": "Extrude2",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude1",
+      "target": "Extrude2",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "flange_outer_diameter",
+      "value": 107.156,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "flange_thickness",
+      "value": 21.034,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "bolt_circle_diameter",
+      "value": 87.313,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_2",
+          "property": "BoltCircleDiameter",
+          "relation": "bcd=2*hypot(cx,cy)"
+        }
+      ]
+    },
+    {
+      "name": "bore_diameter",
+      "value": 49.213,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "bolt_hole_diameter",
+      "value": 9.922,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_2:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        },
+        {
+          "target": "sketch_2:geo1",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        },
+        {
+          "target": "sketch_2:geo2",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        },
+        {
+          "target": "sketch_2:geo3",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "number_of_bolt_holes",
+      "value": 4,
+      "unit": null,
+      "bound_to": [
+        {
+          "target": "sketch_2",
+          "property": "CircleCount",
+          "relation": "len(circles)"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1",
+    "sketch_2",
+    "Extrude2"
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "e50de66084",
+  "document": {
+    "name": "e50de66084",
+    "label": "e50de66084",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Revolve0",
+      "type": "Revolution",
+      "type_id": "PartDesign::Revolution",
+      "label": "Revolve0",
+      "parameters": {
+        "Angle": 360.0,
+        "Midplane": false,
+        "Reversed": false,
+        "_ReferenceAxis": {
+          "object": "Y_Axis",
+          "type_id": "App::Line",
+          "subs": [
+            ""
+          ],
+          "role": "Y_Axis",
+          "is_sketch": false
+        }
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "YZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.57735,
+          0.57735,
+          0.57735
+        ],
+        "angle": 2.094395
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "bbox": {
+        "xmin": -0.4,
+        "xmax": 0.4,
+        "ymin": 0.3,
+        "ymax": 0.533333,
+        "span_x": 0.8,
+        "span_y": 0.233333
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 0.194444444444,
+          "cx": 0.0,
+          "cy": 0.65,
+          "first": 3.785093762383,
+          "last": 5.639684198386
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.4,
+          "sy": 0.533333333333,
+          "ex": 0.155555555556,
+          "ey": 0.533333333333
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -0.155555555556,
+          "sy": 0.533333333333,
+          "ex": -0.4,
+          "ey": 0.533333333333
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -0.4,
+          "sy": 0.533333333333,
+          "ex": -0.4,
+          "ey": 0.3
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -0.4,
+          "sy": 0.3,
+          "ex": 0.4,
+          "ey": 0.3
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.4,
+          "sy": 0.3,
+          "ex": 0.4,
+          "ey": 0.533333333333
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Revolve0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "bore_diameter",
+      "value": 0.6,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "bearing_width",
+      "value": 0.8,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo4",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "ball_diameter",
+      "value": 0.38888888888889,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "raceway_depth_ratio",
+      "value": 0.4,
+      "unit": null,
+      "bound_to": []
+    },
+    {
+      "name": "shoulder_diameter",
+      "value": 1.0666666666666675,
+      "unit": "mm",
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Revolve0"
+  ]
+}
