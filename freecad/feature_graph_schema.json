@@ -9,6 +9,7 @@
   "properties": {
     "schema_version": {"type": "string"},
     "source_id": {"type": "string"},
+    "execution_order": {"type": "array", "items": {"type": "string"}},
     "document": {
       "type": "object",
       "required": ["name", "label", "object_count"],
