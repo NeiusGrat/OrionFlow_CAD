@@ -1,0 +1,1057 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "db4e2a4bcf",
+  "document": {
+    "name": "db4e2a4bcf",
+    "label": "db4e2a4bcf",
+    "object_count": 15
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 90.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 40.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_2",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude2",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude2",
+      "parameters": {
+        "Length": 90.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": 0.0,
+        "xmax": 40.0,
+        "ymin": 0.0,
+        "ymax": 2400.0,
+        "span_x": 40.0,
+        "span_y": 2400.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.0,
+          "ex": 0.0,
+          "ey": 2400.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 2400.0,
+          "ex": 40.0,
+          "ey": 2400.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 2400.0,
+          "ex": 40.0,
+          "ey": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 0.0,
+          "ex": 0.0,
+          "ey": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": 40.0,
+        "xmax": 440.0,
+        "ymin": 0.0,
+        "ymax": 1840.0,
+        "span_x": 400.0,
+        "span_y": 1840.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 0.0,
+          "ex": 40.0,
+          "ey": 40.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 40.0,
+          "ex": 440.0,
+          "ey": 40.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 40.0,
+          "ex": 440.0,
+          "ey": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 0.0,
+          "ex": 40.0,
+          "ey": 0.0
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 300.0,
+          "ex": 40.0,
+          "ey": 340.0
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 340.0,
+          "ex": 440.0,
+          "ey": 340.0
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 340.0,
+          "ex": 440.0,
+          "ey": 300.0
+        },
+        {
+          "index": 7,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 300.0,
+          "ex": 40.0,
+          "ey": 300.0
+        },
+        {
+          "index": 8,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 600.0,
+          "ex": 40.0,
+          "ey": 640.0
+        },
+        {
+          "index": 9,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 640.0,
+          "ex": 440.0,
+          "ey": 640.0
+        },
+        {
+          "index": 10,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 640.0,
+          "ex": 440.0,
+          "ey": 600.0
+        },
+        {
+          "index": 11,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 600.0,
+          "ex": 40.0,
+          "ey": 600.0
+        },
+        {
+          "index": 12,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 900.0,
+          "ex": 40.0,
+          "ey": 940.0
+        },
+        {
+          "index": 13,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 940.0,
+          "ex": 440.0,
+          "ey": 940.0
+        },
+        {
+          "index": 14,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 940.0,
+          "ex": 440.0,
+          "ey": 900.0
+        },
+        {
+          "index": 15,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 900.0,
+          "ex": 40.0,
+          "ey": 900.0
+        },
+        {
+          "index": 16,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 1200.0,
+          "ex": 40.0,
+          "ey": 1240.0
+        },
+        {
+          "index": 17,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 1240.0,
+          "ex": 440.0,
+          "ey": 1240.0
+        },
+        {
+          "index": 18,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 1240.0,
+          "ex": 440.0,
+          "ey": 1200.0
+        },
+        {
+          "index": 19,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 1200.0,
+          "ex": 40.0,
+          "ey": 1200.0
+        },
+        {
+          "index": 20,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 1500.0,
+          "ex": 40.0,
+          "ey": 1540.0
+        },
+        {
+          "index": 21,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 1540.0,
+          "ex": 440.0,
+          "ey": 1540.0
+        },
+        {
+          "index": 22,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 1540.0,
+          "ex": 440.0,
+          "ey": 1500.0
+        },
+        {
+          "index": 23,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 1500.0,
+          "ex": 40.0,
+          "ey": 1500.0
+        },
+        {
+          "index": 24,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 1800.0,
+          "ex": 40.0,
+          "ey": 1840.0
+        },
+        {
+          "index": 25,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 40.0,
+          "sy": 1840.0,
+          "ex": 440.0,
+          "ey": 1840.0
+        },
+        {
+          "index": 26,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 1840.0,
+          "ex": 440.0,
+          "ey": 1800.0
+        },
+        {
+          "index": 27,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 1800.0,
+          "ex": 40.0,
+          "ey": 1800.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_2",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": 440.0,
+        "xmax": 480.0,
+        "ymin": 0.0,
+        "ymax": 2400.0,
+        "span_x": 40.0,
+        "span_y": 2400.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 0.0,
+          "ex": 440.0,
+          "ey": 2400.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 440.0,
+          "sy": 2400.0,
+          "ex": 480.0,
+          "ey": 2400.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 480.0,
+          "sy": 2400.0,
+          "ex": 480.0,
+          "ey": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 480.0,
+          "sy": 0.0,
+          "ex": 440.0,
+          "ey": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_2",
+      "target": "Extrude2",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude1",
+      "target": "Extrude2",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "ladder_side_rails_length",
+      "value": 2400.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo2",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_2:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo2",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "ladder_side_rail_width",
+      "value": 40.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo2",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo4",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo6",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo8",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo10",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo12",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo14",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo16",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo18",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo20",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo22",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo24",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo26",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "ladder_side_rail_thickness",
+      "value": 90.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "Extrude2",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "ladder_number_of_rungs",
+      "value": 7,
+      "unit": null,
+      "bound_to": []
+    },
+    {
+      "name": "ladder_rung_length",
+      "value": 400.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo5",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo7",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo9",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo11",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo13",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo15",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo17",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo19",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo21",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo23",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo25",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo27",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "ladder_rung_width",
+      "value": 40.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo2",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo4",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo6",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo8",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo10",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo12",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo14",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo16",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo18",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo20",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo22",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo24",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo26",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "ladder_rung_thickness",
+      "value": 40.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo2",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo4",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo6",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo8",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo10",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo12",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo14",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo16",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo18",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo20",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo22",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo24",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo26",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "ladder_rung_spacing",
+      "value": 300.0,
+      "unit": "mm",
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1",
+    "sketch_2",
+    "Extrude2"
+  ]
+}

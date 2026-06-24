@@ -1,0 +1,406 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "669bfb187c",
+  "document": {
+    "name": "_669bfb187c",
+    "label": "669bfb187c",
+    "object_count": 15
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Flange",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Flange",
+      "parameters": {
+        "Length": 7.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "HexBody",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "HexBody",
+      "parameters": {
+        "Length": 9.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_2",
+      "parameters": {}
+    },
+    {
+      "id": "ThroughHole",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "ThroughHole",
+      "parameters": {
+        "Length": 32.0,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -17.25,
+        "xmax": 17.25,
+        "ymin": -17.25,
+        "ymax": 17.25,
+        "span_x": 34.5,
+        "span_y": 34.5
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 17.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "face:Flange:Face3",
+      "support": "face:Flange:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          7.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          7.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -13.856406,
+        "xmax": 13.856406,
+        "ymin": -12.0,
+        "ymax": 12.0,
+        "span_x": 27.712813,
+        "span_y": 24.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 13.856406460551,
+          "sy": 0.0,
+          "ex": 6.928203230276,
+          "ey": 12.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 6.928203230276,
+          "sy": 12.0,
+          "ex": -6.928203230276,
+          "ey": 12.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -6.928203230276,
+          "sy": 12.0,
+          "ex": -13.856406460551,
+          "ey": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -13.856406460551,
+          "sy": 0.0,
+          "ex": -6.928203230276,
+          "ey": -12.0
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -6.928203230276,
+          "sy": -12.0,
+          "ex": 6.928203230276,
+          "ey": -12.0
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 6.928203230276,
+          "sy": -12.0,
+          "ex": 13.856406460551,
+          "ey": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_2",
+      "plane": "face:HexBody:Face10",
+      "support": "face:HexBody:Face10",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          16.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          16.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -8.0,
+        "xmax": 8.0,
+        "ymin": -8.0,
+        "ymax": 8.0,
+        "span_x": 16.0,
+        "span_y": 16.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 8.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Flange",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "HexBody",
+      "kind": "profile"
+    },
+    {
+      "source": "Flange",
+      "target": "HexBody",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_2",
+      "target": "ThroughHole",
+      "kind": "profile"
+    },
+    {
+      "source": "HexBody",
+      "target": "ThroughHole",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "overall_height",
+      "value": 16.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_2",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "flange_diameter",
+      "value": 34.5,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "flange_thickness",
+      "value": 7.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Flange",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "hub_width",
+      "value": 24.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "inner_diameter",
+      "value": 16.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_2",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_2:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Flange",
+    "sketch_1",
+    "HexBody",
+    "sketch_2",
+    "ThroughHole"
+  ]
+}

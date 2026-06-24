@@ -1,0 +1,230 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "da772a2e0b",
+  "document": {
+    "name": "da772a2e0b",
+    "label": "da772a2e0b",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 3.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -18.0,
+        "xmax": 18.0,
+        "ymin": -3.5,
+        "ymax": 3.5,
+        "span_x": 36.0,
+        "span_y": 7.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.5,
+          "cx": -14.5,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.5,
+          "cx": 14.5,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 3.5,
+          "cx": -14.5,
+          "cy": 0.0,
+          "first": 0.442911044071,
+          "last": 5.840274263109
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 3.5,
+          "cx": 14.5,
+          "cy": 0.0,
+          "first": 3.584503697661,
+          "last": 8.981866916698
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 11.337722339832,
+          "sy": 1.5,
+          "ex": -11.337722339832,
+          "ey": 1.5
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 11.337722339832,
+          "sy": -1.5,
+          "ex": -11.337722339832,
+          "ey": -1.5
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "plate_thickness",
+      "value": 3.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "hole_center_distance",
+      "value": 29.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "BoltCircleDiameter",
+          "relation": "bcd=2*hypot(cx,cy)"
+        }
+      ]
+    },
+    {
+      "name": "head_outer_diameter",
+      "value": 7.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "hole_diameter",
+      "value": 3.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        },
+        {
+          "target": "sketch_0:geo1",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "shaft_width",
+      "value": 3.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        },
+        {
+          "target": "sketch_0:geo1",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0"
+  ]
+}

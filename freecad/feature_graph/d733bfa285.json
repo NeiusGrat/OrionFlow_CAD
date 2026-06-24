@@ -1,0 +1,1746 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "d733bfa285",
+  "document": {
+    "name": "d733bfa285",
+    "label": "d733bfa285",
+    "object_count": 11
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 10.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -35.987099,
+        "xmax": 35.987099,
+        "ymin": -35.837442,
+        "ymax": 36.0,
+        "span_x": 71.974199,
+        "span_y": 71.837442
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 4.18329065032,
+          "cy": 33.187385846658,
+          "first": 3.493137838718,
+          "last": 4.586999660722
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -13.138339656443,
+          "cy": 26.834148599722,
+          "first": 0.351545185128,
+          "last": 0.558075645154
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.529272819595,
+          "last": 1.612319833995
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 13.138339656443,
+          "cy": 26.834148599722,
+          "first": 2.583517008435,
+          "last": 2.790047468461
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -4.18329065032,
+          "cy": 33.187385846658,
+          "first": 4.837778300048,
+          "last": 5.931640122051
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.696185646458,
+          "last": 1.718588977009
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -4.925686659377,
+          "cy": 33.085345863896,
+          "first": 3.766319808596,
+          "last": 4.860181630599
+        },
+        {
+          "index": 7,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -19.890901031188,
+          "cy": 22.294383960259,
+          "first": 0.624727155006,
+          "last": 0.831257615032
+        },
+        {
+          "index": 8,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.802454789472,
+          "last": 1.885501803872
+        },
+        {
+          "index": 9,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 5.411367733283,
+          "cy": 29.383747195604,
+          "first": 2.856698978313,
+          "last": 3.063229438339
+        },
+        {
+          "index": 10,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -12.982012429764,
+          "cy": 30.828069243361,
+          "first": 5.110960269925,
+          "last": 6.204822091929
+        },
+        {
+          "index": 11,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.969367616335,
+          "last": 1.991770946886
+        },
+        {
+          "index": 12,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -13.669348323066,
+          "cy": 30.529517133795,
+          "first": 4.039501778473,
+          "last": 5.133363600476
+        },
+        {
+          "index": 13,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -25.168245271268,
+          "cy": 16.101146852485,
+          "first": 0.897909124883,
+          "last": 1.104439584909
+        },
+        {
+          "index": 14,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.07563675935,
+          "last": 2.15868377375
+        },
+        {
+          "index": 15,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -2.716940579294,
+          "cy": 29.754087683688,
+          "first": 3.12988094819,
+          "last": 3.336411408216
+        },
+        {
+          "index": 16,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -20.817917736048,
+          "cy": 26.182375773317,
+          "first": 5.384142239803,
+          "last": 6.478004061806
+        },
+        {
+          "index": 17,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.242549586213,
+          "last": 2.264952916764
+        },
+        {
+          "index": 18,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -21.39921695474,
+          "cy": 25.709453781129,
+          "first": 4.31268374835,
+          "last": 5.406545570354
+        },
+        {
+          "index": 19,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -28.578975896639,
+          "cy": 8.713761340507,
+          "first": 1.171091094761,
+          "last": 1.377621554787
+        },
+        {
+          "index": 20,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.348818729227,
+          "last": 2.431865743627
+        },
+        {
+          "index": 21,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -10.643745838281,
+          "cy": 27.917703604166,
+          "first": 3.403062918067,
+          "last": 3.609593378093
+        },
+        {
+          "index": 22,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -27.109853319485,
+          "cy": 19.594855268565,
+          "first": 5.65732420968,
+          "last": 6.751186031683
+        },
+        {
+          "index": 23,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.51573155609,
+          "last": 2.538134886641
+        },
+        {
+          "index": 24,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -27.542003559784,
+          "cy": 18.982637854441,
+          "first": 4.585865718228,
+          "last": 5.679727540231
+        },
+        {
+          "index": 25,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -29.870134619872,
+          "cy": 0.680116012709,
+          "first": 1.444273064638,
+          "last": 1.650803524664
+        },
+        {
+          "index": 26,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.622000699104,
+          "last": 2.705047713504
+        },
+        {
+          "index": 27,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -17.78115316034,
+          "cy": 24.010791163319,
+          "first": 3.676244887945,
+          "last": 3.882775347971
+        },
+        {
+          "index": 28,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -31.391175101543,
+          "cy": 11.554073989041,
+          "first": 5.930506179557,
+          "last": 7.024368001561
+        },
+        {
+          "index": 29,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.788913525968,
+          "last": 2.811316856519
+        },
+        {
+          "index": 30,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -31.642125757082,
+          "cy": 10.847966517879,
+          "first": 4.859047688105,
+          "last": 5.952909510108
+        },
+        {
+          "index": 31,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -28.945962105122,
+          "cy": -7.403970408427,
+          "first": 1.717455034515,
+          "last": 1.923985494541
+        },
+        {
+          "index": 32,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.895182668982,
+          "last": 2.978229683382
+        },
+        {
+          "index": 33,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -23.599813695859,
+          "cy": 18.32310818395,
+          "first": 3.949426857822,
+          "last": 4.155957317848
+        },
+        {
+          "index": 34,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -33.344357031391,
+          "cy": 2.656379898122,
+          "first": 6.203688149435,
+          "last": 7.297549971438
+        },
+        {
+          "index": 35,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.062095495845,
+          "last": 3.084498826396
+        },
+        {
+          "index": 36,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -33.39549624007,
+          "cy": 1.90875113083,
+          "first": 5.132229657982,
+          "last": 6.226091479986
+        },
+        {
+          "index": 37,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -25.875,
+          "cy": -14.938938215282,
+          "first": 1.990637004393,
+          "last": 2.197167464419
+        },
+        {
+          "index": 38,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.168364638859,
+          "last": 3.251411653259
+        },
+        {
+          "index": 39,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -27.668184011521,
+          "cy": 11.276484093219,
+          "first": 4.2226088277,
+          "last": 4.429139287726
+        },
+        {
+          "index": 40,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -32.824540540503,
+          "cy": -6.438325737711,
+          "first": 0.193684812133,
+          "last": 1.287546634136
+        },
+        {
+          "index": 41,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.335277465722,
+          "last": 3.357680796273
+        },
+        {
+          "index": 42,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -32.672075541162,
+          "cy": -7.172027595636,
+          "first": 5.40541162786,
+          "last": 6.499273449863
+        },
+        {
+          "index": 43,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -20.885007515127,
+          "cy": -21.365953315803,
+          "first": 2.26381897427,
+          "last": 2.470349434296
+        },
+        {
+          "index": 44,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.441546608736,
+          "last": 3.524593623137
+        },
+        {
+          "index": 45,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -29.684531692567,
+          "cy": 3.393534763776,
+          "first": 4.495790797577,
+          "last": 4.702321257603
+        },
+        {
+          "index": 46,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -29.870278040007,
+          "cy": -15.055530206959,
+          "first": 0.46686678201,
+          "last": 1.560728604013
+        },
+        {
+          "index": 47,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.6084594356,
+          "last": 3.630862766151
+        },
+        {
+          "index": 48,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -29.525516464167,
+          "cy": -15.720889845178,
+          "first": 5.678593597737,
+          "last": 6.77245541974
+        },
+        {
+          "index": 49,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -14.346069565409,
+          "cy": -26.208353401624,
+          "first": 2.537000944147,
+          "last": 2.743531404173
+        },
+        {
+          "index": 50,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.714728578614,
+          "last": 3.797775593014
+        },
+        {
+          "index": 51,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -29.499313455673,
+          "cy": -4.741097514707,
+          "first": 4.768972767454,
+          "last": 4.97550322748
+        },
+        {
+          "index": 52,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -24.700673664714,
+          "cy": -22.556134875224,
+          "first": 0.740048751887,
+          "last": 1.833910573891
+        },
+        {
+          "index": 53,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.881641405477,
+          "last": 3.904044736028
+        },
+        {
+          "index": 54,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -24.189184901274,
+          "cy": -23.103805613188,
+          "first": 5.951775567615,
+          "last": 7.045637389618
+        },
+        {
+          "index": 55,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -6.743149264926,
+          "cy": -29.106999810886,
+          "first": 2.810182914025,
+          "last": 3.016713374051
+        },
+        {
+          "index": 56,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.987910548491,
+          "last": 4.070957562891
+        },
+        {
+          "index": 57,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -27.12626609015,
+          "cy": -12.524104279603,
+          "first": 5.042154737332,
+          "last": 5.248685197358
+        },
+        {
+          "index": 58,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -17.699133321772,
+          "cy": -28.383854207245,
+          "first": 1.013230721765,
+          "last": 2.107092543768
+        },
+        {
+          "index": 59,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.154823375354,
+          "last": 4.177226705905
+        },
+        {
+          "index": 60,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -17.058852152411,
+          "cy": -28.773217811746,
+          "first": 6.224957537492,
+          "last": 7.318819359495
+        },
+        {
+          "index": 61,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 1.359879568681,
+          "cy": -29.846913199838,
+          "first": 3.083364883902,
+          "last": 3.289895343928
+        },
+        {
+          "index": 62,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.261092518369,
+          "last": 4.344139532769
+        },
+        {
+          "index": 63,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -22.741387663132,
+          "cy": -19.378255524045,
+          "first": 5.315336707209,
+          "last": 5.521867167235
+        },
+        {
+          "index": 64,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -9.384929228501,
+          "cy": -32.106472920208,
+          "first": 1.286412691642,
+          "last": 2.380274513645
+        },
+        {
+          "index": 65,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.428005345232,
+          "last": 4.450408675783
+        },
+        {
+          "index": 66,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -8.66334237846,
+          "cy": -32.308652073919,
+          "first": 0.21495420019,
+          "last": 1.308816022193
+        },
+        {
+          "index": 67,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 9.362052355715,
+          "cy": -28.373217577301,
+          "first": 3.35654685378,
+          "last": 3.563077313806
+        },
+        {
+          "index": 68,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.534274488246,
+          "last": 4.617321502646
+        },
+        {
+          "index": 69,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -16.669884548064,
+          "cy": -24.795210205889,
+          "first": 5.588518677086,
+          "last": 5.795049137112
+        },
+        {
+          "index": 70,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": -0.374687867547,
+          "cy": -33.447901414019,
+          "first": 1.559594661519,
+          "last": 2.653456483523
+        },
+        {
+          "index": 71,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.701187315109,
+          "last": 4.72359064566
+        },
+        {
+          "index": 72,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 0.374687867547,
+          "cy": -33.447901414019,
+          "first": 0.488136170067,
+          "last": 1.58199799207
+        },
+        {
+          "index": 73,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 16.669884548064,
+          "cy": -24.795210205889,
+          "first": 3.629728823657,
+          "last": 3.836259283683
+        },
+        {
+          "index": 74,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.807456458123,
+          "last": 4.890503472523
+        },
+        {
+          "index": 75,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -9.362052355715,
+          "cy": -28.373217577301,
+          "first": 5.861700646964,
+          "last": 6.06823110699
+        },
+        {
+          "index": 76,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 8.66334237846,
+          "cy": -32.308652073919,
+          "first": 1.832776631397,
+          "last": 2.9266384534
+        },
+        {
+          "index": 77,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.974369284987,
+          "last": 4.996772615538
+        },
+        {
+          "index": 78,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 9.384929228501,
+          "cy": -32.106472920208,
+          "first": 0.761318139944,
+          "last": 1.855179961948
+        },
+        {
+          "index": 79,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 22.741387663132,
+          "cy": -19.378255524045,
+          "first": 3.902910793534,
+          "last": 4.10944125356
+        },
+        {
+          "index": 80,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.080638428001,
+          "last": 5.163685442401
+        },
+        {
+          "index": 81,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -1.359879568681,
+          "cy": -29.846913199838,
+          "first": 6.134882616841,
+          "last": 6.341413076867
+        },
+        {
+          "index": 82,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 17.058852152411,
+          "cy": -28.773217811746,
+          "first": 2.105958601274,
+          "last": 3.199820423277
+        },
+        {
+          "index": 83,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.247551254864,
+          "last": 5.269954585415
+        },
+        {
+          "index": 84,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 17.699133321772,
+          "cy": -28.383854207245,
+          "first": 1.034500109822,
+          "last": 2.128361931825
+        },
+        {
+          "index": 85,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 27.12626609015,
+          "cy": -12.524104279603,
+          "first": 4.176092763412,
+          "last": 4.382623223438
+        },
+        {
+          "index": 86,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.353820397878,
+          "last": 5.436867412278
+        },
+        {
+          "index": 87,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 6.743149264926,
+          "cy": -29.106999810886,
+          "first": 0.124879279539,
+          "last": 0.331409739565
+        },
+        {
+          "index": 88,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 24.189184901274,
+          "cy": -23.103805613188,
+          "first": 2.379140571152,
+          "last": 3.473002393155
+        },
+        {
+          "index": 89,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.520733224741,
+          "last": 5.543136555292
+        },
+        {
+          "index": 90,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 24.700673664714,
+          "cy": -22.556134875224,
+          "first": 1.307682079699,
+          "last": 2.401543901703
+        },
+        {
+          "index": 91,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 29.499313455673,
+          "cy": -4.741097514707,
+          "first": 4.449274733289,
+          "last": 4.655805193315
+        },
+        {
+          "index": 92,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.627002367755,
+          "last": 5.710049382156
+        },
+        {
+          "index": 93,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 14.346069565409,
+          "cy": -26.208353401624,
+          "first": 0.398061249416,
+          "last": 0.604591709442
+        },
+        {
+          "index": 94,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 29.525516464167,
+          "cy": -15.720889845178,
+          "first": 2.652322541029,
+          "last": 3.746184363032
+        },
+        {
+          "index": 95,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.793915194619,
+          "last": 5.81631852517
+        },
+        {
+          "index": 96,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 29.870278040007,
+          "cy": -15.055530206959,
+          "first": 1.580864049577,
+          "last": 2.67472587158
+        },
+        {
+          "index": 97,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 29.684531692567,
+          "cy": 3.393534763776,
+          "first": 4.722456703166,
+          "last": 4.928987163192
+        },
+        {
+          "index": 98,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.900184337633,
+          "last": 5.983231352033
+        },
+        {
+          "index": 99,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 20.885007515127,
+          "cy": -21.365953315803,
+          "first": 0.671243219294,
+          "last": 0.87777367932
+        },
+        {
+          "index": 100,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 32.672075541162,
+          "cy": -7.172027595636,
+          "first": 2.925504510906,
+          "last": 4.01936633291
+        },
+        {
+          "index": 101,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 6.067097164496,
+          "last": 6.089500495047
+        },
+        {
+          "index": 102,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 32.824540540503,
+          "cy": -6.438325737711,
+          "first": 1.854046019454,
+          "last": 2.947907841457
+        },
+        {
+          "index": 103,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 27.668184011521,
+          "cy": 11.276484093219,
+          "first": 4.995638673044,
+          "last": 5.20216913307
+        },
+        {
+          "index": 104,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 6.17336630751,
+          "last": 6.25641332191
+        },
+        {
+          "index": 105,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 25.875,
+          "cy": -14.938938215282,
+          "first": 0.944425189171,
+          "last": 1.150955649197
+        },
+        {
+          "index": 106,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 33.39549624007,
+          "cy": 1.90875113083,
+          "first": 3.198686480784,
+          "last": 4.292548302787
+        },
+        {
+          "index": 107,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.057093827194,
+          "last": 0.079497157745
+        },
+        {
+          "index": 108,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 33.344357031391,
+          "cy": 2.656379898122,
+          "first": 2.127227989331,
+          "last": 3.221089811335
+        },
+        {
+          "index": 109,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 23.599813695859,
+          "cy": 18.32310818395,
+          "first": 5.268820642921,
+          "last": 5.475351102947
+        },
+        {
+          "index": 110,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.163362970208,
+          "last": 0.246409984608
+        },
+        {
+          "index": 111,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 28.945962105122,
+          "cy": -7.403970408427,
+          "first": 1.217607159048,
+          "last": 1.424137619075
+        },
+        {
+          "index": 112,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 31.642125757082,
+          "cy": 10.847966517879,
+          "first": 3.471868450661,
+          "last": 4.565730272664
+        },
+        {
+          "index": 113,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.330275797071,
+          "last": 0.352679127622
+        },
+        {
+          "index": 114,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 31.391175101543,
+          "cy": 11.554073989041,
+          "first": 2.400409959209,
+          "last": 3.494271781212
+        },
+        {
+          "index": 115,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 17.78115316034,
+          "cy": 24.010791163319,
+          "first": 5.542002612799,
+          "last": 5.748533072825
+        },
+        {
+          "index": 116,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.436544940085,
+          "last": 0.519591954486
+        },
+        {
+          "index": 117,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 29.870134619872,
+          "cy": 0.680116012709,
+          "first": 1.490789128926,
+          "last": 1.697319588952
+        },
+        {
+          "index": 118,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 27.542003559784,
+          "cy": 18.982637854441,
+          "first": 3.745050420538,
+          "last": 4.838912242542
+        },
+        {
+          "index": 119,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.603457766949,
+          "last": 0.6258610975
+        },
+        {
+          "index": 120,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 27.109853319485,
+          "cy": 19.594855268565,
+          "first": 2.673591929086,
+          "last": 3.767453751089
+        },
+        {
+          "index": 121,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 10.643745838281,
+          "cy": 27.917703604166,
+          "first": 5.815184582676,
+          "last": 6.021715042702
+        },
+        {
+          "index": 122,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.709726909963,
+          "last": 0.792773924363
+        },
+        {
+          "index": 123,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 28.578975896639,
+          "cy": 8.713761340507,
+          "first": 1.763971098803,
+          "last": 1.970501558829
+        },
+        {
+          "index": 124,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 21.39921695474,
+          "cy": 25.709453781129,
+          "first": 4.018232390416,
+          "last": 5.112094212419
+        },
+        {
+          "index": 125,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.876639736826,
+          "last": 0.899043067377
+        },
+        {
+          "index": 126,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 20.817917736048,
+          "cy": 26.182375773317,
+          "first": 2.946773898963,
+          "last": 4.040635720967
+        },
+        {
+          "index": 127,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 2.716940579294,
+          "cy": 29.754087683688,
+          "first": 6.088366552553,
+          "last": 6.294897012579
+        },
+        {
+          "index": 128,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.98290887984,
+          "last": 1.06595589424
+        },
+        {
+          "index": 129,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 25.168245271268,
+          "cy": 16.101146852485,
+          "first": 2.037153068681,
+          "last": 2.243683528707
+        },
+        {
+          "index": 130,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 13.669348323066,
+          "cy": 30.529517133795,
+          "first": 4.291414360293,
+          "last": 5.385276182296
+        },
+        {
+          "index": 131,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.149821706703,
+          "last": 1.172225037254
+        },
+        {
+          "index": 132,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 12.982012429764,
+          "cy": 30.828069243361,
+          "first": 3.219955868841,
+          "last": 4.313817690844
+        },
+        {
+          "index": 133,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": -5.411367733283,
+          "cy": 29.383747195604,
+          "first": 0.078363215251,
+          "last": 0.284893675277
+        },
+        {
+          "index": 134,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 36.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.256090849717,
+          "last": 1.339137864118
+        },
+        {
+          "index": 135,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 17.25,
+          "cx": 19.890901031188,
+          "cy": 22.294383960259,
+          "first": 2.310335038558,
+          "last": 2.516865498584
+        },
+        {
+          "index": 136,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 1.2,
+          "cx": 4.925686659377,
+          "cy": 33.085345863896,
+          "first": 4.564596330171,
+          "last": 5.658458152174
+        },
+        {
+          "index": 137,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 32.25,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.423003676581,
+          "last": 1.445407007132
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "number_teeth",
+      "value": 23,
+      "unit": null,
+      "bound_to": []
+    },
+    {
+      "name": "spline_module",
+      "value": 3.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "spline_height",
+      "value": 10.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "pressure_angle",
+      "value": 30.0,
+      "unit": "degree",
+      "bound_to": []
+    },
+    {
+      "name": "fillet_radius",
+      "value": 1.2,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo4",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo6",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo10",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo12",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo16",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo18",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo22",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo24",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo28",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo30",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo34",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo36",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo40",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo42",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo46",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo48",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo52",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo54",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo58",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo60",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo64",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo66",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo70",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo72",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo76",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo78",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo82",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo84",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo88",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo90",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo94",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo96",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo100",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo102",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo106",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo108",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo112",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo114",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo118",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo120",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo124",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo126",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo130",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo132",
+          "property": "Radius",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo136",
+          "property": "Radius",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0"
+  ]
+}

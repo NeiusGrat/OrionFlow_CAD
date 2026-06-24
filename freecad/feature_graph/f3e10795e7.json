@@ -1,0 +1,188 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "f3e10795e7",
+  "document": {
+    "name": "f3e10795e7",
+    "label": "f3e10795e7",
+    "object_count": 12
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "loft_0_section_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "loft_0_section_0",
+      "parameters": {}
+    },
+    {
+      "id": "loft_0_section_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "loft_0_section_1",
+      "parameters": {}
+    },
+    {
+      "id": "Loft0",
+      "type": "AdditiveLoft",
+      "type_id": "PartDesign::AdditiveLoft",
+      "label": "Loft0",
+      "parameters": {}
+    }
+  ],
+  "sketches": [
+    {
+      "id": "loft_0_section_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -12.5,
+        "xmax": 12.5,
+        "ymin": -12.5,
+        "ymax": 12.5,
+        "span_x": 25.0,
+        "span_y": 25.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 12.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "loft_0_section_1",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          30.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          30.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -7.5,
+        "xmax": 7.5,
+        "ymin": -7.5,
+        "ymax": 7.5,
+        "span_x": 15.0,
+        "span_y": 15.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 7.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "loft_0_section_0",
+      "target": "Loft0",
+      "kind": "profile"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "top_diameter",
+      "value": 15.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "loft_0_section_1",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "loft_0_section_1",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "loft_0_section_1:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "height",
+      "value": 30.0,
+      "unit": "mm",
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "loft_0_section_0",
+    "loft_0_section_1",
+    "Loft0"
+  ]
+}

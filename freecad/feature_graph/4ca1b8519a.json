@@ -1,0 +1,474 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "4ca1b8519a",
+  "document": {
+    "name": "_4ca1b8519a",
+    "label": "4ca1b8519a",
+    "object_count": 13
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 1.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 1.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": -5.5,
+        "xmax": 5.5,
+        "ymin": -5.5,
+        "ymax": 5.5,
+        "span_x": 11.0,
+        "span_y": 11.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 5.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": -6.67136,
+        "xmax": 6.67136,
+        "ymin": -7.0,
+        "ymax": 7.0,
+        "span_x": 13.342719,
+        "span_y": 14.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.35483582811,
+          "last": 1.78675682548
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 5.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.294569696031,
+          "last": 1.847022957558
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 1.5,
+          "sy": 6.837397165589,
+          "ex": 1.5,
+          "ey": 5.291502622129
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -1.5,
+          "sy": 6.837397165589,
+          "ex": -1.5,
+          "ey": 5.291502622129
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.402033379307,
+          "last": 2.833954376676
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 5.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.341767247228,
+          "last": 2.894220508755
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -5.171359641164,
+          "sy": 4.717736688471,
+          "ex": -3.832575694956,
+          "ey": 3.944789416741
+        },
+        {
+          "index": 7,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -6.671359641164,
+          "sy": 2.119660477118,
+          "ex": -5.332575694956,
+          "ey": 1.346713205388
+        },
+        {
+          "index": 8,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.449230930503,
+          "last": 3.881151927873
+        },
+        {
+          "index": 9,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 5.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.388964798425,
+          "last": 3.941418059952
+        },
+        {
+          "index": 10,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -6.671359641164,
+          "sy": -2.119660477118,
+          "ex": -5.332575694956,
+          "ey": -1.346713205388
+        },
+        {
+          "index": 11,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -5.171359641164,
+          "sy": -4.717736688471,
+          "ex": -3.832575694956,
+          "ey": -3.944789416741
+        },
+        {
+          "index": 12,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.4964284817,
+          "last": 4.92834947907
+        },
+        {
+          "index": 13,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 5.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.436162349621,
+          "last": 4.988615611148
+        },
+        {
+          "index": 14,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -1.5,
+          "sy": -6.837397165589,
+          "ex": -1.5,
+          "ey": -5.291502622129
+        },
+        {
+          "index": 15,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 1.5,
+          "sy": -6.837397165589,
+          "ex": 1.5,
+          "ey": -5.291502622129
+        },
+        {
+          "index": 16,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.543626032896,
+          "last": 5.975547030266
+        },
+        {
+          "index": 17,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 5.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.483359900818,
+          "last": 6.035813162345
+        },
+        {
+          "index": 18,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 5.171359641164,
+          "sy": -4.717736688471,
+          "ex": 3.832575694956,
+          "ey": -3.944789416741
+        },
+        {
+          "index": 19,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 6.671359641164,
+          "sy": -2.119660477118,
+          "ex": 5.332575694956,
+          "ey": -1.346713205388
+        },
+        {
+          "index": 20,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.307638276913,
+          "last": 0.739559274283
+        },
+        {
+          "index": 21,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 5.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.247372144835,
+          "last": 0.799825406362
+        },
+        {
+          "index": 22,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 6.671359641164,
+          "sy": 2.119660477118,
+          "ex": 5.332575694956,
+          "ey": 1.346713205388
+        },
+        {
+          "index": 23,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 5.171359641164,
+          "sy": 4.717736688471,
+          "ex": 3.832575694956,
+          "ey": 3.944789416741
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "shaft_diameter",
+      "value": 14.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "root_diameter",
+      "value": 11.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "number_teeth",
+      "value": 6,
+      "unit": null,
+      "bound_to": []
+    },
+    {
+      "name": "tooth_width",
+      "value": 3.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "spline_thickness",
+      "value": 1.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1"
+  ]
+}

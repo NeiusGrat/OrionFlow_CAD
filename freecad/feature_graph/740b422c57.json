@@ -1,0 +1,309 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "740b422c57",
+  "document": {
+    "name": "_740b422c57",
+    "label": "740b422c57",
+    "object_count": 13
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Revolve0",
+      "type": "Revolution",
+      "type_id": "PartDesign::Revolution",
+      "label": "Revolve0",
+      "parameters": {
+        "Angle": 360.0,
+        "Midplane": false,
+        "Reversed": false,
+        "_ReferenceAxis": {
+          "object": "X_Axis",
+          "type_id": "App::Line",
+          "subs": [
+            ""
+          ],
+          "role": "X_Axis",
+          "is_sketch": false
+        }
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 10000.0,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": true,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": 0.0,
+        "xmax": 4.0,
+        "ymin": 0.4,
+        "ymax": 0.65,
+        "span_x": 4.0,
+        "span_y": 0.25
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.4,
+          "ex": 4.0,
+          "ey": 0.4
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 4.0,
+          "sy": 0.55,
+          "ex": 4.0,
+          "ey": 0.4
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 3.65,
+          "sy": 0.65,
+          "ex": 4.0,
+          "ey": 0.55
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.35,
+          "sy": 0.65,
+          "ex": 3.65,
+          "ey": 0.65
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.55,
+          "ex": 0.35,
+          "ey": 0.65
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.4,
+          "ex": 0.0,
+          "ey": 0.55
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "YZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.57735,
+          0.57735,
+          0.57735
+        ],
+        "angle": 2.094395
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "bbox": {
+        "xmin": -0.65,
+        "xmax": 0.0,
+        "ymin": -0.084842,
+        "ymax": 0.084842,
+        "span_x": 0.65,
+        "span_y": 0.169684
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 0.65,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.01069295969,
+          "last": 3.272492347489
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.0,
+          "ex": -0.644439159893,
+          "ey": 0.084842024943
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.0,
+          "ex": -0.644439159893,
+          "ey": -0.084842024943
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Revolve0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Revolve0",
+      "target": "Extrude1",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "outer_diameter",
+      "value": 1.3,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "inner_diameter",
+      "value": 0.8,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "pin_length",
+      "value": 4.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "chamfer_length",
+      "value": 0.35,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0:geo2",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_0:geo4",
+          "property": "EdgeLength",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "slot_angle",
+      "value": 15.0,
+      "unit": "deg",
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Revolve0",
+    "sketch_1",
+    "Extrude1"
+  ]
+}

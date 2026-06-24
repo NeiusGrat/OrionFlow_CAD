@@ -1,0 +1,460 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "c4bad6c5af",
+  "document": {
+    "name": "c4bad6c5af",
+    "label": "c4bad6c5af",
+    "object_count": 15
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 2.5,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 0.63,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": true,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_2",
+      "parameters": {}
+    },
+    {
+      "id": "Revolve2",
+      "type": "Groove",
+      "type_id": "PartDesign::Groove",
+      "label": "Revolve2",
+      "parameters": {
+        "Angle": 360.0,
+        "Midplane": false,
+        "Reversed": false,
+        "_ReferenceAxis": {
+          "object": "Y_Axis",
+          "type_id": "App::Line",
+          "subs": [
+            ""
+          ],
+          "role": "Y_Axis",
+          "is_sketch": false
+        }
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": -0.5,
+        "xmax": 0.5,
+        "ymin": -0.5,
+        "ymax": 0.5,
+        "span_x": 1.0,
+        "span_y": 1.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 0.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "XZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 1.570796
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.70710678,
+          0.0,
+          0.0,
+          0.70710678
+        ]
+      },
+      "bbox": {
+        "xmin": -0.5,
+        "xmax": 0.5,
+        "ymin": -0.1,
+        "ymax": 0.1,
+        "span_x": 1.0,
+        "span_y": 0.2
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -0.5,
+          "sy": -0.1,
+          "ex": 0.5,
+          "ey": -0.1
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.5,
+          "sy": -0.1,
+          "ex": 0.5,
+          "ey": 0.1
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.5,
+          "sy": 0.1,
+          "ex": -0.5,
+          "ey": 0.1
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": -0.5,
+          "sy": 0.1,
+          "ex": -0.5,
+          "ey": -0.1
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_2",
+      "plane": "YZ",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.57735,
+          0.57735,
+          0.57735
+        ],
+        "angle": 2.094395
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.5,
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "bbox": {
+        "xmin": 0.0,
+        "xmax": 2.5,
+        "ymin": 0.42,
+        "ymax": 0.5,
+        "span_x": 2.5,
+        "span_y": 0.08
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.08,
+          "sy": 0.5,
+          "ex": 0.0,
+          "ey": 0.42
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.0,
+          "sy": 0.5,
+          "ex": 0.0,
+          "ey": 0.42
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 0.08,
+          "sy": 0.5,
+          "ex": 0.0,
+          "ey": 0.5
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 2.42,
+          "sy": 0.5,
+          "ex": 2.5,
+          "ey": 0.42
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 2.5,
+          "sy": 0.42,
+          "ex": 2.5,
+          "ey": 0.5
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "LineSegment",
+          "sx": 2.5,
+          "sy": 0.5,
+          "ex": 2.42,
+          "ey": 0.5
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_2",
+      "target": "Revolve2",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude1",
+      "target": "Revolve2",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "pin_diameter",
+      "value": 1.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "CircleCount",
+          "relation": "len(circles)"
+        }
+      ]
+    },
+    {
+      "name": "pin_length",
+      "value": 2.5,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "chamfer_length",
+      "value": 0.08,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_2:geo0",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo2",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo4",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2:geo5",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_2",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "chamfer_angle",
+      "value": 45.0,
+      "unit": "degree",
+      "bound_to": []
+    },
+    {
+      "name": "slot_width",
+      "value": 0.2,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1:geo1",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1:geo3",
+          "property": "EdgeLength",
+          "relation": "value"
+        },
+        {
+          "target": "sketch_1",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "slot_depth",
+      "value": 0.63,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1",
+    "sketch_2",
+    "Revolve2"
+  ]
+}

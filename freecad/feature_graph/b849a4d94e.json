@@ -1,0 +1,737 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "b849a4d94e",
+  "document": {
+    "name": "b849a4d94e",
+    "label": "b849a4d94e",
+    "object_count": 21
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 1000.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 20.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "hole_centers_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "hole_centers_2",
+      "parameters": {}
+    },
+    {
+      "id": "Hole2",
+      "type": "Hole",
+      "type_id": "PartDesign::Hole",
+      "label": "Hole2",
+      "parameters": {
+        "Diameter": 10.0,
+        "Depth": 20.0,
+        "DepthType": "Dimension",
+        "DrillPoint": "Angled",
+        "DrillPointAngle": 118.0,
+        "ThreadType": "None",
+        "Tapered": false,
+        "Reversed": false
+      }
+    },
+    {
+      "id": "sketch_3",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_3",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude3",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude3",
+      "parameters": {
+        "Length": 20.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_4",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_4",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude4",
+      "type": "Pocket",
+      "type_id": "PartDesign::Pocket",
+      "label": "Extrude4",
+      "parameters": {
+        "Length": 2000.0,
+        "Length2": 5.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "hole_centers_5",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "hole_centers_5",
+      "parameters": {}
+    },
+    {
+      "id": "Hole5",
+      "type": "Hole",
+      "type_id": "PartDesign::Hole",
+      "label": "Hole5",
+      "parameters": {
+        "Diameter": 10.0,
+        "Depth": 20.0,
+        "DepthType": "Dimension",
+        "DrillPoint": "Angled",
+        "DrillPointAngle": 118.0,
+        "ThreadType": "None",
+        "Tapered": false,
+        "Reversed": false
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -25.0,
+        "xmax": 25.0,
+        "ymin": -25.0,
+        "ymax": 25.0,
+        "span_x": 50.0,
+        "span_y": 50.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 25.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "face:Extrude0:Face2",
+      "support": "face:Extrude0:Face2",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -50.0,
+        "xmax": 50.0,
+        "ymin": -50.0,
+        "ymax": 50.0,
+        "span_x": 100.0,
+        "span_y": 100.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 50.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "hole_centers_2",
+      "plane": "face:Extrude1:Face3",
+      "support": "face:Extrude1:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          -0.0,
+          20.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          -0.0,
+          20.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -41.0,
+        "xmax": 41.0,
+        "ymin": -41.0,
+        "ymax": 41.0,
+        "span_x": 82.0,
+        "span_y": 82.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": 40.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": 0.0,
+          "cy": 40.0,
+          "cz": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": -40.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": 0.0,
+          "cy": -40.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_3",
+      "plane": "face:Extrude0:Face3",
+      "support": "face:Extrude0:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -1000.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -1000.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -50.0,
+        "xmax": 50.0,
+        "ymin": -50.0,
+        "ymax": 50.0,
+        "span_x": 100.0,
+        "span_y": 100.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 50.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_4",
+      "plane": "face:Extrude3:Face3",
+      "support": "face:Extrude3:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -1020.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -1020.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -20.0,
+        "xmax": 20.0,
+        "ymin": -20.0,
+        "ymax": 20.0,
+        "span_x": 40.0,
+        "span_y": 40.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 20.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "hole_centers_5",
+      "plane": "face:Extrude3:Face3",
+      "support": "face:Extrude3:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -1020.0
+        ],
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "angle": 3.141593
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          -1020.0
+        ],
+        "q": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "bbox": {
+        "xmin": -41.0,
+        "xmax": 41.0,
+        "ymin": -41.0,
+        "ymax": 41.0,
+        "span_x": 82.0,
+        "span_y": 82.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": 40.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": 0.0,
+          "cy": 40.0,
+          "cz": 0.0
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": -40.0,
+          "cy": 0.0,
+          "cz": 0.0
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "Circle",
+          "radius": 1.0,
+          "cx": 0.0,
+          "cy": -40.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    },
+    {
+      "source": "hole_centers_2",
+      "target": "Hole2",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude1",
+      "target": "Hole2",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_3",
+      "target": "Extrude3",
+      "kind": "profile"
+    },
+    {
+      "source": "Hole2",
+      "target": "Extrude3",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_4",
+      "target": "Extrude4",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude3",
+      "target": "Extrude4",
+      "kind": "base"
+    },
+    {
+      "source": "hole_centers_5",
+      "target": "Hole5",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude4",
+      "target": "Hole5",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "shaft_length",
+      "value": 1000.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "outer_diameter",
+      "value": 50.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_0",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_0:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "inner_diameter",
+      "value": 40.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_4",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_4",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_4:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "flange_diameter",
+      "value": 100.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        },
+        {
+          "target": "sketch_3",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_3",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_3:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "flange_thickness",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        },
+        {
+          "target": "Extrude3",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "bolt_hole_diameter",
+      "value": 10.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "bolt_hole_circle_diameter",
+      "value": 80.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "hole_centers_2",
+          "property": "BoltCircleDiameter",
+          "relation": "bcd=2*hypot(cx,cy)"
+        }
+      ]
+    },
+    {
+      "name": "number_of_bolt_holes",
+      "value": 4,
+      "unit": null,
+      "bound_to": [
+        {
+          "target": "hole_centers_2",
+          "property": "CircleCount",
+          "relation": "len(circles)"
+        },
+        {
+          "target": "hole_centers_5",
+          "property": "CircleCount",
+          "relation": "len(circles)"
+        }
+      ]
+    },
+    {
+      "name": "shaft_material_thickness",
+      "value": 5.0,
+      "unit": "mm",
+      "bound_to": []
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1",
+    "hole_centers_2",
+    "Hole2",
+    "sketch_3",
+    "Extrude3",
+    "sketch_4",
+    "Extrude4",
+    "hole_centers_5",
+    "Hole5"
+  ]
+}

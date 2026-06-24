@@ -1,0 +1,847 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "58a1b82005",
+  "document": {
+    "name": "_58a1b82005",
+    "label": "58a1b82005",
+    "object_count": 13
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 10.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 20.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -15.985572,
+        "xmax": 15.985572,
+        "ymin": -15.826994,
+        "ymax": 16.0,
+        "span_x": 31.971145,
+        "span_y": 31.826994
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -5.283663983305,
+          "cy": 11.867303607456,
+          "first": 0.197686646605,
+          "last": 0.578649966578
+        },
+        {
+          "index": 1,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.508546816,
+          "last": 1.63304583759
+        },
+        {
+          "index": 2,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 5.283663983305,
+          "cy": 11.867303607456,
+          "first": 2.562942687012,
+          "last": 2.943906006984
+        },
+        {
+          "index": 3,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.724756633219,
+          "last": 1.835715040849
+        },
+        {
+          "index": 4,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -9.653734463316,
+          "cy": 8.692261553347,
+          "first": 0.616565667084,
+          "last": 0.997528987057
+        },
+        {
+          "index": 5,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.927425836479,
+          "last": 2.051924858068
+        },
+        {
+          "index": 6,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 0.0,
+          "cy": 12.990381056767,
+          "first": 2.981821707491,
+          "last": 3.362785027463
+        },
+        {
+          "index": 7,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.143635653698,
+          "last": 2.254594061328
+        },
+        {
+          "index": 8,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -12.354586553195,
+          "cy": 4.014248509947,
+          "first": 1.035444687563,
+          "last": 1.416408007535
+        },
+        {
+          "index": 9,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.346304856957,
+          "last": 2.470803878547
+        },
+        {
+          "index": 10,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -5.283663983305,
+          "cy": 11.867303607456,
+          "first": 3.400700727969,
+          "last": 3.781664047942
+        },
+        {
+          "index": 11,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.562514674177,
+          "last": 2.673473081806
+        },
+        {
+          "index": 12,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -12.919218390132,
+          "cy": -1.357864569125,
+          "first": 1.454323708041,
+          "last": 1.835287028014
+        },
+        {
+          "index": 13,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.765183877436,
+          "last": 2.889682899026
+        },
+        {
+          "index": 14,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -9.653734463316,
+          "cy": 8.692261553347,
+          "first": 3.819579748448,
+          "last": 4.20054306842
+        },
+        {
+          "index": 15,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 2.981393694655,
+          "last": 3.092352102285
+        },
+        {
+          "index": 16,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -11.25,
+          "cy": -6.495190528383,
+          "first": 1.87320272852,
+          "last": 2.254166048492
+        },
+        {
+          "index": 17,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.184062897915,
+          "last": 3.308561919504
+        },
+        {
+          "index": 18,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -12.354586553195,
+          "cy": 4.014248509947,
+          "first": 4.238458768926,
+          "last": 4.619422088899
+        },
+        {
+          "index": 19,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.400272715134,
+          "last": 3.511231122764
+        },
+        {
+          "index": 20,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -7.635554406827,
+          "cy": -10.509439038331,
+          "first": 2.292081748999,
+          "last": 2.673045068971
+        },
+        {
+          "index": 21,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.602941918393,
+          "last": 3.727440939983
+        },
+        {
+          "index": 22,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -12.919218390132,
+          "cy": -1.357864569125,
+          "first": 4.657337789405,
+          "last": 5.038301109378
+        },
+        {
+          "index": 23,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 3.819151735613,
+          "last": 3.930110143242
+        },
+        {
+          "index": 24,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -2.700852089879,
+          "cy": -12.706510063294,
+          "first": 2.710960769477,
+          "last": 3.09192408945
+        },
+        {
+          "index": 25,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.021820938872,
+          "last": 4.146319960461
+        },
+        {
+          "index": 26,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -11.25,
+          "cy": -6.495190528383,
+          "first": 5.076216809884,
+          "last": 5.457180129856
+        },
+        {
+          "index": 27,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.238030756091,
+          "last": 4.348989163721
+        },
+        {
+          "index": 28,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 2.700852089879,
+          "cy": -12.706510063294,
+          "first": 3.129839789956,
+          "last": 3.510803109928
+        },
+        {
+          "index": 29,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.440699959351,
+          "last": 4.56519898094
+        },
+        {
+          "index": 30,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -7.635554406827,
+          "cy": -10.509439038331,
+          "first": 5.495095830362,
+          "last": 5.876059150335
+        },
+        {
+          "index": 31,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.65690977657,
+          "last": 4.7678681842
+        },
+        {
+          "index": 32,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 7.635554406827,
+          "cy": -10.509439038331,
+          "first": 3.548718810435,
+          "last": 3.929682130407
+        },
+        {
+          "index": 33,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 4.859578979829,
+          "last": 4.984078001419
+        },
+        {
+          "index": 34,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -2.700852089879,
+          "cy": -12.706510063294,
+          "first": 5.913974850841,
+          "last": 6.294938170813
+        },
+        {
+          "index": 35,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.075788797048,
+          "last": 5.186747204678
+        },
+        {
+          "index": 36,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 11.25,
+          "cy": -6.495190528383,
+          "first": 3.967597830913,
+          "last": 4.348561150886
+        },
+        {
+          "index": 37,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.278458000308,
+          "last": 5.402957021897
+        },
+        {
+          "index": 38,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 2.700852089879,
+          "cy": -12.706510063294,
+          "first": 0.04966856414,
+          "last": 0.430631884112
+        },
+        {
+          "index": 39,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.494667817527,
+          "last": 5.605626225157
+        },
+        {
+          "index": 40,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 12.919218390132,
+          "cy": -1.357864569125,
+          "first": 4.386476851392,
+          "last": 4.767440171364
+        },
+        {
+          "index": 41,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.697337020787,
+          "last": 5.821836042376
+        },
+        {
+          "index": 42,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 7.635554406827,
+          "cy": -10.509439038331,
+          "first": 0.468547584619,
+          "last": 0.849510904591
+        },
+        {
+          "index": 43,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 5.913546838006,
+          "last": 6.024505245636
+        },
+        {
+          "index": 44,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 12.354586553195,
+          "cy": 4.014248509947,
+          "first": 4.80535587187,
+          "last": 5.186319191843
+        },
+        {
+          "index": 45,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 6.116216041265,
+          "last": 6.240715062855
+        },
+        {
+          "index": 46,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 11.25,
+          "cy": -6.495190528383,
+          "first": 0.887426605097,
+          "last": 1.26838992507
+        },
+        {
+          "index": 47,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.049240551305,
+          "last": 0.160198958935
+        },
+        {
+          "index": 48,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 9.653734463316,
+          "cy": 8.692261553347,
+          "first": 5.224234892349,
+          "last": 5.605198212322
+        },
+        {
+          "index": 49,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.251909754564,
+          "last": 0.376408776154
+        },
+        {
+          "index": 50,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 12.919218390132,
+          "cy": -1.357864569125,
+          "first": 1.306305625576,
+          "last": 1.687268945548
+        },
+        {
+          "index": 51,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.468119571783,
+          "last": 0.579077979413
+        },
+        {
+          "index": 52,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 5.283663983305,
+          "cy": 11.867303607456,
+          "first": 5.643113912828,
+          "last": 6.0240772328
+        },
+        {
+          "index": 53,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.670788775043,
+          "last": 0.795287796632
+        },
+        {
+          "index": 54,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 12.354586553195,
+          "cy": 4.014248509947,
+          "first": 1.725184646055,
+          "last": 2.106147966027
+        },
+        {
+          "index": 55,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 0.886998592262,
+          "last": 0.997956999892
+        },
+        {
+          "index": 56,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": -0.0,
+          "cy": 12.990381056767,
+          "first": 6.061992933306,
+          "last": 6.442956253279
+        },
+        {
+          "index": 57,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 16.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.089667795522,
+          "last": 1.214166817111
+        },
+        {
+          "index": 58,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 7.5,
+          "cx": 9.653734463316,
+          "cy": 8.692261553347,
+          "first": 2.144063666533,
+          "last": 2.525026986506
+        },
+        {
+          "index": 59,
+          "construction": false,
+          "type": "ArcOfCircle",
+          "radius": 13.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "first": 1.305877612741,
+          "last": 1.41683602037
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "face:Extrude0:Face62",
+      "support": "face:Extrude0:Face62",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          10.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          10.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -12.0,
+        "xmax": 12.0,
+        "ymin": -12.0,
+        "ymax": 12.0,
+        "span_x": 24.0,
+        "span_y": 24.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 12.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "shaft_number_teeth",
+      "value": 15,
+      "unit": null,
+      "bound_to": []
+    },
+    {
+      "name": "shaft_spline_module",
+      "value": 2.0,
+      "unit": "mm",
+      "bound_to": []
+    },
+    {
+      "name": "shaft_pressure_angle",
+      "value": 30.0,
+      "unit": "°",
+      "bound_to": []
+    },
+    {
+      "name": "shaft_spline_height",
+      "value": 10.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_diameter",
+      "value": 24.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1",
+          "property": "SpanY",
+          "relation": "bbox_span"
+        },
+        {
+          "target": "sketch_1:geo0",
+          "property": "Diameter",
+          "relation": "diameter=2*radius"
+        }
+      ]
+    },
+    {
+      "name": "shaft_length",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1"
+  ]
+}

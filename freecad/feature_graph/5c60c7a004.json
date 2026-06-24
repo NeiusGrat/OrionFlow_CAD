@@ -1,0 +1,996 @@
+{
+  "schema_version": "ofl_fcstd_v1",
+  "source_id": "5c60c7a004",
+  "document": {
+    "name": "_5c60c7a004",
+    "label": "5c60c7a004",
+    "object_count": 27
+  },
+  "features": [
+    {
+      "id": "Body",
+      "type": "Body",
+      "type_id": "PartDesign::Body",
+      "label": "Body",
+      "parameters": {}
+    },
+    {
+      "id": "sketch_0",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_0",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude0",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude0",
+      "parameters": {
+        "Length": 20.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_1",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_1",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude1",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude1",
+      "parameters": {
+        "Length": 30.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_2",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_2",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude2",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude2",
+      "parameters": {
+        "Length": 40.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_3",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_3",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude3",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude3",
+      "parameters": {
+        "Length": 10.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_4",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_4",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude4",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude4",
+      "parameters": {
+        "Length": 20.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_5",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_5",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude5",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude5",
+      "parameters": {
+        "Length": 25.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_6",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_6",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude6",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude6",
+      "parameters": {
+        "Length": 20.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_7",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_7",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude7",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude7",
+      "parameters": {
+        "Length": 20.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    },
+    {
+      "id": "sketch_8",
+      "type": "Sketch",
+      "type_id": "Sketcher::SketchObject",
+      "label": "sketch_8",
+      "parameters": {}
+    },
+    {
+      "id": "Extrude8",
+      "type": "Pad",
+      "type_id": "PartDesign::Pad",
+      "label": "Extrude8",
+      "parameters": {
+        "Length": 10.0,
+        "Length2": 10.0,
+        "Type": "Length",
+        "Reversed": false,
+        "Midplane": false,
+        "Offset": 0.0
+      }
+    }
+  ],
+  "sketches": [
+    {
+      "id": "sketch_0",
+      "plane": "XY",
+      "support": null,
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -5.0,
+        "xmax": 5.0,
+        "ymin": -5.0,
+        "ymax": 5.0,
+        "span_x": 10.0,
+        "span_y": 10.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 5.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_1",
+      "plane": "face:Extrude0:Face3",
+      "support": "face:Extrude0:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          20.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          20.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -7.5,
+        "xmax": 7.5,
+        "ymin": -7.5,
+        "ymax": 7.5,
+        "span_x": 15.0,
+        "span_y": 15.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 7.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_2",
+      "plane": "face:Extrude1:Face3",
+      "support": "face:Extrude1:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          50.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          50.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -10.0,
+        "xmax": 10.0,
+        "ymin": -10.0,
+        "ymax": 10.0,
+        "span_x": 20.0,
+        "span_y": 20.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 10.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_3",
+      "plane": "face:Extrude2:Face3",
+      "support": "face:Extrude2:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          90.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          90.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -20.0,
+        "xmax": 20.0,
+        "ymin": -20.0,
+        "ymax": 20.0,
+        "span_x": 40.0,
+        "span_y": 40.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 20.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_4",
+      "plane": "face:Extrude3:Face3",
+      "support": "face:Extrude3:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          100.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          100.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -15.0,
+        "xmax": 15.0,
+        "ymin": -15.0,
+        "ymax": 15.0,
+        "span_x": 30.0,
+        "span_y": 30.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 15.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_5",
+      "plane": "face:Extrude4:Face7",
+      "support": "face:Extrude4:Face7",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          120.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          120.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -12.5,
+        "xmax": 12.5,
+        "ymin": -12.5,
+        "ymax": 12.5,
+        "span_x": 25.0,
+        "span_y": 25.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 12.5,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_6",
+      "plane": "face:Extrude5:Face11",
+      "support": "face:Extrude5:Face11",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          145.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          145.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -10.0,
+        "xmax": 10.0,
+        "ymin": -10.0,
+        "ymax": 10.0,
+        "span_x": 20.0,
+        "span_y": 20.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 10.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_7",
+      "plane": "face:Extrude6:Face15",
+      "support": "face:Extrude6:Face15",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          165.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          165.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -25.0,
+        "xmax": 25.0,
+        "ymin": -25.0,
+        "ymax": 25.0,
+        "span_x": 50.0,
+        "span_y": 50.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 25.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "id": "sketch_8",
+      "plane": "face:Extrude7:Face3",
+      "support": "face:Extrude7:Face3",
+      "placement": {
+        "pos": [
+          0.0,
+          0.0,
+          185.0
+        ],
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "angle": 0.0
+      },
+      "global_placement": {
+        "pos": [
+          0.0,
+          0.0,
+          185.0
+        ],
+        "q": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "bbox": {
+        "xmin": -15.0,
+        "xmax": 15.0,
+        "ymin": -15.0,
+        "ymax": 15.0,
+        "span_x": 30.0,
+        "span_y": 30.0
+      },
+      "geometry": [
+        {
+          "index": 0,
+          "construction": false,
+          "type": "Circle",
+          "radius": 15.0,
+          "cx": 0.0,
+          "cy": 0.0,
+          "cz": 0.0
+        }
+      ],
+      "constraints": []
+    }
+  ],
+  "dependencies": [
+    {
+      "source": "sketch_0",
+      "target": "Extrude0",
+      "kind": "profile"
+    },
+    {
+      "source": "sketch_1",
+      "target": "Extrude1",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude0",
+      "target": "Extrude1",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_2",
+      "target": "Extrude2",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude1",
+      "target": "Extrude2",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_3",
+      "target": "Extrude3",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude2",
+      "target": "Extrude3",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_4",
+      "target": "Extrude4",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude3",
+      "target": "Extrude4",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_5",
+      "target": "Extrude5",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude4",
+      "target": "Extrude5",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_6",
+      "target": "Extrude6",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude5",
+      "target": "Extrude6",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_7",
+      "target": "Extrude7",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude6",
+      "target": "Extrude7",
+      "kind": "base"
+    },
+    {
+      "source": "sketch_8",
+      "target": "Extrude8",
+      "kind": "profile"
+    },
+    {
+      "source": "Extrude7",
+      "target": "Extrude8",
+      "kind": "base"
+    }
+  ],
+  "parameters": [
+    {
+      "name": "shaft_section_1_diameter",
+      "value": 10.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude3",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_1_length",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_2_diameter",
+      "value": 15.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_1",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_2_length",
+      "value": 30.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_3_diameter",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_3_length",
+      "value": 40.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude2",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_4_diameter",
+      "value": 40.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude2",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_4_length",
+      "value": 10.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude3",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_5_diameter",
+      "value": 30.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_5_length",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_6_diameter",
+      "value": 25.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude5",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_6_length",
+      "value": 25.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude5",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_7_diameter",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_7_length",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_8_diameter",
+      "value": 50.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "sketch_7",
+          "property": "SpanX",
+          "relation": "bbox_span"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_8_length",
+      "value": 20.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude0",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_9_diameter",
+      "value": 30.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude1",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    },
+    {
+      "name": "shaft_section_9_length",
+      "value": 10.0,
+      "unit": "mm",
+      "bound_to": [
+        {
+          "target": "Extrude3",
+          "property": "Length",
+          "relation": "value"
+        }
+      ]
+    }
+  ],
+  "constraints": [],
+  "expressions": [],
+  "execution_order": [
+    "Body",
+    "sketch_0",
+    "Extrude0",
+    "sketch_1",
+    "Extrude1",
+    "sketch_2",
+    "Extrude2",
+    "sketch_3",
+    "Extrude3",
+    "sketch_4",
+    "Extrude4",
+    "sketch_5",
+    "Extrude5",
+    "sketch_6",
+    "Extrude6",
+    "sketch_7",
+    "Extrude7",
+    "sketch_8",
+    "Extrude8"
+  ]
+}
