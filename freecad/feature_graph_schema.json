@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://orionflow.ai/schemas/feature_graph/ofl_fcstd_v1.json",
+  "title": "OrionFlow FeatureGraph (FCStd extraction IR)",
+  "description": "Canonical, deterministic intermediate representation extracted from a FreeCAD PartDesign document. The single source of truth between description+parameters and the FreeCAD compiler.",
+  "type": "object",
+  "required": ["schema_version", "document", "features", "sketches", "dependencies", "parameters", "constraints", "expressions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"type": "string"},
+    "source_id": {"type": "string"},
+    "document": {
+      "type": "object",
+      "required": ["name", "label", "object_count"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "label": {"type": "string"},
+        "object_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "type_id", "label", "parameters"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string", "description": "Short kind, e.g. Body/Pad/Pocket/Fillet/Chamfer/LinearPattern/PolarPattern/Sketch"},
+          "type_id": {"type": "string", "description": "Full FreeCAD TypeId"},
+          "label": {"type": "string"},
+          "parameters": {"type": "object"}
+        }
+      }
+    },
+    "sketches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "plane", "geometry", "constraints"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "plane": {"type": "string"},
+          "support": {"type": ["string", "null"]},
+          "placement": {"type": "object"},
+          "global_placement": {"type": ["object", "null"]},
+          "bbox": {"type": ["object", "null"]},
+          "geometry": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["index", "type"],
+              "additionalProperties": true,
+              "properties": {
+                "index": {"type": "integer"},
+                "type": {"type": "string", "enum": ["Circle", "ArcOfCircle", "LineSegment", "Point", "BSpline", "Bezier", "Other"]},
+                "construction": {"type": "boolean"}
+              }
+            }
+          },
+          "constraints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["index", "type"],
+              "additionalProperties": true,
+              "properties": {
+                "index": {"type": "integer"},
+                "name": {"type": "string"},
+                "type": {"type": "string"},
+                "value": {"type": ["number", "null"]}
+              }
+            }
+          }
+        }
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "kind"],
+        "additionalProperties": false,
+        "properties": {
+          "source": {"type": "string"},
+          "target": {"type": "string"},
+          "kind": {"type": "string", "enum": ["profile", "base", "ref"]}
+        }
+      }
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"},
+          "value": {"type": ["number", "integer"]},
+          "unit": {"type": ["string", "null"]},
+          "bound_to": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["target", "property"],
+              "additionalProperties": false,
+              "properties": {
+                "target": {"type": "string", "description": "feature/sketch id (or sketch:geo index)"},
+                "property": {"type": "string", "description": "Length/Radius/Diameter/BoltCircleDiameter/Count/etc"},
+                "relation": {"type": "string", "description": "how value maps, e.g. diameter=2*radius"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "expressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["object", "property", "expression"],
+        "additionalProperties": false,
+        "properties": {
+          "object": {"type": "string"},
+          "property": {"type": "string"},
+          "expression": {"type": "string"}
+        }
+      }
+    }
+  }
+}
