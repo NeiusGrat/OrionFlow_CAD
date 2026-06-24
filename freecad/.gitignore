@@ -1,0 +1,8 @@
+# Downloaded dataset + generated artifacts (regenerable via run_pipeline / roundtrip_validate)
+data/
+raw_extract/
+rebuilt/
+training/
+_probe/
+__pycache__/
+*.pyc
