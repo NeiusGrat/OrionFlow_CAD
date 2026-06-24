@@ -135,7 +135,9 @@ def build(staging: Path) -> dict[str, Any]:
         ("id", pa.string()),
         ("family", pa.string()),
         ("description", pa.string()),
-        ("parameters", pa.map_(pa.string(), pa.string())),
+        # JSON-encoded object string: the HF datasets viewer (datasets lib) has no
+        # dtype for an Arrow map type, so a JSON string keeps the viewer working.
+        ("parameters", pa.string()),
         ("feature_count", pa.int64()),
         ("dependency_count", pa.int64()),
         ("reconstruction_success", pa.bool_()),
@@ -144,7 +146,7 @@ def build(staging: Path) -> dict[str, Any]:
         ("fcstd_path", pa.string()),
     ])
     cols = {k: [r[k] for r in rows] for k in schema.names}
-    cols["parameters"] = [list(r["parameters"].items()) for r in rows]
+    cols["parameters"] = [json.dumps(r["parameters"], ensure_ascii=False) for r in rows]
     table = pa.Table.from_pydict(cols, schema=schema)
     pq.write_table(table, staging / "data" / "train.parquet")
 
@@ -241,7 +243,7 @@ stats/summary.json        dataset statistics
 | id | string | sample id |
 | family | string | derived part family ({fams}) |
 | description | string | natural-language description |
-| parameters | map<string,string> | named engineering parameters |
+| parameters | string (JSON) | named engineering parameters as a JSON-encoded object |
 | feature_count | int | number of features (excluding Body) |
 | dependency_count | int | number of feature dependencies |
 | reconstruction_success | bool | recompute ok AND volume error <= 1% |
