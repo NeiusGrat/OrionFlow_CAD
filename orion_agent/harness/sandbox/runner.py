@@ -116,6 +116,11 @@ def main() -> int:
         job = json.load(fh)
 
     code = job["code"]
+    # Some models double-escape newlines in the tool-call JSON, so the code can
+    # arrive as one physical line with literal "\n" / "\t" sequences. Repair it
+    # so it compiles instead of throwing a SyntaxError on line 1.
+    if "\n" not in code and "\\n" in code:
+        code = code.replace("\\n", "\n").replace("\\t", "\t")
     result_var = job.get("result_var", "result")
     scratch_dir = job["scratch_dir"]
     exports = job.get("exports", ["step", "stl"])

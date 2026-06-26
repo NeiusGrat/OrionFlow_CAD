@@ -118,6 +118,8 @@ class K2ThinkClient(LLMClient):
         return wire
 
     def _post(self, payload: dict) -> dict:
+        import time
+        import urllib.error
         import urllib.request
 
         data = json.dumps(payload).encode("utf-8")
@@ -131,8 +133,27 @@ class K2ThinkClient(LLMClient):
                 "User-Agent": _USER_AGENT,
             },
         )
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            return json.loads(resp.read().decode("utf-8", "replace"))
+        # Transient network failures (DNS getaddrinfo blips, dropped sockets,
+        # read timeouts, 5xx) shouldn't kill the whole agent turn — retry a few
+        # times with backoff. Auth/4xx errors are permanent, so don't retry them.
+        attempts = 3
+        last_exc: Exception | None = None
+        for i in range(attempts):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.loads(resp.read().decode("utf-8", "replace"))
+            except urllib.error.HTTPError as exc:
+                if exc.code < 500 or i == attempts - 1:
+                    raise
+                last_exc = exc
+            except (urllib.error.URLError, OSError, TimeoutError) as exc:
+                if i == attempts - 1:
+                    raise
+                last_exc = exc
+            time.sleep(1.5 * (i + 1))
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("k2think: no response")
 
     # ------------------------------------------------------------------ #
     def _parse(self, body: dict) -> LLMResponse:

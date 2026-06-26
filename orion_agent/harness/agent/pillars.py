@@ -122,8 +122,11 @@ GENERATE_PILLAR = Pillar(
     system_prompt=(
         "You are OrionFlow generating a new parametric Build123d model from a "
         "natural-language description into a blank or new document. Write clean, "
-        "parametric Build123d code, run it with write_code, and import the result "
-        "with import_shape. Keep the code readable and parameter-driven."
+        "parametric Build123d code and run it with write_code.\n"
+        "After write_code succeeds, you MUST call import_shape with the returned "
+        "STEP artifact path so the model actually appears in the user's FreeCAD "
+        "document — do NOT give your final answer until the shape has been "
+        "imported. Keep the code readable and parameter-driven."
     ),
 )
 

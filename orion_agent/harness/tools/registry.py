@@ -110,6 +110,11 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
     """
     reg = ToolRegistry()
 
+    # Remember the most recent sandbox STEP artifact so import_shape can fall
+    # back to it when the model echoes back a wrong/relative path (it routinely
+    # guesses "result.step" instead of the absolute path we hand it).
+    _state: dict[str, Optional[str]] = {"last_step": None}
+
     # ---- read ----------------------------------------------------------- #
     def list_objects(_args):
         raw = bridge.list_objects()
@@ -252,21 +257,45 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         from orion_agent.harness.topology import summarize_topology as _st
         content = "sandbox OK\n" + _st(result.topology)
         arts = [{"kind": a["kind"], "path": a["path"]} for a in result.artifacts if a.get("path")]
+        step_path = result.artifact_path("step")
+        if step_path:
+            _state["last_step"] = step_path
+            content += (
+                f"\nSTEP artifact: {step_path}\n"
+                "To place this in the document, call import_shape with this exact "
+                "path (or with no path to use this latest artifact)."
+            )
         return _ok(content, raw=result.to_dict(), artifacts=arts)
 
     reg.register(Tool(
         "write_code",
-        "Execute Build123d Python in the sandbox. Assign the final solid to a "
-        "variable named 'result'. Do NOT call export_step/export_stl yourself — "
-        "the sandbox exports 'result' automatically and returns its topology and "
-        "STEP/STL artifacts. Generated code runs isolated — never in FreeCAD.",
+        "Execute Build123d Python in the sandbox and assign the final solid to a "
+        "variable named 'result'. The sandbox exports 'result' automatically and "
+        "returns topology + STEP/STL — do NOT call export_step/export_stl and do "
+        "NOT import any build123d submodule (no `import build123d.opengl`); "
+        "`from build123d import *` is all you need. Runs isolated — never in "
+        "FreeCAD.\n"
+        "Build123d is NOT CadQuery: there is no make_cylinder()/make_box() free "
+        "function. Use the algebra/primitive API. Canonical examples:\n"
+        "  from build123d import *\n"
+        "  result = Cylinder(radius=5, height=40)          # 10mm dia x 40mm tall\n"
+        "  result = Box(10, 20, 5)\n"
+        "  result = Sphere(8)\n"
+        "  result = Box(20, 20, 10) - Cylinder(radius=3, height=10)  # boolean cut\n"
+        "Builder form also works:\n"
+        "  with BuildPart() as p:\n"
+        "      Cylinder(radius=5, height=40)\n"
+        "  result = p.part\n"
+        "Primitives: Box, Cylinder, Cone, Sphere, Torus, Wedge. Use real "
+        "newlines in the code string.",
         {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "string",
                     "description": "Build123d python; assign the final solid to 'result'. "
-                    "No export calls — the sandbox exports it for you.",
+                    "Use Cylinder(radius=, height=)/Box(l,w,h)/Sphere(r) — NOT "
+                    "make_cylinder. No export calls and no submodule imports. Real newlines.",
                 },
                 "exports": {"type": "array", "items": {"type": "string"}},
             },
@@ -277,13 +306,22 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
     ))
 
     def import_shape(args):
-        raw = bridge.import_shape(args["path"], args.get("label", "OrionResult"), args.get("replace"))
+        import os as _os
+        path = args.get("path") or ""
+        # The model frequently passes a guessed/relative path or none at all;
+        # fall back to the last sandbox STEP artifact, which is the thing it just
+        # built. Only override when the given path does not actually resolve.
+        if (not path or not _os.path.isabs(path) or not _os.path.exists(path)) and _state.get("last_step"):
+            path = _state["last_step"]
+        raw = bridge.import_shape(path, args.get("label", "OrionResult"), args.get("replace"))
         return _ok(json.dumps(raw), raw=raw)
 
     reg.register(Tool(
         "import_shape",
-        "Import a sandbox-produced STEP artifact into the live document, "
-        "optionally replacing an existing object by name.",
+        "Import the sandbox-produced STEP artifact into the live document, "
+        "optionally replacing an existing object by name. Omit 'path' (or pass "
+        "the STEP path from the latest write_code result) to import the model you "
+        "just built.",
         {
             "type": "object",
             "properties": {
@@ -291,7 +329,6 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
                 "label": {"type": "string"},
                 "replace": {"type": "string"},
             },
-            "required": ["path"],
         },
         import_shape,
         mutating=True,
