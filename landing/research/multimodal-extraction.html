@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Teaching a model to think like a CAD engine — OrionFlow</title>
+<meta name="description" content="Multimodal extraction: feature graphs, rolling geometry, sketch constraints, and topology-stable anchors as training signal." />
+<script>(function(){try{var t=localStorage.getItem('of-theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="research.css" />
+</head>
+<body>
+<header class="rhead">
+  <div class="rhead__in">
+    <a class="brand" href="../index.html#top" aria-label="OrionFlow home">
+      <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="6" cy="19" r="2.6" fill="currentColor"/><circle cx="20" cy="13" r="2.6" fill="currentColor"/>
+        <circle cx="13" cy="7" r="3.2" fill="#7059E8"/>
+      </svg>
+      <span class="wm">OrionFlow</span>
+    </a>
+    <div class="rhead__r">
+      <a class="hidesm" href="index.html">Research</a>
+      <a class="hidesm" href="../index.html#start">Try it</a>
+      <button class="theme-btn" id="theme" type="button" aria-label="Toggle dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+<article>
+  <div class="art rwrap">
+    <span class="eyebrow">Research · 2026</span>
+    <h1>Teaching a model to think like a CAD engine</h1>
+    <p class="art__lead">To generate parametric CAD, a model has to learn more than what a part looks like. It has to learn how a part is reasoned about — spatially, topologically, and as a sequence of intent.</p>
+    <div class="art__meta"><span>OrionFlow Research</span><span class="sep"></span><span>7 min read</span></div>
+  </div>
+
+  <div class="prose rwrap">
+    <p>Geometry alone is a weak teacher. A mesh tells a model the final shape but nothing about the moves that produced it — which face a pocket was cut into, why a sketch stays attached when a parameter changes, or whether an operation added or removed material. So our extractor pulls a <strong>multimodal graph</strong> out of every model, not just its surface.</p>
+
+    <h2>Four layers of signal</h2>
+    <p>From each source model we extract four aligned views, all keyed to the same features:</p>
+    <ul>
+      <li><strong>Structure</strong> — a dependency graph of features with one-hot operation tokens, normalized parameter vectors, and a chronological index, plus edges for profile, base, support, and expression links.</li>
+      <li><strong>Space</strong> — a rolling timeline of the solid at every step: bounding box, centre of mass, volume, surface area, face/edge/vertex counts, and the deltas between steps. This is what teaches additive vs. subtractive intent.</li>
+      <li><strong>Sketch</strong> — the constraint graph: each constraint's bound geometry and vertices, driving vs. reference status, and degrees of freedom. Fully-constrained sketches carry the strongest design intent.</li>
+      <li><strong>Topology</strong> — stable anchors that replace fragile face IDs with geometric signatures (centre of mass, normal, adjacency), so references survive renaming.</li>
+    </ul>
+
+    <h2>Why a graph, not a sequence</h2>
+    <p>A CAD model isn't a flat list of steps — it's a hierarchy. A sketch is mapped onto a datum; a pocket cuts a specific pad; a parameter in a spreadsheet drives a pad's length three steps later. Flatten that into "step 1 → step 2 → step 3" and you throw away the relationships that make an edit predictable. We keep the true dependency edges, so a graph network can learn that geometry is a spatial, constraint-driven hierarchy.</p>
+
+    <div class="callout">
+      <span class="k">The volumetric delta</span>
+      <p>Diffing the solid's volume across a step labels every operation: a pad adds, a pocket removes. The model learns the physical consequence of each feature, not just its name.</p>
+    </div>
+
+    <h2>Built to degrade gracefully</h2>
+    <p>The extractor is deterministic and defensive. If an exotic part defeats one layer, the row still yields a valid base model with the failure recorded — we never silently drop data, and we never let a noisy heuristic pollute ground truth. Inference about manufacturing or feature semantics lives in a separate, confidence-scored pass, kept out of the deterministic extraction entirely.</p>
+    <hr />
+    <p style="color:var(--slate);font-size:16px;">Next: <a href="deterministic-round-trip.html">Deterministic round-trip, verified →</a></p>
+    <a class="backlink" href="index.html">← All research</a>
+  </div>
+</article>
+</main>
+
+<footer class="rfoot">
+  <div class="rfoot__in">
+    <a class="brand" href="../index.html#top" aria-label="OrionFlow home">
+      <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="#EDEAFB" stroke-width="1.6"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="#EDEAFB" stroke-width="1.6"/>
+        <circle cx="6" cy="19" r="2.6" fill="#EDEAFB"/><circle cx="20" cy="13" r="2.6" fill="#EDEAFB"/>
+        <circle cx="13" cy="7" r="3.2" fill="#8B79F2"/>
+      </svg>
+      <span class="wm">OrionFlow</span>
+    </a>
+    <span>© 2026 OrionFlow · AI for mechanical engineers</span>
+  </div>
+</footer>
+<script src="theme.js"></script>
+</body>
+</html>
