@@ -17,7 +17,17 @@
       "properties": {
         "name": {"type": "string"},
         "label": {"type": "string"},
-        "object_count": {"type": "integer", "minimum": 0}
+        "object_count": {"type": "integer", "minimum": 0},
+        "uuid": {"type": ["string", "null"]},
+        "freecad_version": {"type": ["string", "null"]},
+        "body_count": {"type": "integer", "minimum": 0},
+        "body_names": {"type": "array", "items": {"type": "string"}},
+        "author": {"type": ["string", "null"]},
+        "created": {"type": ["string", "null"]},
+        "modified_by": {"type": ["string", "null"]},
+        "modified": {"type": ["string", "null"]},
+        "company": {"type": ["string", "null"]},
+        "comment": {"type": ["string", "null"]}
       }
     },
     "features": {
@@ -56,7 +66,21 @@
               "additionalProperties": true,
               "properties": {
                 "index": {"type": "integer"},
-                "type": {"type": "string", "enum": ["Circle", "ArcOfCircle", "LineSegment", "Point", "BSpline", "Bezier", "Other"]},
+                "type": {"type": "string", "enum": ["Circle", "ArcOfCircle", "LineSegment", "Point", "BSpline", "Bezier", "Ellipse", "ArcOfEllipse", "Other"]},
+                "construction": {"type": "boolean"}
+              }
+            }
+          },
+          "external_geometry": {
+            "type": "array",
+            "description": "Curves imported from other sketches/bodies via addExternal, resolved into this sketch's local 2D frame. Closes ring/cutout profiles for the compiler.",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "additionalProperties": true,
+              "properties": {
+                "type": {"type": "string", "enum": ["Circle", "ArcOfCircle", "LineSegment", "Other"]},
+                "source_object": {"type": "string"},
                 "construction": {"type": "boolean"}
               }
             }
@@ -130,7 +154,10 @@
         "properties": {
           "object": {"type": "string"},
           "property": {"type": "string"},
-          "expression": {"type": "string"}
+          "expression": {"type": "string"},
+          "referenced_objects": {"type": "array", "items": {"type": "string"}},
+          "referenced_properties": {"type": "array", "items": {"type": "string"}},
+          "result": {}
         }
       }
     }

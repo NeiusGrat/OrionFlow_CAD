@@ -23,13 +23,18 @@ from .config import (
 )
 from .feature_graph import build_graph
 from .parameter_mapper import map_parameters
+from .quality import score_graph
 from .validate import validate_graph
 
-PARSER_SCRIPT = PKG_DIR / "fcstd_parser.py"
+PARSER_SCRIPT = PKG_DIR / "fcstd_multimodal.py"
 
 
 def _run_freecad_extraction(manifest: list[dict[str, str]]) -> str:
-    """Invoke fcstd_parser under FreeCAD's Python over the whole manifest."""
+    """Invoke the multimodal extractor under FreeCAD's Python over the manifest.
+
+    Output per file is ``<id>.multimodal.json`` — a superset of the base raw
+    graph plus the four GNN layers. The base raw is recovered downstream by
+    popping the ``multimodal`` block off."""
     ensure_dirs()
     manifest_path = RAW_EXTRACT_DIR / "_manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
@@ -83,7 +88,7 @@ def run(limit: int = 100, with_glb: bool = False, skip_download: bool = False,
     with dataset_path.open("w", encoding="utf-8") as ds:
         for idx, r in enumerate(rows, 1):
             rid = r["id"]
-            raw_path = RAW_EXTRACT_DIR / f"{rid}.json"
+            raw_path = RAW_EXTRACT_DIR / f"{rid}.multimodal.json"
             if not raw_path.exists():
                 summary["n_extract_errors"] += 1
                 summary["errors"].append({"id": rid, "error": "no raw output"})
@@ -95,8 +100,11 @@ def run(limit: int = 100, with_glb: bool = False, skip_download: bool = False,
                 continue
             summary["n_extracted"] += 1
 
+            # Separate the GNN multimodal layers from the schema-validated graph.
+            multimodal = raw.pop("multimodal", {})
             params, pstats = map_parameters(raw, r.get("key_parameters", ""))
             graph = build_graph(raw, params)
+            quality = score_graph(graph, multimodal)
             report = validate_graph(graph)
             if report["valid"]:
                 summary["n_valid"] += 1
@@ -116,12 +124,14 @@ def run(limit: int = 100, with_glb: bool = False, skip_download: bool = False,
                 "description": r.get("description", ""),
                 "key_parameters": r.get("key_parameters", ""),
                 "feature_graph": graph,
+                "multimodal": multimodal,
+                "quality": quality,
                 "_meta": {"param_stats": pstats, "validation": report},
             }
             sample_path = TRAINING_DIR / f"sample_{idx:04d}_{rid}.json"
             sample_path.write_text(json.dumps(pair, indent=2), encoding="utf-8")
             ds.write(json.dumps({k: pair[k] for k in
-                                 ("id", "description", "key_parameters", "feature_graph")}) + "\n")
+                                 ("id", "description", "key_parameters", "feature_graph", "multimodal")}) + "\n")
 
     n = max(summary["n_param_rows"], 1)
     summary["mean_param_coverage"] = round(summary["param_coverage_sum"] / n, 4)
