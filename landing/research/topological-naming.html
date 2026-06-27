@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beating the Topological Naming Problem — OrionFlow</title>
+<meta name="description" content="Replacing fragile face IDs with geometric coordinate signatures, so an edit doesn't break on a renamed face." />
+<script>(function(){try{var t=localStorage.getItem('of-theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="research.css" />
+</head>
+<body>
+<header class="rhead">
+  <div class="rhead__in">
+    <a class="brand" href="../index.html#top" aria-label="OrionFlow home">
+      <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="6" cy="19" r="2.6" fill="currentColor"/><circle cx="20" cy="13" r="2.6" fill="currentColor"/>
+        <circle cx="13" cy="7" r="3.2" fill="#7059E8"/>
+      </svg>
+      <span class="wm">OrionFlow</span>
+    </a>
+    <div class="rhead__r">
+      <a class="hidesm" href="index.html">Research</a>
+      <a class="hidesm" href="../index.html#start">Try it</a>
+      <button class="theme-btn" id="theme" type="button" aria-label="Toggle dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+<article>
+  <div class="art rwrap">
+    <span class="eyebrow">Engineering · 2026</span>
+    <h1>Beating the Topological Naming Problem</h1>
+    <p class="art__lead">The oldest failure mode in parametric CAD is a feature that points at “Face7” — until an edit upstream turns Face7 into Face9, and the whole model collapses. We design that fragility out.</p>
+    <div class="art__meta"><span>OrionFlow Research</span><span class="sep"></span><span>6 min read</span></div>
+  </div>
+
+  <div class="prose rwrap">
+    <p>When a fillet is applied to an edge, CAD kernels record the reference by name — something like <code>Pad.Face7</code>. Those names are an accident of how the kernel happened to enumerate the solid. Change a feature earlier in the tree and the enumeration shifts: the fillet now points at the wrong face, or nothing at all. This is the <strong>Topological Naming Problem</strong>, and it has broken parametric models for decades.</p>
+
+    <h2>The fix: describe the geometry, not the index</h2>
+    <p>Instead of storing a brittle string, OrionFlow stores what the reference actually <em>is</em>, geometrically. When a feature touches a face or edge, we capture a stable signature:</p>
+    <ul>
+      <li>the <strong>centre of mass</strong> of the face or edge,</li>
+      <li>its <strong>normal</strong> or direction vector,</li>
+      <li>and its <strong>adjacency</strong> — the neighbouring faces and the directions they point.</li>
+    </ul>
+
+    <h2>Fragile vs. robust</h2>
+    <p>The difference is the difference between an index and an address:</p>
+    <pre><code>Fragile:  Fillet applied to Pad.Face7
+
+Robust:   Fillet applied to the face where
+          normal      = [0, 0, 1]
+          center      = [50, 25, 10]
+          adjacent to = [+X, -X, +Y, -Y] walls</code></pre>
+
+    <p>If an upstream edit renumbers the solid, "Face7" may move — but "the top face at z=10 pointing in +Z, bordered by the four side walls" still resolves to the same place. The reference is pinned to geometry, which is stable, rather than to a label, which is not.</p>
+
+    <div class="callout">
+      <span class="k">For the model, too</span>
+      <p>These anchors aren't just for robustness at edit time — they're training signal. A model that learns to reference faces by their geometric signature is, by construction, far less likely to hallucinate a reference that breaks.</p>
+    </div>
+
+    <h2>The result</h2>
+    <p>Edits survive. A parameter change that reshapes the part doesn't orphan its fillets and pockets, because every reference knows where it lives in space. Combined with the deterministic round trip, it means a generated model behaves like a model a careful engineer built by hand — which is the whole point.</p>
+    <hr />
+    <p style="color:var(--slate);font-size:16px;">Next: <a href="feature-graph-ir.html">A kernel-independent IR for editable CAD →</a></p>
+    <a class="backlink" href="index.html">← All research</a>
+  </div>
+</article>
+</main>
+
+<footer class="rfoot">
+  <div class="rfoot__in">
+    <a class="brand" href="../index.html#top" aria-label="OrionFlow home">
+      <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="#EDEAFB" stroke-width="1.6"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="#EDEAFB" stroke-width="1.6"/>
+        <circle cx="6" cy="19" r="2.6" fill="#EDEAFB"/><circle cx="20" cy="13" r="2.6" fill="#EDEAFB"/>
+        <circle cx="13" cy="7" r="3.2" fill="#8B79F2"/>
+      </svg>
+      <span class="wm">OrionFlow</span>
+    </a>
+    <span>© 2026 OrionFlow · AI for mechanical engineers</span>
+  </div>
+</footer>
+<script src="theme.js"></script>
+</body>
+</html>

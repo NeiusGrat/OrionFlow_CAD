@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OrionFlow — AI for mechanical engineers</title>
+<script>(function(){try{var t=localStorage.getItem('of-theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<meta name="description" content="Describe a part in plain English. OrionFlow builds an editable, parametric CAD model you can dimension, tweak, and export to STEP, STL, or GLB." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#FFFFFF;
+    --surface:#FFFFFF;
+    --nav-bg:rgba(255,255,255,.82);
+    --ink:#161324;
+    --slate:#6B6880;
+    --accent:#5D4BD6;
+    --accent-2:#8B79F2;
+    --accent-deep:#4C3CC2;
+    --accent-soft:#EFEBFB;
+    --tint:#FAF9FE;
+    --line:#ECEAF7;
+    --line-strong:#DCD8EF;
+    --display:"Archivo",system-ui,sans-serif;
+    --body:"IBM Plex Sans",system-ui,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --maxw:1140px;
+  }
+  [data-theme="dark"]{
+    --paper:#0E0B18;
+    --surface:#181426;
+    --nav-bg:rgba(14,11,24,.8);
+    --ink:#ECEAF6;
+    --slate:#9A93B4;
+    --accent:#8B79F2;
+    --accent-2:#A593F7;
+    --accent-deep:#6E5BE6;
+    --accent-soft:#221C3A;
+    --tint:#141021;
+    --line:#2A2442;
+    --line-strong:#3A335A;
+  }
+  html{background:var(--paper);}
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--body);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  a{color:inherit;text-decoration:none;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px;}
+  .mono{font-family:var(--mono);}
+
+  /* ---- eyebrow / labels ---- */
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--accent);display:inline-flex;align-items:center;gap:9px;
+  }
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;}
+
+  /* ---- nav ---- */
+  .nav{
+    position:sticky;top:0;z-index:50;background:var(--nav-bg);
+    backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid var(--line);
+  }
+  .nav__in{display:flex;align-items:center;justify-content:space-between;height:64px;}
+  .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;
+    font-size:19px;letter-spacing:-.01em;}
+  .brand svg{display:block;}
+  .nav__links{display:flex;align-items:center;gap:30px;font-size:14.5px;color:var(--slate);font-weight:500;}
+  .nav__links a:hover{color:var(--ink);}
+  .nav__login{font-weight:500;}
+  .brand .wm{background:linear-gradient(96deg,#5D4BD6,#8B79F2);-webkit-background-clip:text;
+    background-clip:text;color:transparent;}
+
+  /* ---- announcement bar ---- */
+  .announce{background:var(--tint);border-bottom:1px solid var(--line);}
+  .announce a{display:flex;align-items:center;justify-content:center;gap:11px;height:40px;
+    font-size:13.5px;color:var(--ink);font-weight:500;}
+  .announce .pill{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--accent);border:1px solid var(--line-strong);border-radius:999px;padding:3px 9px;
+    background:var(--accent-soft);}
+  .announce .arr{color:var(--accent);transition:transform .16s ease;}
+  .announce a:hover .arr{transform:translateX(4px);}
+
+  /* ---- theme toggle ---- */
+  .theme-btn{width:36px;height:36px;border:1px solid var(--line-strong);border-radius:8px;
+    background:transparent;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+    color:var(--ink);transition:border-color .15s ease,background .15s ease;flex:none;}
+  .theme-btn:hover{border-color:var(--ink);background:var(--accent-soft);}
+  .theme-btn svg{width:17px;height:17px;}
+  .theme-btn .moon{display:none;}
+  [data-theme="dark"] .theme-btn .sun{display:none;}
+  [data-theme="dark"] .theme-btn .moon{display:inline;}
+
+  /* ---- credibility strip ---- */
+  .proof{display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--slate);
+    padding:24px 0 8px;}
+  .proof b{color:var(--ink);font-weight:500;}
+  .proof span.k{color:var(--slate);text-transform:uppercase;letter-spacing:.16em;font-size:11px;}
+  .proof .sep{width:4px;height:4px;border-radius:50%;background:var(--line-strong);}
+  .btn{
+    font-family:var(--body);font-weight:600;font-size:15px;border-radius:8px;
+    padding:10px 18px;border:1px solid transparent;cursor:pointer;display:inline-flex;
+    align-items:center;gap:8px;transition:transform .12s ease,background .15s ease,box-shadow .15s ease;
+  }
+  .btn--primary{background:linear-gradient(180deg,#6A58E2,var(--accent));color:#fff;
+    box-shadow:0 1px 0 rgba(0,0,0,.04),0 6px 16px -8px rgba(93,75,214,.5);}
+  .btn--primary:hover{background:linear-gradient(180deg,#5F4DDB,var(--accent-deep));transform:translateY(-1px);
+    box-shadow:0 10px 26px -8px rgba(93,75,214,.55);}
+  .btn--ghost{background:transparent;color:var(--ink);border-color:var(--line-strong);}
+  .btn--ghost:hover{border-color:var(--ink);}
+  .nav .btn{padding:8px 16px;}
+
+  /* ---- hero ---- */
+  .hero{padding:78px 0 44px;position:relative;overflow:hidden;isolation:isolate;}
+  .hero::before,.hero::after{content:"";position:absolute;border-radius:50%;
+    filter:blur(70px);z-index:-1;pointer-events:none;}
+  .hero::before{width:560px;height:560px;top:-220px;right:-90px;opacity:.7;
+    background:radial-gradient(circle,#C7BAF8,transparent 66%);animation:drift1 26s ease-in-out infinite;}
+  .hero::after{width:460px;height:460px;top:-80px;left:-150px;opacity:.6;
+    background:radial-gradient(circle,#CBD8FB,transparent 66%);animation:drift2 32s ease-in-out infinite;}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-44px,34px) scale(1.08);}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(34px,-22px) scale(1.06);}}
+  .hero .wrap{position:relative;z-index:1;}
+  .hero__grid{display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center;}
+  .hero h1{
+    font-family:var(--display);font-weight:700;font-size:clamp(40px,5.4vw,66px);
+    line-height:1.03;letter-spacing:-.028em;margin:20px 0 0;
+  }
+  .hero h1 em{font-style:normal;
+    background:linear-gradient(102deg,#5D4BD6 8%,#7059E8 46%,#5B8DEF 96%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero__sub{font-size:19px;color:var(--slate);max-width:30ch;margin:22px 0 30px;}
+  .hero__cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .hero__note{font-family:var(--mono);font-size:12.5px;color:var(--slate);margin-top:22px;
+    display:flex;align-items:center;gap:8px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;
+    box-shadow:0 0 0 0 rgba(93,75,214,.45);animation:pulse 2.4s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(93,75,214,.4);}70%{box-shadow:0 0 0 8px rgba(93,75,214,0);}100%{box-shadow:0 0 0 0 rgba(93,75,214,0);}}
+
+  /* ---- demo (signature) ---- */
+  .demo{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    box-shadow:0 30px 70px -38px rgba(93,75,214,.34);
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:22px 22px;background-position:-1px -1px;
+  }
+  .demo__bar{
+    display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--surface);
+    border-bottom:1px solid var(--line);
+  }
+  .demo__bar i{width:9px;height:9px;border-radius:50%;background:var(--line-strong);display:block;}
+  .demo__bar i:first-child{background:var(--accent);}
+  .demo__tag{margin-left:6px;font-family:var(--mono);font-size:12px;color:var(--slate);}
+  .demo__body{padding:18px 18px 20px;position:relative;}
+  .prompt{
+    font-family:var(--mono);font-size:13.5px;background:var(--surface);border:1px solid var(--line);
+    border-radius:9px;padding:11px 13px;color:var(--ink);display:flex;align-items:center;
+    min-height:42px;white-space:nowrap;overflow:hidden;
+  }
+  .prompt b{color:var(--accent);font-weight:600;margin-right:9px;}
+  .caret{width:8px;height:16px;background:var(--accent);margin-left:2px;display:inline-block;
+    animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+
+  .stage{display:grid;grid-template-columns:1fr 168px;gap:14px;margin-top:14px;align-items:stretch;}
+  .draw{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:6px;}
+  .draw svg{width:100%;height:auto;display:block;}
+  /* svg drawing */
+  .ln{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;
+    stroke-dasharray:680;stroke-dashoffset:680;transition:stroke-dashoffset 1s ease;}
+  .demo.is-draw .ln{stroke-dashoffset:0;}
+  .demo.is-draw .ln.l2{transition-delay:.5s;}
+  .demo.is-draw .ln.l3{transition-delay:.9s;}
+  .demo.is-draw .ln.l4{transition-delay:1.15s;}
+  .dimset{opacity:0;transition:opacity .5s ease .15s;}
+  .demo.is-dim .dimset{opacity:1;}
+  .dim{stroke:var(--accent);stroke-width:1;}
+  .dimt{fill:var(--accent);font-family:var(--mono);font-size:11px;font-weight:600;}
+  .hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5;}
+
+  .tree{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:12px;font-family:var(--mono);
+    font-size:12.5px;display:flex;flex-direction:column;gap:0;}
+  .tree h4{margin:0 0 10px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--slate);font-weight:600;}
+  .tree li{list-style:none;display:flex;align-items:center;gap:8px;padding:5px 0;color:var(--ink);
+    opacity:0;transform:translateX(-6px);transition:opacity .4s ease,transform .4s ease;}
+  .tree ul{margin:0;padding:0;}
+  .tree li.on{opacity:1;transform:none;}
+  .tree li b{color:var(--accent);font-weight:600;}
+  .node{width:7px;height:7px;border:1.5px solid var(--ink);border-radius:2px;flex:none;}
+  .tree li:last-child .node{border-color:var(--accent);background:var(--accent);}
+
+  .exports{display:flex;gap:8px;margin-top:14px;align-items:center;}
+  .chip{font-family:var(--mono);font-size:11.5px;font-weight:500;border:1px solid var(--line-strong);
+    border-radius:999px;padding:5px 11px;color:var(--slate);opacity:0;transform:translateY(4px);
+    transition:opacity .35s ease,transform .35s ease,border-color .2s,color .2s;}
+  .demo.is-exp .chip{opacity:1;transform:none;}
+  .demo.is-exp .chip:nth-child(2){transition-delay:.08s;}
+  .demo.is-exp .chip:nth-child(3){transition-delay:.16s;}
+  .chip.lead{border-color:var(--accent);color:var(--accent);}
+
+  /* ---- steps ---- */
+  .steps{padding:64px 0 12px;border-top:1px solid var(--line);margin-top:56px;}
+  .steps__head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:38px;}
+  .steps h2,.caps h2{font-family:var(--display);font-weight:700;font-size:clamp(26px,3.4vw,38px);
+    letter-spacing:-.02em;margin:14px 0 0;max-width:18ch;line-height:1.05;}
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .flow__cell{background:var(--surface);padding:26px 24px 30px;position:relative;}
+  .flow__n{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.1em;}
+  .flow__cell h3{font-family:var(--display);font-weight:600;font-size:20px;margin:14px 0 8px;letter-spacing:-.01em;}
+  .flow__cell p{margin:0;color:var(--slate);font-size:15.5px;}
+  .flow__cell::after{content:"→";position:absolute;right:-12px;top:50%;transform:translateY(-50%);
+    font-family:var(--mono);color:var(--line-strong);z-index:2;background:var(--paper);padding:2px;}
+  .flow__cell:last-child::after{display:none;}
+
+  /* ---- capabilities ---- */
+  .caps{padding:66px 0 56px;background:var(--tint);border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);margin-top:56px;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:34px;}
+  .cap{padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--surface);
+    transition:border-color .2s ease,transform .2s ease;}
+  .cap:hover{border-color:var(--line-strong);transform:translateY(-2px);}
+  .cap__k{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);}
+  .cap h3{font-family:var(--display);font-weight:600;font-size:18px;margin:12px 0 7px;letter-spacing:-.01em;}
+  .cap p{margin:0;color:var(--slate);font-size:14.5px;line-height:1.55;}
+
+  /* ---- research / writing ---- */
+  .research{padding:62px 0 8px;border-top:1px solid var(--line);margin-top:56px;}
+  .posts{list-style:none;margin:36px 0 0;padding:0;border-top:1px solid var(--line);}
+  .post{display:grid;grid-template-columns:158px 1fr 28px;gap:26px;align-items:baseline;
+    padding:26px 10px;border-bottom:1px solid var(--line);transition:background .18s ease;}
+  .post:hover{background:var(--tint);}
+  .post__meta{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;color:var(--slate);
+    text-transform:uppercase;white-space:nowrap;}
+  .post__title{font-family:var(--display);font-weight:600;font-size:21px;letter-spacing:-.015em;
+    line-height:1.2;display:inline-block;}
+  .post:hover .post__title{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
+  .post__desc{margin:8px 0 0;color:var(--slate);font-size:15px;max-width:62ch;}
+  .post__arrow{font-family:var(--mono);color:var(--slate);justify-self:end;align-self:center;
+    transition:transform .18s ease,color .18s ease;}
+  .post:hover .post__arrow{transform:translateX(4px);color:var(--ink);}
+  @media (max-width:880px){.post{grid-template-columns:1fr;gap:7px;}.post__arrow{display:none;}}
+
+  /* ---- early access ---- */
+  .cta{margin:80px 0 16px;border:1px solid var(--line);border-radius:20px;
+    background:linear-gradient(180deg,var(--surface),var(--tint));position:relative;overflow:hidden;
+    padding:50px 44px;display:flex;justify-content:space-between;align-items:center;gap:30px;flex-wrap:wrap;
+    box-shadow:0 24px 60px -44px rgba(93,75,214,.45);}
+  .cta::before{content:"";position:absolute;width:420px;height:420px;border-radius:50%;
+    filter:blur(80px);background:radial-gradient(circle,#D6CBFA,transparent 64%);
+    top:-200px;right:-70px;opacity:.8;pointer-events:none;}
+  .cta>*{position:relative;z-index:1;}
+  .cta h2{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,34px);letter-spacing:-.02em;margin:8px 0 6px;}
+  .cta p{margin:0;color:var(--slate);max-width:40ch;}
+  .form{display:flex;gap:10px;flex-wrap:wrap;}
+  .form input{font-family:var(--body);font-size:15px;padding:12px 14px;border:1px solid var(--line-strong);
+    border-radius:8px;min-width:248px;background:var(--paper);color:var(--ink);}
+  .form input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent;}
+  .form__ok{font-family:var(--mono);font-size:13px;color:var(--accent);align-self:center;}
+
+  /* ---- footer ---- */
+  footer{margin-top:80px;position:relative;color:#CFC9E6;
+    background:radial-gradient(1100px 380px at 50% -40%,#2A2147,transparent 70%),
+               linear-gradient(180deg,#181327,#100C1D);}
+  footer::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(139,121,242,.55),transparent);}
+  .foot-top{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px;padding:62px 0 46px;}
+  .foot-brand .brand{color:#fff;font-size:20px;}
+  .foot-brand p{color:#948CB4;font-size:14.5px;max-width:32ch;margin:16px 0 0;line-height:1.6;}
+  .foot-col h5{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:#7B739C;margin:5px 0 16px;}
+  .foot-col a{display:block;color:#C6C0DE;font-size:14.5px;padding:6px 0;width:fit-content;
+    transition:color .15s ease;}
+  .foot-col a:hover{color:#fff;}
+  .foot-bot{border-top:1px solid rgba(255,255,255,.08);padding:20px 0 26px;display:flex;
+    justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+    font-size:13px;color:#857DA6;}
+  .foot-bot .mono{font-size:12px;letter-spacing:.03em;}
+  @media (max-width:880px){.foot-top{grid-template-columns:1fr 1fr;gap:30px;}}
+
+  a.btn:focus-visible,.nav__links a:focus-visible,.form input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  @media (max-width:880px){
+    .hero__grid{grid-template-columns:1fr;gap:36px;}
+    .flow,.grid{grid-template-columns:1fr;}
+    .flow__cell::after{content:"↓";right:auto;left:50%;top:auto;bottom:-12px;transform:translateX(-50%);}
+    .nav__links a:not(.btn){display:none;}
+    .cta{padding:34px 26px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;}
+    .ln{stroke-dashoffset:0;}.dimset,.tree li,.chip{opacity:1;transform:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== ANNOUNCEMENT ===== -->
+<div class="announce">
+  <a href="#start"><span class="pill">Private beta</span> OrionFlow is now in private beta <span class="arr">→</span></a>
+</div>
+
+<!-- ===== NAV ===== -->
+<header class="nav">
+  <div class="wrap nav__in">
+    <a class="brand" href="#top" aria-label="OrionFlow home">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="6" cy="19" r="2.6" fill="currentColor"/>
+        <circle cx="20" cy="13" r="2.6" fill="currentColor"/>
+        <circle cx="13" cy="7" r="3.2" fill="#7059E8"/>
+      </svg>
+      <span class="wm">OrionFlow</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#caps">Capabilities</a>
+      <a href="#research">Research</a>
+      <a href="#start" class="nav__login">Log in</a>
+      <button class="theme-btn" id="theme" type="button" aria-label="Toggle dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/>
+        </svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/>
+        </svg>
+      </button>
+      <a class="btn btn--primary" href="#start">Try it</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="wrap hero__grid">
+    <div>
+      <span class="eyebrow">Text&nbsp;→&nbsp;Parametric&nbsp;CAD</span>
+      <h1>AI for <em>mechanical engineers.</em></h1>
+      <p class="hero__sub">Describe a part in plain English. OrionFlow builds an editable, parametric model — not a frozen mesh — that you can re-dimension and export.</p>
+      <div class="hero__cta">
+        <a class="btn btn--primary" href="#start">Try it free</a>
+        <a class="btn btn--ghost" href="#how">See how it works</a>
+      </div>
+      <p class="hero__note"><span class="dot"></span>Watch a real part build itself&nbsp;→</p>
+    </div>
+
+    <!-- signature: self-drawing parametric part -->
+    <div class="demo" id="demo" aria-label="Demo: a prompt becoming a parametric CAD part">
+      <div class="demo__bar"><i></i><i></i><i></i><span class="demo__tag">orionflow · new part</span></div>
+      <div class="demo__body">
+        <div class="prompt"><b>›</b><span id="ptext"></span><span class="caret"></span></div>
+
+        <div class="stage">
+          <div class="draw">
+            <svg viewBox="0 0 300 190" role="img" aria-label="Top view of a 100 by 50 plate with two 15mm holes 50mm apart">
+              <!-- plate -->
+              <rect class="ln l1" x="40" y="44" width="200" height="100" rx="2"/>
+              <!-- holes -->
+              <circle class="ln l2" cx="80" cy="94" r="15"/>
+              <circle class="ln l3" cx="180" cy="94" r="15"/>
+              <!-- highlight active hole + thickness hint -->
+              <path class="ln l4" d="M40 44 L52 32 L252 32 L240 44" />
+              <g class="dimset">
+                <!-- width 100 -->
+                <line class="dim" x1="40" y1="162" x2="240" y2="162"/>
+                <line class="dim" x1="40" y1="156" x2="40" y2="168"/>
+                <line class="dim" x1="240" y1="156" x2="240" y2="168"/>
+                <text class="dimt" x="130" y="176" text-anchor="middle">100</text>
+                <!-- pitch 50 between centres -->
+                <line class="dim" x1="80" y1="94" x2="180" y2="94" stroke-dasharray="3 3"/>
+                <text class="dimt" x="130" y="88" text-anchor="middle">50</text>
+                <!-- diameter leader -->
+                <line class="dim" x1="80" y1="94" x2="118" y2="60"/>
+                <text class="dimt" x="120" y="58">⌀15</text>
+                <!-- thickness -->
+                <text class="dimt" x="256" y="42">10</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="tree" aria-hidden="true">
+            <h4>Feature tree</h4>
+            <ul>
+              <li id="t0"><span class="node"></span>Sketch <b>·rect</b></li>
+              <li id="t1"><span class="node"></span>Pad <b>10mm</b></li>
+              <li id="t2"><span class="node"></span>Pocket <b>⌀15</b></li>
+              <li id="t3"><span class="node"></span>Pattern <b>×2</b></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="exports">
+          <span class="chip lead">STEP</span>
+          <span class="chip">STL</span>
+          <span class="chip">GLB</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CREDIBILITY STRIP ===== -->
+<div class="wrap">
+  <div class="proof">
+    <span class="k">Built on</span>
+    <b>build123d</b><span class="sep"></span>
+    <b>FreeCAD</b><span class="sep"></span>
+    <b>OpenCascade</b><span class="sep"></span>
+    <span>STEP / STL / GLB out</span>
+  </div>
+</div>
+
+<!-- ===== HOW IT WORKS (a real sequence -> numbered) ===== -->
+<section class="steps" id="how">
+  <div class="wrap">
+    <div class="steps__head">
+      <div>
+        <span class="eyebrow">How it works</span>
+        <h2>From a sentence to an editable model.</h2>
+      </div>
+      <p style="max-width:34ch;color:var(--slate);margin:0;">Every model is a feature history you can open, change, and rebuild — the same way you'd work in CAD.</p>
+    </div>
+    <div class="flow">
+      <div class="flow__cell">
+        <span class="flow__n">01 · Describe</span>
+        <h3>Brief it in words</h3>
+        <p>Type the part and its dimensions the way you'd hand it to a colleague.</p>
+      </div>
+      <div class="flow__cell">
+        <span class="flow__n">02 · Generate</span>
+        <h3>It plans the features</h3>
+        <p>OrionFlow lays out sketches, pads, pockets and patterns — a parametric tree, not a static mesh.</p>
+      </div>
+      <div class="flow__cell">
+        <span class="flow__n">03 · Edit &amp; export</span>
+        <h3>Change a number, rebuild</h3>
+        <p>Tweak any parameter and regenerate. Download STEP, STL, or GLB.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CAPABILITIES ===== -->
+<section class="caps" id="caps">
+  <div class="wrap">
+    <span class="eyebrow">Built for real work</span>
+    <h2>Engineering-grade, not a toy renderer.</h2>
+    <div class="grid">
+      <div class="cap"><span class="cap__k">Parametric</span><h3>Editable feature history</h3><p>Sketches, pads, pockets and patterns you can reopen and re-dimension — geometry stays driven by parameters.</p></div>
+      <div class="cap"><span class="cap__k">Constraints</span><h3>Constraint-aware sketches</h3><p>Profiles carry their dimensions and relations, so an edit moves what it should and holds the rest.</p></div>
+      <div class="cap"><span class="cap__k">Fidelity</span><h3>Deterministic round-trip</h3><p>A model rebuilds to the same solid every time — verified, not approximate.</p></div>
+      <div class="cap"><span class="cap__k">Exports</span><h3>STEP · STL · GLB</h3><p>Take the solid into your CAD, your slicer, or the browser — standard formats, no lock-in.</p></div>
+      <div class="cap"><span class="cap__k">Topology</span><h3>Stable references</h3><p>Faces and edges are pinned by geometry, so edits survive instead of breaking on a renamed face.</p></div>
+      <div class="cap"><span class="cap__k">Open core</span><h3>Build123d + FreeCAD</h3><p>Standing on proven open kernels — your models aren't trapped in a black box.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RESEARCH / WRITING ===== -->
+<section class="research" id="research">
+  <div class="wrap">
+    <div class="steps__head">
+      <div>
+        <span class="eyebrow">Research &amp; writing</span>
+        <h2>How we're building it.</h2>
+      </div>
+      <a class="btn btn--ghost" href="research/index.html">All posts</a>
+    </div>
+    <ul class="posts">
+      <li class="post">
+        <span class="post__meta">Research · 2026</span>
+        <div>
+          <a class="post__title" href="research/feature-graph-ir.html">A kernel-independent IR for editable CAD</a>
+          <p class="post__desc">Why every OrionFlow model is a FeatureGraph first — one representation that compiles to FreeCAD and build123d alike.</p>
+        </div>
+        <a class="post__arrow" href="research/feature-graph-ir.html" aria-label="Read post">↗</a>
+      </li>
+      <li class="post">
+        <span class="post__meta">Research · 2026</span>
+        <div>
+          <a class="post__title" href="research/multimodal-extraction.html">Teaching a model to think like a CAD engine</a>
+          <p class="post__desc">Multimodal extraction: feature graphs, rolling geometry, sketch constraints, and topology-stable anchors as training signal.</p>
+        </div>
+        <a class="post__arrow" href="research/multimodal-extraction.html" aria-label="Read post">↗</a>
+      </li>
+      <li class="post">
+        <span class="post__meta">Engineering · 2026</span>
+        <div>
+          <a class="post__title" href="research/deterministic-round-trip.html">Deterministic round-trip, verified</a>
+          <p class="post__desc">How we prove a generated model rebuilds to the exact same solid — down to the cubic millimetre.</p>
+        </div>
+        <a class="post__arrow" href="research/deterministic-round-trip.html" aria-label="Read post">↗</a>
+      </li>
+      <li class="post">
+        <span class="post__meta">Engineering · 2026</span>
+        <div>
+          <a class="post__title" href="research/topological-naming.html">Beating the Topological Naming Problem</a>
+          <p class="post__desc">Replacing fragile face IDs with geometric coordinate signatures, so an edit doesn't break on a renamed face.</p>
+        </div>
+        <a class="post__arrow" href="research/topological-naming.html" aria-label="Read post">↗</a>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== EARLY ACCESS ===== -->
+<section class="wrap" id="start">
+  <div class="cta">
+    <div>
+      <span class="eyebrow">Early access</span>
+      <h2>Put a part into words.</h2>
+      <p>Be among the first engineers to design by describing. We'll send an invite when your seat opens.</p>
+    </div>
+    <form class="form" id="form" novalidate>
+      <input id="email" type="email" placeholder="you@company.com" aria-label="Work email" required />
+      <button class="btn btn--primary" type="submit">Get early access</button>
+      <span class="form__ok" id="ok" hidden>On the list — talk soon.</span>
+    </form>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-top">
+      <div class="foot-brand">
+        <span class="brand" style="font-family:var(--display);font-weight:700;">
+          <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+            <line x1="6" y1="19" x2="13" y2="7" stroke="#EDEAFB" stroke-width="1.6"/>
+            <line x1="13" y1="7" x2="20" y2="13" stroke="#EDEAFB" stroke-width="1.6"/>
+            <circle cx="6" cy="19" r="2.6" fill="#EDEAFB"/><circle cx="20" cy="13" r="2.6" fill="#EDEAFB"/>
+            <circle cx="13" cy="7" r="3.2" fill="#8B79F2"/>
+          </svg>
+          <span class="wm" style="background:linear-gradient(96deg,#9C8BF5,#C9D6FB);-webkit-background-clip:text;background-clip:text;color:transparent;">OrionFlow</span>
+        </span>
+        <p>AI for mechanical engineers. Describe a part in plain English; get an editable, parametric model.</p>
+      </div>
+      <nav class="foot-col" aria-label="Product">
+        <h5>Product</h5>
+        <a href="#how">How it works</a>
+        <a href="#caps">Capabilities</a>
+        <a href="#start">Exports</a>
+        <a href="#start">Try it</a>
+      </nav>
+      <nav class="foot-col" aria-label="Research">
+        <h5>Research</h5>
+        <a href="#research">All posts</a>
+        <a href="#research">The FeatureGraph IR</a>
+        <a href="#research">Round-trip fidelity</a>
+        <a href="#research">Changelog</a>
+      </nav>
+      <nav class="foot-col" aria-label="Company">
+        <h5>Company</h5>
+        <a href="#start">Early access</a>
+        <a href="mailto:hello@orionflow.ai">Contact</a>
+        <a href="#research">Blog</a>
+        <a href="#start">Careers</a>
+      </nav>
+    </div>
+    <div class="foot-bot">
+      <span>© 2026 OrionFlow · AI for mechanical engineers</span>
+      <span class="mono">Built on build123d · FreeCAD · OpenCascade</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var demo = document.getElementById("demo");
+  var ptext = document.getElementById("ptext");
+  var tree = ["t0","t1","t2","t3"].map(function(id){return document.getElementById(id);});
+  var PROMPT = "100×50×10 plate · 2× ⌀15 holes · 50mm apart";
+  var timers = [];
+  function clearAll(){ timers.forEach(clearTimeout); timers = []; }
+  function at(ms, fn){ timers.push(setTimeout(fn, ms)); }
+
+  function showFinal(){
+    ptext.textContent = PROMPT;
+    demo.classList.add("is-draw","is-dim","is-exp");
+    tree.forEach(function(li){ li.classList.add("on"); });
+  }
+
+  function run(){
+    clearAll();
+    demo.classList.remove("is-draw","is-dim","is-exp");
+    tree.forEach(function(li){ li.classList.remove("on"); });
+    ptext.textContent = "";
+    // type prompt
+    var i = 0;
+    (function type(){
+      if(i <= PROMPT.length){ ptext.textContent = PROMPT.slice(0,i); i++; timers.push(setTimeout(type, 34)); }
+      else { sequence(); }
+    })();
+  }
+  function sequence(){
+    at(250,  function(){ demo.classList.add("is-draw"); });
+    at(700,  function(){ tree[0].classList.add("on"); });
+    at(1150, function(){ tree[1].classList.add("on"); });
+    at(1500, function(){ demo.classList.add("is-dim"); tree[2].classList.add("on"); });
+    at(1950, function(){ tree[3].classList.add("on"); });
+    at(2250, function(){ demo.classList.add("is-exp"); });
+    at(6200, run); // hold, then loop
+  }
+
+  if(reduce){ showFinal(); }
+  else {
+    // start when hero is on screen
+    var started = false;
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting && !started){ started = true; run(); io.disconnect(); } });
+    }, {threshold:.3});
+    io.observe(demo);
+    at(2600, function(){ if(!started){ started = true; run(); } }); // fallback
+  }
+
+  // theme toggle
+  var tb = document.getElementById("theme");
+  if(tb){
+    tb.addEventListener("click", function(){
+      var d = document.documentElement;
+      var next = d.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      d.setAttribute("data-theme", next);
+      try{ localStorage.setItem("of-theme", next); }catch(e){}
+    });
+  }
+
+  // early-access form
+  var form = document.getElementById("form");
+  if(form){
+    form.addEventListener("submit", function(e){
+      e.preventDefault();
+      var email = document.getElementById("email");
+      if(!email.value || email.validity.typeMismatch){ email.focus(); return; }
+      document.getElementById("ok").hidden = false;
+      email.value = ""; email.blur();
+    });
+  }
+})();
+</script>
+</body>
+</html>
