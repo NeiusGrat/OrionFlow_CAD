@@ -23,15 +23,19 @@ import sys
 import FreeCAD as App  # type: ignore
 import Part  # type: ignore
 
-SUPPORTED = {"Body", "Sketch", "Pad", "Pocket", "Revolution", "Groove", "Hole", "Thickness"}
+SUPPORTED = {"Body", "Sketch", "Pad", "Pocket", "Revolution", "Groove", "Hole",
+             "Thickness", "LinearPattern", "PolarPattern"}
 _KIND = {
     "Pad": "PartDesign::Pad",
     "Pocket": "PartDesign::Pocket",
     "Revolution": "PartDesign::Revolution",
     "Groove": "PartDesign::Groove",
     "Hole": "PartDesign::Hole",
+    "LinearPattern": "PartDesign::LinearPattern",
+    "PolarPattern": "PartDesign::PolarPattern",
 }
 _PROFILE_OPS = {"Pad", "Pocket", "Revolution", "Groove", "Hole"}
+_TRANSFORM_OPS = {"LinearPattern", "PolarPattern"}
 
 
 def _origin_axis(body, role):
@@ -132,6 +136,9 @@ def compile_graph(graph, doc_name="rebuilt"):
                 z = 0.0 if (not have_solid and plane in ("XY", "XZ", "YZ")) else current_top
                 obj.Placement = _plane_placement(plane if plane in ("XY", "XZ", "YZ") else "XY", z)
             _add_geometry(obj, sk.get("geometry", []))
+            # Bake imported external geometry as real edges so ring/cutout
+            # profiles (outer loop + borrowed inner loop) close into a face.
+            _add_geometry(obj, sk.get("external_geometry", []))
             built_sketches[fid] = obj
             doc.recompute()
             continue
@@ -164,6 +171,54 @@ def compile_graph(graph, doc_name="rebuilt"):
             else:
                 report["built"].append({"id": fid, "type": ftype})
                 built_solids[fid] = op
+                try:
+                    current_top = body.Shape.BoundBox.ZMax
+                except Exception:
+                    pass
+            continue
+
+        # Transform feature: LinearPattern / PolarPattern (replicates Originals).
+        if ftype in _TRANSFORM_OPS:
+            op = doc.addObject(_KIND[ftype], fid)
+            orig_names = params.get("_Originals") or []
+            originals = [built_solids[n] for n in orig_names if n in built_solids]
+            if not originals and built_solids:
+                # Fall back to the most recently built solid.
+                originals = [list(built_solids.values())[-1]]
+            if not originals:
+                report["recompute_errors"].append({"id": fid, "error": "no originals to pattern"})
+                continue
+            op.Originals = originals
+            if isinstance(params.get("Occurrences"), (int, float)):
+                op.Occurrences = int(params["Occurrences"])
+            if ftype == "LinearPattern":
+                if isinstance(params.get("Length"), (int, float)):
+                    op.Length = float(params["Length"])
+                ref, ref_prop = params.get("_Direction") or {}, "Direction"
+            else:
+                if isinstance(params.get("Angle"), (int, float)):
+                    op.Angle = float(params["Angle"])
+                ref, ref_prop = params.get("_Axis") or {}, "Axis"
+            dir_obj = None
+            if ref.get("is_sketch") and ref.get("object") in built_sketches:
+                dir_obj = built_sketches[ref["object"]]
+            elif ref.get("role"):
+                dir_obj = _origin_axis(body, ref["role"])
+            if dir_obj is not None:
+                try:
+                    setattr(op, ref_prop, (dir_obj, ref.get("subs", ["H_Axis"])))
+                except Exception as e:  # noqa: BLE001
+                    report["recompute_errors"].append({"id": fid, "error": f"set {ref_prop}: {e}"})
+            if "Reversed" in params:
+                op.Reversed = bool(params["Reversed"])
+            body.addObject(op)
+            doc.recompute()
+            if op.State and "Invalid" in op.State:
+                report["recompute_errors"].append({"id": fid, "error": "invalid after recompute"})
+            else:
+                report["built"].append({"id": fid, "type": ftype})
+                built_solids[fid] = op
+                have_solid = True
                 try:
                     current_top = body.Shape.BoundBox.ZMax
                 except Exception:

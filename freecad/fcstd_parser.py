@@ -15,6 +15,7 @@ Emits one ``<id>.json`` per input (raw graph, or {"error": ...} on failure).
 import argparse
 import json
 import os
+import re
 import sys
 
 import FreeCAD as App  # type: ignore
@@ -47,58 +48,97 @@ def _qval(v):
         return v
     if isinstance(v, (int, float, str)):
         return v
+    # Vector-like (e.g. Pad.Direction) -> [x, y, z]
+    if hasattr(v, "x") and hasattr(v, "y") and hasattr(v, "z"):
+        try:
+            return [round(float(v.x), GP), round(float(v.y), GP), round(float(v.z), GP)]
+        except Exception:
+            pass
     return str(v)
 
 
+# Whitelist of property *types* that are editable scalar inputs. Type-based
+# filtering (not name-based) means new FreeCAD properties are picked up
+# automatically while links/shapes/placements/geometry are excluded by nature.
+_SCALAR_PROP_TYPES = {
+    "App::PropertyLength", "App::PropertyDistance", "App::PropertyFloat",
+    "App::PropertyFloatConstraint", "App::PropertyQuantity",
+    "App::PropertyQuantityConstraint", "App::PropertyAngle", "App::PropertyArea",
+    "App::PropertyVolume", "App::PropertyInteger", "App::PropertyIntegerConstraint",
+    "App::PropertyBool", "App::PropertyBoolList", "App::PropertyEnumeration",
+    "App::PropertyPercent", "App::PropertyString", "App::PropertyPrecision",
+    "App::PropertyVector", "App::PropertyVectorDistance",
+}
+# Pure-internal props that are editable scalars but carry no design intent.
+# This only *shrinks* output; the type whitelist still auto-captures new props.
+_PROP_NAME_SKIP = {
+    "Label", "Label2", "Visibility", "AttacherEngine", "ArcFitTolerance",
+    "MakeInternals", "AllowMultiFace", "AllowCompound", "_Body",
+}
+
+
+def _is_editable_scalar(o, name):
+    """True if property ``name`` is an editable scalar input worth recording."""
+    try:
+        tid = o.getTypeIdOfProperty(name)
+    except Exception:
+        return False
+    if tid not in _SCALAR_PROP_TYPES:
+        return False
+    try:
+        if "Hidden" in (o.getEditorMode(name) or []):
+            return False
+    except Exception:
+        pass
+    return True
+
+
 def _feature_params(o):
-    """Editable parameters per PartDesign feature type."""
+    """Editable parameters of a feature.
+
+    Properties are discovered dynamically from ``o.PropertiesList`` and filtered
+    to editable scalar inputs (so new FreeCAD props are captured without code
+    changes), then the typed structural references the compiler needs
+    (ReferenceAxis / Direction / Axis / Originals / Base) are overlaid."""
     t = o.TypeId
     p = {}
-    if t in ("PartDesign::Pad", "PartDesign::Pocket"):
-        for prop in ("Length", "Length2", "Type", "Reversed", "Midplane", "Offset"):
-            if hasattr(o, prop):
-                p[prop] = _qval(getattr(o, prop))
-    elif t == "PartDesign::Fillet":
-        if hasattr(o, "Radius"):
-            p["Radius"] = _qval(o.Radius)
-    elif t == "PartDesign::Chamfer":
-        for prop in ("Size", "Size2", "Angle", "ChamferType"):
-            if hasattr(o, prop):
-                p[prop] = _qval(getattr(o, prop))
-    elif t in ("PartDesign::Revolution", "PartDesign::Groove"):
-        for prop in ("Angle", "Midplane", "Reversed"):
-            if hasattr(o, prop):
-                p[prop] = _qval(getattr(o, prop))
+    try:
+        names = sorted(o.PropertiesList)
+    except Exception:
+        names = []
+    for name in names:
+        if name in _PROP_NAME_SKIP:
+            continue
+        if _is_editable_scalar(o, name):
+            try:
+                p[name] = _qval(getattr(o, name))
+            except Exception:
+                continue
+
+    # Typed structural references (link properties, not scalars).
+    if t in ("PartDesign::Revolution", "PartDesign::Groove"):
         p["_ReferenceAxis"] = _reference_axis(o)
     elif t == "PartDesign::LinearPattern":
-        for prop in ("Occurrences", "Length", "Reversed"):
-            if hasattr(o, prop):
-                p[prop] = _qval(getattr(o, prop))
+        p["_Direction"] = _reference_axis(o, "Direction")
+        p["_Originals"] = _pattern_originals(o)
     elif t == "PartDesign::PolarPattern":
-        for prop in ("Occurrences", "Angle", "Reversed"):
-            if hasattr(o, prop):
-                p[prop] = _qval(getattr(o, prop))
-    elif t == "PartDesign::Hole":
-        for prop in ("Diameter", "Depth", "DepthType", "DrillPoint", "DrillPointAngle",
-                     "ThreadType", "Tapered", "Reversed"):
-            if hasattr(o, prop):
-                p[prop] = _qval(getattr(o, prop))
+        p["_Axis"] = _reference_axis(o, "Axis")
+        p["_Originals"] = _pattern_originals(o)
     elif t == "PartDesign::Thickness":
-        for prop in ("Value", "Mode", "Join", "Reversed", "Intersection"):
-            if hasattr(o, prop):
-                p[prop] = _qval(getattr(o, prop))
         base = getattr(o, "Base", None)
         if base and base[0] is not None:
             p["_Base"] = {"object": base[0].Name, "faces": list(base[1])}
     return p
 
 
-def _reference_axis(o):
-    """Capture a feature's ReferenceAxis (for Revolution/Groove).
+def _reference_axis(o, prop="ReferenceAxis"):
+    """Capture a directional link reference (axis/direction) of a feature.
 
-    Most parts revolve around a principal origin axis (X/Y/Z); some use a sketch
-    construction line. ``role`` lets the compiler pick the rebuilt body's axis."""
-    ra = getattr(o, "ReferenceAxis", None)
+    Covers Revolution/Groove ``ReferenceAxis``, LinearPattern ``Direction`` and
+    PolarPattern ``Axis``. Most reference a principal origin axis (X/Y/Z) or a
+    sketch construction line / local axis (e.g. ``H_Axis``); ``role`` lets the
+    compiler pick the rebuilt body's origin axis when applicable."""
+    ra = getattr(o, prop, None)
     if not ra or ra[0] is None:
         return None
     obj, subs = ra[0], list(ra[1]) if len(ra) > 1 else [""]
@@ -111,6 +151,16 @@ def _reference_axis(o):
         "role": role,
         "is_sketch": getattr(obj, "TypeId", "") == "Sketcher::SketchObject",
     }
+
+
+def _pattern_originals(o):
+    """Names of the features a transform pattern replicates (``Originals``)."""
+    out = []
+    for x in getattr(o, "Originals", []) or []:
+        name = getattr(x, "Name", None)
+        if name:
+            out.append(name)
+    return out
 
 
 def _guess_plane(o):
@@ -154,6 +204,21 @@ def _sketch_geometry(o):
             rec.update({"type": "LineSegment",
                         "sx": round(float(s.x), GP), "sy": round(float(s.y), GP),
                         "ex": round(float(e.x), GP), "ey": round(float(e.y), GP)})
+        elif tn == "Ellipse":
+            c = g.Center
+            rec.update({"type": "Ellipse",
+                        "cx": round(float(c.x), GP), "cy": round(float(c.y), GP),
+                        "major_radius": round(float(g.MajorRadius), GP),
+                        "minor_radius": round(float(g.MinorRadius), GP),
+                        "angle_xu": round(float(g.AngleXU), GP)})
+        elif tn == "ArcOfEllipse":
+            c = g.Center
+            rec.update({"type": "ArcOfEllipse",
+                        "cx": round(float(c.x), GP), "cy": round(float(c.y), GP),
+                        "major_radius": round(float(g.MajorRadius), GP),
+                        "minor_radius": round(float(g.MinorRadius), GP),
+                        "first": round(float(g.FirstParameter), GP),
+                        "last": round(float(g.LastParameter), GP)})
         elif tn == "Point":
             rec.update({"type": "Point", "x": round(float(g.X), GP), "y": round(float(g.Y), GP)})
         elif tn == "BSplineCurve":
@@ -183,6 +248,55 @@ def _sketch_geometry(o):
     return geoms
 
 
+def _sketch_external_geometry(o):
+    """Resolve a sketch's imported external geometry into local 2D curves.
+
+    External geometry (a curve borrowed from another sketch/body via
+    ``addExternal``) closes the profile: a Pad/Pocket over an outer loop plus an
+    imported inner loop becomes a ring. FreeCAD stores the resolved curves at the
+    tail of ``ExternalGeo`` (after the two principal H/V axes); we pair them with
+    the ``ExternalGeometry`` refs by order so the compiler can bake them back in.
+    """
+    refs = list(getattr(o, "ExternalGeometry", []) or [])
+    if not refs:
+        return []
+    try:
+        ext_geo = list(o.ExternalGeo)
+    except Exception:
+        return []
+    tail = ext_geo[-len(refs):] if len(ext_geo) >= len(refs) else ext_geo
+    out = []
+    for ref, g in zip(refs, tail):
+        try:
+            src_obj = ref[0]
+            subs = list(ref[1]) if len(ref) > 1 else []
+            src_name = getattr(src_obj, "Name", "")
+        except Exception:
+            src_name, subs = "", []
+        rec = {"source_object": src_name, "source_subs": subs,
+               "construction": bool(getattr(g, "Construction", False))}
+        tn = type(g).__name__
+        if tn == "Circle":
+            c = g.Center
+            rec.update({"type": "Circle", "radius": round(float(g.Radius), GP),
+                        "cx": round(float(c.x), GP), "cy": round(float(c.y), GP)})
+        elif tn == "ArcOfCircle":
+            c = g.Center
+            rec.update({"type": "ArcOfCircle", "radius": round(float(g.Radius), GP),
+                        "cx": round(float(c.x), GP), "cy": round(float(c.y), GP),
+                        "first": round(float(g.FirstParameter), GP),
+                        "last": round(float(g.LastParameter), GP)})
+        elif tn in ("LineSegment", "Line"):
+            s, e = g.StartPoint, g.EndPoint
+            rec.update({"type": "LineSegment",
+                        "sx": round(float(s.x), GP), "sy": round(float(s.y), GP),
+                        "ex": round(float(e.x), GP), "ey": round(float(e.y), GP)})
+        else:
+            rec.update({"type": "Other", "class": tn})
+        out.append(rec)
+    return out
+
+
 def _sketch_bbox(o):
     """Union bounding box of all sketch edges in the sketch's local frame.
 
@@ -207,10 +321,40 @@ def _sketch_bbox(o):
     }
 
 
+_GEO_UNDEF = -2000  # FreeCAD's GeoUndef sentinel for an unused constraint slot.
+
+
+def _geoid(g):
+    """Normalize a constraint GeoId: sentinel -> None; keep -1/-2 (axes) and
+    negatives <= -3 (external geometry) and >=0 (real sketch geometry)."""
+    try:
+        g = int(g)
+    except Exception:
+        return None
+    return None if g <= _GEO_UNDEF else g
+
+
 def _sketch_constraints(o):
+    """Full constraint graph: type, the geometry/vertex slots each constraint
+    binds (First/Second/Third + PointPos), driving/reference/active flags, and
+    the dimensional value. This is what makes a sketch reconstructable as a graph
+    rather than a histogram of constraint types."""
     cons = []
     for i, c in enumerate(o.Constraints):
-        rec = {"index": i, "name": c.Name or "", "type": str(c.Type)}
+        rec = {
+            "index": i,
+            "name": c.Name or "",
+            "type": str(c.Type),
+            "first": _geoid(getattr(c, "First", _GEO_UNDEF)),
+            "first_pos": int(getattr(c, "FirstPos", 0)),
+            "second": _geoid(getattr(c, "Second", _GEO_UNDEF)),
+            "second_pos": int(getattr(c, "SecondPos", 0)),
+            "third": _geoid(getattr(c, "Third", _GEO_UNDEF)),
+            "third_pos": int(getattr(c, "ThirdPos", 0)),
+            "driving": bool(getattr(c, "Driving", True)),
+            "active": bool(getattr(c, "IsActive", True)),
+            "virtual_space": bool(getattr(c, "InVirtualSpace", False)),
+        }
         val = getattr(c, "Value", None)
         if val is not None:
             try:
@@ -221,6 +365,33 @@ def _sketch_constraints(o):
     return cons
 
 
+_EXPR_REF_RE = re.compile(r"<<([^>]+)>>\.(\w+)|\b([A-Za-z_]\w*)\.(\w+)")
+# Identifiers that are functions/units, not object references.
+_EXPR_NONREFS = {
+    "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sqrt", "pow", "abs",
+    "min", "max", "round", "floor", "ceil", "exp", "log", "mod", "hypot",
+    "mm", "cm", "m", "deg", "rad", "in", "pi", "e",
+}
+
+
+def _parse_expr_refs(expr):
+    """Pull (object, property) references out of a FreeCAD expression string.
+
+    Handles both ``Object.Prop`` and ``<<Label>>.Prop`` forms; this is the edge
+    set of the expression graph (design intent linking one feature to another)."""
+    objs, props = [], []
+    for m in _EXPR_REF_RE.finditer(expr):
+        obj = m.group(1) or m.group(3)
+        prop = m.group(2) or m.group(4)
+        if not obj or obj in _EXPR_NONREFS:
+            continue
+        if obj not in objs:
+            objs.append(obj)
+        if prop and prop not in props:
+            props.append(prop)
+    return objs, props
+
+
 def _expressions(o):
     out = []
     try:
@@ -229,10 +400,18 @@ def _expressions(o):
         ee = None
     for entry in (ee or []):
         try:
-            path, expr = entry[0], entry[1]
+            path, expr = str(entry[0]), str(entry[1])
         except Exception:
             continue
-        out.append({"object": o.Name, "property": str(path), "expression": str(expr)})
+        objs, props = _parse_expr_refs(expr)
+        rec = {"object": o.Name, "property": path, "expression": expr,
+               "referenced_objects": objs, "referenced_properties": props}
+        try:
+            res = o.evalExpression(expr)
+            rec["result"] = _qval(res)
+        except Exception:
+            rec["result"] = None
+        out.append(rec)
     return out
 
 
@@ -252,6 +431,7 @@ def extract(doc):
                 "global_placement": _global_placement(o),
                 "bbox": _sketch_bbox(o),
                 "geometry": _sketch_geometry(o),
+                "external_geometry": _sketch_external_geometry(o),
                 "constraints": _sketch_constraints(o),
             })
         features.append({
@@ -281,17 +461,44 @@ def extract(doc):
 
     return {
         "schema_version": SCHEMA_VERSION,
-        "document": {
-            "name": doc.Name,
-            "label": doc.Label,
-            "object_count": len(doc.Objects),
-        },
+        "document": _document_meta(doc),
         "features": features,
         "sketches": sketches,
         "dependencies": deps,
         "constraints": [],
         "expressions": expressions,
     }
+
+
+def _document_meta(doc):
+    """Layer-0 document metadata. Required name/label/object_count plus
+    provenance fields (FreeCAD version, UUID, body count, authorship/timestamps)
+    that ground the model and preserve engineering naming at the doc level."""
+    meta = {
+        "name": doc.Name,
+        "label": doc.Label,
+        "object_count": len(doc.Objects),
+    }
+    try:
+        meta["uuid"] = str(doc.Uid)
+    except Exception:
+        meta["uuid"] = None
+    try:
+        meta["freecad_version"] = ".".join(str(x) for x in App.Version()[:3])
+    except Exception:
+        meta["freecad_version"] = None
+    bodies = [o for o in doc.Objects if o.TypeId == "PartDesign::Body"]
+    meta["body_count"] = len(bodies)
+    meta["body_names"] = [b.Label for b in bodies]
+    for attr, key in (("CreatedBy", "author"), ("CreationDate", "created"),
+                      ("LastModifiedBy", "modified_by"), ("LastModifiedDate", "modified"),
+                      ("Company", "company"), ("Comment", "comment")):
+        try:
+            v = getattr(doc, attr, "")
+            meta[key] = str(v) if v else None
+        except Exception:
+            meta[key] = None
+    return meta
 
 
 def _placement(o):

@@ -25,7 +25,8 @@ from .family import classify_family
 
 REBUILT_DIR = PKG_DIR / "rebuilt"
 RECONSTRUCT_SCRIPT = PKG_DIR / "reconstruct.py"
-SUPPORTED = {"Body", "Sketch", "Pad", "Pocket", "Revolution", "Groove"}
+SUPPORTED = {"Body", "Sketch", "Pad", "Pocket", "Revolution", "Groove",
+             "LinearPattern", "PolarPattern"}
 VOLUME_TOL_PCT = 1.0  # within 1% counts as preserved
 
 
