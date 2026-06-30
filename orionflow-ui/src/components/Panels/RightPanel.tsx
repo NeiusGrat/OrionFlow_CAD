@@ -1,4 +1,5 @@
 import { useDesignStore } from "../../store/designStore";
+import { getFullUrl } from "../../services/oflApi";
 import { Download, RefreshCw } from "lucide-react";
 import ParamPanel from "./ParamPanel";
 
@@ -13,7 +14,7 @@ export default function RightPanel() {
     };
 
     const downloadUrl = current.files?.step
-        ? `http://127.0.0.1:8000/download/step/${getStepFilename(current.files.step)}`
+        ? getFullUrl(`/download/step/${getStepFilename(current.files.step)}`)!
         : "#";
 
     return (
@@ -91,7 +92,7 @@ export default function RightPanel() {
                 </div>
 
                 <a
-                    href={current.files?.stl ? `http://127.0.0.1:8000/download/stl/${current.files.stl.split(/[/\\]/).pop()}` : "#"}
+                    href={current.files?.stl ? getFullUrl(`/download/stl/${current.files.stl.split(/[/\\]/).pop()}`)! : "#"}
                     style={{
                         display: "flex",
                         alignItems: "center",

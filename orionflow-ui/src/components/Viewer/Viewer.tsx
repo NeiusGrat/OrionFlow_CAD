@@ -5,6 +5,7 @@ import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import { useDesignStore } from "../../store/designStore";
 import { useManifoldPreview } from "../../hooks/useManifoldPreview";
+import { getFullUrl } from "../../services/oflApi";
 import * as THREE from "three";
 
 import { Box as BoxIcon, Download, Zap, RotateCcw, Maximize2 } from "lucide-react";
@@ -309,7 +310,7 @@ export default function Viewer({ url }: { url: string }) {
         const file = current.files[format];
         if (!file || file === "") return null;
         const filename = file.split(/[/\\]/).pop();
-        return `http://127.0.0.1:8000/download/${format}/${filename}`;
+        return getFullUrl(`/download/${format}/${filename}`);
     };
 
     const stepUrl = getDownloadUrl('step');
