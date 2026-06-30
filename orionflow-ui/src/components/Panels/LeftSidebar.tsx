@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDesignStore } from "../../store/designStore";
+import { getFullUrl } from "../../services/oflApi";
 import {
     Layers,
     Download,
@@ -236,7 +237,7 @@ function ExportDropdown({
         const file = current.files[format];
         if (!file || file === "") return null;
         const filename = file.split(/[/\\]/).pop();
-        return `http://127.0.0.1:8000/download/${format}/${filename}`;
+        return getFullUrl(`/download/${format}/${filename}`);
     };
 
     const stepUrl = getDownloadUrl('step');
@@ -444,7 +445,7 @@ export default function LeftSidebar() {
     const handleOpenOnshape = async () => {
         if (!current) return;
         try {
-            const response = await fetch(`http://127.0.0.1:8000/api/onshape/create/${current.id}`, {
+            const response = await fetch(getFullUrl(`/api/onshape/create/${current.id}`)!, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             });
