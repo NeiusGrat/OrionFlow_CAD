@@ -120,6 +120,7 @@ class HarnessConfig:
     host: str = "127.0.0.1"
     port: int = 8770
     max_agent_steps: int = 12
+    repair_budget: int = 3     # guided repair attempts per turn (see agent/repair.py)
 
 
 @dataclass(frozen=True)
@@ -171,6 +172,7 @@ def get_config() -> OrionConfig:
         host=_env("ORION_HARNESS_HOST", "127.0.0.1"),
         port=_env_int("ORION_HARNESS_PORT", 8770),
         max_agent_steps=_env_int("ORION_MAX_AGENT_STEPS", 12),
+        repair_budget=_env_int("ORION_REPAIR_BUDGET", 3),
     )
     sandbox = SandboxConfig(
         backend=_env("ORION_SANDBOX_BACKEND", "subprocess"),

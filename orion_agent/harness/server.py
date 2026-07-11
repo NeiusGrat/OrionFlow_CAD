@@ -26,6 +26,7 @@ from orion_agent.harness.agent.loop import AgentLoop
 from orion_agent.harness.agent.verify import EditVerifier
 from orion_agent.harness.context import ContextPacker
 from orion_agent.harness.memory import MemoryStore
+from orion_agent.harness.spec import SpecParser
 from orion_agent.harness.trajectory_logger import TrajectoryLogger
 
 
@@ -47,6 +48,7 @@ class HarnessApp:
             config=self.cfg,
             verifier=EditVerifier(self.bridge),
             context_packer=ContextPacker(self.memory),
+            spec_parser=SpecParser(self.llm),
         )
 
     def handle_chat(self, payload: dict) -> dict:
@@ -55,6 +57,12 @@ class HarnessApp:
             return {"final_answer": "(empty message)", "tool_calls": [], "artifacts": []}
         session_id = payload.get("session_id", "")
         document = payload.get("document", "")
+        if not document:
+            # Resolve the open document so memory reads and writes share a key.
+            try:
+                document = self.bridge.get_document_state().get("name", "") or ""
+            except Exception:  # noqa: BLE001
+                document = ""
         images = payload.get("images") or []
         forced = payload.get("pillar")
 

@@ -80,6 +80,10 @@ class SyntheticBridge:
     def render_views(self, views=None, out_dir=None):
         return {"renders": [], "headless": True}
 
+    def extract_featuregraph(self):
+        return {"graph": getattr(self, "_compiled_graph", None) or {
+            "features": [], "sketches": [], "dependencies": []}}
+
     def select(self, refs):
         return {"selected": True}
 
@@ -108,8 +112,21 @@ class SyntheticBridge:
             self.model.parameters[k] = v
         return {"name": name, "applied": applied}
 
-    def import_shape(self, path, label="OrionResult", replace=None):
+    def import_shape(self, path, label="OrionResult", replace=None, source_code=None):
         return {"created": label} if not replace else {"replaced": replace}
+
+    def compile_featuregraph(self, graph):
+        self._compiled_graph = graph
+        ids = [f["id"] for f in graph.get("features", []) if f.get("type") != "Body"]
+        return {
+            "created": ["Body"] + ids,
+            "features": ["Body"] + ids,
+            "body": "Body",
+            "report": {"built": [{"id": i} for i in ids], "unsupported": [],
+                       "recompute_errors": [], "doc_recomputed": True,
+                       "volume": 1000.0},
+            "recompute_ok": True,
+        }
 
     def undo(self):
         return self.abort_transaction()

@@ -64,6 +64,24 @@ class ModernTemplateBase:
     def supported_variants(self) -> list[str]:
         return list(self.COMPLEXITY_VARIANTS)
 
+    def generate(self, variant: str | None = None) -> tuple[str, str]:
+        """(text, code) pair — the PartTemplate contract SyntheticGenerator calls.
+
+        A random variant and a random description phrasing keep the emitted
+        pairs varied across detail levels, matching the behaviour of the
+        original 20-template catalog this registry replaced.
+        """
+        v = variant if variant is not None else random.choice(self.supported_variants())
+        params = self.randomize_params(v)
+        if random.random() < 0.2:
+            # Vague, dimensionless request — the detail level the original
+            # catalog had, teaching the model to pick sensible defaults.
+            text = "a " + self.name.replace("_", " ")
+        else:
+            text = random.choice(self.generate_descriptions(params, v))
+        code = self.generate_code(params, v)
+        return text, code
+
     def generate_description(self, params: dict) -> str:
         return self.generate_descriptions(params, self.supported_variants()[0])[1]
 

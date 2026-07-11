@@ -2,7 +2,7 @@
 
 import os
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from app.domain.ofl_models import (
     OFLGenerateRequest,
@@ -70,6 +70,15 @@ async def ofl_download(request_id: str, filename: str):
     filepath = os.path.join(OUTPUT_BASE, request_id, filename)
 
     if not os.path.exists(filepath):
+        # Local dir is ephemeral; older artifacts only exist in object storage.
+        from app.config import settings
+
+        if settings.is_s3_configured:
+            from app.services.storage import get_storage
+
+            url = get_storage().url_for(f"ofl/{request_id}/{filename}")
+            if url:
+                return RedirectResponse(url=url, status_code=307)
         raise HTTPException(404, "File not found")
 
     media_types = {

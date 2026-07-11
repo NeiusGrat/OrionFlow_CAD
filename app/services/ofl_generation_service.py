@@ -91,6 +91,27 @@ class OFLGenerationService:
                 f"/api/v1/ofl/download/{request_id}/{os.path.basename(glb_path)}"
             )
 
+        # Durable copies: per-request output dirs are ephemeral on
+        # scale-to-zero hosts; the download route redirects to storage
+        # when the local file is gone.
+        from app.config import settings
+
+        if settings.is_s3_configured:
+            from pathlib import Path
+
+            from app.services.storage import get_storage
+
+            storage = get_storage()
+            for path in (result["step_file"], result["stl_file"], glb_path):
+                if path and os.path.exists(path):
+                    try:
+                        storage.publish(
+                            Path(path),
+                            key=f"ofl/{request_id}/{os.path.basename(path)}",
+                        )
+                    except Exception as e:
+                        logger.warning(f"OFL artifact upload failed: {e}")
+
         parameters = self._extract_parameters(ofl_code)
 
         return OFLGenerateResponse(

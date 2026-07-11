@@ -114,7 +114,17 @@ class K2ThinkClient(LLMClient):
                 )
                 wire.append({"role": "assistant", "content": (m.content + "\n" + calls).strip()})
             else:
-                wire.append({"role": m.role, "content": m.content})
+                content = m.content
+                if m.role == "user" and m.images:
+                    # Never drop attachments silently: the model must know it
+                    # cannot see them, or it will hallucinate their contents.
+                    content += (
+                        f"\n\n[Attachment note: {len(m.images)} image(s) were "
+                        "attached, but this model cannot see images. Ask the "
+                        "user for the dimensions or details you need instead "
+                        "of guessing.]"
+                    )
+                wire.append({"role": m.role, "content": content})
         return wire
 
     def _post(self, payload: dict) -> dict:

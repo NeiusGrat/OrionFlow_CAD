@@ -127,6 +127,9 @@ class BridgeClient:
     def get_model_tier(self) -> dict:
         return self._call(Capability.GET_MODEL_TIER)
 
+    def extract_featuregraph(self) -> dict:
+        return self._call(Capability.EXTRACT_FEATUREGRAPH)
+
     # ---- mutate -------------------------------------------------------- #
     def begin_transaction(self, label: str = "OrionFlow edit") -> dict:
         return self._call(Capability.BEGIN_TRANSACTION, {"label": label})
@@ -145,10 +148,16 @@ class BridgeClient:
     def edit_feature(self, name: str, properties: dict) -> dict:
         return self._call(Capability.EDIT_FEATURE, {"name": name, "properties": properties})
 
-    def import_shape(self, path: str, label: str = "OrionResult", replace: Optional[str] = None) -> dict:
-        return self._call(
-            Capability.IMPORT_SHAPE, {"path": path, "label": label, "replace": replace}
-        )
+    def import_shape(self, path: str, label: str = "OrionResult",
+                     replace: Optional[str] = None,
+                     source_code: Optional[str] = None) -> dict:
+        params: dict = {"path": path, "label": label, "replace": replace}
+        if source_code:
+            params["source_code"] = source_code
+        return self._call(Capability.IMPORT_SHAPE, params)
+
+    def compile_featuregraph(self, graph: dict) -> dict:
+        return self._call(Capability.COMPILE_FEATUREGRAPH, {"graph": graph})
 
     def select(self, refs: list) -> dict:
         return self._call(Capability.SELECT, {"refs": refs})
