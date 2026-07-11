@@ -128,6 +128,10 @@ def _feature_params(o):
         base = getattr(o, "Base", None)
         if base and base[0] is not None:
             p["_Base"] = {"object": base[0].Name, "faces": list(base[1])}
+    elif t in ("PartDesign::Fillet", "PartDesign::Chamfer"):
+        base = getattr(o, "Base", None)
+        if base and base[0] is not None:
+            p["_Base"] = {"object": base[0].Name, "edges": list(base[1])}
     return p
 
 

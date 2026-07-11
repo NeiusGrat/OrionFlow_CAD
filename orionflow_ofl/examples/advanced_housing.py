@@ -2,6 +2,11 @@
 OFL Example: Advanced Housing
 Demonstrates fillet, chamfer, shell, and offset plane sketching.
 """
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
 from orionflow_ofl import *
 
 # 1. Base shape

@@ -36,12 +36,14 @@ class Capability:
     MEASURE = "measure"
     RENDER_VIEWS = "render_views"
     GET_MODEL_TIER = "get_model_tier"
+    EXTRACT_FEATUREGRAPH = "extract_featuregraph"
 
     # --- mutate (Phase 2/5) ------------------------------------------------
     SET_PARAMETER = "set_parameter"
     EDIT_FEATURE = "edit_feature"
     EXECUTE_CODE = "execute_code"          # import sandbox artifact into doc
     IMPORT_SHAPE = "import_shape"
+    COMPILE_FEATUREGRAPH = "compile_featuregraph"
     SELECT = "select"
     HIGHLIGHT = "highlight"
     UNDO = "undo"
@@ -62,6 +64,7 @@ class Capability:
             MEASURE,
             RENDER_VIEWS,
             GET_MODEL_TIER,
+            EXTRACT_FEATUREGRAPH,
         }
     )
 
@@ -71,6 +74,7 @@ class Capability:
             EDIT_FEATURE,
             EXECUTE_CODE,
             IMPORT_SHAPE,
+            COMPILE_FEATUREGRAPH,
             SELECT,
             HIGHLIGHT,
             UNDO,

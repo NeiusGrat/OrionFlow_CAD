@@ -629,6 +629,12 @@ class GenerationService:
                         metadata["step_path"] = str(step_path)
                         metadata["stl_path"] = str(stl_path)
 
+                        from app.services.storage import publish_artifacts
+
+                        metadata["urls"] = publish_artifacts(
+                            glb_path, step_path, stl_path
+                        )
+
                     # --- DATASET LOGGING (all backends) ---
                     try:
                         sample = DatasetSample(
@@ -812,6 +818,8 @@ class GenerationService:
         except Exception as e:
             logger.warning(f"Feedback logging failed: {e}")
 
+        from app.services.storage import publish_artifacts
+
         return GenerationResult(
             geometry_path=glb_path,
             format="glb",
@@ -821,6 +829,7 @@ class GenerationService:
                 "feature_graph": graph.model_dump(),
                 "step_path": str(step_path),
                 "stl_path": str(stl_path),
+                "urls": publish_artifacts(glb_path, step_path, stl_path),
             },
             source="v1",
         )

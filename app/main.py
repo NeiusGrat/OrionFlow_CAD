@@ -22,11 +22,12 @@ API Endpoints:
     /api/v1/jobs/*    - Async job management endpoints
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Optional
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -444,25 +445,37 @@ async def health_check():
 
     Returns current API version and configuration state.
     """
-    # Check database connectivity
-    db_connected = False
-    if not settings.testing:
+
+    # Dependency probes are capped and run concurrently: a down dependency
+    # must not make the health endpoint itself slow, or platform health
+    # checks flap and machines never idle.
+    async def _db_ok() -> bool:
+        if settings.testing:
+            return False
         try:
             from app.db.session import check_db_health
 
-            db_connected = await check_db_health()
+            return bool(await asyncio.wait_for(check_db_health(), timeout=2))
         except Exception:
-            pass
+            return False
 
-    # Check Redis connectivity
-    redis_connected = False
-    try:
-        import redis
+    async def _redis_ok() -> bool:
+        # The redis client is synchronous: run it off the event loop with
+        # tight socket timeouts, otherwise a down Redis blocks every
+        # in-flight request for the OS TCP timeout.
+        try:
+            import redis
 
-        r = redis.from_url(settings.redis_url)
-        redis_connected = r.ping()
-    except Exception:
-        pass
+            r = redis.from_url(
+                settings.redis_url,
+                socket_connect_timeout=1,
+                socket_timeout=1,
+            )
+            return bool(await asyncio.to_thread(r.ping))
+        except Exception:
+            return False
+
+    db_connected, redis_connected = await asyncio.gather(_db_ok(), _redis_ok())
 
     return HealthResponse(
         status="healthy",
@@ -527,12 +540,17 @@ async def generate_cad(request: GenerateRequest):
     if "parameters" not in fg_data and "parameters" in result.metadata:
         fg_data["parameters"] = result.metadata["parameters"]
 
+    urls = result.metadata.get("urls") or {}
     return GenerateResponse(
         model_id=result.metadata["job_id"],
-        viewer=ViewerInfo(glb_url=str(result.geometry_path).replace("\\", "/")),
+        viewer=ViewerInfo(
+            glb_url=urls.get("glb") or str(result.geometry_path).replace("\\", "/")
+        ),
         downloads=DownloadLinks(
-            step=str(result.metadata.get("step_path", "")).replace("\\", "/"),
-            stl=str(result.metadata.get("stl_path", "")).replace("\\", "/"),
+            step=urls.get("step")
+            or str(result.metadata.get("step_path", "")).replace("\\", "/"),
+            stl=urls.get("stl")
+            or str(result.metadata.get("stl_path", "")).replace("\\", "/"),
         ),
         cfg=fg_data,
     )
@@ -578,12 +596,16 @@ async def regenerate_cad(request: RegenerateRequest):
             detail={"error": str(e), "code": "REGENERATION_FAILED", "retryable": False},
         )
 
+    urls = result.metadata.get("urls") or {}
     return GenerateResponse(
         model_id=result.metadata["job_id"],
-        viewer=ViewerInfo(glb_url=str(result.geometry_path).replace("\\", "/")),
+        viewer=ViewerInfo(
+            glb_url=urls.get("glb") or str(result.geometry_path).replace("\\", "/")
+        ),
         downloads=DownloadLinks(
-            step=str(result.metadata["step_path"]).replace("\\", "/"),
-            stl=str(result.metadata["stl_path"]).replace("\\", "/"),
+            step=urls.get("step")
+            or str(result.metadata["step_path"]).replace("\\", "/"),
+            stl=urls.get("stl") or str(result.metadata["stl_path"]).replace("\\", "/"),
         ),
         cfg=result.metadata["feature_graph"],
     )
@@ -611,31 +633,34 @@ def describe_cad(request: DescribeRequest):
         )
 
 
+def _download_or_redirect(filename: str, media_type: str):
+    """Serve a generated file from local disk, or redirect to object storage.
+
+    Local disk is ephemeral on scale-to-zero hosts, so files from earlier
+    machine lifetimes only exist in the S3/R2 bucket.
+    """
+    file_path = settings.output_dir / filename
+
+    if file_path.exists():
+        return FileResponse(path=file_path, media_type=media_type, filename=filename)
+
+    if settings.is_s3_configured:
+        from app.services.storage import get_storage
+
+        url = get_storage().url_for(filename)
+        if url:
+            return RedirectResponse(url=url, status_code=307)
+
+    raise HTTPException(status_code=404, detail="File not found")
+
+
 @app.get("/download/step/{filename}", tags=["Downloads"], summary="Download STEP file")
 def download_step(filename: str):
     """Download a STEP file by filename."""
-    file_path = settings.output_dir / filename
-
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return FileResponse(
-        path=file_path,
-        media_type="application/step",
-        filename=filename,
-    )
+    return _download_or_redirect(filename, "application/step")
 
 
 @app.get("/download/stl/{filename}", tags=["Downloads"], summary="Download STL file")
 def download_stl(filename: str):
     """Download an STL file by filename."""
-    file_path = settings.output_dir / filename
-
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return FileResponse(
-        path=file_path,
-        media_type="application/sla",
-        filename=filename,
-    )
+    return _download_or_redirect(filename, "application/sla")

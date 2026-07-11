@@ -54,6 +54,7 @@
         "properties": {
           "id": {"type": "string"},
           "plane": {"type": "string"},
+          "z": {"type": "number"},
           "support": {"type": ["string", "null"]},
           "placement": {"type": "object"},
           "global_placement": {"type": ["object", "null"]},

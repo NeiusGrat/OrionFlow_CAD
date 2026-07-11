@@ -28,6 +28,32 @@ def _app():
     return FreeCAD
 
 
+def _load_repo_module(stem: str):
+    """Load ``freecad/<stem>.py`` from the repo by absolute path.
+
+    File-path loading on purpose: FreeCAD ships its own lowercase ``freecad``
+    namespace package, so ``import freecad.reconstruct`` inside FreeCAD's
+    interpreter would resolve against the wrong package.
+    """
+    import importlib.util
+    import sys
+
+    from orion_agent.shared.config import get_config
+
+    name = f"_orion_repo_{stem}"
+    mod = sys.modules.get(name)
+    if mod is not None:
+        return mod
+    path = os.path.join(get_config().repo_root, "freecad", f"{stem}.py")
+    if not os.path.exists(path):
+        raise CapabilityError(ErrorCode.BAD_REQUEST, f"repo module missing: {path}")
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def _gui():
     try:
         import FreeCADGui  # type: ignore
@@ -265,7 +291,9 @@ class Capabilities:
         return {"committed": True}
 
     def cap_abort_transaction(self, params: dict[str, Any]) -> Any:
-        _active_doc().abortTransaction()
+        doc = _active_doc()
+        doc.abortTransaction()
+        doc.recompute()
         return {"aborted": True}
 
     def cap_set_parameter(self, params: dict[str, Any]) -> Any:
@@ -314,6 +342,7 @@ class Capabilities:
         path = params.get("path")
         label = params.get("label", "OrionResult")
         replace = params.get("replace")
+        source = params.get("source_code")
         if not path or not os.path.exists(path):
             raise CapabilityError(ErrorCode.BAD_REQUEST, f"Artifact not found: {path}")
         shape = Part.Shape()
@@ -322,10 +351,14 @@ class Capabilities:
             obj = doc.getObject(replace)
             if obj is not None and hasattr(obj, "Shape"):
                 obj.Shape = shape
+                if source:
+                    self._attach_source(obj, doc, source)
                 doc.recompute()
                 return {"replaced": replace}
         feat = doc.addObject("Part::Feature", label)
         feat.Shape = shape
+        if source:
+            self._attach_source(feat, doc, source)
         doc.recompute()
         gui = _gui()
         if gui is not None:
@@ -378,6 +411,49 @@ class Capabilities:
             if path.lower().endswith((".step", ".stp")) else shapes[0].exportStl(path)
         return {"path": path, "objects": names}
 
+    def cap_compile_featuregraph(self, params: dict[str, Any]) -> Any:
+        """Compile a canonical FeatureGraph into the live document as a native
+        PartDesign feature tree (editable sketches + solid features).
+
+        The graph arrives pre-validated by the harness; the deterministic
+        compiler is ``freecad/reconstruct.py``. Creates a fresh document for a
+        blank session, like ``import_shape``.
+        """
+        graph = params.get("graph")
+        if not isinstance(graph, dict):
+            raise CapabilityError(ErrorCode.BAD_REQUEST,
+                                  "compile_featuregraph requires a 'graph' object")
+        recon = _load_repo_module("reconstruct")
+        app = _app()
+        doc = app.ActiveDocument or app.newDocument("OrionFlow")
+        before = {o.Name for o in doc.Objects}
+        _, report = recon.compile_graph(graph, doc=doc)
+        created_all = [o.Name for o in doc.Objects if o.Name not in before]
+        features = [n for n in created_all
+                    if doc.getObject(n) is not None
+                    and doc.getObject(n).TypeId.startswith(("PartDesign::", "Sketcher::"))]
+        body = next((n for n in features
+                     if doc.getObject(n).TypeId == "PartDesign::Body"), None)
+        gui = _gui()
+        if gui is not None:
+            try:
+                gui.ActiveDocument.ActiveView.fitAll()
+            except Exception:  # noqa: BLE001
+                pass
+        return {
+            "created": created_all,          # full set (verification allowlist)
+            "features": features,            # human-facing feature objects
+            "body": body,
+            "report": report,
+            "recompute_ok": bool(report.get("doc_recomputed", False)),
+        }
+
+    def cap_extract_featuregraph(self, params: dict[str, Any]) -> Any:
+        """Extract the live document's FeatureGraph via freecad/fcstd_parser."""
+        doc = _active_doc()
+        parser = _load_repo_module("fcstd_parser")
+        return {"graph": parser.extract(doc)}
+
     def cap_execute_code(self, params: dict[str, Any]) -> Any:
         """Reserved: the harness runs code in its sandbox, then calls import_shape.
 
@@ -389,6 +465,29 @@ class Capabilities:
             "execute_code runs in the harness sandbox; use import_shape to bring results in",
         )
 
+    @staticmethod
+    def _attach_source(obj, doc, code: str) -> None:
+        """Persist the Build123d source that produced an imported shape.
+
+        Stored on the object itself (survives unsaved documents) and, when the
+        document has a file, as a ``.orion.py`` sidecar — so the result stays
+        Tier A (code-native) instead of degrading to a dumb B-rep.
+        """
+        try:
+            if "OrionSource" not in obj.PropertiesList:
+                obj.addProperty("App::PropertyString", "OrionSource", "OrionFlow",
+                                "Build123d source that produced this shape")
+            obj.OrionSource = code
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            if doc.FileName:
+                sidecar = os.path.splitext(doc.FileName)[0] + ".orion.py"
+                with open(sidecar, "w", encoding="utf-8") as fh:
+                    fh.write(code)
+        except Exception:  # noqa: BLE001
+            pass
+
     # ------------------------------------------------------------------ #
     # Tier classification (§4)
     # ------------------------------------------------------------------ #
@@ -398,6 +497,11 @@ class Capabilities:
             return None
         candidate = os.path.splitext(fn)[0] + ".orion.py"
         return candidate if os.path.exists(candidate) else None
+
+    @staticmethod
+    def _has_source_property(doc) -> bool:
+        return any("OrionSource" in getattr(o, "PropertiesList", [])
+                   for o in doc.Objects)
 
     def _is_parametric(self, obj) -> bool:
         tid = obj.TypeId
@@ -412,7 +516,7 @@ class Capabilities:
     def _classify_tier(self, doc) -> str:
         if not doc.Objects:
             return ModelTier.EMPTY
-        if self._source_sidecar(doc):
+        if self._source_sidecar(doc) or self._has_source_property(doc):
             return ModelTier.CODE_NATIVE
         if any(self._is_parametric(o) for o in doc.Objects):
             return ModelTier.FEATURE_TREE
@@ -426,6 +530,8 @@ class Capabilities:
             return "document is empty"
         if self._source_sidecar(doc):
             return f"Build123d source attached: {os.path.basename(self._source_sidecar(doc))}"
+        if self._has_source_property(doc):
+            return "Build123d source stored on object (OrionSource property)"
         if any(self._is_parametric(o) for o in doc.Objects):
             kinds = sorted({o.TypeId for o in doc.Objects if self._is_parametric(o)})
             return f"live feature history present: {', '.join(kinds)}"

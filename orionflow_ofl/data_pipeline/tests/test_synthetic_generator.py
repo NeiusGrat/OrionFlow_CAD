@@ -32,8 +32,10 @@ class TestAllTemplates:
             assert "export(" in code, f"Template {name} missing export"
             assert len(text) > 5, f"Template {name} text too short: {text!r}"
 
-    def test_twenty_templates(self, gen):
-        assert len(gen.list_templates()) == 20
+    def test_full_template_registry(self, gen):
+        # The active registry is the expanded 50-template catalog
+        # (templates/template_catalog_v2.py), which replaced the original 20.
+        assert len(gen.list_templates()) == 50
 
 
 class TestDimensionRanges:

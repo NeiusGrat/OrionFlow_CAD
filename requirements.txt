@@ -17,6 +17,34 @@ numpy
 groq
 requests
 
+# Database
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# Auth
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt<4.1  # passlib 1.7.4 can't read the version of bcrypt>=4.1
+email-validator
+
+# Middleware & Metrics
+slowapi
+prometheus-client
+
+# Queue & Cache
+celery
+redis
+
+# Billing
+stripe
+
+# Error Tracking
+sentry-sdk[fastapi]
+
+# Object Storage (S3 / Cloudflare R2)
+boto3
+
 # Logging
 structlog
 

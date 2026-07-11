@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
+from orion_agent.harness import featuregraph as fg
 from orion_agent.harness.topology import summarize_topology, expand_shape
 
 
@@ -37,6 +38,7 @@ class Tool:
     executor: Callable[[dict], ToolResult]
     mutating: bool = False
     destructive: bool = False
+    doc_mutating: bool = False         # touches the live FreeCAD document
 
     def schema(self) -> dict[str, Any]:
         return {
@@ -112,8 +114,10 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
 
     # Remember the most recent sandbox STEP artifact so import_shape can fall
     # back to it when the model echoes back a wrong/relative path (it routinely
-    # guesses "result.step" instead of the absolute path we hand it).
-    _state: dict[str, Optional[str]] = {"last_step": None}
+    # guesses "result.step" instead of the absolute path we hand it), and the
+    # code that produced it so the import stays Tier A (source travels with the
+    # shape instead of degrading to a dumb B-rep).
+    _state: dict[str, Optional[str]] = {"last_step": None, "last_code": None}
 
     # ---- read ----------------------------------------------------------- #
     def list_objects(_args):
@@ -169,11 +173,49 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         expand_topology,
     ))
 
+    def lookup_standard(args):
+        from orion_agent.harness import standards
+        hits = standards.search(args.get("query", ""))
+        if not hits:
+            return _fail(
+                "no standard matched; try a bearing designation (6204, 32005), "
+                "'tapered roller bore 20', 'NEMA 17', or a thread size 'M5'"
+            )
+        return _ok(standards.render(hits), raw={"results": hits})
+
+    reg.register(Tool(
+        "lookup_standard",
+        "Look up engineering-standard dimensions: bearings (by designation "
+        "like 6204/32005, or 'tapered roller bore 20'), ISO metric fasteners "
+        "(M2..M20 — clearance/tap/counterbore/head/nut), NEMA stepper mounts "
+        "(bolt pattern, pilot, shaft). These numbers are authoritative — use "
+        "them instead of recalling values from memory.",
+        {
+            "type": "object",
+            "properties": {"query": {"type": "string",
+                                     "description": "e.g. '6204', 'NEMA 23', "
+                                                    "'M5', 'ball bearing bore 25'"}},
+            "required": ["query"],
+        },
+        lookup_standard,
+    ))
+
     def get_parameters(args):
         raw = bridge.get_object_parameters(args["name"])
         params = raw.get("parameters", {})
         keep = {k: v for k, v in params.items() if not k.startswith(("Visibility", "Shape"))}
-        return _ok(json.dumps(keep, default=str)[:1500], raw=raw)
+        text = json.dumps(keep, default=str)
+        if len(text) > 1500:
+            # Trim whole entries, never mid-string: the model must always see
+            # valid JSON, plus a count of what was left out.
+            slim: dict = {}
+            for k, v in keep.items():
+                slim[k] = v
+                if len(json.dumps(slim, default=str)) > 1400:
+                    slim.pop(k)
+            slim["_omitted_properties"] = len(keep) - len(slim)
+            text = json.dumps(slim, default=str)
+        return _ok(text, raw=raw)
 
     reg.register(Tool(
         "get_parameters",
@@ -242,7 +284,87 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         get_model_tier,
     ))
 
+    def get_featuregraph(_args):
+        raw = bridge.extract_featuregraph()
+        graph = raw.get("graph", {}) or {}
+        return _ok(fg.summarize_graph(graph), raw=raw)
+
+    reg.register(Tool(
+        "get_featuregraph",
+        "Extract the open document's parametric FeatureGraph: the feature tree "
+        "as structured IR (sketches, solid features, profile dependencies, key "
+        "parameters). Use it to understand how the model was built before "
+        "editing or answering structural questions.",
+        {"type": "object", "properties": {}},
+        get_featuregraph,
+    ))
+
     # ---- write ---------------------------------------------------------- #
+    def create_featuregraph(args):
+        graph = fg.parse_graph_arg(args.get("graph"))
+        if graph is None:
+            return _fail("'graph' must be a JSON object with features/sketches/dependencies")
+        canonical, notes = fg.normalize(graph)
+        errors = fg.validate(canonical)
+        if errors:
+            return _fail("FeatureGraph invalid — fix and retry:\n- "
+                         + "\n- ".join(errors[:12]))
+        raw = bridge.compile_featuregraph(canonical)
+        report = raw.get("report", {}) or {}
+        problems = report.get("recompute_errors", []) or []
+        lines = []
+        if notes:
+            lines.append("normalizer: " + "; ".join(notes[:6]))
+        if report.get("unsupported"):
+            lines.append(f"skipped unsupported: {report['unsupported']}")
+        if problems or not raw.get("recompute_ok", False):
+            detail = "; ".join(f"{p.get('id')}: {p.get('error')}" for p in problems[:6])
+            return ToolResult(
+                False,
+                "compile FAILED — the graph did not rebuild cleanly: "
+                + (detail or "document recompute error") + "\n"
+                + "\n".join(lines),
+                raw=raw, error="recompute_failed",
+            )
+        volume = report.get("volume")
+        if volume is not None and float(volume) <= 1e-6:
+            return ToolResult(
+                False,
+                "compile FAILED — the graph rebuilt but produced zero volume "
+                "(an empty solid is never the requested part)\n" + "\n".join(lines),
+                raw=raw, error="zero_volume",
+            )
+        built = report.get("built", [])
+        lines.insert(0, (
+            f"compiled {len(built)} feature(s) into the document as a native "
+            f"parametric feature tree (body: {raw.get('body')}, "
+            f"volume: {report.get('volume')} mm^3)"
+        ))
+        return _ok("\n".join(lines), raw=raw)
+
+    reg.register(Tool(
+        "create_featuregraph",
+        "Build a new parametric model by describing it as a FeatureGraph — the "
+        "preferred way to create geometry. The graph compiles deterministically "
+        "into native, editable FreeCAD PartDesign features (real sketches, "
+        "pads, pockets), so the user can edit every dimension afterwards. "
+        + fg.AUTHORING_GUIDE,
+        {
+            "type": "object",
+            "properties": {
+                "graph": {
+                    "type": "object",
+                    "description": "FeatureGraph: {features:[...], sketches:[...],"
+                                   " dependencies:[...]} per the authoring guide",
+                },
+            },
+            "required": ["graph"],
+        },
+        create_featuregraph,
+        mutating=True,
+        doc_mutating=True,
+    ))
+
     def write_code(args):
         result = sandbox.run_code(
             args["code"], result_var=args.get("result_var", "result"),
@@ -260,6 +382,7 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         step_path = result.artifact_path("step")
         if step_path:
             _state["last_step"] = step_path
+            _state["last_code"] = args["code"]
             content += (
                 f"\nSTEP artifact: {step_path}\n"
                 "To place this in the document, call import_shape with this exact "
@@ -311,9 +434,14 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         # The model frequently passes a guessed/relative path or none at all;
         # fall back to the last sandbox STEP artifact, which is the thing it just
         # built. Only override when the given path does not actually resolve.
+        source = None
         if (not path or not _os.path.isabs(path) or not _os.path.exists(path)) and _state.get("last_step"):
             path = _state["last_step"]
-        raw = bridge.import_shape(path, args.get("label", "OrionResult"), args.get("replace"))
+        # Attach the generating code when the imported STEP is the sandbox one.
+        if path == _state.get("last_step"):
+            source = _state.get("last_code")
+        raw = bridge.import_shape(path, args.get("label", "OrionResult"),
+                                  args.get("replace"), source_code=source)
         return _ok(json.dumps(raw), raw=raw)
 
     reg.register(Tool(
@@ -332,6 +460,7 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         },
         import_shape,
         mutating=True,
+        doc_mutating=True,
     ))
 
     def set_parameter(args):
@@ -355,6 +484,7 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         },
         set_parameter,
         mutating=True,
+        doc_mutating=True,
     ))
 
     def edit_feature(args):
@@ -374,6 +504,7 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         },
         edit_feature,
         mutating=True,
+        doc_mutating=True,
     ))
 
     def select(args):

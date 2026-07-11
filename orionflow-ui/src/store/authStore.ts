@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { apiLogin, apiSignup, apiMe } from '../services/authApi';
 
 interface User {
     id: string;
@@ -10,6 +11,8 @@ interface User {
 interface AuthState {
     isAuthenticated: boolean;
     user: User | null;
+    accessToken: string | null;
+    refreshToken: string | null;
     login: (email: string, password: string) => Promise<boolean>;
     signup: (name: string, email: string, password: string) => Promise<boolean>;
     logout: () => void;
@@ -20,33 +23,29 @@ export const useAuthStore = create<AuthState>()(
         (set) => ({
             isAuthenticated: false,
             user: null,
+            accessToken: null,
+            refreshToken: null,
 
-            login: async (email: string, _password: string) => {
-                // Mock authentication - in production, call your backend API
-                await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-
+            login: async (email: string, password: string) => {
+                const tokens = await apiLogin(email, password);
+                const me = await apiMe(tokens.access_token);
                 set({
                     isAuthenticated: true,
-                    user: {
-                        id: crypto.randomUUID(),
-                        email,
-                        name: email.split('@')[0],
-                    },
+                    user: { id: me.id, email: me.email, name: me.name },
+                    accessToken: tokens.access_token,
+                    refreshToken: tokens.refresh_token,
                 });
                 return true;
             },
 
-            signup: async (name: string, email: string, _password: string) => {
-                // Mock signup - in production, call your backend API
-                await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-
+            signup: async (name: string, email: string, password: string) => {
+                const tokens = await apiSignup(name, email, password);
+                const me = await apiMe(tokens.access_token);
                 set({
                     isAuthenticated: true,
-                    user: {
-                        id: crypto.randomUUID(),
-                        email,
-                        name,
-                    },
+                    user: { id: me.id, email: me.email, name: me.name },
+                    accessToken: tokens.access_token,
+                    refreshToken: tokens.refresh_token,
                 });
                 return true;
             },
@@ -55,6 +54,8 @@ export const useAuthStore = create<AuthState>()(
                 set({
                     isAuthenticated: false,
                     user: null,
+                    accessToken: null,
+                    refreshToken: null,
                 });
             },
         }),

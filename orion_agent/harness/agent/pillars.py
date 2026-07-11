@@ -21,9 +21,11 @@ _READ_TOOLS = {
     "inspect_topology",
     "expand_topology",
     "get_parameters",
+    "get_featuregraph",
     "measure",
     "view",
     "get_model_tier",
+    "lookup_standard",
 }
 
 _GROUNDING = (
@@ -79,7 +81,9 @@ MODIFY_PILLAR = Pillar(
         "You are OrionFlow, an expert CAD copilot that performs precise, minimal, "
         "ECO-style parametric edits to the OPEN model, then verifies them.\n\n"
         + _GROUNDING
-        + "\n\nFirst establish the model tier with get_model_tier:\n"
+        + "\n\nFirst establish the model tier with get_model_tier, and use "
+        "get_featuregraph to see the feature tree as structured IR before "
+        "touching anything:\n"
         "- Tier A (code-native): edit the Build123d source via write_code, "
         "re-execute, then import_shape to replace the object.\n"
         "- Tier B (feature tree): change parameters with set_parameter / "
@@ -97,36 +101,46 @@ MODIFY_PILLAR = Pillar(
 RECONSTRUCT_PILLAR = Pillar(
     name=RECONSTRUCT,
     description="Turn a 2D drawing into a parametric 3D model, verified by render-compare.",
-    tools=set(_READ_TOOLS) | {"write_code", "import_shape", "view"},
+    tools=set(_READ_TOOLS) | {"create_featuregraph", "write_code", "import_shape", "view"},
     verification="render_compare",
     allow_mutation=True,
     system_prompt=(
         "You are OrionFlow reconstructing a parametric 3D model from a 2D "
         "engineering drawing. Extract views, dimensions and a hypothesised "
-        "feature set from the drawing, build a Build123d model with write_code, "
-        "then render it and compare against the drawing's views and dimensions. "
-        "Iterate until it matches within tolerance.\n\n" + _GROUNDING + "\n\n"
+        "feature set from the drawing, then build the model — prefer "
+        "create_featuregraph (native, editable feature tree) and fall back to "
+        "Build123d write_code only for shapes outside its vocabulary. Render "
+        "and compare against the drawing's views and dimensions; iterate until "
+        "it matches within tolerance.\n\n" + _GROUNDING + "\n\n"
         "Always surface a confidence/divergence measure. If the drawing is "
         "ambiguous or the match is poor, say so honestly instead of emitting a "
-        "confident but wrong model. A successful reconstruction becomes a "
-        "code-native (Tier A) model that gains Query and Modify."
+        "confident but wrong model. A successful reconstruction becomes an "
+        "editable parametric model that gains Query and Modify."
     ),
 )
 
 GENERATE_PILLAR = Pillar(
     name=GENERATE,
-    description="Minor text-to-CAD from a blank document (not the primary product).",
-    tools=set(_READ_TOOLS) | {"write_code", "import_shape", "view"},
-    verification="none",
+    description="Text-to-CAD into a blank or new document, FeatureGraph-first.",
+    tools=set(_READ_TOOLS) | {"create_featuregraph", "write_code", "import_shape", "view"},
+    verification="artifact",
     allow_mutation=True,
     system_prompt=(
-        "You are OrionFlow generating a new parametric Build123d model from a "
-        "natural-language description into a blank or new document. Write clean, "
-        "parametric Build123d code and run it with write_code.\n"
-        "After write_code succeeds, you MUST call import_shape with the returned "
-        "STEP artifact path so the model actually appears in the user's FreeCAD "
-        "document — do NOT give your final answer until the shape has been "
-        "imported. Keep the code readable and parameter-driven."
+        "You are OrionFlow generating a new parametric model from a natural-"
+        "language description. You never write geometry directly — you describe "
+        "features and a deterministic compiler builds them.\n\n"
+        "PREFERRED PATH: call create_featuregraph with a FeatureGraph (sketches "
+        "+ Pad/Pocket/Revolution/Groove/Hole/patterns). It compiles into a "
+        "native FreeCAD feature tree, so every sketch and dimension stays "
+        "editable by the user. Plan the feature order first: base sketch -> Pad "
+        "-> then cuts and patterns. If the compile observation reports errors, "
+        "repair the graph and retry — do not silently switch approach.\n\n"
+        "FALLBACK ONLY: if the shape genuinely cannot be expressed in the "
+        "FeatureGraph vocabulary (sweeps, lofts, fillets, organic surfaces), "
+        "use write_code (Build123d) and then import_shape to place the result.\n\n"
+        "Do NOT give your final answer until a model actually exists in the "
+        "user's document. Report the key dimensions you chose and state any "
+        "assumptions."
     ),
 )
 

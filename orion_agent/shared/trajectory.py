@@ -122,6 +122,7 @@ class Trajectory:
     model_tier: str = "unknown"       # §4 tier of the open model
     user_request: str = ""
     document_name: str = ""
+    spec: dict = field(default_factory=dict)   # generate: parsed EngineeringSpec
 
     # trace
     messages: list[Message] = field(default_factory=list)
@@ -186,6 +187,7 @@ class Trajectory:
             model_tier=d.get("model_tier", "unknown"),
             user_request=d.get("user_request", ""),
             document_name=d.get("document_name", ""),
+            spec=d.get("spec", {}) or {},
             messages=msgs,
             artifacts=arts,
             final_answer=d.get("final_answer", ""),

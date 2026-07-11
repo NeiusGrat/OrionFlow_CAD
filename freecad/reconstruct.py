@@ -24,7 +24,8 @@ import FreeCAD as App  # type: ignore
 import Part  # type: ignore
 
 SUPPORTED = {"Body", "Sketch", "Pad", "Pocket", "Revolution", "Groove", "Hole",
-             "Thickness", "LinearPattern", "PolarPattern"}
+             "Thickness", "LinearPattern", "PolarPattern", "Fillet", "Chamfer",
+             "Loft", "Sweep", "Mirrored", "Draft"}
 _KIND = {
     "Pad": "PartDesign::Pad",
     "Pocket": "PartDesign::Pocket",
@@ -33,9 +34,16 @@ _KIND = {
     "Hole": "PartDesign::Hole",
     "LinearPattern": "PartDesign::LinearPattern",
     "PolarPattern": "PartDesign::PolarPattern",
+    "Mirrored": "PartDesign::Mirrored",
+    "Fillet": "PartDesign::Fillet",
+    "Chamfer": "PartDesign::Chamfer",
+    "Draft": "PartDesign::Draft",
+    "Loft": "PartDesign::AdditiveLoft",     # Subtractive via parameters.Subtractive
+    "Sweep": "PartDesign::AdditivePipe",
 }
 _PROFILE_OPS = {"Pad", "Pocket", "Revolution", "Groove", "Hole"}
-_TRANSFORM_OPS = {"LinearPattern", "PolarPattern"}
+_TRANSFORM_OPS = {"LinearPattern", "PolarPattern", "Mirrored"}
+_DRESSUP_OPS = {"Fillet", "Chamfer"}
 
 
 def _origin_axis(body, role):
@@ -58,6 +66,185 @@ def _plane_placement(plane, z=0.0):
     else:  # XY (and any face-attached sketch, placed flat at height z)
         rot = App.Rotation()
     return App.Placement(App.Vector(0, 0, z), rot)
+
+
+def _load_sibling(stem):
+    """Load ``freecad/<stem>.py`` by absolute path.
+
+    Same trick as orion_agent.addon.capabilities: FreeCAD ships its own
+    lowercase ``freecad`` package, so a normal ``import freecad.<stem>``
+    inside FreeCAD's interpreter would resolve against the wrong package.
+    """
+    import importlib.util
+
+    name = "_orion_repo_%s" % stem
+    mod = sys.modules.get(name)
+    if mod is not None:
+        return mod
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), stem + ".py")
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    sys.modules[name] = mod
+    return mod
+
+
+_selgrammar = _load_sibling("edge_selectors")
+
+
+def _parallel_to_axis(e, axis, tol=1e-5):
+    """Two-vertex edge whose displacement is parallel to one axis."""
+    vs = e.Vertexes
+    if len(vs) != 2:
+        return False
+    a, b = vs[0].Point, vs[1].Point
+    d = {"x": (a.x - b.x, a.y - b.y, a.z - b.z),
+         "y": (a.y - b.y, a.x - b.x, a.z - b.z),
+         "z": (a.z - b.z, a.x - b.x, a.y - b.y)}[axis]
+    along, off1, off2 = d
+    return abs(off1) <= tol and abs(off2) <= tol and abs(along) > tol
+
+
+def _edge_convexity(shape, e):
+    """Classify an edge as "convex", "concave" or "flat" by sampling.
+
+    Orientation-free: 8 points on a small circle around the edge midpoint in
+    the plane perpendicular to the tangent; the fraction inside the solid
+    approximates the material's dihedral angle (a box edge encloses ~90 deg of
+    material -> ~2/8 inside; a re-entrant pocket edge ~270 deg -> ~6/8).
+    Smooth/seam edges land near 4/8 and classify as "flat" (never selected).
+    """
+    import math
+    lo, hi = e.ParameterRange
+    mid = (lo + hi) / 2.0
+    p = e.valueAt(mid)
+    t = e.tangentAt(mid)
+    if t.Length < 1e-9:
+        return "flat"
+    t.normalize()
+    ref = App.Vector(1, 0, 0) if abs(t.x) < 0.9 else App.Vector(0, 1, 0)
+    u = t.cross(ref)
+    u.normalize()
+    v = t.cross(u)
+    diag = shape.BoundBox.DiagonalLength or 1.0
+    r = max(min(diag * 1e-3, 0.5), 1e-4)
+    inside = 0
+    for k in range(8):
+        # 0.37 rad phase keeps samples off face-aligned directions.
+        ang = 0.37 + k * math.pi / 4.0
+        q = p + u * (r * math.cos(ang)) + v * (r * math.sin(ang))
+        if shape.isInside(q, 1e-6, False):
+            inside += 1
+    if inside <= 3:
+        return "convex"
+    if inside >= 5:
+        return "concave"
+    return "flat"
+
+
+def _edge_matches(shape, e, kind, arg, bb, tol):
+    if kind == "all":
+        return True
+    if kind in ("top", "bottom", "z"):
+        z = bb.ZMax if kind == "top" else bb.ZMin if kind == "bottom" else float(arg)
+        ebb = e.BoundBox
+        return ebb.ZMin >= z - tol and ebb.ZMax <= z + tol
+    if kind == "horizontal":
+        ebb = e.BoundBox
+        return (ebb.ZMax - ebb.ZMin) <= tol
+    if kind == "vertical":
+        return _parallel_to_axis(e, "z", tol)
+    if kind == "direction":
+        return _parallel_to_axis(e, arg, tol)
+    if kind == "circular":
+        return type(e.Curve).__name__ == "Circle"
+    if kind == "straight":
+        return type(e.Curve).__name__ == "Line"
+    if kind == "radius":
+        return (type(e.Curve).__name__ == "Circle"
+                and abs(e.Curve.Radius - float(arg)) <= max(0.01, 0.001 * float(arg)))
+    if kind in ("convex", "concave"):
+        return _edge_convexity(shape, e) == kind
+    return False
+
+
+def _select_edges(shape, selector, edge_type=None):
+    """Resolve a semantic edge selector into FreeCAD edge names on ``shape``.
+
+    Selectors are how an authored graph names edges without knowing FreeCAD's
+    internal topology numbering. The grammar is shared with the harness's
+    FeatureGraph validation via freecad/edge_selectors.py: keywords (all, top,
+    bottom, vertical, horizontal, circular, straight, convex, concave),
+    parameterized forms (direction:<x|y|z>, radius:<mm>, largest:<n>) and
+    {"z": <mm>}. ``edge_type`` optionally filters by curve kind
+    ("Line" / "Circle"). Deterministic for a given shape.
+    """
+    parsed = _selgrammar.parse(selector)
+    if parsed is None:
+        return []
+    kind, arg = parsed
+    tol = 1e-5
+    bb = shape.BoundBox
+
+    candidates = []
+    for i, e in enumerate(shape.Edges):
+        if edge_type:
+            ct = type(e.Curve).__name__.replace("Geom", "")
+            if not ct.startswith(edge_type):
+                continue
+        candidates.append((i, e))
+
+    if kind == "largest":
+        ranked = sorted(candidates, key=lambda ie: -ie[1].Length)[:int(arg)]
+        return ["Edge%d" % (i + 1) for i, _ in sorted(ranked)]
+
+    names = []
+    for i, e in candidates:
+        try:
+            if _edge_matches(shape, e, kind, arg, bb, tol):
+                names.append("Edge%d" % (i + 1))
+        except Exception:  # noqa: BLE001 - a degenerate edge never aborts selection
+            continue
+    return names
+
+
+def _select_faces(shape, selector):
+    """Resolve a semantic face selector into FreeCAD face names on ``shape``.
+
+    Vocabulary: all | vertical (planar side walls + walls of vertical
+    cylinders) | horizontal | top | bottom. Used by Draft (faces to taper,
+    neutral plane). Deterministic for a given shape.
+    """
+    sel = str(selector or "").strip().lower()
+    if sel not in ("all", "vertical", "horizontal", "top", "bottom"):
+        return []
+    tol = 1e-5
+    bb = shape.BoundBox
+    names = []
+    for i, f in enumerate(shape.Faces):
+        try:
+            stype = type(f.Surface).__name__
+            if sel == "all":
+                ok = True
+            elif stype == "Plane":
+                nz = abs(f.Surface.Axis.z)
+                if sel == "vertical":
+                    ok = nz <= tol
+                elif sel == "horizontal":
+                    ok = abs(nz - 1.0) <= tol
+                elif sel == "top":
+                    ok = abs(nz - 1.0) <= tol and f.BoundBox.ZMax >= bb.ZMax - tol
+                else:  # bottom
+                    ok = abs(nz - 1.0) <= tol and f.BoundBox.ZMin <= bb.ZMin + tol
+            elif stype == "Cylinder" and sel == "vertical":
+                ok = abs(abs(f.Surface.Axis.z) - 1.0) <= tol
+            else:
+                ok = False
+            if ok:
+                names.append("Face%d" % (i + 1))
+        except Exception:  # noqa: BLE001 - a degenerate face never aborts selection
+            continue
+    return names
 
 
 def _add_geometry(sketch, geom_list):
@@ -96,10 +283,16 @@ def _add_geometry(sketch, geom_list):
             sys.stderr.write(f"  geom {t} skipped: {e}\n")
 
 
-def compile_graph(graph, doc_name="rebuilt"):
-    """Build a FreeCAD document from a FeatureGraph. Returns (doc, report)."""
+def compile_graph(graph, doc_name="rebuilt", doc=None):
+    """Build a FeatureGraph into a FreeCAD document. Returns (doc, report).
+
+    Pass ``doc`` to compile into an existing (live) document — used by the
+    agent bridge; FreeCAD auto-renames on name collisions and all internal
+    wiring here is by object reference, so ids stay consistent.
+    """
     report = {"unsupported": [], "recompute_errors": [], "built": []}
-    doc = App.newDocument(doc_name)
+    if doc is None:
+        doc = App.newDocument(doc_name)
     body = doc.addObject("PartDesign::Body", "Body")
 
     # profile sketch per solid feature, from dependency 'profile' edges
@@ -133,7 +326,11 @@ def compile_graph(graph, doc_name="rebuilt"):
                     App.Vector(*gp["pos"]), App.Rotation(q[0], q[1], q[2], q[3]))
             else:
                 plane = sk.get("plane", "XY")
-                z = 0.0 if (not have_solid and plane in ("XY", "XZ", "YZ")) else current_top
+                if isinstance(sk.get("z"), (int, float)):
+                    # Explicit height (loft sections, offset profiles).
+                    z = float(sk["z"])
+                else:
+                    z = 0.0 if (not have_solid and plane in ("XY", "XZ", "YZ")) else current_top
                 obj.Placement = _plane_placement(plane if plane in ("XY", "XZ", "YZ") else "XY", z)
             _add_geometry(obj, sk.get("geometry", []))
             # Bake imported external geometry as real edges so ring/cutout
@@ -177,6 +374,83 @@ def compile_graph(graph, doc_name="rebuilt"):
                     pass
             continue
 
+        # Face dressup: Draft tapers selected faces (molding/casting release).
+        if ftype == "Draft":
+            base_ref = params.get("_Base") or {}
+            base_obj = built_solids.get(base_ref.get("object"))
+            if base_obj is None and built_solids:
+                base_obj = list(built_solids.values())[-1]
+            if base_obj is None:
+                report["recompute_errors"].append({"id": fid, "error": "no base feature to draft"})
+                continue
+            faces = list(base_ref.get("faces") or [])
+            if not faces:
+                faces = _select_faces(base_obj.Shape, params.get("_Faces", "vertical"))
+            if not faces:
+                report["recompute_errors"].append(
+                    {"id": fid, "error": "face selector matched no faces"})
+                continue
+            op = doc.addObject(_KIND[ftype], fid)
+            op.Base = (base_obj, faces)
+            if isinstance(params.get("Angle"), (int, float)):
+                op.Angle = float(params["Angle"])
+            neutral = _select_faces(base_obj.Shape,
+                                    params.get("_NeutralPlane", "bottom"))
+            if neutral:
+                op.NeutralPlane = (base_obj, [neutral[0]])
+            if "Reversed" in params:
+                op.Reversed = bool(params["Reversed"])
+            body.addObject(op)
+            doc.recompute()
+            if op.State and "Invalid" in op.State:
+                report["recompute_errors"].append({"id": fid, "error": "invalid after recompute"})
+            else:
+                report["built"].append({"id": fid, "type": ftype})
+                built_solids[fid] = op
+                try:
+                    current_top = body.Shape.BoundBox.ZMax
+                except Exception:
+                    pass
+            continue
+
+        # Dressup: Fillet / Chamfer on edges of a prior feature. Edges come
+        # either from an explicit extraction-time list (_Base.edges) or from a
+        # semantic selector (_Edges) resolved against the base feature's shape.
+        if ftype in _DRESSUP_OPS:
+            base_ref = params.get("_Base") or {}
+            base_obj = built_solids.get(base_ref.get("object"))
+            if base_obj is None and built_solids:
+                base_obj = list(built_solids.values())[-1]
+            if base_obj is None:
+                report["recompute_errors"].append({"id": fid, "error": "no base feature to dress up"})
+                continue
+            edges = list(base_ref.get("edges") or [])
+            if not edges:
+                edges = _select_edges(base_obj.Shape, params.get("_Edges", "all"),
+                                      params.get("_EdgeType"))
+            if not edges:
+                report["recompute_errors"].append(
+                    {"id": fid, "error": "edge selector matched no edges"})
+                continue
+            op = doc.addObject(_KIND[ftype], fid)
+            op.Base = (base_obj, edges)
+            if ftype == "Fillet" and isinstance(params.get("Radius"), (int, float)):
+                op.Radius = float(params["Radius"])
+            if ftype == "Chamfer" and isinstance(params.get("Size"), (int, float)):
+                op.Size = float(params["Size"])
+            body.addObject(op)
+            doc.recompute()
+            if op.State and "Invalid" in op.State:
+                report["recompute_errors"].append({"id": fid, "error": "invalid after recompute"})
+            else:
+                report["built"].append({"id": fid, "type": ftype})
+                built_solids[fid] = op
+                try:
+                    current_top = body.Shape.BoundBox.ZMax
+                except Exception:
+                    pass
+            continue
+
         # Transform feature: LinearPattern / PolarPattern (replicates Originals).
         if ftype in _TRANSFORM_OPS:
             op = doc.addObject(_KIND[ftype], fid)
@@ -189,26 +463,39 @@ def compile_graph(graph, doc_name="rebuilt"):
                 report["recompute_errors"].append({"id": fid, "error": "no originals to pattern"})
                 continue
             op.Originals = originals
-            if isinstance(params.get("Occurrences"), (int, float)):
-                op.Occurrences = int(params["Occurrences"])
-            if ftype == "LinearPattern":
-                if isinstance(params.get("Length"), (int, float)):
-                    op.Length = float(params["Length"])
-                ref, ref_prop = params.get("_Direction") or {}, "Direction"
+            if ftype == "Mirrored":
+                # Mirror plane: a body origin plane by role (XY/XZ/YZ_Plane).
+                role = str((params.get("_Plane") or {}).get("role", "YZ_Plane"))
+                if not role.endswith("_Plane"):
+                    role += "_Plane"
+                plane_obj = _origin_axis(body, role)   # Origin holds planes too
+                if plane_obj is None:
+                    report["recompute_errors"].append(
+                        {"id": fid, "error": "no mirror plane %s" % role})
+                    doc.removeObject(op.Name)
+                    continue
+                op.MirrorPlane = (plane_obj, [""])
             else:
-                if isinstance(params.get("Angle"), (int, float)):
-                    op.Angle = float(params["Angle"])
-                ref, ref_prop = params.get("_Axis") or {}, "Axis"
-            dir_obj = None
-            if ref.get("is_sketch") and ref.get("object") in built_sketches:
-                dir_obj = built_sketches[ref["object"]]
-            elif ref.get("role"):
-                dir_obj = _origin_axis(body, ref["role"])
-            if dir_obj is not None:
-                try:
-                    setattr(op, ref_prop, (dir_obj, ref.get("subs", ["H_Axis"])))
-                except Exception as e:  # noqa: BLE001
-                    report["recompute_errors"].append({"id": fid, "error": f"set {ref_prop}: {e}"})
+                if isinstance(params.get("Occurrences"), (int, float)):
+                    op.Occurrences = int(params["Occurrences"])
+                if ftype == "LinearPattern":
+                    if isinstance(params.get("Length"), (int, float)):
+                        op.Length = float(params["Length"])
+                    ref, ref_prop = params.get("_Direction") or {}, "Direction"
+                else:
+                    if isinstance(params.get("Angle"), (int, float)):
+                        op.Angle = float(params["Angle"])
+                    ref, ref_prop = params.get("_Axis") or {}, "Axis"
+                dir_obj = None
+                if ref.get("is_sketch") and ref.get("object") in built_sketches:
+                    dir_obj = built_sketches[ref["object"]]
+                elif ref.get("role"):
+                    dir_obj = _origin_axis(body, ref["role"])
+                if dir_obj is not None:
+                    try:
+                        setattr(op, ref_prop, (dir_obj, ref.get("subs", ["H_Axis"])))
+                    except Exception as e:  # noqa: BLE001
+                        report["recompute_errors"].append({"id": fid, "error": f"set {ref_prop}: {e}"})
             if "Reversed" in params:
                 op.Reversed = bool(params["Reversed"])
             body.addObject(op)
@@ -219,6 +506,64 @@ def compile_graph(graph, doc_name="rebuilt"):
                 report["built"].append({"id": fid, "type": ftype})
                 built_solids[fid] = op
                 have_solid = True
+                try:
+                    current_top = body.Shape.BoundBox.ZMax
+                except Exception:
+                    pass
+            continue
+
+        # Multi-sketch solid ops: Loft (profile through section sketches) and
+        # Sweep (profile along a spine path sketch). Additive by default;
+        # parameters.Subtractive switches to the material-removing variant.
+        if ftype in ("Loft", "Sweep"):
+            prof = built_sketches.get(profile_of.get(fid))
+            if prof is None:
+                report["recompute_errors"].append({"id": fid, "error": "missing profile sketch"})
+                continue
+            subtractive = bool(params.get("Subtractive"))
+            if ftype == "Loft":
+                kind_id = ("PartDesign::SubtractiveLoft" if subtractive
+                           else "PartDesign::AdditiveLoft")
+            else:
+                kind_id = ("PartDesign::SubtractivePipe" if subtractive
+                           else "PartDesign::AdditivePipe")
+            op = doc.addObject(kind_id, fid)
+            op.Profile = prof
+            if ftype == "Loft":
+                secs = [built_sketches[str(s)] for s in (params.get("_Sections") or [])
+                        if str(s) in built_sketches]
+                if not secs:
+                    report["recompute_errors"].append(
+                        {"id": fid, "error": "Loft needs parameters._Sections "
+                                             "(ids of already-built sketches)"})
+                    doc.removeObject(op.Name)
+                    continue
+                op.Sections = secs
+                if "Ruled" in params:
+                    op.Ruled = bool(params["Ruled"])
+                if "Closed" in params:
+                    op.Closed = bool(params["Closed"])
+            else:
+                spine = built_sketches.get(str(params.get("_Spine", "")))
+                if spine is None:
+                    report["recompute_errors"].append(
+                        {"id": fid, "error": "Sweep needs parameters._Spine "
+                                             "(id of an already-built path sketch)"})
+                    doc.removeObject(op.Name)
+                    continue
+                try:
+                    op.Spine = spine
+                except Exception:  # noqa: BLE001 - some versions want a sub list
+                    op.Spine = (spine, [])
+            body.addObject(op)
+            doc.recompute()
+            if op.State and "Invalid" in op.State:
+                report["recompute_errors"].append({"id": fid, "error": "invalid after recompute"})
+            else:
+                report["built"].append({"id": fid, "type": ftype})
+                built_solids[fid] = op
+                if not subtractive:
+                    have_solid = True
                 try:
                     current_top = body.Shape.BoundBox.ZMax
                 except Exception:

@@ -256,7 +256,7 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
-    # AWS S3 Storage
+    # Object Storage (S3-compatible: AWS S3, Cloudflare R2, MinIO)
     # -------------------------------------------------------------------------
     aws_access_key_id: Optional[str] = Field(default=None, description="AWS access key")
     aws_secret_access_key: Optional[str] = Field(
@@ -266,10 +266,22 @@ class Settings(BaseSettings):
     s3_bucket: Optional[str] = Field(
         default=None, description="S3 bucket for file storage"
     )
+    s3_endpoint_url: Optional[str] = Field(
+        default=None,
+        description="Custom S3 endpoint (Cloudflare R2 / MinIO); empty = AWS S3",
+    )
+    s3_presign_expiry_seconds: int = Field(
+        default=86400,
+        ge=60,
+        description="Lifetime of presigned download URLs in seconds",
+    )
 
     # -------------------------------------------------------------------------
-    # Email (SMTP)
+    # Email (Resend HTTP API preferred; SMTP fallback)
     # -------------------------------------------------------------------------
+    resend_api_key: Optional[str] = Field(
+        default=None, description="Resend API key (https://resend.com, free tier)"
+    )
     smtp_host: Optional[str] = Field(default=None, description="SMTP server host")
     smtp_port: int = Field(default=587, description="SMTP server port")
     smtp_user: Optional[str] = Field(default=None, description="SMTP username")

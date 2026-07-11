@@ -12,6 +12,9 @@ import { generateOFL, getFullUrl } from "./services/oflApi";
 import { ArrowRight } from "lucide-react";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import BlogPage from "./pages/BlogPage";
 import AboutPage from "./pages/AboutPage";
 import PrivacyPage from "./pages/PrivacyPage";
@@ -331,6 +334,9 @@ export default function App() {
         <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />

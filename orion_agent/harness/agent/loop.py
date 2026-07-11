@@ -26,7 +26,8 @@ from orion_agent.shared.trajectory import (
 )
 from orion_agent.harness.llm.base import LLMClient, LLMMessage
 from orion_agent.harness.tools.registry import ToolRegistry
-from orion_agent.harness.agent.pillars import Pillar, get_pillar
+from orion_agent.harness.agent.pillars import GENERATE, Pillar, get_pillar
+from orion_agent.harness.agent.repair import RepairPolicy
 from orion_agent.harness.agent.router import PillarRouter
 
 
@@ -64,6 +65,7 @@ class AgentLoop:
         router: Optional[PillarRouter] = None,
         verifier=None,
         context_packer=None,
+        spec_parser=None,
     ):
         self.llm = llm
         self.registry = registry
@@ -72,6 +74,7 @@ class AgentLoop:
         self.router = router or PillarRouter()
         self.verifier = verifier
         self.context_packer = context_packer
+        self.spec_parser = spec_parser
 
     # ------------------------------------------------------------------ #
     def run(
@@ -106,7 +109,22 @@ class AgentLoop:
             ),
         )
 
-        messages = self._assemble(pillar, message, tier, images)
+        # Generate runs the Engineering Intent Parser first: the request
+        # becomes a structured spec (stated values + unresolved gaps) that
+        # conditions generation and gives verification concrete targets.
+        spec = None
+        if pillar.name == GENERATE and self.spec_parser is not None:
+            self._emit(on_event, {"type": "stage", "name": "parse_spec"})
+            try:
+                parsed = self.spec_parser.parse(message)
+            except Exception:  # noqa: BLE001
+                parsed = None
+            if parsed is not None and not parsed.is_empty():
+                spec = parsed
+                traj.spec = spec.to_dict()
+                self._emit(on_event, {"type": "spec", "spec": traj.spec})
+
+        messages = self._assemble(pillar, message, tier, images, document, spec=spec)
         for m in messages:
             traj.add_message(TrajMessage(role=m.role, content=m.content))
 
@@ -114,6 +132,7 @@ class AgentLoop:
         # moved" for mutation pillars.
         baseline = None
         edited_names: set[str] = set()
+        txn_open = False
         if pillar.allow_mutation and self.verifier is not None:
             try:
                 baseline = self.verifier.snapshot()
@@ -121,6 +140,7 @@ class AgentLoop:
                 baseline = None
 
         tool_schemas = self.registry.schemas(allow=pillar.tools)
+        repair = RepairPolicy(budget=getattr(self.cfg.harness, "repair_budget", 3))
         collected_tool_calls: list[dict] = []
         collected_artifacts: list[dict] = []
         last_build_topology: dict = {}
@@ -158,6 +178,12 @@ class AgentLoop:
                     collected_tool_calls.append({"name": tc.name, "ok": False, "result_preview": obs})
                     continue
                 self._emit(on_event, {"type": "tool_call", "name": tc.name, "args": tc.arguments})
+                # Wrap the turn's first document mutation in a real FreeCAD
+                # transaction so a failed verification can actually roll back.
+                tool = self.registry.get(tc.name)
+                if (tool is not None and tool.doc_mutating and not txn_open
+                        and pillar.allow_mutation and self.bridge is not None):
+                    txn_open = self._begin_txn(message)
                 result = self.registry.execute(tc.name, tc.arguments)
                 # Track which objects an edit touched for unintended-change diff.
                 if tc.name in ("set_parameter", "edit_feature") and tc.arguments.get("name"):
@@ -168,10 +194,24 @@ class AgentLoop:
                     created = (result.raw or {}).get("created") if isinstance(result.raw, dict) else None
                     if created:
                         edited_names.add(created)
+                if tc.name == "create_featuregraph" and isinstance(result.raw, dict):
+                    edited_names.update(result.raw.get("created") or [])
                 if tc.name == "write_code" and isinstance(result.raw, dict):
                     last_build_topology = result.raw.get("topology", {}) or last_build_topology
+                # Repair policy: classify build failures and append the
+                # strategy for the next attempt to what the model observes.
+                observation = result.content
+                if not result.ok:
+                    hint = repair.observe_failure(tc.name, result.content,
+                                                  error=result.error or "")
+                    if hint:
+                        observation = result.content + "\n\n" + hint
+                        self._emit(on_event, {"type": "repair",
+                                              **repair.attempts[-1]})
+                else:
+                    repair.observe_success(tc.name)
                 preview = result.content[:240]
-                self._append_tool(messages, traj, tc, result.content, ok=result.ok,
+                self._append_tool(messages, traj, tc, observation, ok=result.ok,
                                   duration_ms=result.duration_ms)
                 collected_tool_calls.append({
                     "name": tc.name, "ok": result.ok, "result_preview": preview,
@@ -189,17 +229,74 @@ class AgentLoop:
                 "established so far:\n" + (last_thinking[:400] if last_thinking else "")
             )
 
+        # Generate: the deliverable is a model in the user's document, not just
+        # a sandbox artifact. If code built but was never imported, import the
+        # last STEP now (inside the transaction, so it is verified like any
+        # model-initiated edit) and record the outcome honestly.
+        if pillar.verification == "artifact":
+            wrote_ok = any(c["name"] == "write_code" and c["ok"] for c in collected_tool_calls)
+            built_native = any(c["name"] == "create_featuregraph" and c["ok"]
+                               for c in collected_tool_calls)
+            imported = any(c["name"] == "import_shape" and c["ok"] for c in collected_tool_calls)
+            if wrote_ok and not (imported or built_native) and self.bridge is not None:
+                if not txn_open:
+                    txn_open = self._begin_txn(message)
+                auto = self.registry.execute("import_shape", {})
+                if auto.ok:
+                    imported = True
+                    created = (auto.raw or {}).get("created") if isinstance(auto.raw, dict) else None
+                    if created:
+                        edited_names.add(created)
+                    traj.validation.checks["auto_imported"] = True
+                    # Harness action, deliberately not added to traj.messages:
+                    # the flywheel must not teach the model to skip the import.
+                    collected_tool_calls.append({
+                        "name": "import_shape", "ok": True,
+                        "result_preview": auto.content[:240],
+                    })
+            delivered = imported or built_native
+            traj.validation.executed = wrote_ok or built_native
+            traj.validation.checks["imported"] = delivered
+            traj.validation.checks["native_build"] = built_native
+            if (wrote_ok or built_native) and not delivered:
+                final_answer = (final_answer or "") + (
+                    "\n\n[Note] The part was built in the sandbox but could not "
+                    "be imported into the FreeCAD document."
+                )
+
         # Pillar verification: run the four-check loop for mutation pillars.
         if self.verifier is not None and pillar.allow_mutation and edited_names:
             try:
                 self.verifier.verify(
                     pillar, traj, collected_artifacts,
                     before=baseline, edited_names=edited_names,
+                    spec=traj.spec or None,
                 )
-                if not traj.validation.passed():
-                    final_answer = self._append_verification_note(final_answer, traj.validation)
             except Exception as exc:  # noqa: BLE001
                 traj.validation.notes = f"verifier error: {exc}"
+
+        # Resolve the pending transaction from the verification verdict: hard
+        # failures (broken recompute, dead downstream feature, geometry moved
+        # outside the edit) roll back; everything else commits. Intent-check
+        # misses alone don't revert — that check is heuristic.
+        rolled_back = False
+        if txn_open and self.bridge is not None:
+            try:
+                if self._hard_failed(traj.validation):
+                    self.bridge.abort_transaction()
+                    rolled_back = True
+                else:
+                    self.bridge.commit_transaction()
+            except Exception as exc:  # noqa: BLE001
+                traj.validation.notes = (
+                    (traj.validation.notes + "; ") if traj.validation.notes else ""
+                ) + f"transaction error: {exc}"
+        traj.validation.checks["rolled_back"] = rolled_back
+
+        if pillar.allow_mutation and edited_names and not traj.validation.passed():
+            final_answer = self._append_verification_note(
+                final_answer, traj.validation, rolled_back
+            )
 
         if pillar.verification == "grounding":
             traj.validation.grounded = bool(
@@ -220,6 +317,12 @@ class AgentLoop:
                     "Treat this reconstruction as approximate."
                 )
 
+        # Repair record: attempts, budget, and whether the turn recovered —
+        # this is what "repair recovery rate" is computed from in evals.
+        repair_summary = repair.summary()
+        if repair_summary is not None:
+            traj.validation.checks["repair"] = repair_summary
+
         traj.final_answer = final_answer
         traj.step_count = step
         traj.duration_ms = (time.time() - started) * 1000
@@ -238,13 +341,33 @@ class AgentLoop:
 
     # ------------------------------------------------------------------ #
     def _assemble(self, pillar: Pillar, message: str, tier: str,
-                  images: Optional[list[str]]) -> list[LLMMessage]:
+                  images: Optional[list[str]], document: str = "",
+                  spec=None) -> list[LLMMessage]:
         if self.context_packer is not None:
-            return self.context_packer.pack(pillar, message, tier, images, self.bridge)
+            return self.context_packer.pack(pillar, message, tier, images,
+                                            self.bridge, document=document,
+                                            spec=spec)
         system = pillar.system_prompt
         if tier and tier != ModelTier.UNKNOWN:
             system += f"\n\nThe open model is classified as Tier {tier}."
+        if spec is not None:
+            rendered = spec.render()
+            if rendered:
+                system += ("\n\n--- Engineering specification (parsed from the "
+                           "request) ---\n" + rendered)
         return [LLMMessage.system(system), LLMMessage.user(message, images=images)]
+
+    def _begin_txn(self, message: str) -> bool:
+        try:
+            self.bridge.begin_transaction(f"OrionFlow: {message[:48]}")
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    @staticmethod
+    def _hard_failed(vb) -> bool:
+        return any(f is False for f in (vb.executed, vb.edit_survived,
+                                        vb.no_unintended_change))
 
     def _detect_tier(self) -> str:
         if self.bridge is None:
@@ -271,7 +394,7 @@ class AgentLoop:
                     break
 
     @staticmethod
-    def _append_verification_note(answer: str, vb) -> str:
+    def _append_verification_note(answer: str, vb, rolled_back: bool = False) -> str:
         failed = []
         if vb.executed is False:
             failed.append("the model did not recompute cleanly")
@@ -279,10 +402,14 @@ class AgentLoop:
             failed.append("a downstream feature broke")
         if vb.no_unintended_change is False:
             failed.append("geometry outside the edited region changed")
+        if vb.intent_consistent is False:
+            failed.append("the result does not appear to match the stated intent")
         if not failed:
             return answer
+        tail = ("The change was rolled back." if rolled_back
+                else "The change is still in the document — use undo to revert it.")
         note = ("\n\n[Verification] I could not confirm this edit is safe: "
-                + "; ".join(failed) + ". The change was rolled back.")
+                + "; ".join(failed) + ". " + tail)
         return (answer or "") + note
 
     @staticmethod

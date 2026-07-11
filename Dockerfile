@@ -30,10 +30,16 @@ FROM python:3.11-slim-bookworm AS production
 
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install runtime dependencies only.
+# libgl1/libglu1/libxrender1/libxext6: required by the OCP (OpenCascade)
+# wheel that build123d links against; absent on slim images.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
+    libgl1 \
+    libglu1-mesa \
+    libxrender1 \
+    libxext6 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -46,6 +52,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
 COPY app/ ./app/
+COPY orionflow_ofl/ ./orionflow_ofl/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 COPY scripts/ ./scripts/

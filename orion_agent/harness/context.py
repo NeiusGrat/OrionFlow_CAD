@@ -24,7 +24,8 @@ class ContextPacker:
         self.state_token_budget = state_token_budget
 
     def pack(self, pillar, message: str, tier: str,
-             images: Optional[list[str]], bridge) -> list[LLMMessage]:
+             images: Optional[list[str]], bridge, document: str = "",
+             spec=None) -> list[LLMMessage]:
         system = pillar.system_prompt
         if tier and tier != ModelTier.UNKNOWN:
             system += f"\n\nThe open model is classified as Tier {tier}."
@@ -34,10 +35,26 @@ class ContextPacker:
             system += "\n\n--- Current model snapshot ---\n" + state
 
         if self.memory is not None:
-            mem = self.memory.get(self._doc_hint(message))
+            doc_key = document or self._document_name(bridge)
+            mem = self.memory.get(doc_key) if doc_key else None
             mem_summary = mem.summary() if mem else ""
             if mem_summary:
                 system += "\n\n--- Memory (this document) ---\n" + mem_summary
+
+        # Generation turns get worked FeatureGraph examples matched to the
+        # request, so graph structure is never produced zero-shot.
+        if pillar.name in ("generate", "reconstruct"):
+            from orion_agent.harness.exemplars import render_examples
+            system += ("\n\n--- Worked examples (imitate this structure) ---\n"
+                       + render_examples(message))
+
+        # The parsed engineering spec goes last so the stated values and the
+        # unresolved gaps sit closest to the user message.
+        if spec is not None:
+            rendered = spec.render()
+            if rendered:
+                system += ("\n\n--- Engineering specification (parsed from the "
+                           "request) ---\n" + rendered)
 
         return [LLMMessage.system(system), LLMMessage.user(message, images=images)]
 
@@ -69,7 +86,10 @@ class ContextPacker:
         return text
 
     @staticmethod
-    def _doc_hint(_message: str) -> str:
-        # Document scoping is provided by the loop via memory.observe; the packer
-        # only needs a best-effort key here.
-        return ""
+    def _document_name(bridge) -> str:
+        if bridge is None:
+            return ""
+        try:
+            return bridge.get_document_state().get("name", "") or ""
+        except Exception:  # noqa: BLE001
+            return ""

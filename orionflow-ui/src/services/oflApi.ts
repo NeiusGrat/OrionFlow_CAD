@@ -62,5 +62,6 @@ export async function editOFL(oflCode: string, instruction: string): Promise<OFL
 
 export function getFullUrl(path: string | null): string | null {
   if (!path) return null;
+  if (path.startsWith('http')) return path; // already absolute (object storage)
   return `${API_BASE}${path}`;
 }

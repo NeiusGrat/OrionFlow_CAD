@@ -33,6 +33,10 @@ from app.auth.password import (
 from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.logging_config import get_logger
+from app.services.email_service import (
+    send_password_reset_email,
+    send_verification_email,
+)
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -171,7 +175,7 @@ async def signup(
     await db.refresh(user)
 
     # Send verification email (background task)
-    # background_tasks.add_task(send_verification_email, user.email, verification_token)
+    background_tasks.add_task(send_verification_email, user.email, verification_token)
 
     # Create tokens
     token_pair = create_token_pair(
@@ -358,7 +362,7 @@ async def forgot_password(
         await db.commit()
 
         # Send reset email (background task)
-        # background_tasks.add_task(send_password_reset_email, user.email, reset_token)
+        background_tasks.add_task(send_password_reset_email, user.email, reset_token)
 
         logger.info("password_reset_requested", email=request.email)
 

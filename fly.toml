@@ -14,10 +14,15 @@ primary_region = "bom"          # Mumbai — closest to India; change if needed
   dockerfile = "Dockerfile"
   build-target = "production"
 
+[deploy]
+  # Runs in a throwaway machine before the new version goes live.
+  release_command = "alembic upgrade head"
+
 [env]
   ENVIRONMENT = "production"
   DEBUG = "false"
   LLM_PROVIDER = "groq"
+  OFL_LLM_PROVIDER = "groq"
   PYTHONPATH = "/app"
 
 [http_service]
