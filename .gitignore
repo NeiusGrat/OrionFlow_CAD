@@ -100,3 +100,8 @@ CAD_DATA/zero_to_cad/scripts/
 freecad/orionflow_dataset_v1.jsonl
 # Deploy secrets
 deploy/.env.deploy
+
+# Coverage artifacts
+.coverage
+coverage.xml
+htmlcov/
