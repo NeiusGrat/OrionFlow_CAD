@@ -21,6 +21,11 @@ async function errorDetail(res: Response): Promise<string> {
   const body = await res.json().catch(() => null);
   if (typeof body?.detail === 'string') return body.detail;
   if (typeof body?.detail?.error === 'string') return body.detail.error;
+  // Global handler shape: {"error": {"code": ..., "message": ...}}
+  if (typeof body?.error?.message === 'string') return body.error.message;
+  if (typeof body?.message === 'string') return body.message;
+  // Pydantic validation shape: {"detail": [{"msg": ...}]}
+  if (Array.isArray(body?.detail) && body.detail[0]?.msg) return body.detail[0].msg;
   return res.statusText || 'Request failed';
 }
 

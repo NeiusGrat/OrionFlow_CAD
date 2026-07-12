@@ -140,20 +140,9 @@ def check_password_strength(password: str) -> Tuple[bool, str]:
     Returns:
         Tuple of (is_valid, error_message)
     """
+    # MVP policy: length only. Character-class rules caused signup friction
+    # without meaningfully improving security at this scale.
     if len(password) < 8:
         return False, "Password must be at least 8 characters long"
-
-    if not any(c.isupper() for c in password):
-        return False, "Password must contain at least one uppercase letter"
-
-    if not any(c.islower() for c in password):
-        return False, "Password must contain at least one lowercase letter"
-
-    if not any(c.isdigit() for c in password):
-        return False, "Password must contain at least one digit"
-
-    special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
-    if not any(c in special_chars for c in password):
-        return False, "Password must contain at least one special character"
 
     return True, ""

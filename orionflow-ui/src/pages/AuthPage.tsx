@@ -29,7 +29,12 @@ export default function AuthPage() {
             }
             navigate('/app');
         } catch (err: any) {
-            setError(err.message || 'Authentication failed');
+            const msg = err.message || 'Authentication failed';
+            setError(
+                isLogin && /incorrect email or password/i.test(msg)
+                    ? msg + ' — new here? Switch to Sign up below.'
+                    : msg
+            );
         } finally {
             setLoading(false);
         }
@@ -191,7 +196,8 @@ export default function AuthPage() {
                                 <Lock size={18} color="#64748b" />
                                 <input
                                     type="password"
-                                    placeholder="Password"
+                                    placeholder={isLogin ? "Password" : "Password (8+ characters)"}
+                                    minLength={8}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
