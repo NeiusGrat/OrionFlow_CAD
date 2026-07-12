@@ -16,7 +16,7 @@ import {
 import Viewer from "../Viewer/Viewer";
 import ChatPanel from "../Panels/ChatPanel";
 import OFLCodePanel from "../Panels/OFLCodePanel";
-import OrionFlowLogo from "../OrionFlowLogo";
+import OrionFlowLogo, { OrionFlowWordmark } from "../OrionFlowLogo";
 import { useDesignStore } from "../../store/designStore";
 import { useOFLStore } from "../../store/oflStore";
 import { useAuthStore } from "../../store/authStore";
@@ -180,12 +180,10 @@ function TopBar() {
                 borderBottom: "1px solid var(--studio-border)",
             }}
         >
-            {/* Studio brand — single, compact */}
+            {/* Studio brand — single, compact, official mark */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingRight: "10px" }}>
                 <OrionFlowLogo size={20} />
-                <span style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "-0.01em", color: "var(--studio-text)" }}>
-                    OrionFlow
-                </span>
+                <OrionFlowWordmark size={13} />
                 <span
                     style={{
                         fontSize: "9.5px",

@@ -1,67 +1,55 @@
 interface OrionFlowLogoProps {
   size?: number;
   className?: string;
-  /** 'light': blue/black rays for light backgrounds (default).
-   *  'dark': blue/white rays for dark backgrounds.
-   *  'mono': all-white rays for colored/gradient surfaces. */
+  /** 'dark' (default): light strokes for dark backgrounds.
+   *  'light': dark strokes for light backgrounds.
+   *  'mono': all-white for colored/gradient surfaces. */
   theme?: 'light' | 'dark' | 'mono';
 }
 
+/**
+ * Official OrionFlow mark — the constellation (Orion's belt): three nodes
+ * joined by struts, apex node in brand violet. Matches the marketing site.
+ */
 export default function OrionFlowLogo({ size = 40, className = '', theme = 'dark' }: OrionFlowLogoProps) {
-  const rayCount = 12;
-  const innerRadius = size * 0.25;
-  const outerRadius = size * 0.48;
-  const rayWidth = size * 0.08;
-  const center = size / 2;
-
-  const rays = [];
-  for (let i = 0; i < rayCount; i++) {
-    const angle = (i * 360) / rayCount - 90;
-    const rad = (angle * Math.PI) / 180;
-
-    // Calculate ray start and end points
-    const x1 = center + innerRadius * Math.cos(rad);
-    const y1 = center + innerRadius * Math.sin(rad);
-    const x2 = center + outerRadius * Math.cos(rad);
-    const y2 = center + outerRadius * Math.sin(rad);
-
-    // Blue rays on left (indices 6-11), contrast rays on right (indices 0-5)
-    const isBlue = i >= 6 && i <= 11;
-    const contrast = theme === 'light' ? '#0a0a0a' : '#f8fafc';
-    const color = theme === 'mono' ? '#ffffff' : isBlue ? '#2563eb' : contrast;
-
-    rays.push(
-      <line
-        key={i}
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        stroke={color}
-        strokeWidth={rayWidth}
-        strokeLinecap="round"
-      />
-    );
-  }
+  const stroke = theme === 'light' ? '#10121a' : '#EDEAFB';
+  const accent = theme === 'mono' ? '#ffffff' : theme === 'light' ? '#7059E8' : '#8B79F2';
+  const s = theme === 'mono' ? '#ffffff' : stroke;
 
   return (
     <svg
       width={size}
       height={size}
-      viewBox={`0 0 ${size} ${size}`}
+      viewBox="0 0 26 26"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      aria-hidden="true"
     >
-      {/* Rays */}
-      {rays}
-      {/* Center circle */}
-      <circle
-        cx={center}
-        cy={center}
-        r={innerRadius}
-        fill="white"
-      />
+      <line x1="6" y1="19" x2="13" y2="7" stroke={s} strokeWidth="1.6" />
+      <line x1="13" y1="7" x2="20" y2="13" stroke={s} strokeWidth="1.6" />
+      <circle cx="6" cy="19" r="2.6" fill={s} />
+      <circle cx="20" cy="13" r="2.6" fill={s} />
+      <circle cx="13" cy="7" r="3.2" fill={accent} />
     </svg>
+  );
+}
+
+/** Gradient wordmark matching the marketing site's brand treatment. */
+export function OrionFlowWordmark({ size = 16 }: { size?: number }) {
+  return (
+    <span
+      style={{
+        fontSize: `${size}px`,
+        fontWeight: 700,
+        letterSpacing: '-0.01em',
+        background: 'linear-gradient(96deg, #9C8BF5, #C9D6FB)',
+        WebkitBackgroundClip: 'text',
+        backgroundClip: 'text',
+        color: 'transparent',
+      }}
+    >
+      OrionFlow
+    </span>
   );
 }
