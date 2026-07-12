@@ -30,6 +30,18 @@ class Part:
         self._solid = solid
         return self
 
+    def __add__(self, other):
+        """Binary union: ``base + boss`` returns a new Part."""
+        result = Part(self._solid)
+        result += other
+        return result
+
+    def __sub__(self, hole):
+        """Binary subtraction: ``plate - hole`` returns a new Part."""
+        result = Part(self._solid)
+        result -= hole
+        return result
+
     def fillet(self, radius: float, edges: str = "all") -> Part:
         """Round edges of the solid. edges: 'all' | 'top' | 'bottom' | 'vertical'"""
         from build123d import fillet as _fillet, Axis as _Axis
@@ -103,10 +115,22 @@ class Part:
         solid = self._solid
         for x, y in hole._positions:
             cyl = _Pos(x, y, z_center) * _Cylinder(radius, depth)
-            solid = solid - cyl
+            cut = solid - cyl
 
-        if solid is None:
-            raise GeometryError("Boolean subtraction produced no geometry")
+            if cut is None:
+                raise GeometryError("Boolean subtraction produced no geometry")
+
+            # A cut that removes no material means the hole missed the part —
+            # almost always center-origin coordinates mistaken for corner-origin.
+            if abs(solid.volume - cut.volume) < max(solid.volume, 1.0) * 1e-9:
+                label = f" '{hole._label}'" if hole._label else ""
+                bb = solid.bounding_box()
+                raise GeometryError(
+                    f"Hole{label} d={hole._diameter} at ({x:g}, {y:g}) does not cut the part. "
+                    f"The part spans X [{bb.min.X:g}, {bb.max.X:g}], Y [{bb.min.Y:g}, {bb.max.Y:g}]. "
+                    f"Hole coordinates are measured from the part CENTER (0, 0), not a corner."
+                )
+            solid = cut
 
         self._solid = solid
         return self

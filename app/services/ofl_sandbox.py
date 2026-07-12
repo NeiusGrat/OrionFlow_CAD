@@ -77,7 +77,7 @@ class OFLSandbox:
                 "output_dir": output_dir,
                 "step_file": step_file,
                 "stl_file": stl_file,
-                "error": result.stderr[:500] if not success else None,
+                "error": self._extract_error(result.stderr) if not success else None,
                 "stdout": result.stdout,
                 "stderr": result.stderr,
             }
@@ -102,6 +102,20 @@ class OFLSandbox:
                 "stdout": "",
                 "stderr": "",
             }
+
+    @staticmethod
+    def _extract_error(stderr: str) -> str:
+        """Pull the actual exception out of a subprocess traceback.
+
+        The message lives at the END of a traceback, so a head-slice would
+        return only 'Traceback (most recent call last)' boilerplate.
+        """
+        if not stderr:
+            return "Execution failed with no error output"
+        lines = [ln for ln in stderr.strip().splitlines() if ln.strip()]
+        # Last line is the exception itself; include a little context.
+        tail = "\n".join(lines[-4:])
+        return tail[-800:]
 
     def _validate_code(self, code: str) -> dict:
         """Check code for dangerous imports/calls before execution."""

@@ -95,12 +95,38 @@ class Settings(BaseSettings):
     # OFL (OrionFlow Language) Configuration
     # -------------------------------------------------------------------------
     ofl_llm_provider: str = Field(
-        default="groq", description="OFL LLM provider: groq, ollama, or local"
+        default="groq", description="OFL LLM provider: groq, k2think, ollama, or local"
+    )
+
+    ofl_llm_fallback_provider: Optional[str] = Field(
+        default=None,
+        description="Secondary OFL provider used when the primary errors "
+        "(e.g. rate limits). Same choices as ofl_llm_provider.",
     )
 
     ofl_groq_model: str = Field(
         default="llama-3.3-70b-versatile",
         description="Groq model for OFL code generation",
+    )
+
+    k2think_api_key: Optional[str] = Field(
+        default=None, description="K2 Think API key (IFM-... bearer token)"
+    )
+
+    k2think_base_url: str = Field(
+        default="https://api.k2think.ai/v1/chat/completions",
+        description="K2 Think chat completions endpoint",
+    )
+
+    k2think_model: str = Field(
+        default="MBZUAI-IFM/K2-Think-v2", description="K2 Think model id"
+    )
+
+    ofl_k2think_timeout_seconds: int = Field(
+        default=180,
+        ge=10,
+        le=3600,
+        description="Timeout for K2 Think OFL generation (reasoning model)",
     )
 
     ofl_ollama_model: str = Field(
@@ -151,6 +177,10 @@ class Settings(BaseSettings):
     db_user: str = Field(default="orionflow", description="Database user")
     db_password: str = Field(default="orionflow", description="Database password")
     db_name: str = Field(default="orionflow", description="Database name")
+    db_ssl: bool = Field(
+        default=False,
+        description="Require TLS for Postgres (Supabase/Neon poolers need this)",
+    )
     db_echo: bool = Field(default=False, description="Echo SQL queries")
     db_pool_size: int = Field(default=5, description="Database connection pool size")
     db_max_overflow: int = Field(default=10, description="Max pool overflow")
@@ -158,7 +188,13 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """Build database URL."""
-        return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        from urllib.parse import quote_plus
+
+        return (
+            f"postgresql+asyncpg://{quote_plus(self.db_user)}:"
+            f"{quote_plus(self.db_password)}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+        )
 
     # -------------------------------------------------------------------------
     # Redis Configuration
@@ -411,7 +447,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_ofl_provider(cls, v: str) -> str:
         """Validate OFL LLM provider is supported."""
-        valid_providers = ["groq", "ollama", "local"]
+        valid_providers = ["groq", "k2think", "ollama", "local"]
         if v.lower() not in valid_providers:
             raise ValueError(f"OFL LLM provider must be one of: {valid_providers}")
         return v.lower()

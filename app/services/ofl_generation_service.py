@@ -19,6 +19,7 @@ class OFLGenerationService:
 
     def __init__(self, require_llm: bool = True):
         self._llm = None
+        self._llm_fallback = None
         self.sandbox = OFLSandbox(timeout=30)
         if require_llm:
             self._llm = OFLLLMClient()
@@ -29,21 +30,42 @@ class OFLGenerationService:
             self._llm = OFLLLMClient()
         return self._llm
 
-    def generate_from_prompt(self, prompt: str) -> OFLGenerateResponse:
-        """Full pipeline: text → code → STEP/STL/GLB."""
+    def _llm_call(self, method: str, *args) -> str:
+        """Call the primary LLM; on failure retry once on the fallback provider."""
+        from app.config import settings
+
+        try:
+            return getattr(self.llm, method)(*args)
+        except Exception as primary_exc:
+            fallback = settings.ofl_llm_fallback_provider
+            if not fallback or fallback == self.llm.provider:
+                raise
+            if self._llm_fallback is None:
+                self._llm_fallback = OFLLLMClient(provider=fallback)
+            logger.warning(
+                f"OFL primary LLM ({self.llm.provider}) failed: {primary_exc}; "
+                f"retrying on {fallback}"
+            )
+            return getattr(self._llm_fallback, method)(*args)
+
+    def generate_from_prompt(
+        self, prompt: str, max_repairs: int = 2
+    ) -> OFLGenerateResponse:
+        """Full pipeline: text → code → STEP/STL/GLB, with LLM self-repair."""
         t0 = time.time()
         try:
-            ofl_code = self.llm.generate(prompt)
+            ofl_code = self._llm_call('generate', prompt)
         except Exception as e:
             return OFLGenerateResponse(
                 success=False,
                 error=f"LLM error: {e}",
                 generation_time_ms=(time.time() - t0) * 1000,
             )
-        return self._execute_and_respond(ofl_code, t0)
+        return self._execute_with_repair(ofl_code, prompt, t0, max_repairs)
 
     def rebuild_from_code(self, ofl_code: str) -> OFLGenerateResponse:
-        """Re-execute edited OFL code (no LLM call)."""
+        """Re-execute edited OFL code (no LLM call, no repair — the user
+        edited this code and wants their own error back)."""
         return self._execute_and_respond(ofl_code, time.time())
 
     def edit_from_instruction(
@@ -54,18 +76,43 @@ class OFLGenerationService:
         edited = self._try_rule_based_edit(current_code, edit_instruction)
         if edited is None:
             try:
-                edited = self.llm.generate_edit(current_code, edit_instruction)
+                edited = self._llm_call('generate_edit', current_code, edit_instruction)
             except Exception as e:
                 return OFLGenerateResponse(
                     success=False,
                     error=f"Edit LLM error: {e}",
                     generation_time_ms=(time.time() - t0) * 1000,
                 )
+            return self._execute_with_repair(edited, edit_instruction, t0)
         return self._execute_and_respond(edited, t0)
+
+    def _execute_with_repair(
+        self, ofl_code: str, prompt: str, t0: float, max_repairs: int = 2
+    ) -> OFLGenerateResponse:
+        """Execute code; on failure feed the error back to the LLM and retry."""
+        result = self.sandbox.execute(ofl_code)
+        for attempt in range(max_repairs):
+            if result["success"]:
+                break
+            logger.info(
+                f"OFL execution failed (repair attempt {attempt + 1}): "
+                f"{result['error']}"
+            )
+            try:
+                ofl_code = self._llm_call("repair", ofl_code, result["error"] or "", prompt)
+            except Exception as e:
+                logger.warning(f"OFL repair LLM call failed: {e}")
+                break
+            result = self.sandbox.execute(ofl_code)
+        return self._respond_from_result(ofl_code, result, t0)
 
     def _execute_and_respond(self, ofl_code: str, t0: float) -> OFLGenerateResponse:
         result = self.sandbox.execute(ofl_code)
+        return self._respond_from_result(ofl_code, result, t0)
 
+    def _respond_from_result(
+        self, ofl_code: str, result: dict, t0: float
+    ) -> OFLGenerateResponse:
         if not result["success"]:
             return OFLGenerateResponse(
                 success=False,
