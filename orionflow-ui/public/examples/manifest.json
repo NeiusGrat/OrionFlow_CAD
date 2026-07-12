@@ -1,0 +1,944 @@
+{
+  "examples": [
+    {
+      "id": "m8-washer",
+      "title": "M8 Flat Washer",
+      "category": "Fasteners",
+      "prompt": "Flat washer for M8 bolts: 24mm outer diameter, 8.4mm bore, 2mm thick",
+      "ofl_code": "from orionflow_ofl import *\n\nod = 24\nbore_dia = 8.4\nthickness = 2\n\npart = Sketch(Plane.XY).circle(od).extrude(thickness)\npart -= Hole(bore_dia).at(0, 0).through().label(\"M8_bore\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "od",
+          "value": 24.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 8.4
+        },
+        {
+          "name": "thickness",
+          "value": 2.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/m8-washer.glb",
+        "step": "/examples/m8-washer.step",
+        "stl": "/examples/m8-washer.stl"
+      },
+      "stats": {
+        "volume_mm3": 793.6,
+        "bbox_mm": [
+          24.0,
+          24.0,
+          2.0
+        ],
+        "triangles": 1008
+      }
+    },
+    {
+      "id": "pipe-flange",
+      "title": "Pipe Flange DN40",
+      "category": "Piping",
+      "prompt": "Pipe flange, 150mm outer diameter, 12mm thick, 48mm center bore, four M16 bolt holes (17.5mm) on 110mm PCD",
+      "ofl_code": "from orionflow_ofl import *\n\nflange_dia = 150\nthickness = 12\nbore_dia = 48\nbolt_dia = 17.5\nbolt_pcd = 110\nbolt_count = 4\n\npart = Sketch(Plane.XY).circle(flange_dia).extrude(thickness)\n\npart -= Hole(bore_dia).at(0, 0).through().label(\"pipe_bore\")\npart -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=bolt_count, start_angle=0).through().label(\"M16_mount\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "flange_dia",
+          "value": 150.0
+        },
+        {
+          "name": "thickness",
+          "value": 12.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 48.0
+        },
+        {
+          "name": "bolt_dia",
+          "value": 17.5
+        },
+        {
+          "name": "bolt_pcd",
+          "value": 110.0
+        },
+        {
+          "name": "bolt_count",
+          "value": 4.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/pipe-flange.glb",
+        "step": "/examples/pipe-flange.step",
+        "stl": "/examples/pipe-flange.stl"
+      },
+      "stats": {
+        "volume_mm3": 178723.4,
+        "bbox_mm": [
+          150.0,
+          150.0,
+          12.0
+        ],
+        "triangles": 3040
+      }
+    },
+    {
+      "id": "nema17-mount",
+      "title": "NEMA 17 Motor Mount",
+      "category": "Robotics",
+      "prompt": "NEMA 17 stepper motor mounting plate: 60mm square, 6mm thick, 4mm corner radius, 22.5mm center bore, four M3 holes (3.4mm) on 31mm PCD at 45 degrees",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_size = 60\nthickness = 6\ncorner_r = 4\nbore_dia = 22.5\nbolt_dia = 3.4\nbolt_pcd = 31\n\npart = Sketch(Plane.XY).rounded_rect(plate_size, plate_size, corner_r).extrude(thickness)\n\npart -= Hole(bore_dia).at(0, 0).through().label(\"shaft_bore\")\npart -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=4, start_angle=45).through().label(\"M3_mount\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_size",
+          "value": 60.0
+        },
+        {
+          "name": "thickness",
+          "value": 6.0
+        },
+        {
+          "name": "corner_r",
+          "value": 4.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 22.5
+        },
+        {
+          "name": "bolt_dia",
+          "value": 3.4
+        },
+        {
+          "name": "bolt_pcd",
+          "value": 31.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/nema17-mount.glb",
+        "step": "/examples/nema17-mount.step",
+        "stl": "/examples/nema17-mount.stl"
+      },
+      "stats": {
+        "volume_mm3": 18915.0,
+        "bbox_mm": [
+          60.0,
+          60.0,
+          6.0
+        ],
+        "triangles": 3064
+      }
+    },
+    {
+      "id": "nema23-mount",
+      "title": "NEMA 23 Motor Mount",
+      "category": "Robotics",
+      "prompt": "NEMA 23 stepper motor mount: 80mm square plate, 8mm thick, 5mm corner radius, 38.5mm center bore, four M5 clearance holes (5.5mm) on 66.7mm PCD at 45 degrees",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_size = 80\nthickness = 8\ncorner_r = 5\nbore_dia = 38.5\nbolt_dia = 5.5\nbolt_pcd = 66.7\n\npart = Sketch(Plane.XY).rounded_rect(plate_size, plate_size, corner_r).extrude(thickness)\n\npart -= Hole(bore_dia).at(0, 0).through().label(\"shaft_bore\")\npart -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=4, start_angle=45).through().label(\"M5_mount\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_size",
+          "value": 80.0
+        },
+        {
+          "name": "thickness",
+          "value": 8.0
+        },
+        {
+          "name": "corner_r",
+          "value": 5.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 38.5
+        },
+        {
+          "name": "bolt_dia",
+          "value": 5.5
+        },
+        {
+          "name": "bolt_pcd",
+          "value": 66.7
+        }
+      ],
+      "files": {
+        "glb": "/examples/nema23-mount.glb",
+        "step": "/examples/nema23-mount.step",
+        "stl": "/examples/nema23-mount.stl"
+      },
+      "stats": {
+        "volume_mm3": 40958.7,
+        "bbox_mm": [
+          80.0,
+          80.0,
+          8.0
+        ],
+        "triangles": 3064
+      }
+    },
+    {
+      "id": "corner-plate",
+      "title": "Mounting Plate 120x80",
+      "category": "General",
+      "prompt": "Mounting plate 120x80mm, 6mm thick, four M5 clearance holes (5.5mm) inset 10mm from each corner",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_w = 120\nplate_h = 80\nthickness = 6\nhole_dia = 5.5\ninset = 10\n\nhole_x = plate_w / 2 - inset\nhole_y = plate_h / 2 - inset\n\npart = Sketch(Plane.XY).rect(plate_w, plate_h).extrude(thickness)\n\npart -= (\n    Hole(hole_dia)\n    .at(-hole_x, -hole_y)\n    .at(hole_x, -hole_y)\n    .at(-hole_x, hole_y)\n    .at(hole_x, hole_y)\n    .through()\n    .label(\"M5_corner\")\n)\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_w",
+          "value": 120.0
+        },
+        {
+          "name": "plate_h",
+          "value": 80.0
+        },
+        {
+          "name": "thickness",
+          "value": 6.0
+        },
+        {
+          "name": "hole_dia",
+          "value": 5.5
+        },
+        {
+          "name": "inset",
+          "value": 10.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/corner-plate.glb",
+        "step": "/examples/corner-plate.step",
+        "stl": "/examples/corner-plate.stl"
+      },
+      "stats": {
+        "volume_mm3": 57030.0,
+        "bbox_mm": [
+          120.0,
+          80.0,
+          6.0
+        ],
+        "triangles": 2044
+      }
+    },
+    {
+      "id": "rpi4-mount",
+      "title": "Raspberry Pi 4 Mount",
+      "category": "Electronics",
+      "prompt": "Raspberry Pi 4 mounting plate: 92x62mm, 4mm thick, 3mm corner radius, four 2.7mm holes for M2.5 standoffs in a 58x49mm rectangle pattern centered on the plate",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_w = 92\nplate_h = 62\nthickness = 4\ncorner_r = 3\nhole_dia = 2.7\nhole_rect_w = 58\nhole_rect_h = 49\n\nhole_x = (plate_w - hole_rect_w) / 2\nhole_y = (plate_h - hole_rect_h) / 2\n\npart = Sketch(Plane.XY).rounded_rect(plate_w, plate_h, corner_r).extrude(thickness)\n\npart -= (\n    Hole(hole_dia)\n    .at(-hole_x, -hole_y)\n    .at(hole_x, -hole_y)\n    .at(-hole_x, hole_y)\n    .at(hole_x, hole_y)\n    .through()\n    .label(\"M2.5_mount\")\n)\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_w",
+          "value": 92.0
+        },
+        {
+          "name": "plate_h",
+          "value": 62.0
+        },
+        {
+          "name": "thickness",
+          "value": 4.0
+        },
+        {
+          "name": "corner_r",
+          "value": 3.0
+        },
+        {
+          "name": "hole_dia",
+          "value": 2.7
+        },
+        {
+          "name": "hole_rect_w",
+          "value": 58.0
+        },
+        {
+          "name": "hole_rect_h",
+          "value": 49.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/rpi4-mount.glb",
+        "step": "/examples/rpi4-mount.step",
+        "stl": "/examples/rpi4-mount.stl"
+      },
+      "stats": {
+        "volume_mm3": 22693.5,
+        "bbox_mm": [
+          92.0,
+          62.0,
+          4.0
+        ],
+        "triangles": 2556
+      }
+    },
+    {
+      "id": "softjaw-blank",
+      "title": "Soft Jaw Blank",
+      "category": "Workholding",
+      "prompt": "Vise soft jaw blank 100x50mm, 20mm thick, 6mm fillet on the vertical edges, two M6 clearance holes (6.6mm) spaced 60mm apart on the horizontal center line",
+      "ofl_code": "from orionflow_ofl import *\n\njaw_w = 100\njaw_h = 50\nthickness = 20\nfillet_r = 6\nbolt_dia = 6.6\nbolt_spacing = 60\n\npart = Sketch(Plane.XY).rect(jaw_w, jaw_h).extrude(thickness)\npart.fillet(fillet_r, edges=\"vertical\")\n\nhole_x = bolt_spacing / 2\npart -= (\n    Hole(bolt_dia)\n    .at(-hole_x, 0)\n    .at(hole_x, 0)\n    .through()\n    .label(\"M6_clearance\")\n)\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "jaw_w",
+          "value": 100.0
+        },
+        {
+          "name": "jaw_h",
+          "value": 50.0
+        },
+        {
+          "name": "thickness",
+          "value": 20.0
+        },
+        {
+          "name": "fillet_r",
+          "value": 6.0
+        },
+        {
+          "name": "bolt_dia",
+          "value": 6.6
+        },
+        {
+          "name": "bolt_spacing",
+          "value": 60.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/softjaw-blank.glb",
+        "step": "/examples/softjaw-blank.step",
+        "stl": "/examples/softjaw-blank.stl"
+      },
+      "stats": {
+        "volume_mm3": 98013.1,
+        "bbox_mm": [
+          100.0,
+          50.0,
+          20.0
+        ],
+        "triangles": 1540
+      }
+    },
+    {
+      "id": "enclosure-base",
+      "title": "Electronics Enclosure",
+      "category": "Electronics",
+      "prompt": "Electronics enclosure base 100x64mm, 25mm tall, 4mm corner radius, hollowed out with 2.5mm walls and an open top",
+      "ofl_code": "from orionflow_ofl import *\n\nbase_w = 100\nbase_h = 64\nbase_t = 25\ncorner_r = 4\nwall_t = 2.5\n\npart = Sketch(Plane.XY).rounded_rect(base_w, base_h, corner_r).extrude(base_t)\npart = part.shell(wall_t, open_face=\"top\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "base_w",
+          "value": 100.0
+        },
+        {
+          "name": "base_h",
+          "value": 64.0
+        },
+        {
+          "name": "base_t",
+          "value": 25.0
+        },
+        {
+          "name": "corner_r",
+          "value": 4.0
+        },
+        {
+          "name": "wall_t",
+          "value": 2.5
+        }
+      ],
+      "files": {
+        "glb": "/examples/enclosure-base.glb",
+        "step": "/examples/enclosure-base.step",
+        "stl": "/examples/enclosure-base.stl"
+      },
+      "stats": {
+        "volume_mm3": 33587.2,
+        "bbox_mm": [
+          100.0,
+          64.0,
+          25.0
+        ],
+        "triangles": 1052
+      }
+    },
+    {
+      "id": "bearing-housing",
+      "title": "6202 Bearing Housing",
+      "category": "Power Transmission",
+      "prompt": "Flanged bearing housing for a 6202 bearing: 55mm diameter base 6mm thick, 40mm diameter boss 12mm tall on top, 35mm bore through everything, four M4 holes (4.5mm) on 46mm PCD",
+      "ofl_code": "from orionflow_ofl import *\n\nbase_dia = 55\nbase_h = 6\nboss_dia = 40\nboss_h = 12\nbore_dia = 15  # 6202 bearing inner diameter\nbearing_bore_dia = 35  # through everything\nbolt_dia = 4.5\nbolt_pcd = 46\n\npart = Sketch(Plane.XY).circle(base_dia).extrude(base_h)\nboss = Sketch(Plane.XY, offset=base_h).circle(boss_dia).extrude(boss_h)\npart += boss\n\npart -= Hole(bearing_bore_dia).at(0, 0).through().label(\"bearing_bore\")\npart -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=4, start_angle=0).through().label(\"M4_mount\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "base_dia",
+          "value": 55.0
+        },
+        {
+          "name": "base_h",
+          "value": 6.0
+        },
+        {
+          "name": "boss_dia",
+          "value": 40.0
+        },
+        {
+          "name": "boss_h",
+          "value": 12.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 15.0
+        },
+        {
+          "name": "bearing_bore_dia",
+          "value": 35.0
+        },
+        {
+          "name": "bolt_dia",
+          "value": 4.5
+        },
+        {
+          "name": "bolt_pcd",
+          "value": 46.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/bearing-housing.glb",
+        "step": "/examples/bearing-housing.step",
+        "stl": "/examples/bearing-housing.stl"
+      },
+      "stats": {
+        "volume_mm3": 11630.1,
+        "bbox_mm": [
+          55.0,
+          55.0,
+          18.0
+        ],
+        "triangles": 3544
+      }
+    },
+    {
+      "id": "counterbore-plate",
+      "title": "Counterbored Plate",
+      "category": "Machining",
+      "prompt": "Square plate 60x60mm, 10mm thick, with a central counterbored hole for an M6 socket head cap screw: 11mm counterbore 6.5mm deep, then 6.6mm clearance hole through",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_size = 60\nthickness = 10\ncounterbore_dia = 11\ncounterbore_depth = 6.5\nclearance_dia = 6.6\n\npart = Sketch(Plane.XY).rect(plate_size, plate_size).extrude(thickness)\n\npart -= Hole(counterbore_dia).at(0, 0).to_depth(counterbore_depth)\npart -= Hole(clearance_dia).at(0, 0).through().label(\"M6_socket_head\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_size",
+          "value": 60.0
+        },
+        {
+          "name": "thickness",
+          "value": 10.0
+        },
+        {
+          "name": "counterbore_dia",
+          "value": 11.0
+        },
+        {
+          "name": "counterbore_depth",
+          "value": 6.5
+        },
+        {
+          "name": "clearance_dia",
+          "value": 6.6
+        }
+      ],
+      "files": {
+        "glb": "/examples/counterbore-plate.glb",
+        "step": "/examples/counterbore-plate.step",
+        "stl": "/examples/counterbore-plate.stl"
+      },
+      "stats": {
+        "volume_mm3": 35262.8,
+        "bbox_mm": [
+          60.0,
+          60.0,
+          10.0
+        ],
+        "triangles": 1024
+      }
+    },
+    {
+      "id": "orifice-plate",
+      "title": "Orifice Plate",
+      "category": "Process",
+      "prompt": "Orifice plate 90mm outer diameter, 3mm thick, 8mm center orifice, four M8 bolt holes (8.4mm) on 70mm PCD",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_dia = 90\nthickness = 3\norifice_dia = 8\nbolt_dia = 8.4\nbolt_pcd = 70\nbolt_count = 4\n\npart = Sketch(Plane.XY).circle(plate_dia).extrude(thickness)\n\npart -= Hole(orifice_dia).at(0, 0).through().label(\"orifice\")\npart -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=bolt_count, start_angle=0).through().label(\"M8_mount\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_dia",
+          "value": 90.0
+        },
+        {
+          "name": "thickness",
+          "value": 3.0
+        },
+        {
+          "name": "orifice_dia",
+          "value": 8.0
+        },
+        {
+          "name": "bolt_dia",
+          "value": 8.4
+        },
+        {
+          "name": "bolt_pcd",
+          "value": 70.0
+        },
+        {
+          "name": "bolt_count",
+          "value": 4.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/orifice-plate.glb",
+        "step": "/examples/orifice-plate.step",
+        "stl": "/examples/orifice-plate.stl"
+      },
+      "stats": {
+        "volume_mm3": 18261.8,
+        "bbox_mm": [
+          90.0,
+          90.0,
+          3.0
+        ],
+        "triangles": 3040
+      }
+    },
+    {
+      "id": "stepped-spacer",
+      "title": "Stepped Spacer",
+      "category": "Fasteners",
+      "prompt": "Stepped spacer: 30mm diameter base 8mm tall, 20mm diameter upper section 12mm tall on top, 8.4mm bore through for an M8 bolt",
+      "ofl_code": "from orionflow_ofl import *\n\nbase_dia = 30\nbase_h = 8\nupper_dia = 20\nupper_h = 12\nbore_dia = 8.4\n\nbase = Sketch(Plane.XY).circle(base_dia).extrude(base_h)\nupper = Sketch(Plane.XY, offset=base_h).circle(upper_dia).extrude(upper_h)\npart = base \npart += upper\n\npart -= Hole(bore_dia).at(0, 0).through().label(\"M8_bore\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "base_dia",
+          "value": 30.0
+        },
+        {
+          "name": "base_h",
+          "value": 8.0
+        },
+        {
+          "name": "upper_dia",
+          "value": 20.0
+        },
+        {
+          "name": "upper_h",
+          "value": 12.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 8.4
+        }
+      ],
+      "files": {
+        "glb": "/examples/stepped-spacer.glb",
+        "step": "/examples/stepped-spacer.step",
+        "stl": "/examples/stepped-spacer.stl"
+      },
+      "stats": {
+        "volume_mm3": 8313.0,
+        "bbox_mm": [
+          30.0,
+          30.0,
+          20.0
+        ],
+        "triangles": 1512
+      }
+    },
+    {
+      "id": "flange-gasket",
+      "title": "Flange Gasket",
+      "category": "Piping",
+      "prompt": "Flange gasket: 120mm outer diameter, 60mm inner bore, 1.5mm thick, eight M10 bolt holes (10.5mm) on 95mm PCD",
+      "ofl_code": "from orionflow_ofl import *\n\nod = 120\nid = 60\nthickness = 1.5\nbolt_dia = 10.5\nbolt_pcd = 95\nbolt_count = 8\n\npart = Sketch(Plane.XY).circle(od).extrude(thickness)\npart -= Hole(id).at(0, 0).through().label(\"inner_bore\")\n\npart -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=bolt_count, start_angle=0).through().label(\"M10_mount\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "od",
+          "value": 120.0
+        },
+        {
+          "name": "id",
+          "value": 60.0
+        },
+        {
+          "name": "thickness",
+          "value": 1.5
+        },
+        {
+          "name": "bolt_dia",
+          "value": 10.5
+        },
+        {
+          "name": "bolt_pcd",
+          "value": 95.0
+        },
+        {
+          "name": "bolt_count",
+          "value": 8.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/flange-gasket.glb",
+        "step": "/examples/flange-gasket.step",
+        "stl": "/examples/flange-gasket.stl"
+      },
+      "stats": {
+        "volume_mm3": 11679.5,
+        "bbox_mm": [
+          120.0,
+          120.0,
+          1.5
+        ],
+        "triangles": 5072
+      }
+    },
+    {
+      "id": "speaker-grille",
+      "title": "Speaker Grille",
+      "category": "Consumer",
+      "prompt": "Speaker grille disc 80mm diameter, 2mm thick, with a 6mm center hole and three rings of 5mm holes: 6 holes on 20mm PCD, 12 holes on 40mm PCD, 16 holes on 60mm PCD",
+      "ofl_code": "from orionflow_ofl import *\n\ndisc_dia = 80\nthickness = 2\ncenter_hole = 6\nhole_dia = 5\npcd1 = 20\npcd2 = 40\npcd3 = 60\ncount1 = 6\ncount2 = 12\ncount3 = 16\n\npart = Sketch(Plane.XY).circle(disc_dia).extrude(thickness)\n\npart -= Hole(center_hole).at(0, 0).through().label(\"center_hole\")\npart -= Hole(hole_dia).at_circular(pcd1 / 2, count=count1, start_angle=0).through().label(\"ring1\")\npart -= Hole(hole_dia).at_circular(pcd2 / 2, count=count2, start_angle=0).through().label(\"ring2\")\npart -= Hole(hole_dia).at_circular(pcd3 / 2, count=count3, start_angle=0).through().label(\"ring3\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "disc_dia",
+          "value": 80.0
+        },
+        {
+          "name": "thickness",
+          "value": 2.0
+        },
+        {
+          "name": "center_hole",
+          "value": 6.0
+        },
+        {
+          "name": "hole_dia",
+          "value": 5.0
+        },
+        {
+          "name": "pcd1",
+          "value": 20.0
+        },
+        {
+          "name": "pcd2",
+          "value": 40.0
+        },
+        {
+          "name": "pcd3",
+          "value": 60.0
+        },
+        {
+          "name": "count1",
+          "value": 6.0
+        },
+        {
+          "name": "count2",
+          "value": 12.0
+        },
+        {
+          "name": "count3",
+          "value": 16.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/speaker-grille.glb",
+        "step": "/examples/speaker-grille.step",
+        "stl": "/examples/speaker-grille.stl"
+      },
+      "stats": {
+        "volume_mm3": 8657.8,
+        "bbox_mm": [
+          80.0,
+          80.0,
+          2.0
+        ],
+        "triangles": 18280
+      }
+    },
+    {
+      "id": "shaft-collar",
+      "title": "Shaft Collar Blank",
+      "category": "Power Transmission",
+      "prompt": "Shaft collar blank: 32mm outer diameter, 10mm wide, 12mm bore, 0.5mm chamfer on the top and bottom edges",
+      "ofl_code": "from orionflow_ofl import *\n\nod = 32\nwidth = 10\nbore_dia = 12\nchamfer_d = 0.5\n\npart = Sketch(Plane.XY).circle(od).extrude(width)\n\npart -= Hole(bore_dia).at(0, 0).through().label(\"shaft_bore\")\npart.chamfer(chamfer_d, edges=\"all\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "od",
+          "value": 32.0
+        },
+        {
+          "name": "width",
+          "value": 10.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 12.0
+        },
+        {
+          "name": "chamfer_d",
+          "value": 0.5
+        }
+      ],
+      "files": {
+        "glb": "/examples/shaft-collar.glb",
+        "step": "/examples/shaft-collar.step",
+        "stl": "/examples/shaft-collar.stl"
+      },
+      "stats": {
+        "volume_mm3": 6874.1,
+        "bbox_mm": [
+          32.0,
+          32.0,
+          10.0
+        ],
+        "triangles": 2268
+      }
+    },
+    {
+      "id": "2020-endcap",
+      "title": "2020 Extrusion End Cap",
+      "category": "Framing",
+      "prompt": "End cap plate for 2020 aluminium extrusion: 20x20mm, 4mm thick, 2mm corner radius, single M5 clearance hole (5.5mm) in the center",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_size = 20\nthickness = 4\ncorner_r = 2\nbolt_dia = 5.5\n\npart = Sketch(Plane.XY).rounded_rect(plate_size, plate_size, corner_r).extrude(thickness)\npart -= Hole(bolt_dia).at(0, 0).through().label(\"M5_clearance\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_size",
+          "value": 20.0
+        },
+        {
+          "name": "thickness",
+          "value": 4.0
+        },
+        {
+          "name": "corner_r",
+          "value": 2.0
+        },
+        {
+          "name": "bolt_dia",
+          "value": 5.5
+        }
+      ],
+      "files": {
+        "glb": "/examples/2020-endcap.glb",
+        "step": "/examples/2020-endcap.step",
+        "stl": "/examples/2020-endcap.stl"
+      },
+      "stats": {
+        "volume_mm3": 1491.3,
+        "bbox_mm": [
+          20.0,
+          20.0,
+          4.0
+        ],
+        "triangles": 1032
+      }
+    },
+    {
+      "id": "drill-jig",
+      "title": "Drill Jig Plate",
+      "category": "Tooling",
+      "prompt": "Drill jig plate 100x40mm, 8mm thick, with a row of five 6mm holes spaced 18mm apart along the horizontal center line, pattern centered on the plate",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_w = 100\nplate_h = 40\nthickness = 8\nhole_dia = 6\nhole_spacing = 18\nhole_count = 5\n\nhole_x = [-(hole_count - 1) * hole_spacing / 2 + i * hole_spacing for i in range(hole_count)]\n\npart = Sketch(Plane.XY).rect(plate_w, plate_h).extrude(thickness)\n\nfor x in hole_x:\n    part -= Hole(hole_dia).at(x, 0).through()\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_w",
+          "value": 100.0
+        },
+        {
+          "name": "plate_h",
+          "value": 40.0
+        },
+        {
+          "name": "thickness",
+          "value": 8.0
+        },
+        {
+          "name": "hole_dia",
+          "value": 6.0
+        },
+        {
+          "name": "hole_spacing",
+          "value": 18.0
+        },
+        {
+          "name": "hole_count",
+          "value": 5.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/drill-jig.glb",
+        "step": "/examples/drill-jig.step",
+        "stl": "/examples/drill-jig.stl"
+      },
+      "stats": {
+        "volume_mm3": 30869.5,
+        "bbox_mm": [
+          100.0,
+          40.0,
+          8.0
+        ],
+        "triangles": 2552
+      }
+    },
+    {
+      "id": "gland-plate",
+      "title": "Cable Gland Plate",
+      "category": "Electrical",
+      "prompt": "Electrical panel gland plate 110x70mm, 3mm thick, three 20.4mm holes for M20 cable glands spaced 30mm apart along the horizontal center line, four M4 corner holes (4.5mm) inset 6mm",
+      "ofl_code": "from orionflow_ofl import *\n\nplate_w = 110\nplate_h = 70\nthickness = 3\ngland_dia = 20.4\ngland_spacing = 30\nbolt_dia = 4.5\ninset = 6\n\ngland_x = [-gland_spacing / 2, 0, gland_spacing / 2]\ngland_y = [0, 0, 0]\nbolt_x = [-plate_w / 2 + inset, plate_w / 2 - inset, -plate_w / 2 + inset, plate_w / 2 - inset]\nbolt_y = [-plate_h / 2 + inset, -plate_h / 2 + inset, plate_h / 2 - inset, plate_h / 2 - inset]\n\npart = Sketch(Plane.XY).rect(plate_w, plate_h).extrude(thickness)\n\npart -= (\n    Hole(gland_dia)\n    .at(gland_x[0], gland_y[0])\n    .at(gland_x[1], gland_y[1])\n    .at(gland_x[2], gland_y[2])\n    .through()\n    .label(\"cable_gland\")\n)\npart -= (\n    Hole(bolt_dia)\n    .at(bolt_x[0], bolt_y[0])\n    .at(bolt_x[1], bolt_y[1])\n    .at(bolt_x[2], bolt_y[2])\n    .at(bolt_x[3], bolt_y[3])\n    .through()\n    .label(\"M4_corner\")\n)\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "plate_w",
+          "value": 110.0
+        },
+        {
+          "name": "plate_h",
+          "value": 70.0
+        },
+        {
+          "name": "thickness",
+          "value": 3.0
+        },
+        {
+          "name": "gland_dia",
+          "value": 20.4
+        },
+        {
+          "name": "gland_spacing",
+          "value": 30.0
+        },
+        {
+          "name": "bolt_dia",
+          "value": 4.5
+        },
+        {
+          "name": "inset",
+          "value": 6.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/gland-plate.glb",
+        "step": "/examples/gland-plate.step",
+        "stl": "/examples/gland-plate.stl"
+      },
+      "stats": {
+        "volume_mm3": 20276.0,
+        "bbox_mm": [
+          110.0,
+          70.0,
+          3.0
+        ],
+        "triangles": 3088
+      }
+    },
+    {
+      "id": "pulley-blank",
+      "title": "Pulley Blank",
+      "category": "Power Transmission",
+      "prompt": "Pulley blank: 70mm diameter disc 15mm thick, 30mm diameter hub boss 8mm tall on top, 10mm center bore through, six 12mm lightening holes on 44mm PCD",
+      "ofl_code": "from orionflow_ofl import *\n\ndisc_dia = 70\ndisc_h = 15\nboss_dia = 30\nboss_h = 8\nbore_dia = 10\nlightening_dia = 12\nlightening_pcd = 44\nlightening_count = 6\n\ndisc = Sketch(Plane.XY).circle(disc_dia).extrude(disc_h)\nboss = Sketch(Plane.XY, offset=disc_h).circle(boss_dia).extrude(boss_h)\npart = disc + boss\n\npart -= Hole(bore_dia).at(0, 0).through().label(\"center_bore\")\npart -= Hole(lightening_dia).at_circular(lightening_pcd / 2, count=lightening_count, start_angle=0).through().label(\"lightening_holes\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "disc_dia",
+          "value": 70.0
+        },
+        {
+          "name": "disc_h",
+          "value": 15.0
+        },
+        {
+          "name": "boss_dia",
+          "value": 30.0
+        },
+        {
+          "name": "boss_h",
+          "value": 8.0
+        },
+        {
+          "name": "bore_dia",
+          "value": 10.0
+        },
+        {
+          "name": "lightening_dia",
+          "value": 12.0
+        },
+        {
+          "name": "lightening_pcd",
+          "value": 44.0
+        },
+        {
+          "name": "lightening_count",
+          "value": 6.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/pulley-blank.glb",
+        "step": "/examples/pulley-blank.step",
+        "stl": "/examples/pulley-blank.stl"
+      },
+      "stats": {
+        "volume_mm3": 51375.2,
+        "bbox_mm": [
+          70.0,
+          70.0,
+          23.0
+        ],
+        "triangles": 4560
+      }
+    },
+    {
+      "id": "lamp-base",
+      "title": "Lamp Base",
+      "category": "Consumer",
+      "prompt": "Round lamp base 140mm diameter, 12mm thick, 2mm chamfer on the top edge, 8mm cable hole offset 50mm from center, three M4 holes (4.5mm) on 120mm PCD",
+      "ofl_code": "from orionflow_ofl import *\n\nbase_dia = 140\nthickness = 12\nchamfer_d = 2\ncable_hole_dia = 8\ncable_offset = 50\nbolt_dia = 4.5\nbolt_pcd = 120\n\npart = Sketch(Plane.XY).circle(base_dia).extrude(thickness)\npart.chamfer(chamfer_d, edges=\"top\")\n\npart -= Hole(cable_hole_dia).at(cable_offset, 0).through().label(\"cable_entry\")\npart -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=3, start_angle=0).through().label(\"M4_mount\")\n\nexport(part, \"part.step\")",
+      "parameters": [
+        {
+          "name": "base_dia",
+          "value": 140.0
+        },
+        {
+          "name": "thickness",
+          "value": 12.0
+        },
+        {
+          "name": "chamfer_d",
+          "value": 2.0
+        },
+        {
+          "name": "cable_hole_dia",
+          "value": 8.0
+        },
+        {
+          "name": "cable_offset",
+          "value": 50.0
+        },
+        {
+          "name": "bolt_dia",
+          "value": 4.5
+        },
+        {
+          "name": "bolt_pcd",
+          "value": 120.0
+        }
+      ],
+      "files": {
+        "glb": "/examples/lamp-base.glb",
+        "step": "/examples/lamp-base.step",
+        "stl": "/examples/lamp-base.stl"
+      },
+      "stats": {
+        "volume_mm3": 182602.9,
+        "bbox_mm": [
+          140.0,
+          140.0,
+          12.0
+        ],
+        "triangles": 2784
+      }
+    }
+  ]
+}

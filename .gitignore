@@ -13,6 +13,12 @@ outputs/
 *.step
 *.stl
 *.glb
+data/ofl_outputs/
+
+# Showcase example assets ship with the frontend — keep them in git
+!orionflow-ui/public/examples/*.glb
+!orionflow-ui/public/examples/*.step
+!orionflow-ui/public/examples/*.stl
 
 # OS
 .DS_Store
@@ -92,3 +98,5 @@ CAD_DATA/zero_to_cad/scripts/
 
 # Consolidated dataset file (regenerable; large)
 freecad/orionflow_dataset_v1.jsonl
+# Deploy secrets
+deploy/.env.deploy
