@@ -22,17 +22,31 @@ export default function OFLCodePanel() {
         rebuild(editedCode);
     };
 
-    if (!oflCode) return null;
+    if (!oflCode) {
+        return (
+            <div style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "32px 20px",
+                fontSize: "12.5px",
+                color: "var(--studio-text-faint)",
+                textAlign: "center",
+            }}>
+                Generate a part to see its parametric OFL code here.
+            </div>
+        );
+    }
 
     return (
         <div style={{
-            width: "340px",
-            background: "#0a0a0a",
-            borderLeft: "1px solid #1f1f1f",
+            width: "100%",
+            flex: 1,
+            minHeight: 0,
+            background: "transparent",
             display: "flex",
             flexDirection: "column",
-            height: "100%",
-            flexShrink: 0,
             overflow: "hidden",
         }}>
             {/* Header */}

@@ -1,19 +1,80 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ViewCube from "./ViewCube";
 import PreviewMesh from "./PreviewMesh";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { OrbitControls, useGLTF } from "@react-three/drei";
+import {
+    OrbitControls,
+    useGLTF,
+    Grid,
+    ContactShadows,
+    Environment,
+    Lightformer,
+} from "@react-three/drei";
 import { useDesignStore } from "../../store/designStore";
 import { useManifoldPreview } from "../../hooks/useManifoldPreview";
-import { getFullUrl } from "../../services/oflApi";
 import * as THREE from "three";
+import { Box as BoxIcon } from "lucide-react";
 
-import { Box as BoxIcon, Download, Zap, RotateCcw, Maximize2 } from "lucide-react";
+/** Machined-aluminum PBR set — the "real CAD" read. */
+const MAT_BASE = new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#b9bec6"),
+    metalness: 0.85,
+    roughness: 0.34,
+    envMapIntensity: 1.0,
+});
+const MAT_HOVER = new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#c9ced6"),
+    metalness: 0.85,
+    roughness: 0.28,
+    envMapIntensity: 1.1,
+});
+const MAT_SELECTED = new THREE.MeshStandardMaterial({
+    color: new THREE.Color("#9fc0ff"),
+    metalness: 0.65,
+    roughness: 0.3,
+    emissive: new THREE.Color("#1d4ed8"),
+    emissiveIntensity: 0.12,
+    envMapIntensity: 1.1,
+});
+
+const EDGE_MAT = new THREE.LineBasicMaterial({
+    color: new THREE.Color("#191b1e"),
+    transparent: true,
+    opacity: 0.55,
+});
+const EDGE_MAT_SELECTED = new THREE.LineBasicMaterial({
+    color: new THREE.Color("#2563eb"),
+    transparent: true,
+    opacity: 0.95,
+});
+
+export type SceneBounds = { minY: number; radius: number; center: THREE.Vector3 };
+
+/** Attach crisp CAD edge lines to a mesh exactly once. */
+function ensureEdges(mesh: THREE.Mesh) {
+    if (mesh.userData.__edgesAdded) return;
+    const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(mesh.geometry, 28),
+        EDGE_MAT
+    );
+    edges.name = "__edges";
+    edges.raycast = () => {}; // edges must never steal pointer picks
+    mesh.add(edges);
+    mesh.userData.__edgesAdded = true;
+}
+
+function styleMesh(mesh: THREE.Mesh, state: "base" | "hover" | "selected") {
+    mesh.material =
+        state === "selected" ? MAT_SELECTED : state === "hover" ? MAT_HOVER : MAT_BASE;
+    const edges = mesh.getObjectByName("__edges") as THREE.LineSegments | undefined;
+    if (edges) edges.material = state === "selected" ? EDGE_MAT_SELECTED : EDGE_MAT;
+}
 
 /**
- * Model component - loads GLB and applies professional CAD styling
+ * Model component — loads a GLB, applies machined-metal styling + edges,
+ * frames the camera, and reports scene bounds for the grid/shadows.
  */
-function Model({ url }: { url: string }) {
+function Model({ url, onBounds }: { url: string; onBounds: (b: SceneBounds) => void }) {
     const { scene } = useGLTF(url);
     const { camera, controls } = useThree();
     const hasFramed = useRef(false);
@@ -38,15 +99,16 @@ function Model({ url }: { url: string }) {
             const center = box.getCenter(new THREE.Vector3());
             const sphere = box.getBoundingSphere(new THREE.Sphere());
             const radius = sphere.radius;
-
             if (radius <= 0) return;
+
+            onBounds({ minY: box.min.y, radius, center });
 
             if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
                 const pCam = camera as THREE.PerspectiveCamera;
                 const fov = pCam.fov * (Math.PI / 180);
                 const fitDistance = radius / Math.tan(fov / 2);
-                const distance = fitDistance * 1.5;
-                const dir = new THREE.Vector3(1, 1, 1).normalize();
+                const distance = fitDistance * 1.4;
+                const dir = new THREE.Vector3(1, 0.72, 1).normalize();
                 const finalPos = new THREE.Vector3().copy(center).add(dir.multiplyScalar(distance));
                 camera.position.copy(finalPos);
             }
@@ -62,7 +124,7 @@ function Model({ url }: { url: string }) {
         }, 50);
 
         return () => clearTimeout(timer);
-    }, [scene, url, camera, controls]);
+    }, [scene, url, camera, controls, onBounds]);
 
     useEffect(() => {
         hasFramed.current = false;
@@ -74,54 +136,43 @@ function Model({ url }: { url: string }) {
         scene.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 const mesh = child as THREE.Mesh;
-                const isSelected = mesh.uuid === selectedMesh;
-                const isHovered = mesh.uuid === hoveredMesh;
-
-                if (isSelected) {
-                    mesh.material = new THREE.MeshStandardMaterial({
-                        color: "#F59E0B",
-                        emissive: "#D97706",
-                        emissiveIntensity: 0.2,
-                        roughness: 0.3,
-                        metalness: 0.1,
-                    });
-                } else if (isHovered) {
-                    mesh.material = new THREE.MeshStandardMaterial({
-                        color: "#E5E7EB",
-                        roughness: 0.4,
-                        metalness: 0.2,
-                    });
-                } else {
-                    mesh.material = new THREE.MeshStandardMaterial({
-                        color: "#CBD5E1",
-                        roughness: 0.4,
-                        metalness: 0.2,
-                        flatShading: false,
-                    });
-                }
+                ensureEdges(mesh);
+                const state =
+                    mesh.uuid === selectedMesh
+                        ? "selected"
+                        : mesh.uuid === hoveredMesh
+                          ? "hover"
+                          : "base";
+                styleMesh(mesh, state);
             }
         });
     }, [scene, selectedMesh, hoveredMesh]);
 
+    const pickMesh = (e: any): THREE.Object3D => {
+        let obj = e.object;
+        while (obj && !(obj as THREE.Mesh).isMesh) obj = obj.parent;
+        return obj || e.object;
+    };
+
     const handlePointerOver = (e: any) => {
         e.stopPropagation();
-        setHoveredMesh(e.object.uuid);
-        document.body.style.cursor = 'pointer';
+        setHoveredMesh(pickMesh(e).uuid);
+        document.body.style.cursor = "pointer";
     };
 
     const handlePointerOut = () => {
         setHoveredMesh(null);
-        document.body.style.cursor = 'auto';
+        document.body.style.cursor = "auto";
     };
 
     const handleClick = (e: any) => {
         e.stopPropagation();
-        setSelectedMesh(e.object.uuid);
+        setSelectedMesh(pickMesh(e).uuid);
     };
 
     const handleMiss = () => {
         setSelectedMesh(null);
-    }
+    };
 
     return (
         <group
@@ -156,10 +207,10 @@ function ViewManager() {
         const fov = ((camera as THREE.PerspectiveCamera).fov || 50) * (Math.PI / 180);
         const dist = (radius / Math.tan(fov / 2)) * 1.5;
 
-        if (viewAction.type === 'reset' || viewAction.type === 'iso') {
-            const dir = new THREE.Vector3(1, 1, 1).normalize();
+        if (viewAction.type === "reset" || viewAction.type === "iso") {
+            const dir = new THREE.Vector3(1, 0.72, 1).normalize();
             camera.position.copy(center).add(dir.multiplyScalar(dist));
-        } else if (viewAction.type === 'ortho') {
+        } else if (viewAction.type === "ortho") {
             camera.position.set(center.x, center.y + dist, center.z);
         }
 
@@ -169,7 +220,6 @@ function ViewManager() {
             (controls as any).target.copy(center);
             (controls as any).update();
         }
-
     }, [viewAction, camera, scene, controls]);
 
     return null;
@@ -180,7 +230,9 @@ function ZoomGuard() {
 
     useFrame(() => {
         let hasMesh = false;
-        scene.traverse(c => { if ((c as any).isMesh) hasMesh = true; });
+        scene.traverse((c) => {
+            if ((c as any).isMesh) hasMesh = true;
+        });
         if (!hasMesh) return;
 
         const cameraDist = camera.position.length();
@@ -188,7 +240,7 @@ function ZoomGuard() {
             const box = new THREE.Box3().setFromObject(scene);
             const center = box.getCenter(new THREE.Vector3());
             const radius = box.getBoundingSphere(new THREE.Sphere()).radius;
-            const dist = (radius / Math.sin((camera as any).fov * Math.PI / 360)) * 1.5;
+            const dist = (radius / Math.sin(((camera as any).fov * Math.PI) / 360)) * 1.5;
 
             camera.position.set(center.x + dist, center.y + dist, center.z + dist);
             camera.lookAt(center);
@@ -202,325 +254,132 @@ function ZoomGuard() {
     return null;
 }
 
-// Floating Action Button Component
-function FloatingButton({
-    icon: Icon,
-    label,
-    onClick,
-    href,
-    primary = false,
-}: {
-    icon: any;
-    label: string;
-    onClick?: () => void;
-    href?: string;
-    primary?: boolean;
-}) {
-    const content = (
-        <>
-            <Icon size={16} strokeWidth={2} />
-            <span style={{
-                fontSize: "13px",
-                fontWeight: 600,
-            }}>
-                {label}
-            </span>
-        </>
-    );
-
-    const baseStyle: React.CSSProperties = {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "8px",
-        padding: "12px 18px",
-        background: primary
-            ? "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)"
-            : "var(--glass-bg)",
-        backdropFilter: primary ? "none" : "var(--glass-blur)",
-        WebkitBackdropFilter: primary ? "none" : "var(--glass-blur)",
-        border: primary ? "none" : "1px solid var(--glass-border)",
-        borderRadius: "var(--radius-md)",
-        color: primary ? "var(--slate-950)" : "var(--color-text-primary)",
-        textDecoration: "none",
-        cursor: "pointer",
-        boxShadow: primary ? "var(--shadow-glow-accent)" : "var(--shadow-md)",
-        transition: "all var(--duration-fast) var(--ease-out-quad)",
-    };
-
-    if (href) {
-        return (
-            <a
-                href={href}
-                download
-                style={baseStyle}
-                onMouseEnter={(e) => {
-                    if (!primary) {
-                        e.currentTarget.style.background = "var(--glass-bg-light)";
-                        e.currentTarget.style.borderColor = "var(--color-border-hover)";
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (!primary) {
-                        e.currentTarget.style.background = "var(--glass-bg)";
-                        e.currentTarget.style.borderColor = "var(--glass-border)";
-                    }
-                }}
-            >
-                {content}
-            </a>
-        );
-    }
-
+/** Neutral studio HDR built from area lights — no network fetch, metal reads crisp. */
+function StudioEnvironment() {
     return (
-        <button
-            onClick={onClick}
-            style={baseStyle}
-            onMouseEnter={(e) => {
-                if (!primary) {
-                    e.currentTarget.style.background = "var(--glass-bg-light)";
-                    e.currentTarget.style.borderColor = "var(--color-border-hover)";
-                }
-            }}
-            onMouseLeave={(e) => {
-                if (!primary) {
-                    e.currentTarget.style.background = "var(--glass-bg)";
-                    e.currentTarget.style.borderColor = "var(--glass-border)";
-                }
-            }}
-        >
-            {content}
-        </button>
+        <Environment resolution={256} frames={1}>
+            <color attach="background" args={["#1c1e22"]} />
+            <Lightformer intensity={2.2} position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[9, 6, 1]} />
+            <Lightformer intensity={1.1} position={[-6, 2, -2]} rotation-y={Math.PI / 2} scale={[6, 2.5, 1]} />
+            <Lightformer intensity={0.9} position={[6, 3, 2]} rotation-y={-Math.PI / 2} scale={[7, 2.5, 1]} />
+            <Lightformer intensity={0.35} position={[0, -4, 4]} rotation-x={-Math.PI / 3} scale={[8, 3, 1]} color="#aebbd0" />
+        </Environment>
     );
 }
 
 export default function Viewer({ url }: { url: string }) {
     const isGenerating = useDesignStore((state) => state.isGenerating);
     const current = useDesignStore((state) => state.current);
-    const triggerViewAction = useDesignStore((state) => state.triggerViewAction);
 
     const featureGraph = current?.featureGraph;
     const { mesh: previewMesh, isLoading: isPreviewLoading } = useManifoldPreview(featureGraph);
 
-    const isValidUrl = url && url.startsWith('http') && url.endsWith('.glb');
+    const isValidUrl = !!url && url.endsWith(".glb");
     const showPreview = !isValidUrl && previewMesh && !isPreviewLoading;
 
-    const getDownloadUrl = (format: 'step' | 'stl') => {
-        if (!current?.files?.[format]) return null;
-        const file = current.files[format];
-        if (!file || file === "") return null;
-        const filename = file.split(/[/\\]/).pop();
-        return getFullUrl(`/download/${format}/${filename}`);
-    };
+    const [bounds, setBounds] = useState<SceneBounds | null>(null);
+    const onBounds = useCallback((b: SceneBounds) => setBounds(b), []);
+    useEffect(() => {
+        if (!isValidUrl) setBounds(null);
+    }, [isValidUrl, url]);
 
-    const stepUrl = getDownloadUrl('step');
-    const stlUrl = getDownloadUrl('stl');
-    const hasValidFiles = stepUrl || stlUrl;
+    const groundY = bounds ? bounds.minY - 0.02 : 0;
+    const extent = bounds ? Math.max(bounds.radius, 10) : 60;
 
     return (
         <div style={{ height: "100%", width: "100%", position: "relative" }}>
-            {/* Export & View Controls - Floating Top Left */}
-            {hasValidFiles && !isGenerating && (
-                <div style={{
-                    position: "absolute",
-                    top: "20px",
-                    left: "20px",
-                    zIndex: 50,
-                    display: "flex",
-                    gap: "10px",
-                    animation: "slideInLeft 0.3s var(--ease-out-expo)",
-                }}>
-                    {stepUrl && (
-                        <FloatingButton
-                            icon={Download}
-                            label=".step"
-                            href={stepUrl}
-                        />
-                    )}
-                    {stlUrl && (
-                        <FloatingButton
-                            icon={Download}
-                            label=".stl"
-                            href={stlUrl}
-                        />
-                    )}
-                </div>
-            )}
-
-            {/* View Controls - Floating Top Right */}
-            {isValidUrl && !isGenerating && (
-                <div style={{
-                    position: "absolute",
-                    top: "20px",
-                    right: "20px",
-                    zIndex: 50,
-                    display: "flex",
-                    gap: "8px",
-                    animation: "slideInRight 0.3s var(--ease-out-expo)",
-                }}>
-                    <button
-                        onClick={() => triggerViewAction('reset')}
-                        style={{
-                            width: "40px",
-                            height: "40px",
-                            borderRadius: "var(--radius-md)",
-                            background: "var(--glass-bg)",
-                            backdropFilter: "var(--glass-blur)",
-                            WebkitBackdropFilter: "var(--glass-blur)",
-                            border: "1px solid var(--glass-border)",
-                            color: "var(--color-text-secondary)",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all var(--duration-fast) var(--ease-out-quad)",
-                        }}
-                        title="Reset View"
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "var(--glass-bg-light)";
-                            e.currentTarget.style.color = "var(--color-text-primary)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "var(--glass-bg)";
-                            e.currentTarget.style.color = "var(--color-text-secondary)";
-                        }}
-                    >
-                        <RotateCcw size={16} />
-                    </button>
-                    <button
-                        onClick={() => triggerViewAction('iso')}
-                        style={{
-                            width: "40px",
-                            height: "40px",
-                            borderRadius: "var(--radius-md)",
-                            background: "var(--glass-bg)",
-                            backdropFilter: "var(--glass-blur)",
-                            WebkitBackdropFilter: "var(--glass-blur)",
-                            border: "1px solid var(--glass-border)",
-                            color: "var(--color-text-secondary)",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all var(--duration-fast) var(--ease-out-quad)",
-                        }}
-                        title="Fit to View"
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "var(--glass-bg-light)";
-                            e.currentTarget.style.color = "var(--color-text-primary)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "var(--glass-bg)";
-                            e.currentTarget.style.color = "var(--color-text-secondary)";
-                        }}
-                    >
-                        <Maximize2 size={16} />
-                    </button>
-                </div>
-            )}
-
-            {/* Loading Overlay */}
+            {/* Generating overlay — quiet, engineering-grade */}
             {isGenerating && (
-                <div style={{
-                    position: "absolute",
-                    zIndex: 100,
-                    inset: 0,
-                    background: "linear-gradient(135deg, var(--slate-100) 0%, var(--slate-200) 100%)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "var(--slate-700)",
-                }}>
-                    <style>
-                        {`
-                        @keyframes spinGlow {
-                            from { transform: rotate(0deg); }
-                            to { transform: rotate(360deg); }
-                        }
-                        `}
-                    </style>
-                    <div style={{
-                        width: "80px",
-                        height: "80px",
-                        borderRadius: "var(--radius-xl)",
-                        background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
+                <div
+                    style={{
+                        position: "absolute",
+                        zIndex: 100,
+                        inset: 0,
+                        background: "rgba(19, 20, 23, 0.72)",
+                        backdropFilter: "blur(3px)",
                         display: "flex",
+                        flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 0 40px var(--copper-glow)",
-                        animation: "spinGlow 2s linear infinite",
-                    }}>
-                        <BoxIcon size={36} color="var(--slate-950)" />
+                        color: "var(--studio-text)",
+                    }}
+                >
+                    <div
+                        style={{
+                            width: "52px",
+                            height: "52px",
+                            borderRadius: "12px",
+                            border: "1px solid var(--studio-border)",
+                            background: "var(--studio-panel-2)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            animation: "pulse 1.6s ease-in-out infinite",
+                        }}
+                    >
+                        <BoxIcon size={24} color="var(--studio-accent)" />
                     </div>
-                    <p style={{
-                        marginTop: "24px",
-                        fontSize: "18px",
-                        fontWeight: 600,
-                        color: "var(--slate-800)",
-                    }}>
-                        Generating geometry...
+                    <p style={{ marginTop: "18px", fontSize: "14px", fontWeight: 600 }}>
+                        Generating geometry…
                     </p>
-                    <p style={{
-                        marginTop: "8px",
-                        fontSize: "14px",
-                        color: "var(--slate-500)",
-                    }}>
-                        Building your parametric model
+                    <p style={{ marginTop: "6px", fontSize: "12px", color: "var(--studio-text-dim)" }}>
+                        intent → parametric code → B-rep → mesh
                     </p>
+                    <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }`}</style>
                 </div>
             )}
 
-            {/* Preview Mode Indicator */}
-            {showPreview && (
-                <div style={{
-                    position: "absolute",
-                    top: "20px",
-                    left: "20px",
-                    zIndex: 50,
-                    background: "linear-gradient(135deg, var(--copper-500) 0%, var(--copper-400) 100%)",
-                    padding: "10px 16px",
-                    borderRadius: "var(--radius-md)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    boxShadow: "var(--shadow-glow-accent)",
-                    animation: "slideInLeft 0.3s var(--ease-out-expo)",
-                }}>
-                    <Zap size={16} color="var(--slate-950)" />
-                    <span style={{
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: "var(--slate-950)",
-                    }}>
-                        Fast Preview (WASM)
-                    </span>
-                </div>
-            )}
-
-            {/* 3D Canvas */}
+            {/* 3D Canvas — machined part, neutral gray environment */}
             <Canvas
-                camera={{ position: [50, 50, 50], fov: 45, near: 0.1, far: 10000 }}
+                camera={{ position: [70, 52, 70], fov: 40, near: 0.1, far: 10000 }}
+                dpr={[1, 2]}
+                gl={{ antialias: true }}
                 style={{
-                    background: "linear-gradient(180deg, #e2e8f0 0%, #f1f5f9 100%)",
+                    background:
+                        "radial-gradient(120% 90% at 50% 32%, var(--studio-viewport-hi) 0%, var(--studio-viewport-lo) 72%)",
                 }}
             >
-                {/* Studio Lighting */}
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[10, 20, 10]} intensity={1.0} />
-                <directionalLight position={[-10, 10, -5]} intensity={0.5} />
-                <spotLight position={[0, 40, 0]} intensity={0.5} />
+                <StudioEnvironment />
+                <directionalLight position={[8, 14, 8]} intensity={0.55} />
+                <directionalLight position={[-10, 6, -6]} intensity={0.2} color="#c9d6ea" />
 
-                {/* WASM Preview */}
+                {/* WASM parametric preview */}
                 {showPreview && <PreviewMesh geometry={previewMesh} />}
 
-                {/* GLB Model */}
-                {isValidUrl && <Model url={url} />}
+                {/* GLB model */}
+                {isValidUrl && <Model url={url} onBounds={onBounds} />}
+
+                {/* Ground plane: engineering grid + soft contact shadow */}
+                {isValidUrl && bounds && (
+                    <group position={[0, groundY, 0]}>
+                        <Grid
+                            infiniteGrid
+                            cellSize={5}
+                            sectionSize={25}
+                            cellThickness={0.6}
+                            sectionThickness={1.1}
+                            cellColor="#2c3037"
+                            sectionColor="#3a3f47"
+                            fadeDistance={extent * 10}
+                            fadeStrength={1.4}
+                            followCamera={false}
+                        />
+                        <ContactShadows
+                            position={[bounds.center.x, 0.01, bounds.center.z]}
+                            opacity={0.42}
+                            blur={2.4}
+                            far={extent * 1.5}
+                            scale={extent * 4}
+                            resolution={512}
+                            frames={1}
+                        />
+                    </group>
+                )}
 
                 <OrbitControls
                     makeDefault
                     enableDamping
-                    dampingFactor={0.1}
+                    dampingFactor={0.08}
                     minDistance={0.1}
                     maxDistance={2000}
                 />

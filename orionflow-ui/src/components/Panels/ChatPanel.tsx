@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { useDesignStore } from "../../store/designStore";
 import { useChatStore } from "../../store/chatStore";
 import { Box, ArrowUp } from "lucide-react";
-import OrionFlowLogo from "../OrionFlowLogo";
 
 interface ChatPanelProps {
     onGenerate: (prompt: string, image?: File) => void;
@@ -43,44 +42,13 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
 
     return (
         <div style={{
-            width: "400px",
-            background: "#0a0a0a",
-            borderLeft: "1px solid #1f1f1f",
+            width: "100%",
+            flex: 1,
+            minHeight: 0,
+            background: "transparent",
             display: "flex",
             flexDirection: "column",
-            height: "100%",
-            flexShrink: 0,
         }}>
-            {/* Header */}
-            <div style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid #1f1f1f",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-            }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "8px",
-                        background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}>
-                        <OrionFlowLogo size={18} theme="mono" />
-                    </div>
-                    <span style={{
-                        fontSize: "15px",
-                        fontWeight: 600,
-                        color: "#fff",
-                    }}>
-                        OrionFlow
-                    </span>
-                </div>
-            </div>
-
             {/* Messages */}
             <div
                 ref={scrollRef}

@@ -5,12 +5,14 @@
  */
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const THUMB_W = 320;
 const THUMB_H = 240;
 
 const cache = new Map<string, string>();
 let renderer: THREE.WebGLRenderer | null = null;
+let envMap: THREE.Texture | null = null;
 let queue: Promise<void> = Promise.resolve();
 
 function getRenderer(): THREE.WebGLRenderer {
@@ -23,6 +25,9 @@ function getRenderer(): THREE.WebGLRenderer {
         renderer.setSize(THUMB_W, THUMB_H);
         renderer.setPixelRatio(1);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
+        // Metal needs an environment to read; RoomEnvironment is built-in/offline.
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     }
     return renderer;
 }
@@ -30,9 +35,9 @@ function getRenderer(): THREE.WebGLRenderer {
 const loader = new GLTFLoader();
 
 const PART_MATERIAL = new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#9db4d4"),
-    metalness: 0.35,
-    roughness: 0.4,
+    color: new THREE.Color("#b9bec6"),
+    metalness: 0.85,
+    roughness: 0.34,
 });
 
 async function renderOne(url: string): Promise<string> {
@@ -46,6 +51,8 @@ async function renderOne(url: string): Promise<string> {
     });
 
     const scene = new THREE.Scene();
+    getRenderer(); // ensure envMap exists
+    scene.environment = envMap;
     scene.add(new THREE.HemisphereLight(0xf1f5f9, 0x334155, 1.2));
     const key = new THREE.DirectionalLight(0xffffff, 1.6);
     key.position.set(4, 6, 5);

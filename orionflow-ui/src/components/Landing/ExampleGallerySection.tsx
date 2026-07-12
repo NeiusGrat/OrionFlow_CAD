@@ -8,9 +8,9 @@ import { fetchExamples, type ExampleEntry } from "../../lib/examples";
 import { getThumbnail } from "../../lib/thumbnailRenderer";
 
 const FEATURED_MATERIAL = new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#9db4d4"),
-    metalness: 0.35,
-    roughness: 0.4,
+    color: new THREE.Color("#b9bec6"),
+    metalness: 0.85,
+    roughness: 0.34,
 });
 
 function FeaturedModel({ url }: { url: string }) {

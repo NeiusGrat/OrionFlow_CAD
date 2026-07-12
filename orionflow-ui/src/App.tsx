@@ -1,25 +1,17 @@
-import { useState, useEffect } from "react";
-import { Routes, Route, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import LeftSidebar from "./components/Panels/LeftSidebar";
-import ChatPanel from "./components/Panels/ChatPanel";
-import Viewer from "./components/Viewer/Viewer";
-import OFLCodePanel from "./components/Panels/OFLCodePanel";
+import { useEffect } from "react";
+import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
+import Workspace from "./components/Studio/Workspace";
 import { useDesignStore } from "./store/designStore";
 import { useChatStore, type ChatMessage } from "./store/chatStore";
 import { useAuthStore } from "./store/authStore";
 import { useOFLStore } from "./store/oflStore";
 import { generateOFL, getFullUrl } from "./services/oflApi";
-import { ArrowRight } from "lucide-react";
-import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import BlogPage from "./pages/BlogPage";
-import AboutPage from "./pages/AboutPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
-import OrionFlowLogo from "./components/OrionFlowLogo";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -32,46 +24,61 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
 }
 
-// The main CAD application (previously the entire App content)
+// The AI-native CAD design studio
 function CADApp() {
     const current = useDesignStore((state) => state.current);
     const addCreation = useDesignStore((state) => state.addCreation);
-    const setCurrent = useDesignStore((state) => state.setCurrent);
     const addMessage = useChatStore((state) => state.addMessage);
     const setIsGenerating = useDesignStore((state) => state.setIsGenerating);
-    const isGenerating = useDesignStore((state) => state.isGenerating);
-    const logout = useAuthStore((state) => state.logout);
-    const navigate = useNavigate();
 
-    async function handleGenerate(prompt: string, image?: File) {
+    async function handleGenerate(prompt: string) {
         if (!prompt.trim()) return;
 
-        setIsGenerating(true);
-
-        let activeId = current?.id;
-        let isNew = false;
-        let finalPrompt = prompt;
-
-        if (!activeId) {
-            isNew = true;
-            activeId = crypto.randomUUID();
-        } else {
-            if (prompt.toLowerCase() === "regenerate") {
-                finalPrompt = current?.prompt || "";
-            } else if (current?.prompt) {
-                finalPrompt = current.prompt + " " + prompt;
-            }
-        }
+        const active = useDesignStore.getState().current;
+        const oflCode = useOFLStore.getState().oflCode;
 
         const userMsg: ChatMessage = {
             id: crypto.randomUUID(),
-            role: 'user',
+            role: "user",
             content: prompt,
             timestamp: Date.now(),
-            image: image ? URL.createObjectURL(image) : undefined
         };
 
-        if (isNew) {
+        // ── Edit mode: an existing part + code → apply the instruction as a
+        //    CAD operation via /ofl/edit instead of regenerating from scratch.
+        if (active && oflCode && prompt.toLowerCase() !== "regenerate") {
+            addMessage(active.id, userMsg);
+            setIsGenerating(true);
+            try {
+                const res = await useOFLStore.getState().edit(prompt);
+                addMessage(active.id, {
+                    id: crypto.randomUUID(),
+                    role: "assistant",
+                    content: res?.success
+                        ? "Applied. The model and code are updated."
+                        : `Edit failed: ${res?.error || "unknown error"}`,
+                    timestamp: Date.now(),
+                    files: res?.success
+                        ? {
+                              glb: getFullUrl(res.files.glb) || "",
+                              step: getFullUrl(res.files.step) || "",
+                              stl: getFullUrl(res.files.stl) || "",
+                          }
+                        : undefined,
+                });
+            } finally {
+                setIsGenerating(false);
+            }
+            return;
+        }
+
+        // ── New part (or explicit regenerate)
+        setIsGenerating(true);
+        const isRegen = prompt.toLowerCase() === "regenerate" && active;
+        const finalPrompt = isRegen ? active!.prompt : prompt;
+        const activeId = isRegen ? active!.id : crypto.randomUUID();
+
+        if (!isRegen) {
             addCreation({
                 id: activeId,
                 prompt: finalPrompt,
@@ -79,65 +86,53 @@ function CADApp() {
                 material: { roughness: 0.5, metalness: 0.1 },
                 files: { glb: "", step: "", stl: "" },
             });
-            addMessage(activeId, userMsg);
-            setCurrent(activeId);
-        } else {
-            try {
-                addMessage(activeId, userMsg);
-                useDesignStore.setState(state => ({
-                    creations: state.creations.map(c => c.id === activeId ? { ...c, prompt: finalPrompt } : c),
-                    current: state.current?.id === activeId ? { ...state.current!, prompt: finalPrompt } : state.current
-                }));
-            } catch (e) { console.warn("Failed to add msg", e) }
         }
+        addMessage(activeId, userMsg);
 
         try {
             const data = await generateOFL(finalPrompt);
-
-            // Update OFL store with code/params
             useOFLStore.getState().setFromResponse(data);
 
             if (!data.success) {
                 throw new Error(data.error || "Generation failed");
             }
 
-            const glbUrl = getFullUrl(data.files.glb) || "";
-            const stepFile = getFullUrl(data.files.step) || "";
-            const stlFile = getFullUrl(data.files.stl) || "";
-
-            const assistantMsg: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: "Part generated! Check the 3D viewer and code panel.",
-                timestamp: Date.now(),
-                partVersion: (useChatStore.getState().getHistory(activeId).filter(m => m.role === 'assistant').length || 0) + 1,
-                files: { glb: glbUrl, step: stepFile, stl: stlFile },
+            const files = {
+                glb: getFullUrl(data.files.glb) || "",
+                step: getFullUrl(data.files.step) || "",
+                stl: getFullUrl(data.files.stl) || "",
             };
 
-            addMessage(activeId, assistantMsg);
-
-            useDesignStore.setState((state) => {
-                const updated = state.creations.map(c => {
-                    if (c.id === activeId) {
-                        return {
-                            ...c,
-                            files: assistantMsg.files!,
-                            parameters: Object.fromEntries(data.parameters.map(p => [p.name, p.value])),
-                        };
-                    }
-                    return c;
-                });
-                const curr = state.current?.id === activeId ? updated.find(c => c.id === activeId) : state.current;
-                return { creations: updated, current: curr || null };
+            addMessage(activeId, {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                content: "Part generated — inspect it in the viewport, tune parameters, or describe the next operation.",
+                timestamp: Date.now(),
+                partVersion:
+                    (useChatStore.getState().getHistory(activeId).filter((m) => m.role === "assistant").length || 0) + 1,
+                files,
             });
 
+            useDesignStore.setState((state) => {
+                const updated = state.creations.map((c) =>
+                    c.id === activeId
+                        ? {
+                              ...c,
+                              files,
+                              parameters: Object.fromEntries(data.parameters.map((p) => [p.name, p.value])),
+                          }
+                        : c
+                );
+                const curr = state.current?.id === activeId ? updated.find((c) => c.id === activeId) : state.current;
+                return { creations: updated, current: curr || null };
+            });
         } catch (e: any) {
             console.error(e);
             addMessage(activeId, {
                 id: crypto.randomUUID(),
-                role: 'assistant',
+                role: "assistant",
                 content: `Error: ${e.message}`,
-                timestamp: Date.now()
+                timestamp: Date.now(),
             });
         } finally {
             setIsGenerating(false);
@@ -146,18 +141,18 @@ function CADApp() {
 
     useEffect(() => {
         const handler = (e: any) => {
-            handleGenerate(e.detail.prompt, e.detail.image);
+            handleGenerate(e.detail.prompt);
         };
-        window.addEventListener('generate-request', handler);
-        return () => window.removeEventListener('generate-request', handler);
+        window.addEventListener("generate-request", handler);
+        return () => window.removeEventListener("generate-request", handler);
     }, [current]);
 
-    // Deep link from the landing gallery: /app?example=<id>
+    // Deep link from the marketing gallery: /?example=<id> (or legacy /app?example=)
     const [searchParams, setSearchParams] = useSearchParams();
     useEffect(() => {
-        const exampleId = searchParams.get('example');
+        const exampleId = searchParams.get("example");
         if (!exampleId) return;
-        import('./lib/examples').then(async ({ fetchExamples, loadExampleIntoStudio }) => {
+        import("./lib/examples").then(async ({ fetchExamples, loadExampleIntoStudio }) => {
             try {
                 const examples = await fetchExamples();
                 const ex = examples.find((e) => e.id === exampleId);
@@ -168,200 +163,37 @@ function CADApp() {
         });
     }, []);
 
-    const [initialPrompt, setInitialPrompt] = useState("");
-
-    const handleLogout = () => {
-        logout();
-        navigate('/');
-    };
-
-    return (
-        <div
-            style={{
-                display: "flex",
-                height: "100vh",
-                width: "100vw",
-                overflow: "hidden",
-                background: "#030712",
-                color: "#f8fafc",
-            }}
-        >
-            <LeftSidebar />
-
-            <div style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                position: "relative",
-            }}>
-                {/* Top bar */}
-                <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "48px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "0 16px",
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-                    background: "rgba(3, 7, 18, 0.9)",
-                    backdropFilter: "blur(12px)",
-                    zIndex: 50,
-                }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <OrionFlowLogo size={24} />
-                        <span style={{
-                            fontSize: "16px",
-                            fontWeight: 600,
-                            letterSpacing: "-0.01em",
-                        }}>
-                            <span style={{ color: "#f8fafc" }}>Orion</span>
-                            <span style={{ color: "#3b82f6" }}>Flow</span>
-                        </span>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        style={{
-                            background: "rgba(30, 41, 59, 0.8)",
-                            border: "1px solid rgba(255, 255, 255, 0.08)",
-                            borderRadius: "6px",
-                            padding: "6px 12px",
-                            color: "#94a3b8",
-                            fontSize: "13px",
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "rgba(51, 65, 85, 0.8)";
-                            e.currentTarget.style.color = "#f8fafc";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "rgba(30, 41, 59, 0.8)";
-                            e.currentTarget.style.color = "#94a3b8";
-                        }}
-                    >
-                        Sign Out
-                    </button>
-                </div>
-
-                {!current && !isGenerating ? (
-                    <div
-                        style={{
-                            flex: 1,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexDirection: "column",
-                            padding: "40px",
-                            paddingTop: "88px",
-                        }}
-                    >
-                        {/* Simple Logo */}
-                        <div style={{ marginBottom: "48px" }}>
-                            <OrionFlowLogo size={72} />
-                        </div>
-                        <h1 style={{
-                            fontSize: "36px",
-                            fontWeight: 700,
-                            letterSpacing: "-0.03em",
-                            marginBottom: "12px",
-                            textAlign: "center",
-                        }}>
-                            <span style={{ color: "#f8fafc" }}>Orion</span>
-                            <span style={{ color: "#3b82f6" }}>Flow</span>
-                        </h1>
-                        <p style={{
-                            color: "#64748b",
-                            fontSize: "15px",
-                            marginBottom: "40px",
-                        }}>
-                            Describe the part you want to build.
-                        </p>
-
-                        {/* Simple Input */}
-                        <div style={{
-                            width: "100%",
-                            maxWidth: "560px",
-                        }}>
-                            <div style={{
-                                display: "flex",
-                                alignItems: "center",
-                                background: "#111827",
-                                border: "1px solid #1f2937",
-                                borderRadius: "12px",
-                                padding: "4px",
-                            }}>
-                                <input
-                                    type="text"
-                                    placeholder="Describe a CAD model..."
-                                    value={initialPrompt}
-                                    onChange={(e) => setInitialPrompt(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && initialPrompt.trim() && handleGenerate(initialPrompt)}
-                                    autoFocus
-                                    style={{
-                                        flex: 1,
-                                        background: "transparent",
-                                        border: "none",
-                                        fontSize: "15px",
-                                        padding: "14px 16px",
-                                        outline: "none",
-                                        color: "#f8fafc",
-                                    }}
-                                />
-                                <button
-                                    onClick={() => handleGenerate(initialPrompt)}
-                                    disabled={!initialPrompt.trim()}
-                                    style={{
-                                        height: "44px",
-                                        width: "44px",
-                                        borderRadius: "8px",
-                                        background: initialPrompt.trim() ? "#3b82f6" : "#1f2937",
-                                        color: initialPrompt.trim() ? "#fff" : "#6b7280",
-                                        border: "none",
-                                        cursor: initialPrompt.trim() ? "pointer" : "not-allowed",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        transition: "all 0.15s ease",
-                                    }}
-                                >
-                                    <ArrowRight size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{ flex: 1, position: "relative", paddingTop: "48px" }}>
-                        <Viewer url={current ? current.files.glb : ""} />
-                    </div>
-                )}
-            </div>
-
-            <ChatPanel onGenerate={handleGenerate} />
-            <OFLCodePanel />
-        </div>
-    );
+    return <Workspace onGenerate={handleGenerate} />;
 }
 
 export default function App() {
     return (
         <Routes>
-            <Route path="/" element={<LandingPage />} />
+            {/* app.orionflow.in is the studio — no marketing pages here */}
+            <Route
+                path="/"
+                element={
+                    <ProtectedRoute>
+                        <CADApp />
+                    </ProtectedRoute>
+                }
+            />
+            {/* legacy studio path + gallery deep links keep working */}
+            <Route
+                path="/app"
+                element={
+                    <ProtectedRoute>
+                        <CADApp />
+                    </ProtectedRoute>
+                }
+            />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/about" element={<AboutPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
-            <Route path="/app" element={
-                <ProtectedRoute>
-                    <CADApp />
-                </ProtectedRoute>
-            } />
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 }

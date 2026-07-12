@@ -459,3 +459,25 @@ a:hover {
   transform: translate(-50%, -50%);
   animation-delay: -2s;
 }
+
+/* ── Studio (app.orionflow.in) design tokens ─────────────────────────── */
+:root {
+  --studio-bg: #131417;          /* app chrome */
+  --studio-panel: #1a1c20;       /* dock surfaces */
+  --studio-panel-2: #202329;     /* raised elements */
+  --studio-border: #2a2d34;
+  --studio-border-soft: #24262c;
+  --studio-text: #e6e8eb;
+  --studio-text-dim: #9aa1ab;
+  --studio-text-faint: #6b7280;
+  --studio-accent: #4f8cff;      /* selection / primary */
+  --studio-accent-dim: rgba(79, 140, 255, 0.14);
+  --studio-ok: #34d399;
+  --studio-warn: #fbbf24;
+  --studio-err: #f87171;
+  --studio-viewport-hi: #26292e; /* viewport radial center */
+  --studio-viewport-lo: #16181b; /* viewport radial edge */
+}
+.studio-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.studio-scroll::-webkit-scrollbar-thumb { background: #2e3239; border-radius: 4px; }
+.studio-scroll::-webkit-scrollbar-track { background: transparent; }
