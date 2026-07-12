@@ -83,10 +83,23 @@ async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = get_url()
 
+    connect_args = {"timeout": 15}
+    if settings.db_ssl:
+        import ssl as ssl_module
+
+        # Supabase/Neon poolers require TLS but present a self-signed CA;
+        # they also break asyncpg's prepared-statement cache.
+        ctx = ssl_module.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl_module.CERT_NONE
+        connect_args["ssl"] = ctx
+        connect_args["statement_cache_size"] = 0
+
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:

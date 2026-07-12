@@ -42,6 +42,13 @@ class Base(DeclarativeBase):
 # =============================================================================
 
 
+def ValueEnum(enum_cls) -> SQLEnum:
+    """SQLEnum that persists member VALUES (e.g. 'signup'), matching the
+    lowercase values the migrations created the Postgres enum types with.
+    Bare SQLEnum persists member NAMES ('SIGNUP') and fails at insert."""
+    return SQLEnum(enum_cls, values_callable=lambda e: [m.value for m in e])
+
+
 class UserRole(str, enum.Enum):
     """User roles for RBAC."""
 
@@ -121,10 +128,10 @@ class User(Base):
 
     # Account status
     role: Mapped[UserRole] = mapped_column(
-        SQLEnum(UserRole), default=UserRole.USER, nullable=False
+        ValueEnum(UserRole), default=UserRole.USER, nullable=False
     )
     status: Mapped[UserStatus] = mapped_column(
-        SQLEnum(UserStatus), default=UserStatus.PENDING_VERIFICATION, nullable=False
+        ValueEnum(UserStatus), default=UserStatus.PENDING_VERIFICATION, nullable=False
     )
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     email_verification_token: Mapped[Optional[str]] = mapped_column(String(255))
@@ -273,7 +280,7 @@ class GenerationHistory(Base):
 
     # Response data
     status: Mapped[GenerationStatus] = mapped_column(
-        SQLEnum(GenerationStatus), default=GenerationStatus.PENDING
+        ValueEnum(GenerationStatus), default=GenerationStatus.PENDING
     )
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     error_code: Mapped[Optional[str]] = mapped_column(String(50))
@@ -390,7 +397,7 @@ class AuditLog(Base):
     )
 
     # Action details
-    action: Mapped[AuditAction] = mapped_column(SQLEnum(AuditAction), nullable=False)
+    action: Mapped[AuditAction] = mapped_column(ValueEnum(AuditAction), nullable=False)
     resource_type: Mapped[Optional[str]] = mapped_column(String(50))
     resource_id: Mapped[Optional[str]] = mapped_column(String(255))
 
@@ -510,7 +517,7 @@ class Subscription(Base):
 
     # Status
     status: Mapped[SubscriptionStatus] = mapped_column(
-        SQLEnum(SubscriptionStatus), default=SubscriptionStatus.TRIALING
+        ValueEnum(SubscriptionStatus), default=SubscriptionStatus.TRIALING
     )
 
     # Billing cycle

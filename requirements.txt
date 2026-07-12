@@ -24,8 +24,8 @@ alembic
 
 # Auth
 python-jose[cryptography]
-passlib[bcrypt]
-bcrypt<4.1  # passlib 1.7.4 can't read the version of bcrypt>=4.1
+bcrypt>=4.1
+python-multipart
 email-validator
 
 # Middleware & Metrics

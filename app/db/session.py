@@ -24,8 +24,11 @@ from app.config import settings
 
 def get_database_url() -> str:
     """Build database URL from settings."""
+    from urllib.parse import quote_plus
+
     return (
-        f"postgresql+asyncpg://{settings.db_user}:{settings.db_password}"
+        f"postgresql+asyncpg://{quote_plus(settings.db_user)}:"
+        f"{quote_plus(settings.db_password)}"
         f"@{settings.db_host}:{settings.db_port}/{settings.db_name}"
     )
 
@@ -42,9 +45,27 @@ def create_engine() -> AsyncEngine:
     """
     pool_class = NullPool if settings.testing else AsyncAdaptedQueuePool
 
+    connect_args: dict = {
+        # asyncpg defaults to a 60s connect timeout; a down DB would stall
+        # startup and every auth request for a minute.
+        "timeout": 10,
+    }
+    if settings.db_ssl:
+        import ssl as ssl_module
+
+        # Supabase poolers present a cert from Supabase's own CA, which is not
+        # in system trust stores — encrypt without chain verification.
+        ctx = ssl_module.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl_module.CERT_NONE
+        connect_args["ssl"] = ctx
+        # Supabase/Neon poolers break asyncpg's prepared-statement cache.
+        connect_args["statement_cache_size"] = 0
+
     engine_kwargs = {
         "echo": settings.db_echo,
         "pool_pre_ping": True,  # Verify connections before use
+        "connect_args": connect_args,
     }
 
     if not settings.testing:

@@ -10,14 +10,19 @@ Uses bcrypt for secure password hashing with:
 import secrets
 from typing import Tuple
 
-from passlib.context import CryptContext
+import bcrypt
 
-# Password hashing context using bcrypt
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12,  # Work factor (2^12 iterations)
-)
+# passlib was dropped: it is unmaintained and its bcrypt backend self-test
+# crashes with bcrypt>=4.1 ("password cannot be longer than 72 bytes").
+# Hashes produced by passlib ($2b$...) verify fine with bcrypt directly.
+
+_BCRYPT_ROUNDS = 12  # Work factor (2^12 iterations)
+
+
+def _to_bcrypt_secret(value: str) -> bytes:
+    # bcrypt only reads the first 72 bytes; newer versions raise instead of
+    # truncating silently, so truncate explicitly.
+    return value.encode("utf-8")[:72]
 
 
 def hash_password(password: str) -> str:
@@ -30,7 +35,9 @@ def hash_password(password: str) -> str:
     Returns:
         Hashed password string
     """
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(
+        _to_bcrypt_secret(password), bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)
+    ).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -46,7 +53,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            _to_bcrypt_secret(plain_password), hashed_password.encode("utf-8")
+        )
+    except ValueError:
+        # Malformed / non-bcrypt hash in storage
+        return False
 
 
 def generate_password_reset_token() -> str:
@@ -93,7 +106,7 @@ def hash_api_key(key: str) -> str:
     Returns:
         Hashed key for storage
     """
-    return pwd_context.hash(key)
+    return hash_password(key)
 
 
 def verify_api_key(key: str, hashed_key: str) -> bool:
@@ -107,7 +120,7 @@ def verify_api_key(key: str, hashed_key: str) -> bool:
     Returns:
         True if key matches, False otherwise
     """
-    return pwd_context.verify(key, hashed_key)
+    return verify_password(key, hashed_key)
 
 
 def check_password_strength(password: str) -> Tuple[bool, str]:
