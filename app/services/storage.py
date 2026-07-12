@@ -53,6 +53,7 @@ class S3Storage:
 
     def __init__(self) -> None:
         import boto3  # optional dependency; only needed when S3 is configured
+        from botocore.config import Config
 
         self._client = boto3.client(
             "s3",
@@ -60,6 +61,9 @@ class S3Storage:
             aws_secret_access_key=settings.aws_secret_access_key,
             region_name=settings.aws_region,
             endpoint_url=settings.s3_endpoint_url or None,
+            # Custom endpoints (Supabase/R2/MinIO) 403 presigned URLs unless
+            # SigV4 is forced.
+            config=Config(signature_version="s3v4"),
         )
         self._bucket = settings.s3_bucket
 
