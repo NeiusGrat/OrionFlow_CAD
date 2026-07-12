@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDesignStore } from "../../store/designStore";
 import { getFullUrl } from "../../services/oflApi";
+import ExamplesPanel from "./ExamplesPanel";
+import OrionFlowLogo from "../OrionFlowLogo";
 import {
     Layers,
     Download,
-    ExternalLink,
     Settings,
     X,
     FileDown,
-    Box
+    Box,
+    Shapes
 } from "lucide-react";
 
 // ============ Feature Tree Panel ============
@@ -233,11 +235,13 @@ function ExportDropdown({
     if (!isOpen) return null;
 
     const getDownloadUrl = (format: 'step' | 'stl') => {
-        if (!current?.files?.[format]) return null;
-        const file = current.files[format];
+        const file = current?.files?.[format];
         if (!file || file === "") return null;
-        const filename = file.split(/[/\\]/).pop();
-        return getFullUrl(`/download/${format}/${filename}`);
+        // Files are stored as ready-to-use URLs (API download links or
+        // static example assets) — use them directly.
+        return file.startsWith("http") || file.startsWith("/examples/")
+            ? file
+            : getFullUrl(file);
     };
 
     const stepUrl = getDownloadUrl('step');
@@ -437,26 +441,10 @@ const NavButton = React.forwardRef<HTMLButtonElement, {
 
 // ============ Main Sidebar ============
 export default function LeftSidebar() {
-    const current = useDesignStore((state) => state.current);
     const [showFeatureTree, setShowFeatureTree] = useState(false);
+    const [showExamples, setShowExamples] = useState(false);
     const [showExportDropdown, setShowExportDropdown] = useState(false);
     const exportBtnRef = useRef<HTMLButtonElement>(null);
-
-    const handleOpenOnshape = async () => {
-        if (!current) return;
-        try {
-            const response = await fetch(getFullUrl(`/api/onshape/create/${current.id}`)!, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                if (data.url) window.open(data.url, "_blank");
-            }
-        } catch (error) {
-            console.error("Failed to open in Onshape:", error);
-        }
-    };
 
     return (
         <>
@@ -485,11 +473,7 @@ export default function LeftSidebar() {
                     boxShadow: "0 0 30px rgba(59, 130, 246, 0.4)",
                     position: "relative",
                 }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                        <path d="M2 17l10 5 10-5" />
-                        <path d="M2 12l10 5 10-5" />
-                    </svg>
+                    <OrionFlowLogo size={26} theme="mono" />
                     <div style={{
                         position: "absolute",
                         inset: "-2px",
@@ -518,10 +502,23 @@ export default function LeftSidebar() {
                     padding: "0 8px",
                 }}>
                     <NavButton
+                        icon={<Shapes size={18} strokeWidth={2} />}
+                        label="Examples"
+                        active={showExamples}
+                        onClick={() => {
+                            setShowExamples(!showExamples);
+                            setShowFeatureTree(false);
+                        }}
+                    />
+
+                    <NavButton
                         icon={<Layers size={18} strokeWidth={2} />}
                         label="Tree"
                         active={showFeatureTree}
-                        onClick={() => setShowFeatureTree(!showFeatureTree)}
+                        onClick={() => {
+                            setShowFeatureTree(!showFeatureTree);
+                            setShowExamples(false);
+                        }}
                     />
 
                     <NavButton
@@ -530,13 +527,6 @@ export default function LeftSidebar() {
                         label="Export"
                         active={showExportDropdown}
                         onClick={() => setShowExportDropdown(!showExportDropdown)}
-                    />
-
-                    <NavButton
-                        icon={<ExternalLink size={18} strokeWidth={2} />}
-                        label="Cloud"
-                        onClick={handleOpenOnshape}
-                        disabled={!current}
                     />
                 </div>
 
@@ -557,6 +547,7 @@ export default function LeftSidebar() {
             </div>
 
             <FeatureTreePanel isOpen={showFeatureTree} onClose={() => setShowFeatureTree(false)} />
+            <ExamplesPanel isOpen={showExamples} onClose={() => setShowExamples(false)} />
             <ExportDropdown isOpen={showExportDropdown} onClose={() => setShowExportDropdown(false)} anchorRef={exportBtnRef} />
         </>
     );

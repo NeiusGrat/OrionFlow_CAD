@@ -1,6 +1,7 @@
 import Navbar from '../components/Landing/Navbar';
 import HeroSection from '../components/Landing/HeroSection';
 import TrustedBySection from '../components/Landing/TrustedBySection';
+import ExampleGallerySection from '../components/Landing/ExampleGallerySection';
 import DemoVideoSection from '../components/Landing/DemoVideoSection';
 import AIDirectorSection from '../components/Landing/AIDirectorSection';
 import CapabilitiesSection from '../components/Landing/CapabilitiesSection';
@@ -21,6 +22,7 @@ export default function LandingPage() {
             <Navbar />
             <HeroSection />
             <TrustedBySection />
+            <ExampleGallerySection />
             <div id="features">
                 <DemoVideoSection />
                 <AIDirectorSection />

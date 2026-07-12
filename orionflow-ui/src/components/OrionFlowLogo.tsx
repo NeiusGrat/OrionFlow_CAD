@@ -1,9 +1,13 @@
 interface OrionFlowLogoProps {
   size?: number;
   className?: string;
+  /** 'light': blue/black rays for light backgrounds (default).
+   *  'dark': blue/white rays for dark backgrounds.
+   *  'mono': all-white rays for colored/gradient surfaces. */
+  theme?: 'light' | 'dark' | 'mono';
 }
 
-export default function OrionFlowLogo({ size = 40, className = '' }: OrionFlowLogoProps) {
+export default function OrionFlowLogo({ size = 40, className = '', theme = 'dark' }: OrionFlowLogoProps) {
   const rayCount = 12;
   const innerRadius = size * 0.25;
   const outerRadius = size * 0.48;
@@ -21,9 +25,10 @@ export default function OrionFlowLogo({ size = 40, className = '' }: OrionFlowLo
     const x2 = center + outerRadius * Math.cos(rad);
     const y2 = center + outerRadius * Math.sin(rad);
 
-    // Blue rays on left (indices 6-11), black rays on right (indices 0-5)
+    // Blue rays on left (indices 6-11), contrast rays on right (indices 0-5)
     const isBlue = i >= 6 && i <= 11;
-    const color = isBlue ? '#2563eb' : '#0a0a0a';
+    const contrast = theme === 'light' ? '#0a0a0a' : '#f8fafc';
+    const color = theme === 'mono' ? '#ffffff' : isBlue ? '#2563eb' : contrast;
 
     rays.push(
       <line

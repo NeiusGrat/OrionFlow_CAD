@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useDesignStore } from "../../store/designStore";
 import { useChatStore } from "../../store/chatStore";
-import { X, Box, ArrowUp, Paperclip } from "lucide-react";
+import { Box, ArrowUp } from "lucide-react";
+import OrionFlowLogo from "../OrionFlowLogo";
 
 interface ChatPanelProps {
     onGenerate: (prompt: string, image?: File) => void;
@@ -14,11 +15,8 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
     const chatHistory = current ? (conversations.get(current.id) || []) : [];
 
     const [inputValue, setInputValue] = useState("");
-    const [selectedImage, setSelectedImage] = useState<File | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const scrollRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
@@ -36,33 +34,12 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
     }, [inputValue]);
 
     const handleSend = () => {
-        if ((!inputValue.trim() && !selectedImage) || isGenerating) return;
-        onGenerate(inputValue, selectedImage || undefined);
+        if (!inputValue.trim() || isGenerating) return;
+        onGenerate(inputValue);
         setInputValue("");
-        setSelectedImage(null);
-        setImagePreview(null);
     };
 
-    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 3 * 1024 * 1024) {
-            alert("Image must be less than 3MB");
-            return;
-        }
-        setSelectedImage(file);
-        setImagePreview(URL.createObjectURL(file));
-    };
-
-    const removeImage = () => {
-        setSelectedImage(null);
-        if (imagePreview) {
-            URL.revokeObjectURL(imagePreview);
-            setImagePreview(null);
-        }
-    };
-
-    const canSend = (inputValue.trim() || selectedImage) && !isGenerating;
+    const canSend = inputValue.trim() && !isGenerating;
 
     return (
         <div style={{
@@ -92,11 +69,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                         alignItems: "center",
                         justifyContent: "center",
                     }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                            <path d="M2 17l10 5 10-5" />
-                            <path d="M2 12l10 5 10-5" />
-                        </svg>
+                        <OrionFlowLogo size={18} theme="mono" />
                     </div>
                     <span style={{
                         fontSize: "15px",
@@ -295,46 +268,6 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
 
             {/* Input Area */}
             <div style={{ padding: "16px" }}>
-                {/* Image Preview */}
-                {imagePreview && (
-                    <div style={{
-                        position: "relative",
-                        display: "inline-block",
-                        marginBottom: "12px",
-                    }}>
-                        <img
-                            src={imagePreview}
-                            alt="Preview"
-                            style={{
-                                height: "60px",
-                                borderRadius: "8px",
-                                objectFit: "cover",
-                            }}
-                        />
-                        <button
-                            onClick={removeImage}
-                            style={{
-                                position: "absolute",
-                                top: "-6px",
-                                right: "-6px",
-                                width: "20px",
-                                height: "20px",
-                                borderRadius: "50%",
-                                background: "#27272a",
-                                border: "none",
-                                color: "#a1a1aa",
-                                padding: 0,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                            }}
-                        >
-                            <X size={12} />
-                        </button>
-                    </div>
-                )}
-
                 {/* Input Box */}
                 <div style={{
                     background: "#18181b",
@@ -345,37 +278,6 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                     alignItems: "flex-end",
                     gap: "8px",
                 }}>
-                    {/* Attach */}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        style={{ display: "none" }}
-                        accept="image/*"
-                        onChange={handleImageSelect}
-                    />
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isGenerating}
-                        style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "8px",
-                            background: "transparent",
-                            border: "none",
-                            color: "#71717a",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            transition: "color 0.15s",
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = "#a1a1aa"}
-                        onMouseLeave={(e) => e.currentTarget.style.color = "#71717a"}
-                    >
-                        <Paperclip size={18} />
-                    </button>
-
                     {/* Textarea */}
                     <textarea
                         ref={textareaRef}

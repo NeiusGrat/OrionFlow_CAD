@@ -4,6 +4,7 @@ import OrionFlowLogo from '../OrionFlowLogo';
 import { ArrowRight, Menu, X } from 'lucide-react';
 
 const navLinks = [
+    { name: 'Examples', href: '#examples' },
     { name: 'Features', href: '#features' },
     { name: 'Pricing', href: '#pricing' },
     { name: 'About', href: '/about' },

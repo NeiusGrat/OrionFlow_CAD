@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import LeftSidebar from "./components/Panels/LeftSidebar";
 import ChatPanel from "./components/Panels/ChatPanel";
 import Viewer from "./components/Viewer/Viewer";
@@ -151,6 +151,22 @@ function CADApp() {
         window.addEventListener('generate-request', handler);
         return () => window.removeEventListener('generate-request', handler);
     }, [current]);
+
+    // Deep link from the landing gallery: /app?example=<id>
+    const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        const exampleId = searchParams.get('example');
+        if (!exampleId) return;
+        import('./lib/examples').then(async ({ fetchExamples, loadExampleIntoStudio }) => {
+            try {
+                const examples = await fetchExamples();
+                const ex = examples.find((e) => e.id === exampleId);
+                if (ex) loadExampleIntoStudio(ex);
+            } finally {
+                setSearchParams({}, { replace: true });
+            }
+        });
+    }, []);
 
     const [initialPrompt, setInitialPrompt] = useState("");
 

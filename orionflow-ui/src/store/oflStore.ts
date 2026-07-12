@@ -89,6 +89,29 @@ export const useOFLStore = create<OFLState>((set, get) => ({
       error: res.error,
       generationTimeMs: res.generation_time_ms,
     });
+
+    // Keep the viewer in sync: it renders designStore.current.files.glb,
+    // so rebuilds/edits/param changes must propagate there too.
+    if (res.success && res.files.glb) {
+      import('./designStore').then(({ useDesignStore }) => {
+        const { current } = useDesignStore.getState();
+        if (!current) return;
+        const files = {
+          glb: getFullUrl(res.files.glb) || '',
+          step: getFullUrl(res.files.step) || '',
+          stl: getFullUrl(res.files.stl) || '',
+        };
+        const parameters = Object.fromEntries(
+          res.parameters.map((p) => [p.name, p.value])
+        );
+        useDesignStore.setState((state) => ({
+          creations: state.creations.map((c) =>
+            c.id === current.id ? { ...c, files, parameters } : c
+          ),
+          current: { ...current, files, parameters },
+        }));
+      });
+    }
   },
 
   clear: () => set({
