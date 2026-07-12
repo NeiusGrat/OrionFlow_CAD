@@ -200,6 +200,422 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         lookup_standard,
     ))
 
+    def lookup_mechanical_knowledge(args):
+        from orion_agent.harness import mechanical_knowledge as mk
+        hits = mk.search(args.get("query", ""), domain=args.get("domain", ""))
+        if not hits:
+            return _fail(
+                "no mechanical knowledge item matched; try a domain or terms such as "
+                "'datum', 'feature control frame', 'bend allowance', 'bend relief', "
+                "'holes', 'grain direction', or 'threads'"
+            )
+        return _ok(mk.render(hits), raw={"results": hits})
+
+    reg.register(Tool(
+        "lookup_mechanical_knowledge",
+        "Retrieve traceable mechanical-engineering knowledge for GD&T, sheet-metal "
+        "DFM, fastener governance, and knowledge provenance. Every result names its "
+        "source authority and maturity. A secondary reference or screening guideline "
+        "is NOT standards-compliance evidence; state that limitation in your answer.",
+        {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Engineering question or topic"},
+                "domain": {"type": "string", "description": "Optional: gdt, sheet_metal, fasteners, governance"},
+            },
+            "required": ["query"],
+        },
+        lookup_mechanical_knowledge,
+    ))
+
+    def calculate_sheet_metal_bend(args):
+        from orion_agent.harness import mechanical_knowledge as mk
+        try:
+            raw = mk.calculate_bend(
+                thickness_mm=args.get("thickness_mm"),
+                inside_radius_mm=args.get("inside_radius_mm"),
+                bend_angle_deg=args.get("bend_angle_deg"),
+                k_factor=args.get("k_factor"),
+                flange_a_mm=args.get("flange_a_mm"),
+                flange_b_mm=args.get("flange_b_mm"),
+            )
+        except mk.KnowledgeInputError as exc:
+            return _fail(str(exc))
+        return _ok(mk.render_bend_calculation(raw), raw=raw)
+
+    reg.register(Tool(
+        "calculate_sheet_metal_bend",
+        "Calculate one sheet-metal bend's allowance and deduction using the supplied "
+        "thickness, inside radius, bend angle, and K-factor. Use only a K-factor "
+        "provided by the user or a validated process source. This is a preliminary "
+        "flat-pattern estimate and requires fabricator confirmation before release.",
+        {
+            "type": "object",
+            "properties": {
+                "thickness_mm": {"type": "number"},
+                "inside_radius_mm": {"type": "number"},
+                "bend_angle_deg": {"type": "number"},
+                "k_factor": {"type": "number"},
+                "flange_a_mm": {"type": "number", "description": "Optional outside flange length"},
+                "flange_b_mm": {"type": "number", "description": "Optional outside flange length"},
+            },
+            "required": ["thickness_mm", "inside_radius_mm", "bend_angle_deg", "k_factor"],
+        },
+        calculate_sheet_metal_bend,
+    ))
+
+    def check_sheet_metal_dfm(args):
+        from orion_agent.harness import mechanical_knowledge as mk
+        try:
+            raw = mk.check_sheet_metal_dfm(
+                thickness_mm=args.get("thickness_mm"),
+                inside_radius_mm=args.get("inside_radius_mm"),
+                hole_diameter_mm=args.get("hole_diameter_mm"),
+                hole_spacing_mm=args.get("hole_spacing_mm"),
+                hole_edge_distance_mm=args.get("hole_edge_distance_mm"),
+                bend_relief_width_mm=args.get("bend_relief_width_mm"),
+                bend_relief_depth_mm=args.get("bend_relief_depth_mm"),
+            )
+        except mk.KnowledgeInputError as exc:
+            return _fail(str(exc))
+        return _ok(mk.render_dfm_check(raw), raw=raw)
+
+    reg.register(Tool(
+        "check_sheet_metal_dfm",
+        "Run source-aware, preliminary sheet-metal checks for hole diameter/spacing "
+        "and bend-relief dimensions. Results are warnings only, never supplier approval. "
+        "Hole-to-edge distance is intentionally review-only until its source conflict is "
+        "resolved by an engineer.",
+        {
+            "type": "object",
+            "properties": {
+                "thickness_mm": {"type": "number"},
+                "inside_radius_mm": {"type": "number"},
+                "hole_diameter_mm": {"type": "number"},
+                "hole_spacing_mm": {"type": "number"},
+                "hole_edge_distance_mm": {"type": "number"},
+                "bend_relief_width_mm": {"type": "number"},
+                "bend_relief_depth_mm": {"type": "number"},
+            },
+            "required": ["thickness_mm"],
+        },
+        check_sheet_metal_dfm,
+    ))
+
+    def lookup_robotics_knowledge(args):
+        from orion_agent.harness import robotics_knowledge as rk
+        try:
+            hits = rk.search(args.get("query", ""), kind=args.get("kind", ""))
+        except rk.RoboticsKnowledgeError as exc:
+            return _fail(str(exc))
+        if not hits:
+            return _fail(
+                "no robotics knowledge matched; try 'linear axis', 'parallel jaw "
+                "gripper', 'pan tilt', 'harmonic drive', 'motor mount', 'belt', or "
+                "'assembly demo'"
+            )
+        return _ok(rk.render(hits), raw={"results": hits})
+
+    reg.register(Tool(
+        "lookup_robotics_knowledge",
+        "Retrieve source-aware robotics components, interface contracts, and demo "
+        "assemblies. Each result exposes its data status: source_specific facts still "
+        "need current drawing/revision review; candidate and illustrative records must "
+        "never be presented as selected, safe, or production-ready hardware.",
+        {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Robotics component, interface, or demo topic"},
+                "kind": {"type": "string", "description": "Optional: component, interface, or demo"},
+            },
+            "required": ["query"],
+        },
+        lookup_robotics_knowledge,
+    ))
+
+    def get_robotics_demo(args):
+        from orion_agent.harness import robotics_knowledge as rk
+        demo_id = args.get("demo_id", "")
+        try:
+            demo = rk.get("demo", demo_id)
+            if demo is None:
+                return _fail(f"unknown robotics demo: {demo_id}")
+            composition_graph = rk.demo_composition_graph(demo_id)
+            errors = rk.validate_demo_graph(demo)
+        except rk.RoboticsKnowledgeError as exc:
+            return _fail(str(exc))
+        if errors:
+            return _fail(
+                "packaged demo composition graph is invalid; do not use it until fixed:\n- "
+                + "\n- ".join(errors[:12])
+            )
+        content = rk.render_demo_manifest(demo, rk.summarize_demo_topology(demo))
+        return _ok(content, raw={
+            "demo": demo,
+            "composition_graph": composition_graph,
+        })
+
+    reg.register(Tool(
+        "get_robotics_demo",
+        "Load a validated robotics demonstration manifest and its high-level component "
+        "composition graph. "
+        "Use this before creating the custom parts for a supported demo. It returns "
+        "a component/interface plan, not a mate-solved AssemblyGraph or finished FreeCAD "
+        "assembly; resolve all candidate hardware, frames, mates and limits against exact "
+        "supplier drawings first.",
+        {
+            "type": "object",
+            "properties": {
+                "demo_id": {"type": "string", "description": "Stable demo ID from lookup_robotics_knowledge"},
+            },
+            "required": ["demo_id"],
+        },
+        get_robotics_demo,
+    ))
+
+    def validate_assembly_graph(args):
+        from orion_agent.harness import assembly_graph as ag
+        try:
+            canonical = ag.normalize(args.get("graph"))
+            errors = ag.validate(canonical)
+        except ag.AssemblyGraphError as exc:
+            return _fail(str(exc))
+        if errors:
+            return _fail(
+                "AssemblyGraph invalid - fix and retry:\n- " + "\n- ".join(errors[:12])
+            )
+        graph = ag.parse_assembly_graph(canonical)
+        bom = ag.aggregate_bom(graph)
+        bom_text = "\n".join(
+            f"- {line['quantity']} x {line['part_number']}"
+            + (f" ({line['name']})" if line.get("name") else "")
+            for line in bom
+        )
+        content = ag.summarize(graph) + "\nBOM:\n" + (bom_text or "- no parts")
+        return _ok(content, raw={"assembly_graph": canonical, "bom": bom})
+
+    reg.register(Tool(
+        "validate_assembly_graph",
+        "Validate a multi-part AssemblyGraph before CAD generation. The graph contains "
+        "part instances, interface frames, fixed/revolute/prismatic joints, and optional "
+        "limits. The tool checks references, axes, limits, connectivity, topology and BOM. "
+        "It is a planning validator only: it does not solve mates, create CAD, or approve "
+        "a physical robot.",
+        {
+            "type": "object",
+            "properties": {
+                "graph": {
+                    "type": "object",
+                    "description": "AssemblyGraph: {id, parts, interfaces, joints}; use exact declared interface IDs",
+                },
+            },
+            "required": ["graph"],
+        },
+        validate_assembly_graph,
+    ))
+
+    def compile_assembly_graph(args):
+        """Place explicitly bound source parts as a native linked assembly.
+
+        AssemblyGraph deliberately does not name FreeCAD objects.  Keeping the
+        binding map at this tool boundary prevents a model from treating a
+        component catalogue entry or part number as permission to select an
+        arbitrary object in the user's document.
+        """
+        from orion_agent.harness import assembly_graph as ag
+
+        bindings = args.get("bindings")
+        if not isinstance(bindings, dict) or not bindings:
+            return _fail(
+                "'bindings' must explicitly map every AssemblyGraph part id to an "
+                "existing FreeCAD source-object name"
+            )
+        if not all(isinstance(part_id, str) and isinstance(name, str)
+                   and part_id and name for part_id, name in bindings.items()):
+            return _fail("every binding must be a non-empty {part_id: source_object_name} string pair")
+        root_part_id = args.get("root_part_id")
+        if not isinstance(root_part_id, str) or not root_part_id:
+            return _fail("'root_part_id' must name the grounded AssemblyGraph part instance")
+        joint_values = args.get("joint_values")
+        if joint_values is not None and not isinstance(joint_values, dict):
+            return _fail("'joint_values' must be an object mapping joint ids to numeric positions")
+
+        try:
+            canonical = ag.normalize(args.get("graph"))
+            errors = ag.validate(canonical)
+        except ag.AssemblyGraphError as exc:
+            return _fail(str(exc))
+        if errors:
+            return _fail(
+                "AssemblyGraph invalid - fix and retry before compiling:\n- "
+                + "\n- ".join(errors[:12])
+            )
+
+        graph = ag.parse_assembly_graph(canonical)
+        raw = bridge.compile_assembly_graph(
+            canonical,
+            bindings=bindings,
+            root_part_id=root_part_id,
+            joint_values=joint_values,
+            label=args.get("label"),
+        )
+        warnings = raw.get("warnings", []) if isinstance(raw, dict) else []
+        if not isinstance(raw, dict) or not raw.get("recompute_ok", False):
+            return ToolResult(
+                False,
+                "assembly compile FAILED - FreeCAD did not recompute the linked assembly cleanly",
+                raw=raw,
+                error="recompute_failed",
+            )
+
+        assembly = raw.get("assembly", {}) or {}
+        instances = raw.get("instances", []) or []
+        lines = [
+            f"compiled native linked assembly '{assembly.get('name', 'assembly')}' "
+            f"with {len(instances)} placed occurrence(s) (backend: "
+            f"{assembly.get('backend', 'core_links')})",
+            "Source parts remain separate; this is deterministic placement from explicit "
+            "frames/joint values, not collision, load, safety, or release approval.",
+            ag.summarize(graph),
+        ]
+        if warnings:
+            lines.append("warnings: " + "; ".join(str(item) for item in warnings[:6]))
+        return _ok("\n".join(lines), raw=raw)
+
+    reg.register(Tool(
+        "compile_assembly_graph",
+        "Compile a validated, explicitly grounded AssemblyGraph into a native FreeCAD "
+        "linked assembly. Provide a binding for every part instance to an existing source "
+        "object in the active document, a root part id, and optional numeric joint values. "
+        "The v0 backend places a rooted tree of App::Link occurrences; it refuses missing "
+        "frames, loops, duplicate parents, undefined source objects, and out-of-limit "
+        "positions. It does not infer mates, select hardware, solve collisions, or certify "
+        "the mechanical design.",
+        {
+            "type": "object",
+            "properties": {
+                "graph": {
+                    "type": "object",
+                    "description": "Strict AssemblyGraph with explicit interface frames and joints",
+                },
+                "bindings": {
+                    "type": "object",
+                    "description": "Exact {part_instance_id: existing_FreeCAD_object_name} map",
+                },
+                "root_part_id": {
+                    "type": "string",
+                    "description": "Grounded AssemblyGraph part instance id",
+                },
+                "joint_values": {
+                    "type": "object",
+                    "description": "Optional {joint_id: position}; revolute in radians, prismatic in mm",
+                },
+                "label": {"type": "string", "description": "Optional label for the assembly container"},
+            },
+            "required": ["graph", "bindings", "root_part_id"],
+        },
+        compile_assembly_graph,
+        mutating=True,
+        doc_mutating=True,
+    ))
+
+    def assess_robotics_assembly(args):
+        from orion_agent.harness import assembly_graph as ag
+        from orion_agent.harness import robotics_assembly as ra
+        try:
+            raw = ra.assess_readiness(args.get("graph"))
+        except ag.AssemblyGraphError as exc:
+            return _fail(str(exc))
+        return _ok(ra.render_readiness(raw), raw=raw)
+
+    reg.register(Tool(
+        "assess_robotics_assembly",
+        "Assess an explicit AssemblyGraph against the controlled robotics component "
+        "catalogue. It reports whether every referenced part is source-specific and "
+        "engineering-reviewed, while keeping candidates/illustrative records in planning "
+        "status. This is a provenance gate only; it does not approve mechanics, safety, "
+        "mates, loads, collision, or manufacturing.",
+        {
+            "type": "object",
+            "properties": {
+                "graph": {"type": "object", "description": "Structurally valid AssemblyGraph"},
+            },
+            "required": ["graph"],
+        },
+        assess_robotics_assembly,
+    ))
+
+    def export_assembly_urdf(args):
+        from orion_agent.harness import assembly_graph as ag
+        from orion_agent.harness import urdf_export as ue
+        try:
+            graph = ag.parse_assembly_graph(args.get("graph"))
+            xml = ue.export_urdf(graph, robot_name=args.get("robot_name"))
+        except (ag.AssemblyGraphError, ue.URDFExportError) as exc:
+            return _fail(str(exc))
+        warning = (
+            "URDF kinematic skeleton generated. It intentionally omits visual meshes, "
+            "collision meshes, inertias, transmissions, and physical safety claims. "
+            "Validate it with the target ROS/simulation workflow after source and frame review."
+        )
+        # Tool observations are token-bounded. The full XML remains in raw for
+        # API consumers; a small graph is also visible to the model for review.
+        preview = xml if len(xml) <= 6000 else xml[:5800] + "\n<!-- truncated in agent observation -->\n"
+        return _ok(warning + "\n\n```xml\n" + preview + "```", raw={
+            "urdf": xml,
+            "robot_name": args.get("robot_name") or graph.id,
+            "kinematic_only": True,
+        })
+
+    reg.register(Tool(
+        "export_assembly_urdf",
+        "Export a validated AssemblyGraph as a conservative kinematic-only URDF. "
+        "Every joint must explicitly provide metadata.urdf_origin {xyz, rpy}; movable "
+        "joints also require an axis and lower/upper/velocity/effort limits. The graph "
+        "must be one rooted tree. This tool refuses to invent visual, collision, inertial, "
+        "or transmission data and does not certify the physical robot.",
+        {
+            "type": "object",
+            "properties": {
+                "graph": {"type": "object", "description": "Explicit, mate-reviewed AssemblyGraph"},
+                "robot_name": {"type": "string", "description": "Optional URDF robot name"},
+            },
+            "required": ["graph"],
+        },
+        export_assembly_urdf,
+    ))
+
+    def validate_assembly_spec(args):
+        from orion_agent.harness import assembly_spec as asp
+        from orion_agent.harness import assembly_validation as av
+        try:
+            spec = asp.parse_assembly_spec(args.get("spec"), strict=False)
+        except asp.AssemblySpecError as exc:
+            return _fail(str(exc))
+        result = av.run_validation(spec)
+        return _ok(av.render_validation(result), raw=result)
+
+    reg.register(Tool(
+        "validate_assembly_spec",
+        "Run the ordered assembly validation pipeline (geometry -> interfaces/mates "
+        "-> DFM -> closed-form calculations -> collision/kinematics -> mass/CoG -> "
+        "FEA evidence) over an AssemblySpec {id, requirements, variants, contracts, "
+        "graph, links, evidence}. Deterministic screening only: missing data becomes "
+        "an evidence_required finding, never a silent pass, and no stage result is a "
+        "release, safety, or supplier approval.",
+        {
+            "type": "object",
+            "properties": {
+                "spec": {
+                    "type": "object",
+                    "description": "AssemblySpec with graph, component variants, links, and declared calculations",
+                },
+            },
+            "required": ["spec"],
+        },
+        validate_assembly_spec,
+    ))
+
     def get_parameters(args):
         raw = bridge.get_object_parameters(args["name"])
         params = raw.get("parameters", {})

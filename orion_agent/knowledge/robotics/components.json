@@ -1,0 +1,501 @@
+{
+  "schema_version": "1.0",
+  "package": "robotics-assembly-foundation",
+  "version": "0.1.0",
+  "components": [
+    {
+      "id": "robotics.component.nema23_stepper_candidate.v1",
+      "title": "NEMA 23-class stepper motor candidate",
+      "kind": "stepper_motor",
+      "vendor": "Unselected; Oriental Motor PKP is a research reference only",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A procurement candidate for the first belt-driven linear-axis demo. The frame label alone does not establish shaft, pilot, mounting-hole pattern, length, torque-speed curve, winding, driver, encoder, brake, or thermal capability.",
+      "sources": ["oriental_motor_pkp_nema23_2026"],
+      "interfaces": ["robotics.interface.nema23_motor_mount.candidate.v1", "robotics.interface.motor_shaft_to_timing_pulley.candidate.v1", "robotics.interface.motor_power_and_control.candidate.v1"],
+      "facts": [
+        {
+          "name": "reference_product_family",
+          "value": "Oriental Motor PKP 56.4 mm / NEMA 23 category",
+          "basis": "source_specific",
+          "source": "oriental_motor_pkp_nema23_2026",
+          "note": "This is a research reference, not a selected motor or a transferable mounting specification."
+        },
+        {
+          "name": "intended_demo_role",
+          "value": "belt-driven linear-axis prime mover",
+          "basis": "illustrative",
+          "note": "Select only after payload, speed, acceleration, duty cycle, and holding requirements are known."
+        }
+      ],
+      "required_selection_inputs": ["payload and moving mass", "travel, speed, acceleration, and duty cycle", "supply voltage and driver topology", "holding/vertical-axis requirement", "ambient temperature and enclosure", "exact supplier drawing and speed-torque curve"],
+      "agent_guidance": "Never generate a motor plate, shaft coupling, wiring, torque calculation, or BOM line from the NEMA class alone. Require an exact part number and controlled drawing."
+    },
+    {
+      "id": "robotics.component.hiwin_mg_linear_guide_candidate.v1",
+      "title": "HIWIN MG-series miniature linear guideway candidate",
+      "kind": "linear_guideway",
+      "vendor": "HIWIN",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A compact linear-guide family candidate for axis and gripper carriage guidance. Exact rail size, block length, preload, accuracy class, lubrication, mounting, load/moment rating, and paired-rail configuration are unselected.",
+      "sources": ["hiwin_mg_linear_guideways_2026"],
+      "interfaces": ["robotics.interface.linear_guide_carriage_to_plate.candidate.v1", "robotics.interface.linear_guide_rail_to_structure.candidate.v1"],
+      "facts": [
+        {
+          "name": "reference_product_family",
+          "value": "MG Series miniature linear guideways",
+          "basis": "source_specific",
+          "source": "hiwin_mg_linear_guideways_2026"
+        },
+        {
+          "name": "reference_family_variants",
+          "value": "MGN narrow and MGW wide families",
+          "basis": "source_specific",
+          "source": "hiwin_mg_linear_guideways_2026",
+          "note": "Family availability is not a selection or compatibility claim."
+        },
+        {
+          "name": "intended_demo_role",
+          "value": "carriage guidance",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["moving mass", "external force and moment load cases", "required travel", "accuracy/repeatability target", "environment and lubrication plan", "rail/block exact drawing and preload class"],
+      "agent_guidance": "Do not infer MGN/MGW dimensions or load ratings. Use the current exact HIWIN drawing and calculate load distribution and life with qualified review."
+    },
+    {
+      "id": "robotics.component.gates_powergrip_gt3_belt_candidate.v1",
+      "title": "Gates PowerGrip GT3 synchronous-belt candidate",
+      "kind": "synchronous_belt",
+      "vendor": "Gates Corporation",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A candidate family for a compact belt-driven linear axis. Profile, pitch, width, pitch length, pulley tooth count, tension, service factor, and belt clamp design remain unselected.",
+      "sources": ["gates_powergrip_gt3_2026"],
+      "interfaces": ["robotics.interface.timing_belt_drive.candidate.v1", "robotics.interface.belt_termination_to_carriage.candidate.v1"],
+      "facts": [
+        {
+          "name": "reference_product_family",
+          "value": "PowerGrip GT3 belts",
+          "basis": "source_specific",
+          "source": "gates_powergrip_gt3_2026"
+        },
+        {
+          "name": "intended_demo_role",
+          "value": "linear-axis motion transmission",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["axis travel and packaging", "payload and acceleration", "desired speed", "pulley tooth count and shaft", "belt width and tension calculation", "vendor design-method result"],
+      "agent_guidance": "Use only a profile-matched belt and pulley. Do not derive belt tension, allowable load, tooth engagement, or clamp geometry from this candidate record."
+    },
+    {
+      "id": "robotics.component.timing_pulley_candidate.v1",
+      "title": "Timing-pulley candidate",
+      "kind": "timing_pulley",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A pulley to be selected with the exact belt profile and motor shaft. The bore, hub, keyway or clamp, retention method, concentricity, tooth count, and material are not defined by this record.",
+      "sources": ["gates_powergrip_gt3_2026"],
+      "interfaces": ["robotics.interface.motor_shaft_to_timing_pulley.candidate.v1", "robotics.interface.timing_belt_drive.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "motor or idler pulley in a synchronous belt path",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["exact belt profile", "shaft drawing", "torque and radial load", "retention method", "balancing/runout requirement", "environment"],
+      "agent_guidance": "Never assume a generic pulley profile, bore, or retention scheme. Link the selected pulley to its exact belt and shaft interfaces."
+    },
+    {
+      "id": "robotics.component.linear_axis_structure.illustrative.v1",
+      "title": "Linear-axis structural rail or frame",
+      "kind": "structural_frame",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "Custom or modular structural member representing the axis backbone. It establishes assembly datums but has no material, extrusion family, cross section, stiffness, or fastener specification.",
+      "sources": [],
+      "interfaces": ["robotics.interface.linear_guide_rail_to_structure.candidate.v1", "robotics.interface.linear_axis_module_mount.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "primary reference structure for linear-axis components",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["span", "load cases", "deflection/accuracy requirement", "material/process", "mounting context", "corrosion/environmental requirements"],
+      "agent_guidance": "Model this only as a placeholder envelope until a structural calculation and material/process selection have been reviewed."
+    },
+    {
+      "id": "robotics.component.linear_axis_carriage_plate.illustrative.v1",
+      "title": "Linear-axis carriage plate",
+      "kind": "custom_machined_or_sheet_part",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A custom plate that joins guide blocks, belt termination, and the payload interface. Exact material, thickness, tolerances, stiffness, and fasteners are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.linear_guide_carriage_to_plate.candidate.v1", "robotics.interface.belt_termination_to_carriage.candidate.v1", "robotics.interface.linear_axis_module_mount.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "moving payload carrier",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["guide-block pattern", "belt clamp drawing", "payload interface", "load/moment cases", "material/process", "tolerance and datum scheme"],
+      "agent_guidance": "Do not dimension this part until the exact guide block, belt clamp, payload, datum scheme, and load case are present."
+    },
+    {
+      "id": "robotics.component.linear_axis_motor_mount.illustrative.v1",
+      "title": "Linear-axis motor mount",
+      "kind": "custom_machined_or_sheet_part",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A custom bracket or plate to locate an exact motor and establish pulley alignment. It contains no released motor pattern, plate thickness, material, or resonance assessment.",
+      "sources": [],
+      "interfaces": ["robotics.interface.nema23_motor_mount.candidate.v1", "robotics.interface.linear_axis_module_mount.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "motor-to-structure adapter",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["exact motor drawing", "pulley/belt line", "structure datum", "stiffness and vibration target", "fabrication process", "fastener strategy"],
+      "agent_guidance": "Do not assign mounting holes from the motor class. Generate this part only from an exact controlled motor drawing."
+    },
+    {
+      "id": "robotics.component.axis_endstop_candidate.v1",
+      "title": "Linear-axis end-stop and homing sensor candidate",
+      "kind": "position_sensor",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A candidate sensing and hard-stop arrangement for homing and travel protection. Sensor technology, wiring, target geometry, repeatability, diagnostics, and safety category are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.sensor_mount.illustrative.v1", "robotics.interface.motor_power_and_control.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "homing reference and travel-limit evidence",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["controller input type", "safety function definition", "environment", "target geometry", "repeatability", "connector/cable requirements"],
+      "agent_guidance": "A normal homing switch is not automatically a safety-rated limit. Keep hard stops, controls, and risk controls as separate design decisions."
+    },
+    {
+      "id": "robotics.component.motion_controller_driver_candidate.v1",
+      "title": "Motion controller and motor-driver candidate",
+      "kind": "motion_controller",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A controller/driver placeholder for the axis, gripper, pan-tilt, or actuator. Electrical ratings, command protocol, feedback support, braking behavior, diagnostics, enclosure, and safety functions are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.motor_power_and_control.candidate.v1", "robotics.interface.encoder_feedback.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "motion actuation control",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["motor electrical data", "supply architecture", "command and feedback protocol", "functional safety architecture", "duty cycle", "thermal and enclosure requirements"],
+      "agent_guidance": "Do not generate wiring, connector pin-outs, current limits, or control gains from a placeholder controller."
+    },
+    {
+      "id": "robotics.component.parallel_jaw_gripper_body.illustrative.v1",
+      "title": "Parallel-jaw gripper body",
+      "kind": "custom_housing",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A custom gripper chassis containing guideways, drive, jaw interfaces, and a tool-side mount. It is a topology placeholder, not a load-rated or certified end effector.",
+      "sources": [],
+      "interfaces": ["robotics.interface.linear_guide_rail_to_structure.candidate.v1", "robotics.interface.gripper_finger_mount.candidate.v1", "robotics.interface.gripper_tool_mount.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "gripper structural base",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["part geometry and grasp forces", "stroke", "duty cycle", "payload and robot interface", "material/process", "safety and pinch-point requirements"],
+      "agent_guidance": "Do not claim grip force, stroke, accuracy, or payload until force transmission and all structural/load paths are calculated and verified."
+    },
+    {
+      "id": "robotics.component.gripper_leadscrew_drive_candidate.v1",
+      "title": "Parallel-jaw gripper lead-screw drive candidate",
+      "kind": "lead_screw_drive",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A candidate actuation topology for converting motor rotation into symmetric jaw motion. Screw size, lead, nut type, backlash, efficiency, bearing support, motor, and transmission are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.parallel_jaw_mimic_kinematic.illustrative.v1", "robotics.interface.gripper_drive_to_body.candidate.v1", "robotics.interface.motor_power_and_control.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "jaw actuation transmission",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["grip-force target", "jaw stroke", "speed and cycle life", "backlash/compliance target", "motor selection", "screw/nut catalogue data"],
+      "agent_guidance": "Use a kinematic placeholder only. Calculate efficiency, buckling, wear, backdrive behavior, and fail-safe behavior from selected parts."
+    },
+    {
+      "id": "robotics.component.gripper_jaw_set.illustrative.v1",
+      "title": "Custom parallel gripper jaw set",
+      "kind": "custom_tooling",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A paired, replaceable set of jaws or fingertips. Geometry, material, surface, compliance, fasteners, workpiece retention, and collision envelope are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.gripper_finger_mount.candidate.v1", "robotics.interface.parallel_jaw_mimic_kinematic.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "workpiece-contact tooling",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["workpiece geometry/material", "grasp force and friction assumptions", "allowable marking", "jaw opening", "clearance/collision envelope", "cleaning/environment"],
+      "agent_guidance": "Treat jaw geometry as application-specific tooling. Require grasp analysis and a workpiece model before presenting a design as usable."
+    },
+    {
+      "id": "robotics.component.pan_tilt_rotary_actuator_candidate.v1",
+      "title": "Compact rotary actuator candidate",
+      "kind": "rotary_actuator",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A generic actuated rotary module for pan and tilt axes. Motor, gearbox, encoder, brake, bearing, cable path, torque-speed envelope, backlash, and mounting geometry are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.rotary_axis_output.candidate.v1", "robotics.interface.motor_power_and_control.candidate.v1", "robotics.interface.encoder_feedback.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "pan or tilt joint drive",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["sensor payload mass/CoG/inertia", "range and speed", "acceleration", "cable torque", "holding/brake requirement", "exact actuator drawing and performance data"],
+      "agent_guidance": "Do not calculate joint torque or set limits from a generic actuator. Resolve the payload inertia, gravity moment, cable forces, and exact model data first."
+    },
+    {
+      "id": "robotics.component.pan_tilt_base.illustrative.v1",
+      "title": "Pan-tilt base and yoke",
+      "kind": "custom_housing",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A multi-part base/yoke concept that carries pan and tilt actuators and establishes sensor frames. Material, stiffness, balance, travel stops, and mounting are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.rotary_axis_output.candidate.v1", "robotics.interface.sensor_mount.illustrative.v1", "robotics.interface.cable_service_loop.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "two-axis sensor positioning structure",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["payload envelope", "pan/tilt range", "joint axis locations", "deflection and vibration target", "material/process", "external mounting datum"],
+      "agent_guidance": "Keep sensor optical/measurement frames explicit and separate from CAD-centre geometry. Verify field of view and cable clearance through motion."
+    },
+    {
+      "id": "robotics.component.sensor_payload_mount.illustrative.v1",
+      "title": "Camera or LiDAR payload mount",
+      "kind": "custom_sensor_mount",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A custom adapter between a pan-tilt structure and an exact sensor. Sensor aperture, keep-out zones, thermal requirements, optical frame, mass, and fastener pattern are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.sensor_mount.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "sensor-to-tilt-link adapter",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["exact sensor model/drawing", "field-of-view and aperture keep-outs", "sensor mass/CoG", "thermal and ingress protection", "cable exit", "calibration frame"],
+      "agent_guidance": "Do not model or obscure an optical window, LiDAR scan plane, connector, heat sink, or calibration target without exact supplier information."
+    },
+    {
+      "id": "robotics.component.cable_service_loop.illustrative.v1",
+      "title": "Cable service-loop and strain-relief concept",
+      "kind": "cable_management",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A geometric placeholder for a cable route across moving joints. Cable type, minimum bend radius, torsion rating, connector, clamp, EMC, and life target are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.cable_service_loop.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "moving-axis cable-envelope placeholder",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["cable part numbers", "bend and torsion ratings", "joint ranges", "connector locations", "EMC/grounding plan", "service life and maintenance access"],
+      "agent_guidance": "Do not export a cable path as buildable harness geometry until selected cable bend/torsion limits and all joint poses have been checked."
+    },
+    {
+      "id": "robotics.component.harmonic_drive_csg_17_100_2a_r.v1",
+      "title": "Harmonic Drive CSG-17-100-2A-R component set",
+      "kind": "strain_wave_gear_component_set",
+      "vendor": "Harmonic Drive LLC",
+      "manufacturer_part_number": "CSG-17-100-2A-R",
+      "data_status": "source_specific",
+      "engineering_review": "required",
+      "summary": "A source-specific catalogue record for a strain-wave gear component set that can anchor the modular-actuator demo. It is not a complete actuator; motor adaptation, housing, bearing load path, encoder, cable exit, thermal design, and safety assessment remain custom engineering work.",
+      "sources": ["harmonic_drive_csg_17_100_2a_r_2026"],
+      "interfaces": ["robotics.interface.harmonic_drive_motor_adapter.candidate.v1", "robotics.interface.rotary_axis_output.candidate.v1"],
+      "facts": [
+        {
+          "name": "reduction_ratio",
+          "value": 100,
+          "unit": "1:1",
+          "basis": "source_specific",
+          "source": "harmonic_drive_csg_17_100_2a_r_2026"
+        },
+        {
+          "name": "rated_torque_l10",
+          "value": 31,
+          "unit": "N*m",
+          "basis": "source_specific",
+          "source": "harmonic_drive_csg_17_100_2a_r_2026"
+        },
+        {
+          "name": "average_torque_limit",
+          "value": 51,
+          "unit": "N*m",
+          "basis": "source_specific",
+          "source": "harmonic_drive_csg_17_100_2a_r_2026"
+        },
+        {
+          "name": "repeated_peak_torque_limit",
+          "value": 70,
+          "unit": "N*m",
+          "basis": "source_specific",
+          "source": "harmonic_drive_csg_17_100_2a_r_2026"
+        },
+        {
+          "name": "momentary_peak_torque_limit",
+          "value": 143,
+          "unit": "N*m",
+          "basis": "source_specific",
+          "source": "harmonic_drive_csg_17_100_2a_r_2026"
+        },
+        {
+          "name": "average_input_speed",
+          "value": 3500,
+          "unit": "rpm",
+          "basis": "source_specific",
+          "source": "harmonic_drive_csg_17_100_2a_r_2026"
+        },
+        {
+          "name": "catalogue_mass",
+          "value": 0.15,
+          "unit": "kg",
+          "basis": "source_specific",
+          "source": "harmonic_drive_csg_17_100_2a_r_2026"
+        }
+      ],
+      "required_selection_inputs": ["complete current vendor drawing/package", "duty cycle and load spectrum", "output bearing forces/moments", "motor and coupling data", "thermal/lubrication environment", "life and safety requirements"],
+      "agent_guidance": "Expose every catalogue fact with its exact source ID and retrieval date. Do not turn torque limits into a system rating; validate load, life, mounting, thermal, and safety conditions against the current manufacturer documentation."
+    },
+    {
+      "id": "robotics.component.bldc_motor_candidate.v1",
+      "title": "BLDC motor candidate for modular actuator",
+      "kind": "bldc_motor",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A motor placeholder to drive the strain-wave gear component set. Exact motor dimensions, winding, shaft, encoder, thermal characteristics, speed-torque curve, insulation, and wiring are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.harmonic_drive_motor_adapter.candidate.v1", "robotics.interface.motor_power_and_control.candidate.v1", "robotics.interface.encoder_feedback.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "strain-wave actuator prime mover",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["gear input speed/torque requirements", "supply voltage/current limits", "duty cycle", "thermal path", "shaft/coupling drawing", "feedback and brake requirements"],
+      "agent_guidance": "Select motor and gear together using their current vendor data. Do not infer compatibility or motor torque from the reducer ratio."
+    },
+    {
+      "id": "robotics.component.actuator_output_flange.illustrative.v1",
+      "title": "Modular actuator output flange",
+      "kind": "custom_machined_part",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A custom output adapter between a gear component set and robot link. Its bolt pattern, load path, material, bearing preload interaction, and sealing are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.rotary_axis_output.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "robot-link output interface",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["exact gear drawing", "robot-link loads and moments", "target link interface", "material/process", "fastening/preload strategy", "sealing and serviceability"],
+      "agent_guidance": "The flange is part of the critical load path. Require reviewed bearing loads and current manufacturer constraints before modelling final geometry."
+    },
+    {
+      "id": "robotics.component.actuator_housing.illustrative.v1",
+      "title": "Modular actuator housing",
+      "kind": "custom_housing",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A custom enclosure concept for motor, gear component set, encoder, cable exit, and optional brake. It has no released thermal, structural, ingress, grounding, or manufacturing design.",
+      "sources": [],
+      "interfaces": ["robotics.interface.harmonic_drive_motor_adapter.candidate.v1", "robotics.interface.rotary_axis_output.candidate.v1", "robotics.interface.cable_service_loop.illustrative.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "actuator structural and environmental enclosure",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["thermal budget", "gear and motor drawings", "external load path", "ingress requirement", "cable/connector layout", "manufacturing method"],
+      "agent_guidance": "Do not claim compactness, heat dissipation, sealing, or serviceability from a placeholder housing."
+    },
+    {
+      "id": "robotics.component.absolute_encoder_candidate.v1",
+      "title": "Actuator absolute encoder candidate",
+      "kind": "absolute_encoder",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A feedback-device placeholder for the modular actuator. Measurement architecture, resolution, accuracy, output protocol, mounting, environmental rating, and calibration are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.encoder_feedback.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "output-position feedback",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["joint accuracy/repeatability target", "controller protocol", "output or motor-side location", "mechanical mounting", "electrical environment", "calibration method"],
+      "agent_guidance": "Do not equate encoder resolution with joint accuracy. Retain calibration, mechanical compliance, backlash, and control effects in the verification plan."
+    },
+    {
+      "id": "robotics.component.actuator_brake_candidate.v1",
+      "title": "Actuator holding-brake candidate",
+      "kind": "holding_brake",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "An optional brake placeholder for a gravity-loaded or safety-sensitive joint. Brake type, holding torque, response, wear, power-loss behavior, monitoring, and safety function are unselected.",
+      "sources": [],
+      "interfaces": ["robotics.interface.motor_power_and_control.candidate.v1", "robotics.interface.harmonic_drive_motor_adapter.candidate.v1"],
+      "facts": [
+        {
+          "name": "intended_demo_role",
+          "value": "optional gravity-hold or safety-related function",
+          "basis": "illustrative"
+        }
+      ],
+      "required_selection_inputs": ["load-case and power-loss behavior", "required safety function", "holding torque/life", "controller and monitoring", "thermal/duty cycle", "risk assessment"],
+      "agent_guidance": "A brake placeholder does not establish a safety function. Keep functional-safety design and risk assessment outside the CAD-only completion claim."
+    }
+  ]
+}

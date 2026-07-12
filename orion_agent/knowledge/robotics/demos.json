@@ -1,0 +1,157 @@
+{
+  "schema_version": "1.0",
+  "package": "robotics-assembly-foundation",
+  "version": "0.1.0",
+  "demos": [
+    {
+      "id": "robotics.demo.nema23_belt_linear_axis.v1",
+      "title": "NEMA 23 belt-driven linear axis",
+      "data_status": "illustrative",
+      "maturity": "concept_demo",
+      "summary": "A reusable first assembly demo that exercises motor mounting, pulley/belt transmission, linear guidance, carriage, homing, AssemblyGraph mates, and a one-axis URDF export. It is intentionally not a rated motion stage.",
+      "sources": ["oriental_motor_pkp_nema23_2026", "hiwin_mg_linear_guideways_2026", "gates_powergrip_gt3_2026", "ros_2_urdf_rolling_2026"],
+      "assembly_graph": {
+        "nodes": [
+          {"id": "axis.structure", "component_ref": "robotics.component.linear_axis_structure.illustrative.v1", "role": "fixed backbone"},
+          {"id": "axis.motor_mount", "component_ref": "robotics.component.linear_axis_motor_mount.illustrative.v1", "role": "motor adapter"},
+          {"id": "axis.motor", "component_ref": "robotics.component.nema23_stepper_candidate.v1", "role": "prime mover"},
+          {"id": "axis.drive_pulley", "component_ref": "robotics.component.timing_pulley_candidate.v1", "role": "drive pulley"},
+          {"id": "axis.idler_pulley", "component_ref": "robotics.component.timing_pulley_candidate.v1", "role": "idler/tensioning pulley"},
+          {"id": "axis.belt", "component_ref": "robotics.component.gates_powergrip_gt3_belt_candidate.v1", "role": "motion transmission"},
+          {"id": "axis.guideway", "component_ref": "robotics.component.hiwin_mg_linear_guide_candidate.v1", "role": "linear guidance", "quantity": 1},
+          {"id": "axis.carriage", "component_ref": "robotics.component.linear_axis_carriage_plate.illustrative.v1", "role": "moving payload carrier"},
+          {"id": "axis.endstop", "component_ref": "robotics.component.axis_endstop_candidate.v1", "role": "homing/limit evidence"},
+          {"id": "axis.controller", "component_ref": "robotics.component.motion_controller_driver_candidate.v1", "role": "motion control"}
+        ],
+        "edges": [
+          {"from": "axis.motor_mount", "to": "axis.structure", "relation": "mounted_to", "interface_ref": "robotics.interface.linear_axis_module_mount.illustrative.v1"},
+          {"from": "axis.motor", "to": "axis.motor_mount", "relation": "mounted_to", "interface_ref": "robotics.interface.nema23_motor_mount.candidate.v1"},
+          {"from": "axis.drive_pulley", "to": "axis.motor", "relation": "shaft_coupled_to", "interface_ref": "robotics.interface.motor_shaft_to_timing_pulley.candidate.v1"},
+          {"from": "axis.belt", "to": "axis.drive_pulley", "relation": "engages", "interface_ref": "robotics.interface.timing_belt_drive.candidate.v1"},
+          {"from": "axis.belt", "to": "axis.idler_pulley", "relation": "engages", "interface_ref": "robotics.interface.timing_belt_drive.candidate.v1"},
+          {"from": "axis.guideway", "to": "axis.structure", "relation": "mounted_to", "interface_ref": "robotics.interface.linear_guide_rail_to_structure.candidate.v1"},
+          {"from": "axis.carriage", "to": "axis.guideway", "relation": "guided_by", "interface_ref": "robotics.interface.linear_guide_carriage_to_plate.candidate.v1"},
+          {"from": "axis.belt", "to": "axis.carriage", "relation": "terminated_on", "interface_ref": "robotics.interface.belt_termination_to_carriage.candidate.v1"},
+          {"from": "axis.endstop", "to": "axis.structure", "relation": "mounted_to", "interface_ref": "robotics.interface.sensor_mount.illustrative.v1"},
+          {"from": "axis.controller", "to": "axis.motor", "relation": "controls", "interface_ref": "robotics.interface.motor_power_and_control.candidate.v1"}
+        ]
+      },
+      "kinematic_model": [
+        {"id": "axis.carriage_slide", "type": "prismatic", "parent_node": "axis.structure", "child_node": "axis.carriage", "axis": "+X travel axis to be resolved from selected rail datum", "status": "illustrative", "note": "Travel limits, speed, force, and acceleration are intentionally absent until selected hardware and application loads are known."}
+      ],
+      "required_inputs": ["payload mass, CoG, and external loads", "travel, speed, acceleration, and duty cycle", "exact motor/driver/guideway/belt/pulley part numbers and controlled drawings", "structural material/process and mounting context", "required accuracy, repeatability, environment, and safety context"],
+      "verification_gates": ["Resolve all candidate components and interface drawings.", "Run motor, belt, guideway, structure, fastener, and thermal calculations with reviewed assumptions.", "Check full-stroke collision, belt path, service access, and end-stop/hard-stop strategy.", "Validate AssemblyGraph frame transforms and prismatic URDF model.", "Produce a BOM that marks unresolved candidate lines and does not authorize procurement."],
+      "exports": ["FCStd assembly and per-part source FeatureGraphs", "STEP assembly with selected/reviewed physical parts only", "exploded-view image", "BOM with source/revision/status columns", "URDF/Xacro and collision mesh after frame/property verification", "GLB review model"],
+      "agent_guidance": "Start with this demo. Present it as a design walkthrough until all exact component records and verification evidence replace the candidate/illustrative records."
+    },
+    {
+      "id": "robotics.demo.parallel_jaw_gripper.v1",
+      "title": "Electric parallel-jaw gripper",
+      "data_status": "illustrative",
+      "maturity": "concept_demo",
+      "summary": "A custom end-effector demo that exercises a coupled two-jaw AssemblyGraph, custom jaws, guideway/drive integration, gripper tool frames, and mimic-joint export limitations.",
+      "sources": ["hiwin_mg_linear_guideways_2026", "ros_2_urdf_rolling_2026", "ros2_control_joint_kinematics_rolling_2026"],
+      "assembly_graph": {
+        "nodes": [
+          {"id": "gripper.body", "component_ref": "robotics.component.parallel_jaw_gripper_body.illustrative.v1", "role": "fixed gripper body"},
+          {"id": "gripper.guideway", "component_ref": "robotics.component.hiwin_mg_linear_guide_candidate.v1", "role": "jaw guidance", "quantity": 1},
+          {"id": "gripper.drive", "component_ref": "robotics.component.gripper_leadscrew_drive_candidate.v1", "role": "coupled jaw drive"},
+          {"id": "gripper.left_jaw", "component_ref": "robotics.component.gripper_jaw_set.illustrative.v1", "role": "left workpiece-contact jaw"},
+          {"id": "gripper.right_jaw", "component_ref": "robotics.component.gripper_jaw_set.illustrative.v1", "role": "right workpiece-contact jaw"},
+          {"id": "gripper.controller", "component_ref": "robotics.component.motion_controller_driver_candidate.v1", "role": "gripper motion control"}
+        ],
+        "edges": [
+          {"from": "gripper.guideway", "to": "gripper.body", "relation": "mounted_to", "interface_ref": "robotics.interface.linear_guide_rail_to_structure.candidate.v1"},
+          {"from": "gripper.drive", "to": "gripper.body", "relation": "mounted_to", "interface_ref": "robotics.interface.gripper_drive_to_body.candidate.v1"},
+          {"from": "gripper.left_jaw", "to": "gripper.guideway", "relation": "guided_by", "interface_ref": "robotics.interface.parallel_jaw_mimic_kinematic.illustrative.v1"},
+          {"from": "gripper.right_jaw", "to": "gripper.guideway", "relation": "guided_by", "interface_ref": "robotics.interface.parallel_jaw_mimic_kinematic.illustrative.v1"},
+          {"from": "gripper.left_jaw", "to": "gripper.drive", "relation": "driven_by", "interface_ref": "robotics.interface.parallel_jaw_mimic_kinematic.illustrative.v1"},
+          {"from": "gripper.right_jaw", "to": "gripper.drive", "relation": "driven_by", "interface_ref": "robotics.interface.parallel_jaw_mimic_kinematic.illustrative.v1"},
+          {"from": "gripper.controller", "to": "gripper.drive", "relation": "controls", "interface_ref": "robotics.interface.motor_power_and_control.candidate.v1"}
+        ]
+      },
+      "kinematic_model": [
+        {"id": "gripper.left_jaw_slide", "type": "prismatic", "parent_node": "gripper.body", "child_node": "gripper.left_jaw", "axis": "+X opening direction to be resolved", "status": "illustrative", "note": "Physical drive mechanism and joint limits are unselected."},
+        {"id": "gripper.right_jaw_mimic", "type": "mimic", "parent_node": "gripper.body", "child_node": "gripper.right_jaw", "axis": "-X opening direction to be resolved", "status": "illustrative", "note": "URDF mimic relationship is not evidence of synchronized hardware or grasp force balance."}
+      ],
+      "required_inputs": ["workpiece geometry/material and grasp task", "jaw stroke, force, speed, and cycle life", "exact guideway, screw/nut/bearing/motor/controller data", "robot or fixture host interface", "pinch-point, failed-power, and safety context", "material/process and cleaning/environment constraints"],
+      "verification_gates": ["Resolve the physical synchronization/drive mechanism and candidate components.", "Calculate force transmission, screw/nut/bearing loading, jaw/body stiffness, fasteners, and duty life.", "Check open, closed, intermediate, and workpiece collision states.", "Verify tool-centre frame and upstream payload/moment limits.", "Validate the URDF mimic approximation in the target simulator and document its limitation."],
+      "exports": ["FCStd assembly and individual body/jaw FeatureGraphs", "STEP assembly after exact components are selected", "BOM and custom-part drawing set", "URDF/Xacro plus collision mesh with explicit mimic caveat", "GLB exploded/pose review model", "grasp/clearance evidence report"],
+      "agent_guidance": "Build this second. It demonstrates that OrionFlow handles custom parts, purchased components, coupled kinematics, and end-effector-specific verification rather than only simple single parts."
+    },
+    {
+      "id": "robotics.demo.pan_tilt_sensor_head.v1",
+      "title": "Two-axis camera or LiDAR pan-tilt head",
+      "data_status": "illustrative",
+      "maturity": "concept_demo",
+      "summary": "A two-revolute-joint sensor-head concept that proves rotary joint frames, payload mounting, cable service envelopes, sensor field-of-view constraints, and URDF export.",
+      "sources": ["ros_2_urdf_rolling_2026"],
+      "assembly_graph": {
+        "nodes": [
+          {"id": "pan_tilt.base", "component_ref": "robotics.component.pan_tilt_base.illustrative.v1", "role": "fixed base"},
+          {"id": "pan_tilt.pan_actuator", "component_ref": "robotics.component.pan_tilt_rotary_actuator_candidate.v1", "role": "pan joint actuator"},
+          {"id": "pan_tilt.yoke", "component_ref": "robotics.component.pan_tilt_base.illustrative.v1", "role": "tilt yoke"},
+          {"id": "pan_tilt.tilt_actuator", "component_ref": "robotics.component.pan_tilt_rotary_actuator_candidate.v1", "role": "tilt joint actuator"},
+          {"id": "pan_tilt.sensor_mount", "component_ref": "robotics.component.sensor_payload_mount.illustrative.v1", "role": "sensor adapter"},
+          {"id": "pan_tilt.cable_loop", "component_ref": "robotics.component.cable_service_loop.illustrative.v1", "role": "moving cable envelope"},
+          {"id": "pan_tilt.controller", "component_ref": "robotics.component.motion_controller_driver_candidate.v1", "role": "two-axis motion control"}
+        ],
+        "edges": [
+          {"from": "pan_tilt.pan_actuator", "to": "pan_tilt.base", "relation": "mounted_to", "interface_ref": "robotics.interface.rotary_axis_output.candidate.v1"},
+          {"from": "pan_tilt.yoke", "to": "pan_tilt.pan_actuator", "relation": "driven_by", "interface_ref": "robotics.interface.rotary_axis_output.candidate.v1"},
+          {"from": "pan_tilt.tilt_actuator", "to": "pan_tilt.yoke", "relation": "mounted_to", "interface_ref": "robotics.interface.rotary_axis_output.candidate.v1"},
+          {"from": "pan_tilt.sensor_mount", "to": "pan_tilt.tilt_actuator", "relation": "driven_by", "interface_ref": "robotics.interface.rotary_axis_output.candidate.v1"},
+          {"from": "pan_tilt.cable_loop", "to": "pan_tilt.base", "relation": "routed_from", "interface_ref": "robotics.interface.cable_service_loop.illustrative.v1"},
+          {"from": "pan_tilt.cable_loop", "to": "pan_tilt.sensor_mount", "relation": "routed_to", "interface_ref": "robotics.interface.cable_service_loop.illustrative.v1"},
+          {"from": "pan_tilt.controller", "to": "pan_tilt.pan_actuator", "relation": "controls", "interface_ref": "robotics.interface.motor_power_and_control.candidate.v1"},
+          {"from": "pan_tilt.controller", "to": "pan_tilt.tilt_actuator", "relation": "controls", "interface_ref": "robotics.interface.motor_power_and_control.candidate.v1"}
+        ]
+      },
+      "kinematic_model": [
+        {"id": "pan_tilt.pan_joint", "type": "revolute", "parent_node": "pan_tilt.base", "child_node": "pan_tilt.yoke", "axis": "+Z pan axis to be resolved", "status": "illustrative", "note": "Range, speed, stops, zero, and torque are unselected."},
+        {"id": "pan_tilt.tilt_joint", "type": "revolute", "parent_node": "pan_tilt.yoke", "child_node": "pan_tilt.sensor_mount", "axis": "+Y tilt axis to be resolved", "status": "illustrative", "note": "Cable torque, sensor CoG, and motion limits must be resolved before actuator sizing."}
+      ],
+      "required_inputs": ["exact camera/LiDAR model and drawing", "sensor mass, CoG, field of view/scan plane, and thermal needs", "pan/tilt range, speed, acceleration, and environmental context", "exact actuators/controllers/encoders", "cable/harness part numbers and motion life", "mounting platform and safety context"],
+      "verification_gates": ["Resolve sensor frame, aperture keep-outs, mounting pattern, and cable exits.", "Calculate joint torque/acceleration including sensor inertia, gravity, cable forces, and external loads.", "Check all permitted joint poses for collisions, field-of-view obstruction, cable bend/twist, and serviceability.", "Validate actuator load limits, joint limits, zero poses, and URDF frame transforms.", "Mark calibration and vibration testing as required evidence."],
+      "exports": ["FCStd multi-part assembly", "STEP only after selected component geometry is verified", "BOM with sensor/actuator candidate status", "URDF/Xacro, collision mesh, and joint-frame report", "GLB pose viewer", "sensor-frame/calibration and cable-envelope evidence report"],
+      "agent_guidance": "Build this third. It is a compact, highly visual demo for robotics-specific geometry, coordinate frames, sensor integration, and cable routing."
+    },
+    {
+      "id": "robotics.demo.modular_bldc_harmonic_actuator.v1",
+      "title": "Modular BLDC plus strain-wave actuator",
+      "data_status": "candidate",
+      "maturity": "concept_demo",
+      "summary": "A high-value actuator module concept that combines one source-specific Harmonic Drive component set with candidate motor, encoder, brake, custom housing, and output flange. It demonstrates strict provenance boundaries inside a real multi-part robotics assembly.",
+      "sources": ["harmonic_drive_csg_17_100_2a_r_2026", "ros_2_urdf_rolling_2026"],
+      "assembly_graph": {
+        "nodes": [
+          {"id": "actuator.housing", "component_ref": "robotics.component.actuator_housing.illustrative.v1", "role": "fixed actuator housing"},
+          {"id": "actuator.motor", "component_ref": "robotics.component.bldc_motor_candidate.v1", "role": "prime mover"},
+          {"id": "actuator.gear", "component_ref": "robotics.component.harmonic_drive_csg_17_100_2a_r.v1", "role": "strain-wave transmission"},
+          {"id": "actuator.output_flange", "component_ref": "robotics.component.actuator_output_flange.illustrative.v1", "role": "robot-link output"},
+          {"id": "actuator.encoder", "component_ref": "robotics.component.absolute_encoder_candidate.v1", "role": "position feedback"},
+          {"id": "actuator.brake", "component_ref": "robotics.component.actuator_brake_candidate.v1", "role": "optional holding brake"},
+          {"id": "actuator.controller", "component_ref": "robotics.component.motion_controller_driver_candidate.v1", "role": "motion control"},
+          {"id": "actuator.cable_loop", "component_ref": "robotics.component.cable_service_loop.illustrative.v1", "role": "cable-exit envelope"}
+        ],
+        "edges": [
+          {"from": "actuator.motor", "to": "actuator.gear", "relation": "adapted_to", "interface_ref": "robotics.interface.harmonic_drive_motor_adapter.candidate.v1"},
+          {"from": "actuator.gear", "to": "actuator.housing", "relation": "integrated_in", "interface_ref": "robotics.interface.harmonic_drive_motor_adapter.candidate.v1"},
+          {"from": "actuator.output_flange", "to": "actuator.gear", "relation": "driven_by", "interface_ref": "robotics.interface.rotary_axis_output.candidate.v1"},
+          {"from": "actuator.encoder", "to": "actuator.output_flange", "relation": "measures", "interface_ref": "robotics.interface.encoder_feedback.candidate.v1"},
+          {"from": "actuator.brake", "to": "actuator.motor", "relation": "integrated_with", "interface_ref": "robotics.interface.harmonic_drive_motor_adapter.candidate.v1"},
+          {"from": "actuator.controller", "to": "actuator.motor", "relation": "controls", "interface_ref": "robotics.interface.motor_power_and_control.candidate.v1"},
+          {"from": "actuator.controller", "to": "actuator.encoder", "relation": "receives_feedback_from", "interface_ref": "robotics.interface.encoder_feedback.candidate.v1"},
+          {"from": "actuator.cable_loop", "to": "actuator.housing", "relation": "routed_from", "interface_ref": "robotics.interface.cable_service_loop.illustrative.v1"}
+        ]
+      },
+      "kinematic_model": [
+        {"id": "actuator.output_joint", "type": "revolute", "parent_node": "actuator.housing", "child_node": "actuator.output_flange", "axis": "+Z output axis to be resolved from current gear drawing", "status": "candidate", "note": "The listed gear catalogue data is source-specific, but the integrated actuator's limits, life, and zero pose are not yet verified."}
+      ],
+      "required_inputs": ["current Harmonic Drive controlled drawing and integration restrictions", "selected BLDC motor/brake/encoder/controller drawings and data", "robot-link loads, mass/CoG/inertia, duty cycle, and target motion", "housing material/process, thermal path, sealing, and service requirements", "cable/connector architecture and safety/risk context", "calibration, acceptance-test, and lifecycle requirements"],
+      "verification_gates": ["Retrieve and attach current controlled drawings for every selected supplier part.", "Calculate motor/gear speed-torque duty, efficiency, thermal behaviour, fatigue/life, and external output bearing loads with qualified review.", "Verify housing, fastener, bearing, flange, and cable load paths.", "Check full joint motion/collision, output zero/feedback mapping, and target URDF model.", "Do not label the actuator production-ready until system-level test and safety evidence are approved."],
+      "exports": ["FCStd multi-part actuator assembly and custom-part FeatureGraphs", "STEP package with selected supplier geometry subject to redistribution rights", "revision-controlled BOM", "URDF/Xacro joint with verified physical properties only", "GLB exploded/service view", "source/revision and verification evidence report"],
+      "agent_guidance": "Build this fourth. It is the strongest provenance demo: the reducer's catalogue facts are source-specific, while every integration claim remains explicitly candidate or illustrative until evidence is added."
+    }
+  ]
+}

@@ -31,7 +31,8 @@ _RECONSTRUCT_CUES = (
 )
 _GENERATE_CUES = (
     "create a new", "generate a", "make me a", "design a", "from scratch",
-    "new model", "build a",
+    "new model", "build a", "assemble a", "build an assembly", "create an assembly",
+    "make a multi-part",
 )
 
 

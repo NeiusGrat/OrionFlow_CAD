@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OrionFlow Robotics Interface Contracts",
+  "type": "object",
+  "required": ["schema_version", "package", "version", "interfaces"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "package": {"type": "string"},
+    "version": {"type": "string"},
+    "interfaces": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/interface"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "status": {"enum": ["source_specific", "candidate", "illustrative"]},
+    "interface": {
+      "type": "object",
+      "required": ["id", "title", "category", "data_status", "engineering_review", "summary", "sources", "contract", "agent_guidance"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9_.-]+$"},
+        "title": {"type": "string"},
+        "category": {"enum": ["mechanical_mount", "motion_transmission", "kinematic", "electrical_power", "signal_feedback", "cable_routing", "tooling", "software_model"]},
+        "data_status": {"$ref": "#/$defs/status"},
+        "engineering_review": {"enum": ["required", "not_started", "approved"]},
+        "summary": {"type": "string"},
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "applies_to": {"type": "array", "items": {"type": "string"}},
+        "contract": {
+          "type": "object",
+          "required": ["frame_convention", "required_inputs", "constraints", "verification"],
+          "properties": {
+            "frame_convention": {"type": "array", "items": {"type": "string"}},
+            "required_inputs": {"type": "array", "items": {"type": "string"}},
+            "constraints": {"type": "array", "items": {"type": "string"}},
+            "verification": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+          },
+          "additionalProperties": false
+        },
+        "agent_guidance": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

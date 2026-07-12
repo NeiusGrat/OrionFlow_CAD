@@ -159,6 +159,34 @@ class BridgeClient:
     def compile_featuregraph(self, graph: dict) -> dict:
         return self._call(Capability.COMPILE_FEATUREGRAPH, {"graph": graph})
 
+    def compile_assembly_graph(
+        self,
+        graph: dict,
+        bindings: dict[str, str],
+        root_part_id: str,
+        joint_values: Optional[dict[str, float]] = None,
+        label: Optional[str] = None,
+    ) -> dict:
+        """Compile an explicit AssemblyGraph into linked FreeCAD occurrences.
+
+        ``bindings`` intentionally maps each graph part instance to an existing
+        FreeCAD source object by name.  The bridge never guesses source objects
+        from a part number, graph id, or label.
+        """
+        return self._call(
+            Capability.COMPILE_ASSEMBLY_GRAPH,
+            {
+                "graph": graph,
+                "bindings": bindings,
+                "root_part_id": root_part_id,
+                # ``None`` is semantically distinct from an empty object: the
+                # compiler may apply its documented neutral-pose default only
+                # when the caller omitted a configuration altogether.
+                "joint_values": joint_values,
+                "label": label,
+            },
+        )
+
     def select(self, refs: list) -> dict:
         return self._call(Capability.SELECT, {"refs": refs})
 

@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "sources": [
+    {
+      "id": "asme_y14_5_2018_r2024",
+      "title": "ASME Y14.5-2018 (R2024), Dimensioning and Tolerancing",
+      "publisher": "ASME",
+      "kind": "normative_standard",
+      "official_url": "https://www.asme.org/codes-standards/find-codes-standards/y14-5-dimensioning-tolerancing/2018/pdf",
+      "license": "Purchase or licensed access required; no standard text is stored here.",
+      "use": "Authoritative GD&T source after the project obtains licensed access.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "iso_273_1979",
+      "title": "ISO 273:1979, Fasteners - Clearance holes for bolts and screws",
+      "publisher": "ISO",
+      "kind": "normative_standard",
+      "official_url": "https://www.iso.org/standard/4183.html",
+      "license": "Licensed standard; catalogue metadata only is stored here.",
+      "use": "Authoritative source for general-purpose clearance-hole series.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "iso_2768_1_1989",
+      "title": "ISO 2768-1:1989, General tolerances - Part 1",
+      "publisher": "ISO",
+      "kind": "normative_standard",
+      "official_url": "https://www.iso.org/obp/ui/?_escaped_fragment_=iso%3Astd%3A7748%3Aen",
+      "license": "Licensed standard; do not copy tables into this repository.",
+      "use": "Reference for unindicated linear and angular tolerances after scope review.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "nist_digital_thread_manufacturing",
+      "title": "Digital Thread for Manufacturing",
+      "publisher": "National Institute of Standards and Technology",
+      "kind": "public_reference",
+      "official_url": "https://www.nist.gov/programs-projects/digital-thread-manufacturing",
+      "license": "Use the source page and linked materials according to their terms.",
+      "use": "Architecture reference for traceable product, manufacturing, and quality data.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "drafter_gdt_cheat_sheet_v2_2025",
+      "title": "Drafter's GD&T Cheat Sheet V2",
+      "publisher": "Drafter Inc.",
+      "kind": "secondary_reference",
+      "revision": "2025",
+      "license": "Copyrighted third-party reference supplied locally by the project owner; not committed or redistributed.",
+      "use": "Internal learning and retrieval aid. It is not a substitute for ASME Y14.5.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "drafter_sheet_metal_dfm_2025",
+      "title": "Drafter Hardware FYI: Sheet Metal DFM",
+      "publisher": "Drafter Inc. / Hardware FYI",
+      "kind": "secondary_reference",
+      "revision": "2025",
+      "license": "Copyrighted third-party reference supplied locally by the project owner; not committed or redistributed.",
+      "use": "Internal source for initial sheet-metal screening guidance and bend equations.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "drafter_tap_drill_chart_2025",
+      "title": "Drafter's Tap & Drill Chart",
+      "publisher": "Drafter Inc.",
+      "kind": "secondary_reference",
+      "revision": "2025",
+      "license": "Copyrighted third-party reference supplied locally by the project owner; not committed or redistributed.",
+      "use": "Candidate data source for a future thread and hole catalogue; values require source-by-source reconciliation.",
+      "last_verified": "2026-07-11"
+    }
+  ]
+}

@@ -1,0 +1,313 @@
+{
+  "schema_version": "1.0",
+  "package": "robotics-assembly-foundation",
+  "version": "0.1.0",
+  "interfaces": [
+    {
+      "id": "robotics.interface.nema23_motor_mount.candidate.v1",
+      "title": "NEMA 23-class motor-to-structure mount",
+      "category": "mechanical_mount",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A motor-mount contract whose exact pilot, hole pattern, fastener, clearance, shaft height, and tolerance requirements must be read from the selected motor drawing.",
+      "sources": ["oriental_motor_pkp_nema23_2026"],
+      "applies_to": ["robotics.component.nema23_stepper_candidate.v1", "robotics.component.linear_axis_motor_mount.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: selected motor drawing's mounting-face datum after review.", "Positive Z: from motor mounting face toward shaft unless the controlled drawing states otherwise.", "Positive X: defined by a selected mounting-hole or keyed feature; do not use an arbitrary CAD orientation.", "Frame handedness: right-handed and recorded in the AssemblyGraph."],
+        "required_inputs": ["exact motor part number", "current controlled mounting drawing", "mount material/process", "pulley centreline datum", "fasteners and thread engagement", "motor cable clearance"],
+        "constraints": ["Motor-class names are not dimensional interface definitions.", "Mount must preserve belt-line alignment and permit required assembly/service access.", "Mounting, pilot, and fastener tolerances must come from the selected supplier drawing."],
+        "verification": ["Attach the selected controlled drawing/revision.", "Check CAD hole pattern, pilot/clearances, and shaft centreline against the drawing.", "Run interference and assembly-tool-access checks.", "Review mount stiffness and resonance for the selected motion profile."]
+      },
+      "agent_guidance": "Do not emit coordinates or hole diameters until this candidate interface has been resolved to an exact motor drawing."
+    },
+    {
+      "id": "robotics.interface.motor_shaft_to_timing_pulley.candidate.v1",
+      "title": "Motor shaft to timing pulley",
+      "category": "motion_transmission",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A rotating-shaft interface requiring a selected shaft geometry, pulley bore, retention method, torque load, radial load, and pulley runout requirement.",
+      "sources": ["gates_powergrip_gt3_2026", "oriental_motor_pkp_nema23_2026"],
+      "applies_to": ["robotics.component.nema23_stepper_candidate.v1", "robotics.component.timing_pulley_candidate.v1"],
+      "contract": {
+        "frame_convention": ["Origin: intersection of shaft axis and motor mounting-face datum.", "Z axis: shaft axis from motor toward pulley.", "X axis: selected keyed/flat/index feature, if supplied.", "Frame handedness: right-handed."],
+        "required_inputs": ["selected motor shaft drawing", "selected pulley drawing", "torque/speed duty cycle", "belt radial load", "retention method", "axial clearance and assembly sequence"],
+        "constraints": ["Belt tooth profile and pulley profile must match.", "Do not assume a plain bore, key, D-flat, set screw, clamp, or interference fit.", "Pulley alignment must be evaluated in the loaded assembly, not only nominal CAD."],
+        "verification": ["Check bore and shaft features against current drawings.", "Check transmitted torque and radial load against selected components.", "Check pulley runout/alignment and belt tracking.", "Check retention, assembly access, and service removal."]
+      },
+      "agent_guidance": "Use this as a blocking contract for CAD mating, not as an authorization to select a bore or a set screw."
+    },
+    {
+      "id": "robotics.interface.timing_belt_drive.candidate.v1",
+      "title": "Synchronous timing-belt drive",
+      "category": "motion_transmission",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A candidate belt-drive contract joining a selected belt, pulleys, idlers, tensioner, and carriage termination. It must be sized using the chosen supplier's current method.",
+      "sources": ["gates_powergrip_gt3_2026"],
+      "applies_to": ["robotics.component.gates_powergrip_gt3_belt_candidate.v1", "robotics.component.timing_pulley_candidate.v1", "robotics.component.linear_axis_carriage_plate.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: motor pulley pitch-circle centre after exact pulley selection.", "X axis: nominal belt travel direction.", "Z axis: selected pulley axis.", "Frame handedness: right-handed."],
+        "required_inputs": ["exact belt/pulley profile", "pitch length and width", "pulley tooth counts", "centre distances", "motion/load cycle", "tensioning and clamp geometry"],
+        "constraints": ["The belt, pulley, idler, and clamp must be compatible with the selected profile and width.", "Belt travel must avoid interference through the full carriage stroke.", "Preload/tension, tooth engagement, and allowable load are supplier-calculation outputs, not generic constants."],
+        "verification": ["Run the selected vendor sizing method.", "Check belt path and clearances at all travel limits.", "Check tensioning adjustment range and clamp geometry.", "Document the selected belt and pulley part numbers/revisions."]
+      },
+      "agent_guidance": "Never call a belt drive valid merely because a belt path looks plausible in CAD. Require a selected profile and a documented sizing result."
+    },
+    {
+      "id": "robotics.interface.belt_termination_to_carriage.candidate.v1",
+      "title": "Timing-belt termination to carriage",
+      "category": "mechanical_mount",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A carrier interface for a supplier-approved or custom belt clamp. It must preserve belt pitch, withstand cyclic load, and avoid sharp bending or tooth damage.",
+      "sources": ["gates_powergrip_gt3_2026"],
+      "applies_to": ["robotics.component.gates_powergrip_gt3_belt_candidate.v1", "robotics.component.linear_axis_carriage_plate.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: centre of carriage payload datum projected to belt pitch line.", "X axis: travel direction.", "Y axis: lateral axis across belt width.", "Z axis: normal to carriage mounting face."],
+        "required_inputs": ["selected belt profile/width", "clamp design or supplier part", "maximum tension and cyclic load", "carriage plate material", "assembly/service access"],
+        "constraints": ["Do not use an unverified clamp geometry for a selected belt.", "Clamp must not introduce a collision through travel or compromise guideway alignment.", "Mount must preserve intended load path and belt plane."],
+        "verification": ["Check belt bend and tooth engagement at termination.", "Check clamp strength/fatigue with qualified review.", "Check full-stroke interference.", "Check assembly and retensioning access."]
+      },
+      "agent_guidance": "Keep this interface unresolved until the belt profile and a clamp strategy have been selected."
+    },
+    {
+      "id": "robotics.interface.linear_guide_rail_to_structure.candidate.v1",
+      "title": "Linear guide rail to structural frame",
+      "category": "mechanical_mount",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A datum-critical rail mounting contract. Exact rail mounting pattern, seat geometry, straightness, fastening, torque, shimming, and assembly method depend on the selected guideway and frame.",
+      "sources": ["hiwin_mg_linear_guideways_2026"],
+      "applies_to": ["robotics.component.hiwin_mg_linear_guide_candidate.v1", "robotics.component.linear_axis_structure.illustrative.v1", "robotics.component.parallel_jaw_gripper_body.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: selected rail datum at the designated assembly end.", "X axis: rail travel direction.", "Y axis: lateral direction across rail width.", "Z axis: normal to rail mounting plane; right-handed."],
+        "required_inputs": ["exact rail/block drawing", "rail length and datum end", "frame material/process", "mounting-surface tolerance", "fastener plan", "alignment/installation procedure"],
+        "constraints": ["Do not infer rail-hole spacing, thread size, seat dimensions, or installation tolerance from family name.", "Rail mounting must be assessed with the structural stiffness and intended load/moment directions.", "A CAD mate is not a substitute for a manufacturing alignment method."],
+        "verification": ["Attach current rail drawing.", "Check mounting features/datum scheme in CAD and drawing.", "Review mounting-surface flatness/parallelism requirements.", "Check full-travel clearance and lubrication/service access."]
+      },
+      "agent_guidance": "Treat the selected rail's drawing and installation manual as the source of truth for all physical interface values."
+    },
+    {
+      "id": "robotics.interface.linear_guide_carriage_to_plate.candidate.v1",
+      "title": "Linear guide carriage block to moving plate",
+      "category": "mechanical_mount",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A moving-plate interface for selected guide blocks. Exact mounting holes, screw length, torque, counterbores, engagement, plate stiffness, and guide-block load sharing remain selection-specific.",
+      "sources": ["hiwin_mg_linear_guideways_2026"],
+      "applies_to": ["robotics.component.hiwin_mg_linear_guide_candidate.v1", "robotics.component.linear_axis_carriage_plate.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: selected carriage block mounting datum.", "X axis: travel direction.", "Y axis: across rail width.", "Z axis: normal to plate mounting plane; right-handed."],
+        "required_inputs": ["exact carriage block drawing", "number and spacing of blocks/rails", "payload interface", "load/moment calculations", "plate material/thickness", "fastener and assembly access"],
+        "constraints": ["Block mounting pattern and fastener limits come from the exact supplier drawing.", "Plate design must maintain load sharing and avoid guide-block interference.", "Critical holes require a reviewed datum/tolerance scheme."],
+        "verification": ["Check CAD pattern against selected drawing.", "Calculate guide load and moment distribution.", "Check screw engagement and plate stiffness.", "Check installation and removal access."]
+      },
+      "agent_guidance": "Do not create a released carriage pattern from generic linear-guide dimensions."
+    },
+    {
+      "id": "robotics.interface.linear_axis_module_mount.illustrative.v1",
+      "title": "Linear-axis module and payload mount",
+      "category": "mechanical_mount",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A placeholder frame contract between a linear-axis structure, carriage, and an eventual payload or upstream fixture. It has no released hole pattern or load rating.",
+      "sources": [],
+      "applies_to": ["robotics.component.linear_axis_structure.illustrative.v1", "robotics.component.linear_axis_carriage_plate.illustrative.v1", "robotics.component.linear_axis_motor_mount.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: payload mounting datum selected by the assembly owner.", "X axis: axis travel direction.", "Z axis: normal to the selected payload mounting face.", "Frame must be recorded in the AssemblyGraph before URDF export."],
+        "required_inputs": ["payload part or exact interface", "load/moment cases", "datum scheme", "mounting fasteners", "material/process", "service/assembly access"],
+        "constraints": ["This record is not a standardized bolt pattern.", "Payload mass/CoG must be used in axis and structure verification.", "Do not publish an interface drawing until dimensions and tolerances are reviewed."],
+        "verification": ["Check coordinate frames and mate orientation.", "Run full-travel collision check.", "Review static/dynamic load path.", "Produce a controlled interface drawing after selection."]
+      },
+      "agent_guidance": "Use only as an AssemblyGraph topology contract; request exact interface details before CAD dimensioning."
+    },
+    {
+      "id": "robotics.interface.motor_power_and_control.candidate.v1",
+      "title": "Motor power and control connection",
+      "category": "electrical_power",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "An electrical/control contract whose voltage, current, connector, grounding, shielding, protocol, braking, safety, and diagnostics depend on the selected motor and controller.",
+      "sources": [],
+      "applies_to": ["robotics.component.nema23_stepper_candidate.v1", "robotics.component.motion_controller_driver_candidate.v1", "robotics.component.gripper_leadscrew_drive_candidate.v1", "robotics.component.pan_tilt_rotary_actuator_candidate.v1", "robotics.component.bldc_motor_candidate.v1", "robotics.component.actuator_brake_candidate.v1"],
+      "contract": {
+        "frame_convention": ["Electrical pin numbering and protective-earth convention must be copied from selected supplier documents.", "Cable entry frame is defined at the selected connector datum.", "Mechanical CAD frame and electrical pin order are separate controlled data."],
+        "required_inputs": ["selected motor/controller/brake", "supply architecture", "current and fault limits", "connector/pin-out drawings", "grounding/EMC plan", "safety and emergency-stop architecture"],
+        "constraints": ["A CAD route must not imply an approved wiring design.", "Power, signal, shielding, grounding, and safety circuits require selection-specific engineering.", "A normal controller function is not a functional-safety claim."],
+        "verification": ["Review current supplier wiring documents.", "Check connector/cable bend and service access in CAD.", "Perform electrical, EMC, thermal, and safety reviews.", "Trace all cable and connector part numbers into the BOM."]
+      },
+      "agent_guidance": "Do not create a wiring harness, pin-out, or safety claim from this interface."
+    },
+    {
+      "id": "robotics.interface.gripper_drive_to_body.candidate.v1",
+      "title": "Gripper drive to gripper body",
+      "category": "mechanical_mount",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A selection-dependent integration contract for a lead screw, nut, bearings, motor, and custom gripper body.",
+      "sources": [],
+      "applies_to": ["robotics.component.gripper_leadscrew_drive_candidate.v1", "robotics.component.parallel_jaw_gripper_body.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: selected drive output-axis datum.", "X axis: jaw travel direction.", "Z axis: normal to gripper tool-side mounting face.", "Frame handedness: right-handed."],
+        "required_inputs": ["selected screw/nut/bearing/motor", "jaw stroke", "force and life targets", "drive support layout", "body material/process", "lubrication and contamination conditions"],
+        "constraints": ["Screw and nut alignment, bearing support, backlash, and service access must be designed from selected components.", "The body must contain loads without relying on CAD coincidence alone.", "Pinch points and failed-power behavior need separate safety review."],
+        "verification": ["Calculate force transmission and life.", "Check axial/radial support and collision through stroke.", "Check fastener engagement, lubrication, and assembly sequence.", "Review pinch-point and fail-state risks."]
+      },
+      "agent_guidance": "Do not convert the generic drive topology into a validated gripper mechanism without selected drive components and calculations."
+    },
+    {
+      "id": "robotics.interface.parallel_jaw_mimic_kinematic.illustrative.v1",
+      "title": "Coupled parallel-jaw kinematic model",
+      "category": "kinematic",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A kinematic intent contract for two opposed jaws. URDF can represent a serial joint and a mimic joint, but the physical synchronization mechanism and closed-loop constraints must be modelled and verified separately.",
+      "sources": ["ros2_control_joint_kinematics_rolling_2026", "ros_2_urdf_rolling_2026"],
+      "applies_to": ["robotics.component.gripper_leadscrew_drive_candidate.v1", "robotics.component.gripper_jaw_set.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: gripper body tool-centre datum.", "X axis: nominal jaw opening direction.", "Z axis: nominal approach direction.", "Joint axes must be explicitly recorded in the AssemblyGraph and URDF."],
+        "required_inputs": ["physical synchronization mechanism", "stroke limits", "zero/open/closed definitions", "jaw collision envelope", "URDF model convention", "controller mapping"],
+        "constraints": ["A URDF mimic relation is an approximation, not a proof of physical synchronization.", "Do not use a mimic model to hide interference or force imbalance.", "Joint limits must be selected and verified, not inferred from CAD clearance."],
+        "verification": ["Check open/closed/intermediate CAD poses.", "Check physical mechanism constraints and force balance.", "Validate URDF/Xacro in a target simulator.", "Check collision geometry and workpiece envelope."]
+      },
+      "agent_guidance": "State clearly that paired-jaw mimic behaviour is a model simplification until the physical drive design is verified."
+    },
+    {
+      "id": "robotics.interface.gripper_finger_mount.candidate.v1",
+      "title": "Gripper finger or jaw mount",
+      "category": "tooling",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A custom tooling interface between jaws and replaceable fingertips. It requires exact fastener, datum, load, compliance, and collision information.",
+      "sources": [],
+      "applies_to": ["robotics.component.parallel_jaw_gripper_body.illustrative.v1", "robotics.component.gripper_jaw_set.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: jaw-tool mounting datum.", "X axis: jaw travel direction.", "Z axis: nominal approach direction.", "Frame must distinguish left and right jaws rather than mirror implicitly."],
+        "required_inputs": ["workpiece model", "selected jaw material", "fastener/datum strategy", "grip force", "allowable deflection", "tool change/service requirements"],
+        "constraints": ["Fingertips must preserve clearance through the full stroke.", "Mounting preload and geometry must withstand application load without slipping.", "Left/right mirrored geometry must retain explicit handedness and datum labels."],
+        "verification": ["Check full-stroke collision and workpiece envelope.", "Review grip-force load path and fasteners.", "Check tool-repeatability datum scheme.", "Inspect assembly/service access."]
+      },
+      "agent_guidance": "Never use generic fingertip geometry as evidence of a robust grasp."
+    },
+    {
+      "id": "robotics.interface.gripper_tool_mount.candidate.v1",
+      "title": "Gripper to robot or fixture tool mount",
+      "category": "tooling",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A mounting contract between the gripper body and its robot flange or fixed fixture. No flange standard, bolt pattern, payload, cable, or calibration datum is assumed.",
+      "sources": [],
+      "applies_to": ["robotics.component.parallel_jaw_gripper_body.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: declared tool-centre point or fixture datum.", "Z axis: nominal approach direction.", "X axis: explicit orientation key for calibration.", "Frame must be exported consistently to CAD and robot description."],
+        "required_inputs": ["exact robot/flange or fixture drawing", "payload and moment limits", "tool-centre-point definition", "fasteners/dowels", "cable routing", "calibration method"],
+        "constraints": ["Do not assume ISO flange compatibility without a selected standard and supplier drawing.", "Tool mass and CoG must be verified against the upstream system.", "Calibration and mechanical datum must be traceable."],
+        "verification": ["Check mounting geometry against exact drawing.", "Calculate payload/moment at upstream interface.", "Check collision and cable envelope.", "Record tool frame and calibration procedure."]
+      },
+      "agent_guidance": "Keep a gripper's tool interface unresolved until its host robot or fixture is selected."
+    },
+    {
+      "id": "robotics.interface.rotary_axis_output.candidate.v1",
+      "title": "Rotary actuator output to robot link",
+      "category": "kinematic",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A load-path and kinematic contract joining an actuator output flange to a link, yoke, or sensor payload. It needs exact output geometry, bolt pattern, bearing limits, joint axis, travel, and external loads.",
+      "sources": ["harmonic_drive_csg_17_100_2a_r_2026", "ros_2_urdf_rolling_2026"],
+      "applies_to": ["robotics.component.pan_tilt_rotary_actuator_candidate.v1", "robotics.component.harmonic_drive_csg_17_100_2a_r.v1", "robotics.component.actuator_output_flange.illustrative.v1", "robotics.component.pan_tilt_base.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origin: selected actuator output rotation centre.", "Z axis: positive joint rotation axis.", "X axis: link reference direction at zero pose.", "Right-handed frame and zero pose must match AssemblyGraph and URDF."],
+        "required_inputs": ["exact output drawing", "link and payload mass/CoG/inertia", "joint range/speed/acceleration", "external forces/moments", "fastening/preload", "zero/reference calibration"],
+        "constraints": ["Gear/reducer torque alone is not a complete output-load rating.", "Joint limits and hard stops require explicit mechanical/control design.", "The link interface must have a verified axial, radial, and moment load path."],
+        "verification": ["Calculate gravity, inertia, cable, and external loads.", "Check supplier load limits and current drawing.", "Run full-range collision/interference analysis.", "Validate kinematic frame and zero pose in CAD and URDF."]
+      },
+      "agent_guidance": "Use this as a hard evidence gate for any claimed actuator/link design."
+    },
+    {
+      "id": "robotics.interface.harmonic_drive_motor_adapter.candidate.v1",
+      "title": "Strain-wave gear motor adapter",
+      "category": "mechanical_mount",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A motor-adapter contract for integrating a selected BLDC motor with the exact CSG-17-100-2A-R component set. All adapter dimensions, coupling, fasteners, bearing support, and thermal design must come from current manufacturer data and the selected motor drawing.",
+      "sources": ["harmonic_drive_csg_17_100_2a_r_2026"],
+      "applies_to": ["robotics.component.harmonic_drive_csg_17_100_2a_r.v1", "robotics.component.bldc_motor_candidate.v1", "robotics.component.actuator_housing.illustrative.v1", "robotics.component.actuator_brake_candidate.v1"],
+      "contract": {
+        "frame_convention": ["Origin: component-set input-axis datum defined by current manufacturer drawing.", "Z axis: input shaft axis toward motor.", "X axis: a controlled drawing feature or explicit adapter key.", "Frame must not be guessed from rendered vendor imagery."],
+        "required_inputs": ["current component-set drawing", "selected motor/brake drawing", "coupling geometry", "input speed/torque/duty cycle", "housing material/thermal path", "assembly/preload procedure"],
+        "constraints": ["Adapter must not violate vendor mounting, bearing, alignment, or assembly constraints.", "Do not assign motor coupling bore, bolt pattern, or housing dimensions from this record.", "Motor/gear thermal and life calculations require selected parts and duty cycle."],
+        "verification": ["Retrieve current vendor PDF/DXF and revision.", "Check concentricity/alignment and coupling clearances.", "Check input torque/speed and thermal life with qualified review.", "Check assembly, service, and cable-exit access."]
+      },
+      "agent_guidance": "The source-specific gear does not make the adapter source-specific; preserve this candidate distinction in every generated report."
+    },
+    {
+      "id": "robotics.interface.encoder_feedback.candidate.v1",
+      "title": "Actuator encoder feedback",
+      "category": "signal_feedback",
+      "data_status": "candidate",
+      "engineering_review": "required",
+      "summary": "A feedback contract for motor-side or output-side sensing. It must define selected encoder geometry, electrical protocol, reference/index strategy, calibration, and controller support.",
+      "sources": [],
+      "applies_to": ["robotics.component.motion_controller_driver_candidate.v1", "robotics.component.pan_tilt_rotary_actuator_candidate.v1", "robotics.component.bldc_motor_candidate.v1", "robotics.component.absolute_encoder_candidate.v1"],
+      "contract": {
+        "frame_convention": ["Origin: selected encoder datum surface.", "Positive count/angle direction must be mapped explicitly to positive joint axis.", "Zero/reference mark must have a controlled calibration procedure."],
+        "required_inputs": ["selected encoder/controller", "output vs motor-side architecture", "protocol and connector", "resolution/accuracy requirement", "calibration/home procedure", "EMC/cable constraints"],
+        "constraints": ["Resolution is not equal to system accuracy.", "Feedback sign, zero, gear ratio, and controller scaling must be explicitly tested.", "Do not infer connector/pin-out from a generic encoder category."],
+        "verification": ["Check selected mechanical/electrical drawings.", "Validate positive direction and zero pose in software and CAD.", "Perform calibration/repeatability test planning.", "Check cable routing and EMC requirements."]
+      },
+      "agent_guidance": "Always report feedback as candidate until the encoder and controller are selected and calibrated."
+    },
+    {
+      "id": "robotics.interface.sensor_mount.illustrative.v1",
+      "title": "Sensor mount and calibration frame",
+      "category": "mechanical_mount",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A topology-level interface between a sensor mount and an exact camera or LiDAR. It describes the need for an explicit calibration frame, not a universal hole pattern.",
+      "sources": ["ros_2_urdf_rolling_2026"],
+      "applies_to": ["robotics.component.pan_tilt_base.illustrative.v1", "robotics.component.sensor_payload_mount.illustrative.v1", "robotics.component.axis_endstop_candidate.v1"],
+      "contract": {
+        "frame_convention": ["Origin: sensor manufacturer's declared optical/measurement frame after selection.", "Axes: follow the selected sensor/ROS convention and record any transform.", "Mechanical-mount frame and measurement frame are distinct and both must be persisted."],
+        "required_inputs": ["exact sensor drawing/model", "measurement/optical frame", "field of view or scan plane", "mass/CoG", "connector and thermal keep-outs", "calibration method"],
+        "constraints": ["Do not block the sensing aperture or scan plane.", "Do not assume a supplier's coordinate convention.", "Mount stiffness and vibration can affect measurement performance and need application review."],
+        "verification": ["Check exact sensor mounting features.", "Check aperture/field-of-view clearance in all poses.", "Record fixed transform in CAD/URDF.", "Plan calibration and vibration validation."]
+      },
+      "agent_guidance": "Do not call a generic plate a camera or LiDAR mount until the exact sensor and its calibration frame have been resolved."
+    },
+    {
+      "id": "robotics.interface.cable_service_loop.illustrative.v1",
+      "title": "Moving-joint cable service loop",
+      "category": "cable_routing",
+      "data_status": "illustrative",
+      "engineering_review": "not_started",
+      "summary": "A geometric contract for an unselected moving cable/harness. It captures route and service-loop intent but does not contain cable bend radius, torsion life, clamp, EMC, or connector limits.",
+      "sources": [],
+      "applies_to": ["robotics.component.cable_service_loop.illustrative.v1", "robotics.component.pan_tilt_base.illustrative.v1", "robotics.component.actuator_housing.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Origins: selected fixed and moving cable-entry connector datums.", "Route parameter: path follows all declared joint states.", "Cable orientation/twist convention must be explicit after cable selection."],
+        "required_inputs": ["selected cable and connectors", "all joint ranges", "minimum bend/torsion specification", "clamp/strain-relief design", "EMC/grounding requirements", "service-life target"],
+        "constraints": ["A visual CAD spline is not a cable qualification.", "Cable must not exceed selected bend or torsion ratings at any pose.", "Service loops require collision, pinch, snag, and maintenance checks."],
+        "verification": ["Sweep all joint states and check clearance.", "Check selected cable bend/torsion constraints.", "Check clamp and connector strain relief.", "Document harness BOM and test evidence."]
+      },
+      "agent_guidance": "Keep cable routes as clearly marked envelope geometry until selected harness data and motion envelopes are verified."
+    },
+    {
+      "id": "robotics.interface.urdf_link_joint_model.source_specific.v1",
+      "title": "URDF link and joint representation",
+      "category": "software_model",
+      "data_status": "source_specific",
+      "engineering_review": "required",
+      "summary": "A source-aware model contract for exporting robot links, joints, visual/collision geometry, inertial data, axes, and limits to URDF. It does not validate physical correctness of the underlying assembly.",
+      "sources": ["ros_2_urdf_rolling_2026", "ros2_control_joint_kinematics_rolling_2026"],
+      "applies_to": ["robotics.component.linear_axis_structure.illustrative.v1", "robotics.component.parallel_jaw_gripper_body.illustrative.v1", "robotics.component.pan_tilt_base.illustrative.v1", "robotics.component.actuator_housing.illustrative.v1"],
+      "contract": {
+        "frame_convention": ["Every link has an explicit coordinate frame.", "Every joint records parent link, child link, origin transform, axis, and type.", "Visual and collision geometry must be distinguished.", "Mass, CoG, and inertia require separately verified source data."],
+        "required_inputs": ["AssemblyGraph with resolved frames", "joint type/axis/limits", "verified visual and collision geometry", "verified mass/CoG/inertia", "transmission/control mapping", "target ROS/simulator version"],
+        "constraints": ["URDF represents a tree; coupled or closed-loop mechanisms need explicit modelling decisions.", "Do not invent inertia, limits, effort, velocity, or collision geometry.", "URDF validity does not prove mechanical design validity."],
+        "verification": ["Validate generated URDF with target parser/tooling.", "Compare CAD and URDF frame transforms and zero poses.", "Exercise all joints in a target viewer/simulator.", "Retain source/revision evidence for every physical property."]
+      },
+      "agent_guidance": "The URDF export must carry evidence gaps forward instead of filling them with plausible numeric defaults."
+    }
+  ]
+}

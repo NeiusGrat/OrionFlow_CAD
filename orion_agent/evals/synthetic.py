@@ -128,6 +128,46 @@ class SyntheticBridge:
             "recompute_ok": True,
         }
 
+    def compile_assembly_graph(self, graph, bindings, root_part_id,
+                               joint_values=None, label=None):
+        """Small bridge-compatible response for assembly tool/eval tests.
+
+        This deliberately does not pretend to solve FreeCAD placements.  The
+        addon compiler has its own unit tests; the synthetic bridge only makes
+        the harness transaction/tool path observable without FreeCAD.
+        """
+        self._compiled_assembly_graph = graph
+        assembly_name = "OrionAssembly"
+        part_ids = [part.get("id", "") for part in graph.get("parts", [])]
+        created = [assembly_name] + [f"{part_id}_link" for part_id in part_ids]
+        return {
+            "assembly": {
+                "name": assembly_name,
+                "label": label or graph.get("name") or graph.get("id", assembly_name),
+                "type_id": "App::Part",
+                "backend": "synthetic_links",
+                "graph_id": graph.get("id", ""),
+                "root_part_id": root_part_id,
+            },
+            "created": created,
+            "instances": [
+                {
+                    "part_id": part_id,
+                    "source_object": bindings.get(part_id),
+                    "link": f"{part_id}_link",
+                }
+                for part_id in part_ids
+            ],
+            "joints": [
+                {"id": joint.get("id"), "kind": joint.get("kind"),
+                 "value": (joint_values or {}).get(joint.get("id"), 0.0)}
+                for joint in graph.get("joints", [])
+            ],
+            "bom": [],
+            "warnings": ["synthetic bridge: no native FreeCAD placement was evaluated"],
+            "recompute_ok": True,
+        }
+
     def undo(self):
         return self.abort_transaction()
 

@@ -194,7 +194,8 @@ class AgentLoop:
                     created = (result.raw or {}).get("created") if isinstance(result.raw, dict) else None
                     if created:
                         edited_names.add(created)
-                if tc.name == "create_featuregraph" and isinstance(result.raw, dict):
+                if tc.name in ("create_featuregraph", "compile_assembly_graph") \
+                        and isinstance(result.raw, dict):
                     edited_names.update(result.raw.get("created") or [])
                 if tc.name == "write_code" and isinstance(result.raw, dict):
                     last_build_topology = result.raw.get("topology", {}) or last_build_topology
@@ -235,8 +236,10 @@ class AgentLoop:
         # model-initiated edit) and record the outcome honestly.
         if pillar.verification == "artifact":
             wrote_ok = any(c["name"] == "write_code" and c["ok"] for c in collected_tool_calls)
-            built_native = any(c["name"] == "create_featuregraph" and c["ok"]
-                               for c in collected_tool_calls)
+            built_native = any(
+                c["name"] in ("create_featuregraph", "compile_assembly_graph") and c["ok"]
+                for c in collected_tool_calls
+            )
             imported = any(c["name"] == "import_shape" and c["ok"] for c in collected_tool_calls)
             if wrote_ok and not (imported or built_native) and self.bridge is not None:
                 if not txn_open:

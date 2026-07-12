@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "package": "robotics-assembly-foundation",
+  "version": "0.1.0",
+  "sources": [
+    {
+      "id": "ros_2_urdf_rolling_2026",
+      "title": "ROS 2 Rolling: URDF tutorials",
+      "publisher": "Open Robotics",
+      "kind": "official_software_documentation",
+      "official_url": "https://docs.ros.org/en/rolling/Tutorials/Intermediate/URDF/URDF-Main.html",
+      "license": "Use according to the upstream documentation and repository terms; no upstream content is copied here.",
+      "use": "Reference for robot links, joints, visual and collision geometry, inertial properties, and URDF export validation.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "ros2_control_joint_kinematics_rolling_2026",
+      "title": "ROS 2 Control: Joint Kinematics for ros2_control",
+      "publisher": "Open Robotics",
+      "kind": "official_software_documentation",
+      "official_url": "https://docs.ros.org/en/ros2_packages/rolling/api/hardware_interface/doc/joints_userdoc.html",
+      "license": "Use according to the upstream documentation and repository terms; no upstream content is copied here.",
+      "use": "Reference for serial-chain modelling and the limitations of URDF mimic joints for coupled mechanisms.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "hiwin_mg_linear_guideways_2026",
+      "title": "HIWIN MG Series miniature linear guideways",
+      "publisher": "HIWIN Corporation",
+      "kind": "vendor_catalogue",
+      "official_url": "https://hiwin.com/products/linear-guideways/",
+      "license": "Vendor catalogue and drawings remain subject to HIWIN terms; no drawings or tables are stored here.",
+      "use": "Candidate family reference for compact linear-guide selection. Use the exact current model drawing and catalogue for dimensions, load ratings, preload, accuracy, lubrication, and mounting data.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "gates_powergrip_gt3_2026",
+      "title": "Gates PowerGrip GT3 belts",
+      "publisher": "Gates Corporation",
+      "kind": "vendor_catalogue",
+      "official_url": "https://www.gates.com/us/en/power-transmission/synchronous-belts/rubber-synchronous-belts.p.9356-000000-000000.html",
+      "license": "Vendor catalogue and design tools are subject to Gates terms; no catalogue tables are stored here.",
+      "use": "Candidate family reference for synchronous-belt drive selection and supplier-specific sizing workflow.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "oriental_motor_pkp_nema23_2026",
+      "title": "Oriental Motor PKP Series 56.4 mm / NEMA 23 stepper motors",
+      "publisher": "Oriental Motor",
+      "kind": "vendor_catalogue",
+      "official_url": "https://catalog.orientalmotor.com/viewitems/2-phase-unipolar-stepper-motors/56-4mm-pkp-series-unipolar-stepper-motors",
+      "license": "Vendor catalogue and drawings are subject to Oriental Motor terms; no drawings or tables are stored here.",
+      "use": "Candidate-family reference only. An exact motor, driver, encoder/brake option, mounting drawing, speed-torque curve, and electrical data are required before design release.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "harmonic_drive_csg_17_100_2a_r_2026",
+      "title": "Harmonic Drive CSG-17-100-2A-R component set",
+      "publisher": "Harmonic Drive LLC",
+      "kind": "vendor_catalogue",
+      "official_url": "https://global.harmonicdrive.net/products/component-sets/cup-type/csg-2a/csg-17-100-2a-r",
+      "license": "Vendor product data and drawings are subject to Harmonic Drive terms; concise metadata only is stored here.",
+      "use": "Source-specific candidate record for a compact strain-wave actuator concept. Verify the current drawing, operating limits, bearing loads, life, lubrication, mounting, and integration conditions with Harmonic Drive before use.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "iso_9283_1998",
+      "title": "ISO 9283:1998, Manipulating industrial robots — Performance criteria and related test methods",
+      "publisher": "International Organization for Standardization",
+      "kind": "normative_standard",
+      "official_url": "https://www.iso.org/standard/22244.html",
+      "license": "Licensed standard; metadata only is stored here. Obtain authorized access before applying requirements or test methods.",
+      "use": "Future reference for robot performance terminology and validation planning after qualified engineering review.",
+      "last_verified": "2026-07-11"
+    },
+    {
+      "id": "iso_10218_1_2025",
+      "title": "ISO 10218-1:2025, Robots and robotic devices — Safety requirements for industrial robots",
+      "publisher": "International Organization for Standardization",
+      "kind": "normative_standard",
+      "official_url": "https://www.iso.org/standard/74683.html",
+      "license": "Licensed standard; metadata only is stored here. It is not embedded or interpreted as a compliance rule.",
+      "use": "Safety-governance reference. A qualified safety and controls review is required for any real deployment.",
+      "last_verified": "2026-07-11"
+    }
+  ]
+}

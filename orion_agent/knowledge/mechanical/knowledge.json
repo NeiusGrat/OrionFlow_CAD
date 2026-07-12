@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "package": "mechanical-foundation",
+  "version": "0.1.0",
+  "items": [
+    {
+      "id": "knowledge.provenance.required.v1",
+      "domain": "governance",
+      "kind": "policy",
+      "title": "Every engineering claim needs provenance",
+      "summary": "A retrieved rule or calculation must identify its source, revision, units, applicability conditions, authority, and review state before the agent presents it as engineering guidance.",
+      "authority": "normative_reference",
+      "maturity": "ready_for_retrieval",
+      "sources": ["nist_digital_thread_manufacturing"],
+      "tags": ["provenance", "traceability", "digital-thread", "governance"],
+      "agent_guidance": "Do not convert a retrieved guideline into a compliance claim. State assumptions and source class in the answer."
+    },
+    {
+      "id": "gdt.datum_reference_frame.basics.v1",
+      "domain": "gdt",
+      "kind": "concept",
+      "title": "Datum reference frames establish inspection orientation",
+      "summary": "Datum features establish the physical references used to orient and locate a part for manufacturing and inspection. A primary, secondary, and tertiary scheme may constrain the six degrees of freedom required by the design intent.",
+      "authority": "secondary_reference",
+      "maturity": "ready_for_retrieval",
+      "sources": ["drafter_gdt_cheat_sheet_v2_2025", "asme_y14_5_2018_r2024"],
+      "tags": ["gdt", "datum", "degrees-of-freedom", "inspection", "drawing"],
+      "agent_guidance": "Explain datum intent, but do not approve a datum scheme or claim ASME compliance without the licensed standard and engineering review."
+    },
+    {
+      "id": "gdt.feature_control_frame.basics.v1",
+      "domain": "gdt",
+      "kind": "concept",
+      "title": "Feature control frames communicate geometric controls",
+      "summary": "A feature control frame associates a geometric characteristic, tolerance, material modifier when applicable, and datum references with a controlled feature. Controls include form, orientation, location, profile, and runout families.",
+      "authority": "secondary_reference",
+      "maturity": "ready_for_retrieval",
+      "sources": ["drafter_gdt_cheat_sheet_v2_2025", "asme_y14_5_2018_r2024"],
+      "tags": ["gdt", "feature-control-frame", "mmc", "lmc", "position", "profile"],
+      "agent_guidance": "Use this for terminology and retrieval routing. Escalate material-condition interpretation, virtual condition, and compliance questions to the licensed ASME reference and a qualified reviewer."
+    },
+    {
+      "id": "sheet_metal.bend_allowance.v1",
+      "domain": "sheet_metal",
+      "kind": "calculation",
+      "title": "Bend allowance and bend deduction",
+      "summary": "For a single bend, bend allowance is computed from inside bend radius, material thickness, K-factor, and bend angle. Bend deduction converts outside flange dimensions to a flat-pattern length.",
+      "authority": "secondary_reference",
+      "maturity": "screening_calculator",
+      "sources": ["drafter_sheet_metal_dfm_2025"],
+      "tags": ["sheet-metal", "bend-allowance", "bend-deduction", "flat-pattern", "k-factor"],
+      "formula": {
+        "bend_allowance_mm": "pi * (inside_radius_mm + k_factor * thickness_mm) * bend_angle_deg / 180",
+        "bend_deduction_mm": "2 * (inside_radius_mm + thickness_mm) * tan(bend_angle_deg / 2) - bend_allowance_mm"
+      },
+      "conditions": ["Use a K-factor validated for the specified material, thickness, tooling, and forming process.", "Angles are in degrees and lengths are in millimetres.", "Confirm dimensions and flat pattern with the fabricator before release."],
+      "agent_guidance": "Never invent a K-factor. Ask for it or identify the result as a preliminary estimate."
+    },
+    {
+      "id": "sheet_metal.bend_relief.screening.v1",
+      "domain": "sheet_metal",
+      "kind": "design_rule",
+      "title": "Bend-relief screening",
+      "summary": "When adjacent unbent material would tear, warp, or interfere during a bend, a relief feature may be needed. The supplied guide gives a minimum-width heuristic and a depth heuristic based on material thickness and bend radius.",
+      "authority": "screening_guideline",
+      "maturity": "screening_only",
+      "sources": ["drafter_sheet_metal_dfm_2025"],
+      "tags": ["sheet-metal", "bend-relief", "dfm", "corner-relief"],
+      "rule": {
+        "minimum_width_mm": "thickness_mm / 2",
+        "minimum_depth_mm": "thickness_mm + inside_radius_mm + 0.508"
+      },
+      "conditions": ["The 0.508 mm clearance originates from a 0.020 inch guideline.", "Relief geometry depends on tooling and part function.", "This is a DFM screen, not a released manufacturing requirement."],
+      "agent_guidance": "Report passing checks as preliminary only and request supplier capability confirmation."
+    },
+    {
+      "id": "sheet_metal.holes_and_slots.screening.v1",
+      "domain": "sheet_metal",
+      "kind": "design_rule",
+      "title": "Hole and slot screening",
+      "summary": "The supplied guide recommends a hole or slot width no smaller than material thickness and a hole-to-hole spacing of at least twice material thickness. It also contains conflicting hole-to-edge guidance, so edge-distance checks remain review-only.",
+      "authority": "screening_guideline",
+      "maturity": "review_required",
+      "sources": ["drafter_sheet_metal_dfm_2025"],
+      "tags": ["sheet-metal", "holes", "slots", "dfm", "laser", "punching"],
+      "rule": {
+        "minimum_hole_diameter_mm": "thickness_mm",
+        "minimum_hole_spacing_mm": "2 * thickness_mm",
+        "hole_to_edge_status": "unresolved_source_conflict"
+      },
+      "conditions": ["The source text and diagram disagree on hole-to-edge distance; do not make an automatic pass/fail decision for that dimension.", "Minimum feature size depends on process, material, thickness, and supplier capability."],
+      "agent_guidance": "Use the numeric checks as warnings. For edge distance, explicitly request review rather than guessing a threshold."
+    },
+    {
+      "id": "sheet_metal.grain_direction.v1",
+      "domain": "sheet_metal",
+      "kind": "design_rule",
+      "title": "Grain direction affects bend risk",
+      "summary": "For materials with a directional grain, bends parallel to the grain can be more susceptible to cracking than bends perpendicular to it. Some processes cannot guarantee grain orientation, so this must be a supplier capability input.",
+      "authority": "screening_guideline",
+      "maturity": "ready_for_retrieval",
+      "sources": ["drafter_sheet_metal_dfm_2025"],
+      "tags": ["sheet-metal", "grain-direction", "bend", "manufacturing"],
+      "agent_guidance": "Flag grain direction as an unresolved supplier constraint when bend quality or cracking risk is important."
+    },
+    {
+      "id": "threaded_holes.source_governance.v1",
+      "domain": "fasteners",
+      "kind": "policy",
+      "title": "Thread and hole dimensions require series-specific sources",
+      "summary": "Metric and Unified thread callouts require a complete series, nominal size, pitch or threads-per-inch, fit, engagement assumptions, and the applicable drill or clearance class. A chart can seed retrieval, but released dimensions must be tied to the selected standard and tooling source.",
+      "authority": "normative_reference",
+      "maturity": "ready_for_retrieval",
+      "sources": ["iso_273_1979", "drafter_tap_drill_chart_2025"],
+      "tags": ["fasteners", "threads", "tap-drill", "clearance-hole", "iso-273"],
+      "agent_guidance": "Use the existing fastener lookup for its scoped values. Do not infer a tap drill for a fine or Unified thread until the new catalogue records its exact source and revision."
+    }
+  ]
+}

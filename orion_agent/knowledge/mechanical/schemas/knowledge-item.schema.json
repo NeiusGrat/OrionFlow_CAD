@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OrionFlow Mechanical Knowledge Item",
+  "type": "object",
+  "required": ["id", "domain", "kind", "title", "summary", "authority", "maturity", "sources", "tags", "agent_guidance"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9_.-]+$"},
+    "domain": {"type": "string"},
+    "kind": {"enum": ["concept", "calculation", "design_rule", "policy", "template"]},
+    "title": {"type": "string"},
+    "summary": {"type": "string"},
+    "authority": {"enum": ["normative_reference", "secondary_reference", "screening_guideline"]},
+    "maturity": {"type": "string"},
+    "sources": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "agent_guidance": {"type": "string"},
+    "conditions": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

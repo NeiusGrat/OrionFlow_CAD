@@ -448,6 +448,60 @@ class Capabilities:
             "recompute_ok": bool(report.get("doc_recomputed", False)),
         }
 
+    def cap_compile_assembly_graph(self, params: dict[str, Any]) -> Any:
+        """Compile a validated AssemblyGraph into a native linked assembly.
+
+        The graph arrives pre-validated by the harness; the deterministic
+        compiler is :mod:`orion_agent.addon.assembly_compiler`. It refuses
+        unbound parts, non-tree topologies, and out-of-limit joint values,
+        and cleans up created objects on failure. Recompute happens here
+        because the compiler leaves document recomputation to its caller.
+        """
+        from orion_agent.addon import assembly_compiler
+
+        graph = params.get("graph")
+        if not isinstance(graph, dict):
+            raise CapabilityError(ErrorCode.BAD_REQUEST,
+                                  "compile_assembly_graph requires a 'graph' object")
+        bindings = params.get("bindings")
+        if not isinstance(bindings, dict) or not bindings:
+            raise CapabilityError(
+                ErrorCode.BAD_REQUEST,
+                "compile_assembly_graph requires explicit 'bindings' "
+                "{part_id: source_object_name}",
+            )
+        root_part_id = params.get("root_part_id")
+        if not isinstance(root_part_id, str) or not root_part_id:
+            raise CapabilityError(ErrorCode.BAD_REQUEST,
+                                  "compile_assembly_graph requires 'root_part_id'")
+        doc = _active_doc()  # source objects must already exist here
+        try:
+            result = assembly_compiler.compile_assembly_graph(
+                graph,
+                bindings=bindings,
+                root_part_id=root_part_id,
+                joint_values=params.get("joint_values"),
+                label=params.get("label"),
+                doc=doc,
+            )
+        except assembly_compiler.AssemblyCompilationError as exc:
+            raise CapabilityError(ErrorCode.BAD_REQUEST, str(exc)) from exc
+        doc.recompute()
+        result["recompute_ok"] = not any(
+            getattr(obj, "State", None)
+            and ("Invalid" in obj.State or "Error" in obj.State)
+            for name in result.get("created", [])
+            for obj in [doc.getObject(name)]
+            if obj is not None
+        )
+        gui = _gui()
+        if gui is not None:
+            try:
+                gui.ActiveDocument.ActiveView.fitAll()
+            except Exception:  # noqa: BLE001
+                pass
+        return result
+
     def cap_extract_featuregraph(self, params: dict[str, Any]) -> Any:
         """Extract the live document's FeatureGraph via freecad/fcstd_parser."""
         doc = _active_doc()

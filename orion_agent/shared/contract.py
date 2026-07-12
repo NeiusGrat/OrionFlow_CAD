@@ -44,6 +44,7 @@ class Capability:
     EXECUTE_CODE = "execute_code"          # import sandbox artifact into doc
     IMPORT_SHAPE = "import_shape"
     COMPILE_FEATUREGRAPH = "compile_featuregraph"
+    COMPILE_ASSEMBLY_GRAPH = "compile_assembly_graph"
     SELECT = "select"
     HIGHLIGHT = "highlight"
     UNDO = "undo"
@@ -75,6 +76,7 @@ class Capability:
             EXECUTE_CODE,
             IMPORT_SHAPE,
             COMPILE_FEATUREGRAPH,
+            COMPILE_ASSEMBLY_GRAPH,
             SELECT,
             HIGHLIGHT,
             UNDO,

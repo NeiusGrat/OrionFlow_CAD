@@ -178,13 +178,17 @@ class EngineeringSpec:
     # Retrieved standard dimensions (bearings/fasteners/NEMA) — the sanctioned
     # channel for numbers the user never typed; NOT grounding-guarded.
     standards: list[dict] = field(default_factory=list)
+    # High-confidence robotics demo candidates. These contain no derived
+    # dimensions and must be retrieved in full before an agent uses them.
+    robotics: list[dict] = field(default_factory=list)
     source: str = ""                  # llm | regex
     notes: str = ""                   # grounding audit trail
 
     def is_empty(self) -> bool:
         return not (self.part or self.material or self.manufacturing
                     or self.dimensions or self.counts or self.interfaces
-                    or self.constraints or self.unresolved or self.standards)
+                    or self.constraints or self.unresolved or self.standards
+                    or self.robotics)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -220,6 +224,17 @@ class EngineeringSpec:
             for s in self.standards:
                 tag = " [candidate]" if s.get("candidate") else ""
                 lines.append(f"  - {s.get('text', '')}{tag}")
+        if self.robotics:
+            lines.append(
+                "Robotics demo candidates (retrieve the full record before using; "
+                "these do NOT supply dimensions, mates, or selected hardware):"
+            )
+            for candidate in self.robotics:
+                lines.append(
+                    f"  - {candidate.get('title', candidate.get('demo_id', ''))} "
+                    f"[data_status={candidate.get('data_status', 'unknown')}; "
+                    f"{candidate.get('reason', '')}]"
+                )
         if self.unresolved:
             lines.append(
                 "Unresolved (NOT stated by the user — choose a sensible default, "
@@ -348,6 +363,14 @@ class SpecParser:
         # retrieved knowledge, never the LLM's recollection.
         from orion_agent.harness import standards
         spec.standards = standards.detect(message)
+        # Robotics detection is intentionally conservative and contains only
+        # named demo candidates - never numerical parameters or component
+        # selections. A broken optional asset must not break generic CAD turns.
+        try:
+            from orion_agent.harness import robotics_knowledge
+            spec.robotics = robotics_knowledge.detect_intent(message)
+        except Exception:  # noqa: BLE001 - optional knowledge assets
+            spec.robotics = []
         return spec
 
     # ------------------------------------------------------------------ #

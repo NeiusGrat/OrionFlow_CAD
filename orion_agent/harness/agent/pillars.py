@@ -26,6 +26,14 @@ _READ_TOOLS = {
     "view",
     "get_model_tier",
     "lookup_standard",
+    "lookup_mechanical_knowledge",
+    "calculate_sheet_metal_bend",
+    "check_sheet_metal_dfm",
+    "lookup_robotics_knowledge",
+    "get_robotics_demo",
+    "validate_assembly_graph",
+    "assess_robotics_assembly",
+    "export_assembly_urdf",
 }
 
 _GROUNDING = (
@@ -34,7 +42,17 @@ _GROUNDING = (
     "a tool result in this conversation. Never invent a number. If a fact cannot "
     "be obtained from the tools, say plainly that you could not determine it "
     "rather than guessing. Prefer calling a tool over asking the user for "
-    "geometry you can measure yourself."
+    "geometry you can measure yourself.\n\n"
+    "MECHANICAL KNOWLEDGE POLICY: Retrieve standards, GD&T, DFM, and formula "
+    "guidance with lookup_standard or lookup_mechanical_knowledge; use the "
+    "calculation/check tools for their scoped numeric work. Always report the "
+    "returned authority and limitation. A screening guideline is never a claim "
+    "of standards compliance, released design validity, or supplier approval.\n\n"
+    "ROBOTICS ASSEMBLY POLICY: Retrieve robotics component/interface records before "
+    "using them. Preserve each record's data_status and engineering_review state. A "
+    "concept demo is a composition plan, not a mate-solved CAD assembly. Do not invent "
+    "a vendor part number, mounting pattern, frame, joint limit, physical property, "
+    "or safety claim. Validate an explicit AssemblyGraph before using it as an assembly plan."
 )
 
 
@@ -122,7 +140,9 @@ RECONSTRUCT_PILLAR = Pillar(
 GENERATE_PILLAR = Pillar(
     name=GENERATE,
     description="Text-to-CAD into a blank or new document, FeatureGraph-first.",
-    tools=set(_READ_TOOLS) | {"create_featuregraph", "write_code", "import_shape", "view"},
+    tools=set(_READ_TOOLS) | {
+        "create_featuregraph", "compile_assembly_graph", "write_code", "import_shape", "view",
+    },
     verification="artifact",
     allow_mutation=True,
     system_prompt=(
@@ -135,6 +155,19 @@ GENERATE_PILLAR = Pillar(
         "editable by the user. Plan the feature order first: base sketch -> Pad "
         "-> then cuts and patterns. If the compile observation reports errors, "
         "repair the graph and retry — do not silently switch approach.\n\n"
+        "FOR MULTI-PART ROBOTICS ASSEMBLIES: First use lookup_robotics_knowledge "
+        "or get_robotics_demo. Then define an explicit AssemblyGraph and call "
+        "validate_assembly_graph before creating custom parts. Build each custom part as "
+        "its own FeatureGraph only after exact component drawings, frames, mate requirements, "
+        "and joint limits are known. When every source object exists and every graph "
+        "interface has an explicit oriented frame, call compile_assembly_graph with a "
+        "binding for every part and a grounded root. It places a rooted tree of native "
+        "FreeCAD linked occurrences deterministically; it is not an Assembly Workbench "
+        "constraint-solver result and it does not prove collision, load, safety, or release "
+        "readiness. Export URDF only after the explicit "
+        "AssemblyGraph is a rooted kinematic tree with numeric limits and explicit "
+        "URDF joint origins; never infer collision, inertia, visual, or transmission "
+        "data for that export.\n\n"
         "FALLBACK ONLY: if the shape genuinely cannot be expressed in the "
         "FeatureGraph vocabulary (sweeps, lofts, fillets, organic surfaces), "
         "use write_code (Build123d) and then import_shape to place the result.\n\n"

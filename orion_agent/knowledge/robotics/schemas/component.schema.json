@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OrionFlow Robotics Component Catalogue",
+  "type": "object",
+  "required": ["schema_version", "package", "version", "components"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "package": {"type": "string"},
+    "version": {"type": "string"},
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/component"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "status": {"enum": ["source_specific", "candidate", "illustrative"]},
+    "fact": {
+      "type": "object",
+      "required": ["name", "value", "basis"],
+      "properties": {
+        "name": {"type": "string"},
+        "value": {},
+        "unit": {"type": "string"},
+        "basis": {"$ref": "#/$defs/status"},
+        "source": {"type": "string"},
+        "note": {"type": "string"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"basis": {"const": "source_specific"}}},
+          "then": {"required": ["source"]}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "component": {
+      "type": "object",
+      "required": ["id", "title", "kind", "data_status", "engineering_review", "summary", "sources", "interfaces", "facts", "agent_guidance"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9_.-]+$"},
+        "title": {"type": "string"},
+        "kind": {"type": "string"},
+        "vendor": {"type": "string"},
+        "manufacturer_part_number": {"type": "string"},
+        "data_status": {"$ref": "#/$defs/status"},
+        "engineering_review": {"enum": ["required", "not_started", "approved"]},
+        "summary": {"type": "string"},
+        "sources": {"type": "array", "items": {"type": "string"}},
+        "interfaces": {"type": "array", "items": {"type": "string"}},
+        "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+        "required_selection_inputs": {"type": "array", "items": {"type": "string"}},
+        "agent_guidance": {"type": "string"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"data_status": {"const": "source_specific"}}},
+          "then": {"required": ["manufacturer_part_number"]}
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}
