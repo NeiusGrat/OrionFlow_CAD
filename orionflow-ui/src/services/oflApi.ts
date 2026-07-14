@@ -1,5 +1,16 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+/** Attach the session JWT when present — attributes telemetry to the user. */
+function authHeaders(): Record<string, string> {
+  try {
+    const token = JSON.parse(localStorage.getItem('orionflow-auth') || '{}')
+      ?.state?.accessToken;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 export interface OFLParameter {
   name: string;
   value: number;
@@ -33,7 +44,7 @@ export interface OFLResponse {
 export async function generateOFL(prompt: string): Promise<OFLResponse> {
   const res = await fetch(`${API_BASE}/api/v1/ofl/generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ prompt }),
   });
   if (!res.ok) {
@@ -46,7 +57,7 @@ export async function generateOFL(prompt: string): Promise<OFLResponse> {
 export async function rebuildOFL(oflCode: string): Promise<OFLResponse> {
   const res = await fetch(`${API_BASE}/api/v1/ofl/rebuild`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ ofl_code: oflCode }),
   });
   if (!res.ok) {
@@ -59,7 +70,7 @@ export async function rebuildOFL(oflCode: string): Promise<OFLResponse> {
 export async function editOFL(oflCode: string, instruction: string): Promise<OFLResponse> {
   const res = await fetch(`${API_BASE}/api/v1/ofl/edit`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ ofl_code: oflCode, edit_instruction: instruction }),
   });
   if (!res.ok) {

@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
     Integer,
+    Float,
     Boolean,
     DateTime,
     ForeignKey,
@@ -311,6 +312,55 @@ class GenerationHistory(Base):
 
     def __repr__(self) -> str:
         return f"<GenerationHistory {self.id} status={self.status}>"
+
+
+class OFLEvent(Base):
+    """
+    Telemetry for the OFL text→CAD pipeline: one row per generate/edit/rebuild.
+
+    Doubles as (a) the product health metric source (success rate, repair
+    usage, latency) and (b) a growing prompt→code training corpus with
+    ground-truth geometry validation attached. Anonymous events are kept:
+    user_id is best-effort from the JWT, never required.
+    """
+
+    __tablename__ = "ofl_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+
+    # Request
+    event_type: Mapped[str] = mapped_column(String(16), nullable=False)  # generate|edit|rebuild
+    prompt: Mapped[Optional[str]] = mapped_column(Text)  # NL prompt / edit instruction
+    input_code: Mapped[Optional[str]] = mapped_column(Text)  # pre-edit/rebuild code
+
+    # Result
+    ofl_code: Mapped[Optional[str]] = mapped_column(Text)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    error: Mapped[Optional[str]] = mapped_column(Text)
+    repair_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    generation_time_ms: Mapped[Optional[int]] = mapped_column(Integer)
+
+    # Geometry validation (trimesh; null when execution failed)
+    watertight: Mapped[Optional[bool]] = mapped_column(Boolean)
+    volume_mm3: Mapped[Optional[float]] = mapped_column(Float)
+    bbox_mm: Mapped[Optional[List[float]]] = mapped_column(JSONB)
+    triangles: Mapped[Optional[int]] = mapped_column(Integer)
+
+    __table_args__ = (
+        Index("ix_ofl_events_created", "created_at"),
+        Index("ix_ofl_events_type_success", "event_type", "success"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<OFLEvent {self.event_type} success={self.success}>"
 
 
 # =============================================================================

@@ -1,0 +1,50 @@
+{"id": "plate-basic", "category": "plate", "prompt": "Rectangular plate 100 x 60 x 5 mm", "expected_bbox_mm": [100, 60, 5], "expected_volume_mm3": 30000}
+{"id": "plate-4holes", "category": "plate", "prompt": "Mounting plate 120 x 80 x 6 mm with four M5 clearance holes, one 10 mm from each corner", "expected_bbox_mm": [120, 80, 6]}
+{"id": "plate-rounded", "category": "plate", "prompt": "Plate 90 x 50 x 4 mm with 8 mm rounded corners", "expected_bbox_mm": [90, 50, 4]}
+{"id": "plate-slot", "category": "plate", "prompt": "Plate 80 x 40 x 5 mm with a central slot 40 mm long and 8 mm wide", "expected_bbox_mm": [80, 40, 5]}
+{"id": "plate-grid-holes", "category": "plate", "prompt": "Plate 100 x 100 x 3 mm with a 3 x 3 grid of 6 mm holes spaced 30 mm apart", "expected_bbox_mm": [100, 100, 3]}
+{"id": "nema17-mount", "category": "plate", "prompt": "NEMA 17 motor mount plate, 6 mm thick: M3 holes on a 31 x 31 mm square bolt pattern with a central 22 mm pilot hole"}
+{"id": "plate-thick", "category": "plate", "prompt": "Base plate 150 x 100 x 12 mm with four 9 mm holes, one 12 mm from each corner", "expected_bbox_mm": [150, 100, 12]}
+{"id": "gusset", "category": "plate", "prompt": "Triangular gusset plate with two 60 mm legs, 5 mm thick", "expected_bbox_mm": [60, 60, 5]}
+{"id": "washer", "category": "rotational", "prompt": "Washer 20 mm OD, 8.4 mm ID, 2 mm thick", "expected_bbox_mm": [20, 20, 2], "expected_volume_mm3": 517.5}
+{"id": "washer-large", "category": "rotational", "prompt": "Flat washer 37 mm OD, 13 mm ID, 3 mm thick", "expected_bbox_mm": [37, 37, 3], "expected_volume_mm3": 2827.4}
+{"id": "cylinder", "category": "rotational", "prompt": "Solid cylinder 30 mm diameter, 50 mm tall", "expected_bbox_mm": [30, 30, 50], "expected_volume_mm3": 35342.9}
+{"id": "tube", "category": "rotational", "prompt": "Tube 40 mm OD, 32 mm ID, 60 mm long", "expected_bbox_mm": [40, 40, 60], "expected_volume_mm3": 27143.4}
+{"id": "bushing", "category": "rotational", "prompt": "Bushing 16 mm OD, 10 mm ID, 20 mm long with a 2 mm chamfer on one end", "expected_bbox_mm": [16, 16, 20]}
+{"id": "flange", "category": "rotational", "prompt": "Circular flange 100 mm OD, 8 mm thick, with a 25 mm center bore and six M8 clearance holes on a 75 mm bolt circle", "expected_bbox_mm": [100, 100, 8]}
+{"id": "pulley-blank", "category": "rotational", "prompt": "Pulley blank: 60 mm diameter disc, 15 mm wide, with a 12 mm center bore", "expected_bbox_mm": [60, 60, 15], "expected_volume_mm3": 40715.0}
+{"id": "shaft-collar", "category": "rotational", "prompt": "Shaft collar 32 mm OD, 12 mm bore, 12 mm wide", "expected_bbox_mm": [32, 32, 12], "expected_volume_mm3": 8293.8}
+{"id": "spacer", "category": "rotational", "prompt": "Cylindrical spacer 10 mm OD, 5.5 mm ID, 25 mm long", "expected_bbox_mm": [10, 10, 25], "expected_volume_mm3": 1369.6}
+{"id": "stepped-shaft", "category": "rotational", "prompt": "Stepped shaft: 20 mm diameter for 30 mm of length, then 14 mm diameter for another 40 mm", "expected_bbox_mm": [20, 20, 70]}
+{"id": "box-shell", "category": "enclosure", "prompt": "Open-top box 80 x 60 x 30 mm with 2.5 mm walls", "expected_bbox_mm": [80, 60, 30]}
+{"id": "enclosure", "category": "enclosure", "prompt": "Electronics enclosure 100 x 64 x 25 mm, 2 mm walls, open top", "expected_bbox_mm": [100, 64, 25]}
+{"id": "cup", "category": "enclosure", "prompt": "Cylindrical cup 50 mm OD, 70 mm tall, 3 mm wall, open top", "expected_bbox_mm": [50, 50, 70]}
+{"id": "tray", "category": "enclosure", "prompt": "Shallow tray 120 x 80 x 15 mm with 3 mm walls and floor, open top", "expected_bbox_mm": [120, 80, 15]}
+{"id": "end-cap", "category": "enclosure", "prompt": "End cap for a 40 mm OD tube: 46 mm OD, 20 mm tall, with a 40.2 mm bore 15 mm deep", "expected_bbox_mm": [46, 46, 20]}
+{"id": "u-channel", "category": "enclosure", "prompt": "U-channel 100 mm long, 40 mm wide, 25 mm tall, 4 mm thick", "expected_bbox_mm": [100, 40, 25]}
+{"id": "hollow-box", "category": "enclosure", "prompt": "Closed hollow box 60 x 60 x 60 mm with 3 mm walls", "expected_bbox_mm": [60, 60, 60], "expected_volume_mm3": 58536}
+{"id": "l-bracket", "category": "bracket", "prompt": "L bracket: 60 x 40 mm base and a 60 x 50 mm vertical wall, 4 mm thick"}
+{"id": "angle-bracket-holes", "category": "bracket", "prompt": "90 degree angle bracket, 50 mm legs, 40 mm wide, 5 mm thick, with two 6 mm holes in each leg"}
+{"id": "t-bracket", "category": "bracket", "prompt": "T-shaped flat bracket 80 mm wide, 60 mm tall, 5 mm thick", "expected_bbox_mm": [80, 60, 5]}
+{"id": "shelf-bracket", "category": "bracket", "prompt": "Shelf bracket 100 x 100 mm with a diagonal support rib, 6 mm thick"}
+{"id": "z-bracket", "category": "bracket", "prompt": "Z bracket: two 40 x 30 mm flanges offset 20 mm vertically, 3 mm thick"}
+{"id": "clamp-block", "category": "bracket", "prompt": "Clamp block 40 x 30 x 20 mm with a 12 mm horizontal bore through the center", "expected_bbox_mm": [40, 30, 20]}
+{"id": "pillow-block", "category": "bracket", "prompt": "Pillow block bearing mount 60 mm wide, 20 mm deep, 40 mm tall, with a 22 mm bore centered 25 mm above the base"}
+{"id": "corner-brace", "category": "bracket", "prompt": "Corner brace 35 x 35 x 35 mm with 4 mm thick walls on three mutually perpendicular faces", "expected_bbox_mm": [35, 35, 35]}
+{"id": "hex-standoff", "category": "boss", "prompt": "Hex standoff 8 mm across flats, 25 mm long, with a 3.4 mm through hole"}
+{"id": "boss-plate", "category": "boss", "prompt": "Plate 50 x 50 x 4 mm with a central cylindrical boss 20 mm diameter and 10 mm tall on top, with a 6 mm hole through everything", "expected_bbox_mm": [50, 50, 14]}
+{"id": "knob", "category": "boss", "prompt": "Round knob 30 mm diameter, 15 mm tall, with a 6 mm blind hole 10 mm deep in the bottom", "expected_bbox_mm": [30, 30, 15]}
+{"id": "thumbwheel", "category": "boss", "prompt": "Thumbwheel disc 40 mm diameter, 8 mm thick, with a 5 mm center hole", "expected_bbox_mm": [40, 40, 8]}
+{"id": "dowel", "category": "boss", "prompt": "Dowel pin 8 mm diameter, 40 mm long, with 1 mm chamfers on both ends", "expected_bbox_mm": [8, 8, 40]}
+{"id": "spacer-block", "category": "boss", "prompt": "Spacer block 25 x 25 x 10 mm with a 5 mm center hole", "expected_bbox_mm": [25, 25, 10], "expected_volume_mm3": 6053.7}
+{"id": "disc-pattern", "category": "pattern", "prompt": "Disc 80 mm diameter, 5 mm thick, with eight 5 mm holes on a 60 mm bolt circle", "expected_bbox_mm": [80, 80, 5]}
+{"id": "grille", "category": "pattern", "prompt": "Speaker grille disc 70 mm diameter, 2 mm thick, with a 5 x 5 grid of 4 mm holes spaced 10 mm apart", "expected_bbox_mm": [70, 70, 2]}
+{"id": "wheel", "category": "pattern", "prompt": "Wheel 60 mm diameter, 20 mm wide, with an 8 mm axle bore", "expected_bbox_mm": [60, 60, 20], "expected_volume_mm3": 55543.2}
+{"id": "cam", "category": "pattern", "prompt": "Cam disc: 40 mm diameter circle merged with a 25 mm diameter lobe circle offset 15 mm, 10 mm thick, with a 10 mm shaft bore at the main center"}
+{"id": "handle", "category": "pattern", "prompt": "Cylindrical handle grip 25 mm diameter, 100 mm long, with 3 mm fillets on both end edges", "expected_bbox_mm": [25, 25, 100]}
+{"id": "ruler", "category": "pattern", "prompt": "Flat ruler 150 x 25 x 2 mm with a 4 mm hanging hole at one end", "expected_bbox_mm": [150, 25, 2]}
+{"id": "plate-chamfer", "category": "feature-op", "prompt": "Plate 60 x 60 x 8 mm with all top edges chamfered 2 mm", "expected_bbox_mm": [60, 60, 8]}
+{"id": "block-fillet", "category": "feature-op", "prompt": "Block 50 x 30 x 20 mm with 5 mm fillets on all four vertical edges", "expected_bbox_mm": [50, 30, 20]}
+{"id": "block-shell", "category": "feature-op", "prompt": "Block 40 x 40 x 25 mm shelled to 2 mm walls with the top face open", "expected_bbox_mm": [40, 40, 25]}
+{"id": "counterbore", "category": "feature-op", "prompt": "Plate 70 x 40 x 10 mm with two counterbored holes for M6 socket head cap screws, spaced 40 mm apart along the center line", "expected_bbox_mm": [70, 40, 10]}
+{"id": "tab-plate", "category": "feature-op", "prompt": "Plate 60 x 40 x 4 mm with two 10 x 8 mm rectangular tabs extending from one short edge"}

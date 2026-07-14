@@ -105,3 +105,6 @@ deploy/.env.deploy
 .coverage
 coverage.xml
 htmlcov/
+
+# Benchmark run outputs (the frozen prompt set IS committed)
+benchmarks/results/

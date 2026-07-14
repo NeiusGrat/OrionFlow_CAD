@@ -1,7 +1,9 @@
 """OFL API endpoints — generate, rebuild, edit, download."""
 
 import os
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
 
 from app.domain.ofl_models import (
@@ -10,6 +12,7 @@ from app.domain.ofl_models import (
     OFLEditRequest,
     OFLGenerateResponse,
 )
+from app.services.ofl_telemetry import log_ofl_event
 
 router = APIRouter(tags=["OFL"])
 
@@ -38,23 +41,51 @@ def _get_rebuild_service():
 
 
 @router.post("/generate", response_model=OFLGenerateResponse)
-async def ofl_generate(request: OFLGenerateRequest):
+async def ofl_generate(
+    request: OFLGenerateRequest,
+    background: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
+):
     """Generate OFL code + STEP/STL/GLB from natural language prompt."""
-    return _get_generate_service().generate_from_prompt(request.prompt)
+    response = _get_generate_service().generate_from_prompt(request.prompt)
+    background.add_task(
+        log_ofl_event, "generate", response,
+        prompt=request.prompt, authorization=authorization,
+    )
+    return response
 
 
 @router.post("/rebuild", response_model=OFLGenerateResponse)
-async def ofl_rebuild(request: OFLRebuildRequest):
+async def ofl_rebuild(
+    request: OFLRebuildRequest,
+    background: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
+):
     """Re-execute edited OFL code. No LLM call — instant rebuild."""
-    return _get_rebuild_service().rebuild_from_code(request.ofl_code)
+    response = _get_rebuild_service().rebuild_from_code(request.ofl_code)
+    background.add_task(
+        log_ofl_event, "rebuild", response,
+        input_code=request.ofl_code, authorization=authorization,
+    )
+    return response
 
 
 @router.post("/edit", response_model=OFLGenerateResponse)
-async def ofl_edit(request: OFLEditRequest):
+async def ofl_edit(
+    request: OFLEditRequest,
+    background: BackgroundTasks,
+    authorization: Optional[str] = Header(None),
+):
     """Apply natural language edit to existing OFL code."""
-    return _get_generate_service().edit_from_instruction(
+    response = _get_generate_service().edit_from_instruction(
         request.ofl_code, request.edit_instruction
     )
+    background.add_task(
+        log_ofl_event, "edit", response,
+        prompt=request.edit_instruction, input_code=request.ofl_code,
+        authorization=authorization,
+    )
+    return response
 
 
 @router.get("/download/{request_id}/{filename}")

@@ -25,6 +25,11 @@ image = (
 
 app = modal.App("orionflow-api")
 
+# Import the FastAPI app (and with it OCP/OpenCascade, the ~2-min cold-boot
+# cost) at container-import time so the memory snapshot captures it.
+with image.imports():
+    from app.main import app as fastapi_app
+
 
 @app.function(
     image=image,
@@ -34,6 +39,11 @@ app = modal.App("orionflow-api")
     timeout=300,
     scaledown_window=600,  # keep a warm container 10 min after last request
     min_containers=0,  # scale to zero — stays inside the $30/mo credits
+    # Cold boot was ~2 min (OCP/OpenCascade import). Snapshot captures the
+    # imported process image; later cold starts restore it in seconds. The
+    # asyncpg engine is created lazily (no open sockets at snapshot time) and
+    # migrations run in a subprocess that exits, so the state is snapshot-safe.
+    enable_memory_snapshot=True,
 )
 @modal.concurrent(max_inputs=20)  # FastAPI is async; share the container
 @modal.asgi_app()
@@ -47,7 +57,5 @@ def api():
     )
     if result.returncode != 0:
         print(f"WARNING: migrations failed, auth degraded: {result.stderr[-500:]}")
-
-    from app.main import app as fastapi_app
 
     return fastapi_app
