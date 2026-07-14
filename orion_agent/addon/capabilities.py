@@ -343,6 +343,22 @@ class Capabilities:
         label = params.get("label", "OrionResult")
         replace = params.get("replace")
         source = params.get("source_code")
+        url = params.get("url")
+        if url and not path:
+            # Web-studio flow: download the artifact (STEP) to a temp file.
+            import tempfile
+            import urllib.request
+
+            if not url.startswith(("https://", "http://localhost", "http://127.0.0.1")):
+                raise CapabilityError(ErrorCode.BAD_REQUEST, f"Refusing non-https url: {url}")
+            suffix = ".step" if ".step" in url.lower() else os.path.splitext(url)[1] or ".step"
+            fd, tmp = tempfile.mkstemp(prefix="orionflow_", suffix=suffix)
+            os.close(fd)
+            try:
+                urllib.request.urlretrieve(url, tmp)
+            except Exception as exc:  # noqa: BLE001
+                raise CapabilityError(ErrorCode.BAD_REQUEST, f"Download failed: {exc}")
+            path = tmp
         if not path or not os.path.exists(path):
             raise CapabilityError(ErrorCode.BAD_REQUEST, f"Artifact not found: {path}")
         shape = Part.Shape()

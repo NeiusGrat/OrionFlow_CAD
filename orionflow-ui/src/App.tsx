@@ -5,13 +5,47 @@ import { useDesignStore } from "./store/designStore";
 import { useChatStore, type ChatMessage } from "./store/chatStore";
 import { useAuthStore } from "./store/authStore";
 import { useOFLStore } from "./store/oflStore";
-import { generateOFL, getFullUrl } from "./services/oflApi";
+import { generateOFL, getFullUrl, type OFLResponse } from "./services/oflApi";
 import AuthPage from "./pages/AuthPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
+
+/** Validation evidence line shown under agent replies, e.g.
+ *  "✓ watertight · 19.7 cm³ · 120×80×6 mm · self-repaired ×1" */
+function buildReport(data: OFLResponse): string {
+    const bits: string[] = [];
+    const s = data.stats;
+    if (s) {
+        bits.push(s.watertight ? "watertight" : "open mesh");
+        if (s.volume_mm3 > 0)
+            bits.push(
+                s.volume_mm3 >= 1000
+                    ? `${(s.volume_mm3 / 1000).toFixed(1)} cm³`
+                    : `${s.volume_mm3.toFixed(0)} mm³`
+            );
+        if (s.bbox_mm?.length === 3) bits.push(`${s.bbox_mm.map((v) => Math.round(v)).join("×")} mm`);
+    }
+    if (data.repair_attempts) bits.push(`self-repaired ×${data.repair_attempts}`);
+    return bits.length ? `\n✓ ${bits.join(" · ")}` : "";
+}
+
+/** Snapshot the successful result as a named version on the part's timeline. */
+function pushVersion(designId: string, label: string, data: OFLResponse) {
+    useDesignStore.getState().addVersion(designId, {
+        label: label.length > 48 ? label.slice(0, 48) + "…" : label,
+        timestamp: Date.now(),
+        files: {
+            glb: getFullUrl(data.files.glb) || "",
+            step: getFullUrl(data.files.step) || "",
+            stl: getFullUrl(data.files.stl) || "",
+        },
+        oflCode: data.ofl_code,
+        parameters: Object.fromEntries(data.parameters.map((p) => [p.name, p.value])),
+    });
+}
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -51,11 +85,12 @@ function CADApp() {
             setIsGenerating(true);
             try {
                 const res = await useOFLStore.getState().edit(prompt);
+                if (res?.success) pushVersion(active.id, prompt, res);
                 addMessage(active.id, {
                     id: crypto.randomUUID(),
                     role: "assistant",
                     content: res?.success
-                        ? "Applied. The model and code are updated."
+                        ? `Applied — model and code updated.${buildReport(res)}`
                         : `Edit failed: ${res?.error || "unknown error"}`,
                     timestamp: Date.now(),
                     files: res?.success
@@ -106,7 +141,7 @@ function CADApp() {
             addMessage(activeId, {
                 id: crypto.randomUUID(),
                 role: "assistant",
-                content: "Part generated — inspect it in the viewport, tune parameters, or describe the next operation.",
+                content: `Part generated — inspect it in the viewport, tune parameters, or describe the next operation.${buildReport(data)}`,
                 timestamp: Date.now(),
                 partVersion:
                     (useChatStore.getState().getHistory(activeId).filter((m) => m.role === "assistant").length || 0) + 1,
@@ -126,6 +161,7 @@ function CADApp() {
                 const curr = state.current?.id === activeId ? updated.find((c) => c.id === activeId) : state.current;
                 return { creations: updated, current: curr || null };
             });
+            pushVersion(activeId, finalPrompt, data);
         } catch (e: any) {
             console.error(e);
             addMessage(activeId, {

@@ -91,6 +91,7 @@ class OFLGenerationService:
     ) -> OFLGenerateResponse:
         """Execute code; on failure feed the error back to the LLM and retry."""
         result = self.sandbox.execute(ofl_code)
+        repairs = 0
         for attempt in range(max_repairs):
             if result["success"]:
                 break
@@ -103,15 +104,16 @@ class OFLGenerationService:
             except Exception as e:
                 logger.warning(f"OFL repair LLM call failed: {e}")
                 break
+            repairs += 1
             result = self.sandbox.execute(ofl_code)
-        return self._respond_from_result(ofl_code, result, t0)
+        return self._respond_from_result(ofl_code, result, t0, repair_attempts=repairs)
 
     def _execute_and_respond(self, ofl_code: str, t0: float) -> OFLGenerateResponse:
         result = self.sandbox.execute(ofl_code)
         return self._respond_from_result(ofl_code, result, t0)
 
     def _respond_from_result(
-        self, ofl_code: str, result: dict, t0: float
+        self, ofl_code: str, result: dict, t0: float, repair_attempts: int = 0
     ) -> OFLGenerateResponse:
         if not result["success"]:
             return OFLGenerateResponse(
@@ -119,6 +121,7 @@ class OFLGenerationService:
                 ofl_code=ofl_code,
                 error=result["error"],
                 generation_time_ms=(time.time() - t0) * 1000,
+                repair_attempts=repair_attempts,
             )
 
         # Convert STL → GLB for viewer
@@ -160,6 +163,7 @@ class OFLGenerationService:
                         logger.warning(f"OFL artifact upload failed: {e}")
 
         parameters = self._extract_parameters(ofl_code)
+        stats = self._measure_geometry(result["stl_file"])
 
         return OFLGenerateResponse(
             success=True,
@@ -167,7 +171,31 @@ class OFLGenerationService:
             files=files,
             parameters=parameters,
             generation_time_ms=(time.time() - t0) * 1000,
+            repair_attempts=repair_attempts,
+            stats=stats,
         )
+
+    @staticmethod
+    def _measure_geometry(stl_path):
+        """Validation evidence for the response: watertightness, volume, bbox."""
+        if not stl_path:
+            return None
+        try:
+            import trimesh
+
+            from app.domain.ofl_models import OFLGeometryStats
+
+            mesh = trimesh.load(stl_path)
+            extent = mesh.bounds[1] - mesh.bounds[0]
+            return OFLGeometryStats(
+                watertight=bool(mesh.is_watertight),
+                volume_mm3=round(float(mesh.volume), 1),
+                bbox_mm=[round(float(v), 1) for v in extent],
+                triangles=int(len(mesh.faces)),
+            )
+        except Exception as e:
+            logger.warning(f"geometry measurement failed: {e}")
+            return None
 
     def _extract_parameters(self, code: str) -> list[OFLParameter]:
         """Extract named numeric variables from OFL code."""

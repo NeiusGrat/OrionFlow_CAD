@@ -12,6 +12,8 @@ import {
     Command,
     ArrowUp,
     Grid3x3,
+    ExternalLink,
+    History,
 } from "lucide-react";
 import Viewer from "../Viewer/Viewer";
 import ChatPanel from "../Panels/ChatPanel";
@@ -21,6 +23,7 @@ import { useDesignStore } from "../../store/designStore";
 import { useOFLStore } from "../../store/oflStore";
 import { useAuthStore } from "../../store/authStore";
 import { fetchExamples, loadExampleIntoStudio, type ExampleEntry } from "../../lib/examples";
+import { openInFreeCAD } from "../../lib/freecadBridge";
 
 /* ────────────────────────── Top toolbar ────────────────────────── */
 
@@ -154,6 +157,88 @@ function ExportMenu() {
     );
 }
 
+/** Send the current part into a locally running FreeCAD (orion_agent addon).
+ *  Falls back to a setup hint + STEP download when the bridge is offline. */
+function FreeCADButton() {
+    const current = useDesignStore((s) => s.current);
+    const [state, setState] = useState<"idle" | "busy" | "ok" | "help">("idle");
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const close = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setState("idle");
+        };
+        if (state === "help") document.addEventListener("mousedown", close);
+        return () => document.removeEventListener("mousedown", close);
+    }, [state]);
+
+    const stepUrl = current?.files.step;
+
+    const handle = async () => {
+        if (!stepUrl || state === "busy") return;
+        setState("busy");
+        const res = await openInFreeCAD(stepUrl, current!.prompt);
+        if (res.status === "opened") {
+            setState("ok");
+            setTimeout(() => setState("idle"), 2500);
+        } else {
+            setState("help");
+        }
+    };
+
+    if (!stepUrl) return null;
+
+    return (
+        <div ref={ref} style={{ position: "relative" }}>
+            <ToolButton
+                icon={<ExternalLink size={13} strokeWidth={2.2} />}
+                label={state === "busy" ? "Opening…" : state === "ok" ? "Opened ✓" : "FreeCAD"}
+                onClick={handle}
+                active={state === "help"}
+            />
+            {state === "help" && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "34px",
+                        right: 0,
+                        width: "270px",
+                        background: "var(--studio-panel-2)",
+                        border: "1px solid var(--studio-border)",
+                        borderRadius: "8px",
+                        padding: "12px 14px",
+                        zIndex: 300,
+                        boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+                        fontSize: "12px",
+                        color: "var(--studio-text-dim)",
+                        lineHeight: 1.55,
+                    }}
+                >
+                    <div style={{ fontWeight: 700, color: "var(--studio-text)", marginBottom: "6px" }}>
+                        FreeCAD bridge not detected
+                    </div>
+                    Start FreeCAD with the OrionFlow addon (<code>orion_agent</code>) — the studio
+                    connects to it on <code>127.0.0.1:8765</code> and opens parts side by side.
+                    <a
+                        href={stepUrl}
+                        download
+                        onClick={() => setState("idle")}
+                        style={{
+                            display: "block",
+                            marginTop: "10px",
+                            color: "var(--studio-accent)",
+                            textDecoration: "none",
+                            fontWeight: 600,
+                        }}
+                    >
+                        Download .step instead →
+                    </a>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function TopBar() {
     const current = useDesignStore((s) => s.current);
     const isGenerating = useDesignStore((s) => s.isGenerating);
@@ -225,6 +310,7 @@ function TopBar() {
             <ToolButton icon={<Grid3x3 size={13} strokeWidth={2.2} />} label="Top" onClick={() => triggerViewAction("ortho")} />
             <ToolButton icon={<Maximize2 size={13} strokeWidth={2.2} />} label="Fit" onClick={() => triggerViewAction("reset")} />
             <div style={{ width: "1px", height: "20px", background: "var(--studio-border)" }} />
+            <FreeCADButton />
             <ExportMenu />
             <ToolButton
                 icon={<LogOut size={13} strokeWidth={2.2} />}
@@ -673,6 +759,66 @@ function CommandBar() {
     );
 }
 
+/* ────────────────────────── Version timeline ────────────────────────── */
+
+/** Every successful generate/edit snapshots a version; clicking a chip
+ *  restores that geometry + code — a linear history like CAD undo states. */
+function VersionStrip() {
+    const current = useDesignStore((s) => s.current);
+    const activateVersion = useDesignStore((s) => s.activateVersion);
+
+    const versions = current?.versions;
+    if (!current || !versions || versions.length < 2) return null;
+
+    const active = current.activeVersion ?? versions.length - 1;
+
+    return (
+        <div
+            style={{
+                position: "absolute",
+                bottom: "12px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "5px 10px",
+                background: "rgba(26, 28, 32, 0.92)",
+                backdropFilter: "blur(8px)",
+                border: "1px solid var(--studio-border)",
+                borderRadius: "999px",
+                zIndex: 30,
+                maxWidth: "70%",
+                overflowX: "auto",
+            }}
+        >
+            <History size={12} style={{ color: "var(--studio-text-faint)", flexShrink: 0 }} />
+            {versions.map((v, i) => (
+                <button
+                    key={i}
+                    onClick={() => activateVersion(current.id, i)}
+                    title={`${v.label} · ${new Date(v.timestamp).toLocaleTimeString()}`}
+                    style={{
+                        flexShrink: 0,
+                        padding: "3px 10px",
+                        borderRadius: "999px",
+                        border: "1px solid",
+                        borderColor: i === active ? "rgba(79,140,255,0.5)" : "transparent",
+                        background: i === active ? "var(--studio-accent-dim)" : "transparent",
+                        color: i === active ? "var(--studio-accent)" : "var(--studio-text-dim)",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                    }}
+                >
+                    v{i + 1}
+                </button>
+            ))}
+        </div>
+    );
+}
+
 /* ────────────────────────── Workspace ────────────────────────── */
 
 export default function Workspace({ onGenerate }: { onGenerate: (prompt: string) => void }) {
@@ -696,6 +842,7 @@ export default function Workspace({ onGenerate }: { onGenerate: (prompt: string)
                 <LeftDock />
                 <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
                     <Viewer url={current ? current.files.glb : ""} />
+                    <VersionStrip />
                     {!current && !isGenerating && <CommandBar />}
                 </div>
                 <RightDock onGenerate={onGenerate} />

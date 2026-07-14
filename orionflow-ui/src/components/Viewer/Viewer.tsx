@@ -7,9 +7,8 @@ import {
     useGLTF,
     Grid,
     ContactShadows,
-    Environment,
-    Lightformer,
 } from "@react-three/drei";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { useDesignStore } from "../../store/designStore";
 import { useManifoldPreview } from "../../hooks/useManifoldPreview";
 import * as THREE from "three";
@@ -254,17 +253,21 @@ function ZoomGuard() {
     return null;
 }
 
-/** Neutral studio HDR built from area lights — no network fetch, metal reads crisp. */
+/** Neutral studio environment (three built-in RoomEnvironment) — deterministic,
+ * no network fetch, and guarantees metal has reflections (no env = black metal). */
 function StudioEnvironment() {
-    return (
-        <Environment resolution={256} frames={1}>
-            <color attach="background" args={["#1c1e22"]} />
-            <Lightformer intensity={2.2} position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[9, 6, 1]} />
-            <Lightformer intensity={1.1} position={[-6, 2, -2]} rotation-y={Math.PI / 2} scale={[6, 2.5, 1]} />
-            <Lightformer intensity={0.9} position={[6, 3, 2]} rotation-y={-Math.PI / 2} scale={[7, 2.5, 1]} />
-            <Lightformer intensity={0.35} position={[0, -4, 4]} rotation-x={-Math.PI / 3} scale={[8, 3, 1]} color="#aebbd0" />
-        </Environment>
-    );
+    const { gl, scene } = useThree();
+    useEffect(() => {
+        const pmrem = new THREE.PMREMGenerator(gl);
+        const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        scene.environment = env;
+        return () => {
+            scene.environment = null;
+            env.dispose();
+            pmrem.dispose();
+        };
+    }, [gl, scene]);
+    return null;
 }
 
 export default function Viewer({ url }: { url: string }) {

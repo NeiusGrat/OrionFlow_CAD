@@ -12,6 +12,13 @@ export interface OFLFileLinks {
   glb: string | null;
 }
 
+export interface OFLGeometryStats {
+  watertight: boolean;
+  volume_mm3: number;
+  bbox_mm: number[];
+  triangles: number;
+}
+
 export interface OFLResponse {
   success: boolean;
   ofl_code: string;
@@ -19,6 +26,8 @@ export interface OFLResponse {
   parameters: OFLParameter[];
   error: string | null;
   generation_time_ms: number;
+  repair_attempts?: number;
+  stats?: OFLGeometryStats | null;
 }
 
 export async function generateOFL(prompt: string): Promise<OFLResponse> {

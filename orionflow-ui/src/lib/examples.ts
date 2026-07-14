@@ -54,6 +54,13 @@ export function loadExampleIntoStudio(ex: ExampleEntry) {
         material: { roughness: 0.5, metalness: 0.1 },
         files: { ...ex.files },
     });
+    store.addVersion(designId, {
+        label: ex.title,
+        timestamp: Date.now(),
+        files: { ...ex.files },
+        oflCode: ex.ofl_code,
+        parameters: Object.fromEntries(ex.parameters.map((p) => [p.name, p.value])),
+    });
 
     const chat = useChatStore.getState();
     chat.addMessage(designId, {

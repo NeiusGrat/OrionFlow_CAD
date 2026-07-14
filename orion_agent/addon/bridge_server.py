@@ -38,13 +38,34 @@ class _Handler(BaseHTTPRequestHandler):
         allow = self.server.allow_list  # type: ignore[attr-defined]
         return self.client_address[0] in allow
 
+    # Browser clients (the OrionFlow web studio) call the bridge cross-origin.
+    _CORS_ORIGINS = (
+        "https://app.orionflow.in",
+        "http://localhost:5173",
+        "http://localhost:4173",
+    )
+
+    def _cors_headers(self) -> None:
+        origin = self.headers.get("Origin", "")
+        if origin in self._CORS_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "content-type")
+
     def _write(self, status: int, payload: dict) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self._cors_headers()
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self):  # noqa: N802 - CORS preflight for the web studio
+        self.send_response(204)
+        self._cors_headers()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self):  # noqa: N802 - health probe
         if self.path == "/health":

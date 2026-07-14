@@ -34,6 +34,15 @@ class OFLParameter(BaseModel):
     line_number: int
 
 
+class OFLGeometryStats(BaseModel):
+    """Measured from the produced mesh — the agent's validation evidence."""
+
+    watertight: bool = False
+    volume_mm3: float = 0
+    bbox_mm: list[float] = []
+    triangles: int = 0
+
+
 class OFLGenerateResponse(BaseModel):
     success: bool
     ofl_code: str = ""
@@ -41,3 +50,5 @@ class OFLGenerateResponse(BaseModel):
     parameters: list[OFLParameter] = []
     error: Optional[str] = None
     generation_time_ms: float = 0
+    repair_attempts: int = 0
+    stats: Optional[OFLGeometryStats] = None

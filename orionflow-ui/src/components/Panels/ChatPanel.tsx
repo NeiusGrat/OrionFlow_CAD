@@ -1,11 +1,97 @@
 import { useState, useRef, useEffect } from "react";
 import { useDesignStore } from "../../store/designStore";
 import { useChatStore } from "../../store/chatStore";
+import { useOFLStore } from "../../store/oflStore";
+import OrionFlowLogo from "../OrionFlowLogo";
 import { Box, ArrowUp } from "lucide-react";
 
 interface ChatPanelProps {
     onGenerate: (prompt: string, image?: File) => void;
 }
+
+/** Official mark on the brand-violet tile — the agent's avatar. */
+function AgentAvatar({ size = 24 }: { size?: number }) {
+    return (
+        <div style={{
+            width: `${size}px`,
+            height: `${size}px`,
+            borderRadius: `${Math.round(size / 4)}px`,
+            background: "linear-gradient(135deg, #7059E8, #8B79F2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+        }}>
+            <OrionFlowLogo size={Math.round(size * 0.62)} theme="mono" />
+        </div>
+    );
+}
+
+/** Pipeline stages surfaced while the agent works — mirrors the real
+ *  backend flow: intent → OFL code → B-rep build → validate/export. */
+const AGENT_STAGES = [
+    "Parsing engineering intent",
+    "Writing OFL code",
+    "Building B-rep geometry",
+    "Validating & exporting",
+];
+
+function AgentWorking() {
+    const [stage, setStage] = useState(0);
+    const [elapsed, setElapsed] = useState(0);
+
+    useEffect(() => {
+        const t0 = Date.now();
+        const timer = setInterval(() => {
+            const secs = (Date.now() - t0) / 1000;
+            setElapsed(secs);
+            // advance a stage roughly every 4s, hold on the last one
+            setStage(Math.min(Math.floor(secs / 4), AGENT_STAGES.length - 1));
+        }, 500);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div style={{ paddingLeft: "32px" }}>
+            {AGENT_STAGES.map((label, i) => (
+                <div
+                    key={label}
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "3px 0",
+                        fontSize: "12.5px",
+                        color: i < stage ? "#71717a" : i === stage ? "#e4e4e7" : "#3f3f46",
+                        transition: "color 0.3s ease",
+                    }}
+                >
+                    <span style={{
+                        width: "6px",
+                        height: "6px",
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        background: i < stage ? "#22c55e" : i === stage ? "#8B79F2" : "#3f3f46",
+                        animation: i === stage ? "pulse 1.4s ease-in-out infinite" : "none",
+                    }} />
+                    {label}
+                    {i < stage && <span style={{ fontSize: "11px", color: "#22c55e" }}>✓</span>}
+                </div>
+            ))}
+            <div style={{ fontSize: "11px", color: "#52525b", marginTop: "6px" }}>
+                {elapsed.toFixed(0)}s
+            </div>
+        </div>
+    );
+}
+
+/** One-click CAD operations the agent applies to the current part. */
+const QUICK_OPS = [
+    "Chamfer all edges 1 mm",
+    "Fillet vertical edges 3 mm",
+    "Shell to 2 mm walls, open top",
+    "Add 4 corner holes for M4 bolts",
+];
 
 export default function ChatPanel({ onGenerate }: ChatPanelProps) {
     const current = useDesignStore((state) => state.current);
@@ -68,36 +154,24 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                         textAlign: "center",
                         padding: "40px 20px",
                     }}>
-                        <div style={{
-                            width: "56px",
-                            height: "56px",
-                            borderRadius: "14px",
-                            background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            marginBottom: "20px",
-                        }}>
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
-                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                                <path d="M2 17l10 5 10-5" />
-                                <path d="M2 12l10 5 10-5" />
-                            </svg>
+                        <div style={{ marginBottom: "20px" }}>
+                            <AgentAvatar size={56} />
                         </div>
                         <p style={{
                             fontSize: "16px",
-                            fontWeight: 500,
+                            fontWeight: 600,
                             color: "#fff",
                             marginBottom: "8px",
                         }}>
-                            How can I help you?
+                            Orion Agent
                         </p>
                         <p style={{
                             fontSize: "14px",
                             color: "#71717a",
                             lineHeight: 1.5,
                         }}>
-                            Describe a CAD model to generate
+                            Describe a part to generate — then ask for CAD operations:
+                            fillets, shells, holes, patterns.
                         </p>
                     </div>
                 ) : (
@@ -111,31 +185,27 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                     gap: "8px",
                                     marginBottom: "8px",
                                 }}>
-                                    <div style={{
-                                        width: "24px",
-                                        height: "24px",
-                                        borderRadius: "6px",
-                                        background: msg.role === "user" ? "#27272a" : "linear-gradient(135deg, #3b82f6, #6366f1)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                    }}>
-                                        {msg.role === "user" ? (
+                                    {msg.role === "user" ? (
+                                        <div style={{
+                                            width: "24px",
+                                            height: "24px",
+                                            borderRadius: "6px",
+                                            background: "#27272a",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                        }}>
                                             <span style={{ fontSize: "11px", fontWeight: 600, color: "#a1a1aa" }}>Y</span>
-                                        ) : (
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                                                <path d="M2 17l10 5 10-5" />
-                                                <path d="M2 12l10 5 10-5" />
-                                            </svg>
-                                        )}
-                                    </div>
+                                        </div>
+                                    ) : (
+                                        <AgentAvatar />
+                                    )}
                                     <span style={{
                                         fontSize: "13px",
                                         fontWeight: 500,
                                         color: msg.role === "user" ? "#a1a1aa" : "#fff",
                                     }}>
-                                        {msg.role === "user" ? "You" : "OrionFlow"}
+                                        {msg.role === "user" ? "You" : "Orion Agent"}
                                     </span>
                                 </div>
 
@@ -160,6 +230,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                     color: "#e4e4e7",
                                     margin: 0,
                                     paddingLeft: "32px",
+                                    whiteSpace: "pre-line",
                                 }}>
                                     {msg.content}
                                 </p>
@@ -186,7 +257,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                             </div>
                         ))}
 
-                        {/* Loading */}
+                        {/* Agent working — live pipeline stepper */}
                         {isGenerating && (
                             <div>
                                 <div style={{
@@ -195,39 +266,12 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                     gap: "8px",
                                     marginBottom: "8px",
                                 }}>
-                                    <div style={{
-                                        width: "24px",
-                                        height: "24px",
-                                        borderRadius: "6px",
-                                        background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                    }}>
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                                            <path d="M2 17l10 5 10-5" />
-                                            <path d="M2 12l10 5 10-5" />
-                                        </svg>
-                                    </div>
+                                    <AgentAvatar />
                                     <span style={{ fontSize: "13px", fontWeight: 500, color: "#fff" }}>
-                                        OrionFlow
+                                        Orion Agent
                                     </span>
                                 </div>
-                                <div style={{ paddingLeft: "32px", display: "flex", gap: "4px" }}>
-                                    {[0, 1, 2].map((i) => (
-                                        <div
-                                            key={i}
-                                            style={{
-                                                width: "6px",
-                                                height: "6px",
-                                                borderRadius: "50%",
-                                                background: "#3b82f6",
-                                                animation: `pulse 1.4s ease-in-out ${i * 0.15}s infinite`,
-                                            }}
-                                        />
-                                    ))}
-                                </div>
+                                <AgentWorking />
                             </div>
                         )}
                     </div>
@@ -236,6 +280,42 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
 
             {/* Input Area */}
             <div style={{ padding: "16px" }}>
+                {/* Quick CAD operations on the current part */}
+                {current && useOFLStore.getState().oflCode && !isGenerating && (
+                    <div style={{
+                        display: "flex",
+                        gap: "6px",
+                        flexWrap: "wrap",
+                        marginBottom: "10px",
+                    }}>
+                        {QUICK_OPS.map((op) => (
+                            <button
+                                key={op}
+                                onClick={() => onGenerate(op)}
+                                style={{
+                                    fontSize: "11px",
+                                    color: "#a1a1aa",
+                                    background: "#18181b",
+                                    border: "1px solid #27272a",
+                                    borderRadius: "999px",
+                                    padding: "4px 10px",
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = "#e4e4e7";
+                                    e.currentTarget.style.borderColor = "#8B79F2";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = "#a1a1aa";
+                                    e.currentTarget.style.borderColor = "#27272a";
+                                }}
+                            >
+                                {op}
+                            </button>
+                        ))}
+                    </div>
+                )}
                 {/* Input Box */}
                 <div style={{
                     background: "#18181b",
@@ -249,7 +329,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                     {/* Textarea */}
                     <textarea
                         ref={textareaRef}
-                        placeholder="Message OrionFlow..."
+                        placeholder="Message Orion Agent…"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={(e) => {
