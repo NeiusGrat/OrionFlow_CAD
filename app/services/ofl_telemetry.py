@@ -61,4 +61,5 @@ async def log_ofl_event(
                 )
             )
     except Exception as e:
-        logger.warning(f"OFL telemetry write failed: {e}")
+        # repr, not str: asyncio.TimeoutError stringifies to "" and hides itself
+        logger.warning(f"OFL telemetry write failed: {e!r}")

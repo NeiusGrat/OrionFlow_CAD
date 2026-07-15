@@ -40,8 +40,14 @@ def _get_rebuild_service():
     return _rebuild_service
 
 
+# NOTE: these three endpoints are deliberately sync (`def`, not `async def`):
+# the service work is blocking (LLM HTTP + sandbox subprocess + trimesh), and
+# in an async handler it would freeze the event loop for its full duration,
+# stalling every concurrent request. Sync handlers run in the threadpool.
+
+
 @router.post("/generate", response_model=OFLGenerateResponse)
-async def ofl_generate(
+def ofl_generate(
     request: OFLGenerateRequest,
     background: BackgroundTasks,
     authorization: Optional[str] = Header(None),
@@ -56,7 +62,7 @@ async def ofl_generate(
 
 
 @router.post("/rebuild", response_model=OFLGenerateResponse)
-async def ofl_rebuild(
+def ofl_rebuild(
     request: OFLRebuildRequest,
     background: BackgroundTasks,
     authorization: Optional[str] = Header(None),
@@ -71,7 +77,7 @@ async def ofl_rebuild(
 
 
 @router.post("/edit", response_model=OFLGenerateResponse)
-async def ofl_edit(
+def ofl_edit(
     request: OFLEditRequest,
     background: BackgroundTasks,
     authorization: Optional[str] = Header(None),

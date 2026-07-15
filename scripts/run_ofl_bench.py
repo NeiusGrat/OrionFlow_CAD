@@ -79,16 +79,29 @@ def evaluate(case: dict, response: dict, elapsed_s: float) -> dict:
 
 
 def run_api(case: dict, api: str) -> tuple[dict, float]:
+    """POST one prompt; ride out transient network blips with backoff.
+
+    A dropped connection mid-bench (observed: client-side outage killed 18
+    consecutive cases) must not poison the run — a retried generate only
+    costs one extra LLM call.
+    """
     import requests
 
     t0 = time.time()
-    resp = requests.post(
-        f"{api}/api/v1/ofl/generate",
-        json={"prompt": case["prompt"]},
-        timeout=280,  # Modal 303-redirects >150s requests; requests follows them
-    )
-    resp.raise_for_status()
-    return resp.json(), time.time() - t0
+    last_exc: Exception = RuntimeError("no attempts")
+    for attempt in range(3):
+        try:
+            resp = requests.post(
+                f"{api}/api/v1/ofl/generate",
+                json={"prompt": case["prompt"]},
+                timeout=280,  # Modal 303-redirects >150s requests; requests follows
+            )
+            resp.raise_for_status()
+            return resp.json(), time.time() - t0
+        except (requests.ConnectionError, requests.Timeout) as e:
+            last_exc = e
+            time.sleep(20 * (attempt + 1))
+    raise last_exc
 
 
 def run_local(case: dict, service) -> tuple[dict, float]:
@@ -102,12 +115,15 @@ def main() -> int:
     parser.add_argument("--api", default=DEFAULT_API, help="API base URL")
     parser.add_argument("--local", action="store_true", help="run the service in-process")
     parser.add_argument("--limit", type=int, help="run only the first N prompts")
+    parser.add_argument("--offset", type=int, default=0, help="skip the first N prompts")
     parser.add_argument("--only", help="run only this prompt id")
     args = parser.parse_args()
 
     cases = load_bench()
     if args.only:
         cases = [c for c in cases if c["id"] == args.only]
+    if args.offset:
+        cases = cases[args.offset:]
     if args.limit:
         cases = cases[: args.limit]
     if not cases:
@@ -165,7 +181,7 @@ def main() -> int:
         by_cat.setdefault(r["category"], []).append(r["pass"])
     for cat, vals in sorted(by_cat.items()):
         print(f"    {cat:<12} {sum(vals)}/{len(vals)}")
-    print(f"results → {out_path}")
+    print(f"results -> {out_path}")
     return 0 if passed == n else 1
 
 
