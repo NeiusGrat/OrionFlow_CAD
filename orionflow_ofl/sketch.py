@@ -33,12 +33,27 @@ class Sketch:
         self._profile = ("circle", {"diameter": diameter})
         return self
 
+    def polygon(self, points):
+        """Closed polygon from a list of (x, y) vertices.
+
+        Vertices are used exactly as given — NOT recentered on the origin.
+        """
+        pts = [tuple(p) for p in points]
+        if len(pts) < 3:
+            raise GeometryError(
+                f"polygon needs at least 3 (x, y) vertices, got {len(pts)}"
+            )
+        self._profile = ("polygon", {"points": pts})
+        return self
+
     # ── extrude ──────────────────────────────────────────────────
 
     def extrude(self, thickness):
         """Extrude the current profile in +Z by *thickness* mm. Returns a Part."""
         if self._profile is None:
-            raise GeometryError("No profile defined — call .rect(), .rounded_rect(), or .circle() first")
+            raise GeometryError(
+                "No profile defined — call .rect(), .rounded_rect(), .circle(), or .polygon() first"
+            )
 
         from .internal.context import build_extrusion
         from .part import Part

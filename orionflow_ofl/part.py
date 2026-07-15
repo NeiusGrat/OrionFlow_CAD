@@ -42,6 +42,30 @@ class Part:
         result -= hole
         return result
 
+    def translate(self, x: float = 0, y: float = 0, z: float = 0) -> Part:
+        """Move the part by (x, y, z) mm in the global frame."""
+        self._solid = _Pos(x, y, z) * self._solid
+        return self
+
+    def at(self, x: float = 0, y: float = 0, z: float = 0) -> Part:
+        """Position a part built at the origin: alias of translate()."""
+        return self.translate(x, y, z)
+
+    def rotate(self, angle: float, axis="z") -> Part:
+        """Rotate the part *angle* degrees about a global axis through the origin.
+
+        axis: "x" | "y" | "z" (a build123d Axis is also accepted).
+        """
+        from build123d import Axis as _Axis
+
+        if isinstance(axis, str):
+            try:
+                axis = {"x": _Axis.X, "y": _Axis.Y, "z": _Axis.Z}[axis.lower()]
+            except KeyError:
+                raise ValueError(f'Unknown axis: {axis!r} — use "x", "y", or "z"')
+        self._solid = self._solid.rotate(axis, angle)
+        return self
+
     def fillet(self, radius: float, edges: str = "all") -> Part:
         """Round edges of the solid. edges: 'all' | 'top' | 'bottom' | 'vertical'"""
         from build123d import fillet as _fillet, Axis as _Axis

@@ -6,6 +6,7 @@ from build123d import (
     Rectangle as _Rectangle,
     RectangleRounded as _RectangleRounded,
     Circle as _Circle,
+    Polygon as _Polygon,
     extrude as _extrude,
 )
 
@@ -27,6 +28,9 @@ def build_extrusion(plane, profile_type, params, thickness):
                 )
             elif profile_type == "circle":
                 _Circle(params["diameter"] / 2)
+            elif profile_type == "polygon":
+                # align=None keeps vertices exactly as given (no recentering)
+                _Polygon(*params["points"], align=None)
             else:
                 raise GeometryError(f"Unknown profile type: {profile_type}")
         _extrude(amount=thickness)

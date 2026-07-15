@@ -16,9 +16,17 @@ output executable Python code using the orionflow_ofl library.
 
 COORDINATE SYSTEM (critical):
 - Every profile (rect, rounded_rect, circle) is CENTERED on the origin (0, 0).
+- polygon() is the exception: its vertices are used exactly as given, NOT recentered.
 - Hole positions in .at(x, y) are measured FROM THE PART CENTER, not from a corner.
 - A hole inset i from the corner of a w x h plate is at (+-(w/2 - i), +-(h/2 - i)).
 - Extrusion goes from Z=0 up to Z=thickness.
+
+DIMENSION RULES (critical):
+- Stated dimensions are the OUTER envelope of the FINISHED part. Walls, ribs and
+  flanges fit INSIDE them — never grow the part beyond the stated size.
+- "Hollow box with w mm walls" = solid outer box, then .shell(w, open_face=None).
+  "Open-top box / tray" = .shell(w, open_face="top"). Never build walls piece by piece.
+- "t mm thick" is the plate/wall thickness (the small dimension), never the part height.
 
 API:
 - Always start with: from orionflow_ofl import *
@@ -26,8 +34,11 @@ API:
 - Sketch(Plane.XY).rect(w, h).extrude(t) for rectangular plates
 - Sketch(Plane.XY).rounded_rect(w, h, r).extrude(t) for rounded-corner plates
 - Sketch(Plane.XY).circle(diameter).extrude(t) for circular parts
+- Sketch(Plane.XY).polygon([(x1, y1), (x2, y2), ...]).extrude(t) for triangles, gussets, hexagons
 - Sketch(Plane.XY, offset=z).circle(d).extrude(t) to start a feature at height z (e.g. a boss on top of a base)
-- part += other_part to fuse two parts (boss on a plate, stacked steps)
+- part.rotate(angle_deg, axis="x") rotates about that global axis through the origin; axis: "x" | "y" | "z"
+- part.translate(x, y, z) moves the part; position pieces BEFORE fusing them
+- part += other_part to fuse two parts (boss on a plate, stacked steps, bracket legs)
 - Hole(diameter).at(x, y).through().label("name") for a through hole
 - Hole(diameter).at(x, y).to_depth(d) for a blind hole (from the top face down)
 - Hole(diameter).at_circular(radius, count, start_angle).through() for a circular bolt pattern (radius = PCD/2)
@@ -100,6 +111,30 @@ FEW_SHOT = [
             'part.chamfer(chamfer_d, edges="top")\n\n'
             'part -= Hole(bore_dia).at(0, 0).through().label("bearing_bore")\n'
             'part -= Hole(bolt_dia).at_circular(bolt_pcd / 2, count=4, start_angle=45).through().label("M5_mount")\n\n'
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "Triangular gusset plate, 40mm legs, 5mm thick.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "leg = 40\nthickness = 5\n\n"
+            "part = Sketch(Plane.XY).polygon([(0, 0), (leg, 0), (0, leg)]).extrude(thickness)\n\n"
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "L bracket: 50mm base, 40mm upright wall, 30mm wide, 4mm thick, with two 5mm holes in the base.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "base_len = 50\nwall_h = 40\nwidth = 30\nt = 4\nhole_dia = 5\n\n"
+            "base = Sketch(Plane.XY).rect(base_len, width).extrude(t)\n\n"
+            "# upright wall: build flat, stand it up, slide flush with the base end\n"
+            "wall = Sketch(Plane.XY).rect(wall_h, width).extrude(t)\n"
+            'wall.rotate(90, axis="y")  # wall_h now runs along Z, t along X\n'
+            "wall.translate(-base_len / 2, 0, wall_h / 2)\n\n"
+            "part = base + wall\n\n"
+            'part -= Hole(hole_dia).at(base_len / 2 - 12, 0).at(base_len / 2 - 32, 0).through().label("base_holes")\n\n'
             'export(part, "part.step")'
         ),
     },

@@ -1,12 +1,16 @@
-"""OrionFlow Language (OFL) v0.1 — deterministic Python CAD DSL.
+"""OrionFlow Language (OFL) — deterministic Python CAD DSL.
 
-Public API (Phase 1):
+Public API:
     Plane       — XY, XZ, YZ
-    Sketch      — .rect() / .rounded_rect() / .circle() → .extrude() → Part
-    Part        — supports  part -= hole
+    Sketch      — .rect() / .rounded_rect() / .circle() / .polygon() → .extrude() → Part
+    Part        — booleans (+, -), .rotate() / .translate() / .at(),
+                  .fillet() / .chamfer() / .shell()
     Hole        — .at() / .at_circular() / .through() / .to_depth() / .label()
+    Axis        — X, Y, Z (re-exported from build123d for Part.rotate)
     export()    — write Part to .step or .stl
 """
+
+from build123d import Axis
 
 from .planes import Plane
 from .sketch import Sketch
@@ -14,5 +18,5 @@ from .part import Part
 from .hole import Hole
 from .export import export
 
-__all__ = ["Plane", "Sketch", "Part", "Hole", "export"]
-__version__ = "0.2.0"
+__all__ = ["Plane", "Sketch", "Part", "Hole", "Axis", "export"]
+__version__ = "0.3.0"
