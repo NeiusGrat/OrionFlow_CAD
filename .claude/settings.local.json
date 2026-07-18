@@ -348,7 +348,12 @@
       "Bash(nslookup -type=TXT orionflow.in 8.8.8.8)",
       "Bash(curl *)",
       "Bash(vercel --prod --yes)",
-      "Bash(PYTHONIOENCODING=utf-8 python -m modal deploy deploy/modal_app.py)"
+      "Bash(PYTHONIOENCODING=utf-8 python -m modal deploy deploy/modal_app.py)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter \"sed '/Co-Authored-By: Claude/d' | git stripspace\" -- --all)",
+      "Bash(git stash *)",
+      "Bash(git update-ref *)",
+      "Bash(git reflog *)",
+      "Bash(git gc *)"
     ]
   }
 }
