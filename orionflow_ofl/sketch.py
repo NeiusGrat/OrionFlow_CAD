@@ -33,6 +33,19 @@ class Sketch:
         self._profile = ("circle", {"diameter": diameter})
         return self
 
+    def slot(self, length, width):
+        """Stadium/obround slot: overall *length* tip-to-tip, *width* across.
+
+        Centered on the sketch plane origin, long axis along X.
+        """
+        if length <= width:
+            raise GeometryError(
+                f"slot length ({length}) must exceed width ({width}) — "
+                "use .circle() for a round hole"
+            )
+        self._profile = ("slot", {"length": length, "width": width})
+        return self
+
     def polygon(self, points):
         """Closed polygon from a list of (x, y) vertices.
 
@@ -52,7 +65,8 @@ class Sketch:
         """Extrude the current profile in +Z by *thickness* mm. Returns a Part."""
         if self._profile is None:
             raise GeometryError(
-                "No profile defined — call .rect(), .rounded_rect(), .circle(), or .polygon() first"
+                "No profile defined — call .rect(), .rounded_rect(), .circle(), "
+                ".slot(), or .polygon() first"
             )
 
         from .internal.context import build_extrusion

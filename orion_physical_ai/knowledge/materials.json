@@ -1,0 +1,117 @@
+{
+  "aluminum_6061_t6": {
+    "name": "Aluminum 6061-T6",
+    "density_g_cm3": 2.70,
+    "yield_strength_mpa": 276,
+    "ultimate_strength_mpa": 310,
+    "elastic_modulus_gpa": 68.9,
+    "machinability": "excellent",
+    "weldability": "good",
+    "cost_per_kg_usd": 3.5,
+    "typical_processes": ["cnc_milling", "sheet_metal", "extrusion"],
+    "min_wall_thickness_mm": {"cnc_milling": 1.0, "sheet_metal": 0.5, "casting": 2.0}
+  },
+  "aluminum_7075_t6": {
+    "name": "Aluminum 7075-T6",
+    "density_g_cm3": 2.81,
+    "yield_strength_mpa": 503,
+    "ultimate_strength_mpa": 572,
+    "elastic_modulus_gpa": 71.7,
+    "machinability": "good",
+    "weldability": "poor",
+    "cost_per_kg_usd": 8.0,
+    "typical_processes": ["cnc_milling"],
+    "min_wall_thickness_mm": {"cnc_milling": 1.0}
+  },
+  "steel_1018": {
+    "name": "Mild Steel 1018",
+    "density_g_cm3": 7.87,
+    "yield_strength_mpa": 370,
+    "ultimate_strength_mpa": 440,
+    "elastic_modulus_gpa": 205,
+    "machinability": "good",
+    "weldability": "excellent",
+    "cost_per_kg_usd": 1.2,
+    "typical_processes": ["cnc_milling", "sheet_metal", "welding"],
+    "min_wall_thickness_mm": {"cnc_milling": 1.0, "sheet_metal": 0.5}
+  },
+  "steel_4140": {
+    "name": "Alloy Steel 4140",
+    "density_g_cm3": 7.85,
+    "yield_strength_mpa": 655,
+    "ultimate_strength_mpa": 755,
+    "elastic_modulus_gpa": 205,
+    "machinability": "good",
+    "weldability": "fair",
+    "cost_per_kg_usd": 2.8,
+    "typical_processes": ["cnc_milling", "forging"],
+    "min_wall_thickness_mm": {"cnc_milling": 1.0}
+  },
+  "stainless_304": {
+    "name": "Stainless Steel 304",
+    "density_g_cm3": 8.00,
+    "yield_strength_mpa": 215,
+    "ultimate_strength_mpa": 505,
+    "elastic_modulus_gpa": 193,
+    "machinability": "fair",
+    "weldability": "excellent",
+    "cost_per_kg_usd": 4.5,
+    "typical_processes": ["cnc_milling", "sheet_metal"],
+    "min_wall_thickness_mm": {"cnc_milling": 1.0, "sheet_metal": 0.5}
+  },
+  "pla": {
+    "name": "PLA (3D printed)",
+    "density_g_cm3": 1.24,
+    "yield_strength_mpa": 55,
+    "ultimate_strength_mpa": 60,
+    "elastic_modulus_gpa": 3.5,
+    "machinability": "n/a",
+    "cost_per_kg_usd": 25.0,
+    "typical_processes": ["3d_printing_fdm"],
+    "min_wall_thickness_mm": {"3d_printing_fdm": 0.8}
+  },
+  "petg": {
+    "name": "PETG (3D printed)",
+    "density_g_cm3": 1.27,
+    "yield_strength_mpa": 50,
+    "ultimate_strength_mpa": 53,
+    "elastic_modulus_gpa": 2.1,
+    "machinability": "n/a",
+    "cost_per_kg_usd": 28.0,
+    "typical_processes": ["3d_printing_fdm"],
+    "min_wall_thickness_mm": {"3d_printing_fdm": 0.8}
+  },
+  "abs": {
+    "name": "ABS",
+    "density_g_cm3": 1.05,
+    "yield_strength_mpa": 40,
+    "ultimate_strength_mpa": 44,
+    "elastic_modulus_gpa": 2.3,
+    "machinability": "good",
+    "cost_per_kg_usd": 22.0,
+    "typical_processes": ["3d_printing_fdm", "injection_molding"],
+    "min_wall_thickness_mm": {"3d_printing_fdm": 0.8, "injection_molding": 1.0}
+  },
+  "nylon_pa12": {
+    "name": "Nylon PA12",
+    "density_g_cm3": 1.01,
+    "yield_strength_mpa": 48,
+    "ultimate_strength_mpa": 50,
+    "elastic_modulus_gpa": 1.7,
+    "machinability": "good",
+    "cost_per_kg_usd": 60.0,
+    "typical_processes": ["3d_printing_sls", "injection_molding"],
+    "min_wall_thickness_mm": {"3d_printing_sls": 0.7, "injection_molding": 1.0}
+  },
+  "pom_delrin": {
+    "name": "POM / Delrin (Acetal)",
+    "density_g_cm3": 1.41,
+    "yield_strength_mpa": 71,
+    "ultimate_strength_mpa": 75,
+    "elastic_modulus_gpa": 3.1,
+    "machinability": "excellent",
+    "cost_per_kg_usd": 6.0,
+    "typical_processes": ["cnc_milling", "injection_molding"],
+    "min_wall_thickness_mm": {"cnc_milling": 0.8, "injection_molding": 1.0}
+  }
+}

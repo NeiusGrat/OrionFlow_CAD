@@ -1,0 +1,46 @@
+{
+  "mounting_bracket": {
+    "thickness_to_bolt_ratio": 1.5,
+    "gusset_angle_deg": 45,
+    "gusset_thickness_ratio": 0.8,
+    "hole_edge_distance_ratio": 1.5,
+    "bolt_spacing_ratio": 3.0,
+    "note": "plate thickness = 1.5x bolt dia; hole center >= 1.5x dia from any edge"
+  },
+  "shaft": {
+    "step_transition_fillet_mm": 2.0,
+    "keyway_depth_ratio": 0.25,
+    "bearing_seat_tolerance": "h6",
+    "note": "fillet every diameter step; bearing seats sized to bearing ID at h6"
+  },
+  "bearing_seat": {
+    "press_fit_interference_mm": 0.02,
+    "slip_fit_clearance_mm": 0.05,
+    "seat_depth_ratio": 1.0,
+    "shoulder_ratio": 0.15,
+    "note": "pocket dia = bearing OD + 0.05 slip / -0.02 press; depth = bearing width; keep a shoulder of 15% OD"
+  },
+  "gear": {
+    "min_teeth": 12,
+    "face_width_to_module_ratio": 8,
+    "hub_dia_to_bore_ratio": 1.8,
+    "note": "under 12 teeth undercuts; hub at least 1.8x bore for keyway strength"
+  },
+  "enclosure": {
+    "wall_thickness_printed_mm": 2.0,
+    "wall_thickness_cnc_mm": 1.5,
+    "boss_od_to_screw_ratio": 2.2,
+    "lid_clearance_mm": 0.2
+  },
+  "3d_print_fits": {
+    "press_fit_clearance_mm": 0.1,
+    "slip_fit_clearance_mm": 0.25,
+    "free_fit_clearance_mm": 0.5,
+    "note": "FDM holes shrink: drill or add 0.2 mm to any bore that must fit a shaft"
+  },
+  "strength_keywords": {
+    "strong": "add 45-deg gussets at 0.8x plate thickness",
+    "light": "add lightening holes or pockets, keep 1.5x hole-dia webs between them",
+    "stiff": "prefer ribs over thickness: rib height 3x wall, thickness 0.6x wall"
+  }
+}

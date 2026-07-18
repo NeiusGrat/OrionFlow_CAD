@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from build123d import Cylinder as _Cylinder, Pos as _Pos
+from build123d import Cylinder as _Cylinder, Pos as _Pos, Rot as _Rot
 
 from .internal.errors import GeometryError
-from .internal.selectors import get_z_extent
+from .internal.selectors import get_axis_extent
 
 
 class Part:
@@ -27,8 +27,34 @@ class Part:
         if solid is None:
             raise GeometryError("Boolean union produced no geometry")
 
+        # A union that yields multiple disconnected bodies is almost always a
+        # placement bug — typically cumulative .translate() calls on a piece
+        # reused across loop iterations (transforms MUTATE the part).
+        try:
+            n_bodies = len(solid.solids())
+        except Exception:
+            n_bodies = 1
+        if n_bodies > 1:
+            bb = self._solid.bounding_box()
+            ob = other._solid.bounding_box()
+            raise GeometryError(
+                f"Union produced {n_bodies} disconnected bodies — the added piece "
+                "does not touch the part. Pieces must overlap or share a face. "
+                f"Part spans X [{bb.min.X:g}, {bb.max.X:g}], Y [{bb.min.Y:g}, {bb.max.Y:g}], "
+                f"Z [{bb.min.Z:g}, {bb.max.Z:g}]; piece spans X [{ob.min.X:g}, {ob.max.X:g}], "
+                f"Y [{ob.min.Y:g}, {ob.max.Y:g}], Z [{ob.min.Z:g}, {ob.max.Z:g}]. "
+                "Note: .translate()/.rotate() MUTATE the part they are called on — "
+                "inside a loop, create the piece inside the loop body (or use .copy())."
+            )
+
         self._solid = solid
         return self
+
+    def copy(self) -> Part:
+        """Independent copy — use before transforming a piece you will reuse."""
+        import copy as _copy
+
+        return Part(_copy.deepcopy(self._solid))
 
     def __add__(self, other):
         """Binary union: ``base + boss`` returns a new Part."""
@@ -36,10 +62,10 @@ class Part:
         result += other
         return result
 
-    def __sub__(self, hole):
-        """Binary subtraction: ``plate - hole`` returns a new Part."""
+    def __sub__(self, other):
+        """Binary subtraction: ``plate - hole`` or ``plate - slot_part``."""
         result = Part(self._solid)
-        result -= hole
+        result -= other
         return result
 
     def translate(self, x: float = 0, y: float = 0, z: float = 0) -> Part:
@@ -115,30 +141,73 @@ class Part:
         # build123d offset: negative amount = hollow inwards
         self._solid = _offset(self._solid, amount=-wall_thickness, openings=openings)
         return self
-    def __isub__(self, hole):
+    def __isub__(self, other):
         from .hole import Hole
 
-        if not isinstance(hole, Hole):
-            raise TypeError(f"Can only subtract a Hole from a Part, got {type(hole).__name__}")
+        if isinstance(other, Part):
+            return self._subtract_part(other)
+        if isinstance(other, Hole):
+            return self._subtract_hole(other)
+        raise TypeError(
+            f"Can only subtract a Hole or a Part from a Part, got {type(other).__name__}"
+        )
 
+    def _subtract_part(self, other: Part) -> Part:
+        """Cut another Part's solid out of this one (slots, pockets, cutouts)."""
+        cut = self._solid - other._solid
+        if cut is None:
+            raise GeometryError("Boolean subtraction produced no geometry")
+
+        if abs(self._solid.volume - cut.volume) < max(self._solid.volume, 1.0) * 1e-9:
+            bb = self._solid.bounding_box()
+            ob = other._solid.bounding_box()
+            raise GeometryError(
+                "Part subtraction removed no material — the cutter does not overlap "
+                f"the part. Part spans X [{bb.min.X:g}, {bb.max.X:g}], "
+                f"Y [{bb.min.Y:g}, {bb.max.Y:g}], Z [{bb.min.Z:g}, {bb.max.Z:g}]; "
+                f"cutter spans X [{ob.min.X:g}, {ob.max.X:g}], "
+                f"Y [{ob.min.Y:g}, {ob.max.Y:g}], Z [{ob.min.Z:g}, {ob.max.Z:g}]. "
+                "Position the cutter with .at()/.translate() so the volumes overlap."
+            )
+        self._solid = cut
+        return self
+
+    def _subtract_hole(self, hole) -> Part:
         if not hole._positions:
             raise GeometryError("Hole has no positions - call .at() or .at_circular() first")
 
         radius = hole._diameter / 2
-        z_min, z_max = get_z_extent(self._solid)
+        axis = hole._axis
+        lo, hi = get_axis_extent(self._solid, axis)
 
         if hole._through:
-            depth = (z_max - z_min) + 2.0  # 1 mm buffer each side
+            depth = (hi - lo) + 2.0  # 1 mm buffer each side
         elif hole._depth is not None:
             depth = hole._depth
         else:
             raise GeometryError("Hole depth not set - call .through() or .to_depth(d)")
 
-        z_center = (z_min + z_max) / 2 if hole._through else (z_max - depth / 2)
+        # Blind holes enter from a face of the drill axis: "top" = max side
+        # (default), "bottom" = min side (e.g. the far end wall of a tube).
+        if hole._through:
+            axis_center = (lo + hi) / 2
+        elif getattr(hole, "_from_face", "top") == "bottom":
+            axis_center = lo + depth / 2
+        else:
+            axis_center = hi - depth / 2
 
+        # The Cylinder's own axis is Z; rotate it onto the drill axis, and map
+        # the 2-tuple position onto the two remaining global axes in order:
+        #   z → (x, y) · x → (y, z) · y → (x, z)
         solid = self._solid
-        for x, y in hole._positions:
-            cyl = _Pos(x, y, z_center) * _Cylinder(radius, depth)
+        for u, v in hole._positions:
+            if axis == "z":
+                loc = _Pos(u, v, axis_center)
+            elif axis == "x":
+                loc = _Pos(axis_center, u, v) * _Rot(0, 90, 0)
+            else:  # "y"
+                loc = _Pos(u, axis_center, v) * _Rot(90, 0, 0)
+            cyl = loc * _Cylinder(radius, depth)
             cut = solid - cyl
 
             if cut is None:
@@ -149,9 +218,12 @@ class Part:
             if abs(solid.volume - cut.volume) < max(solid.volume, 1.0) * 1e-9:
                 label = f" '{hole._label}'" if hole._label else ""
                 bb = solid.bounding_box()
+                plane_axes = {"z": "XY", "x": "YZ", "y": "XZ"}[axis]
                 raise GeometryError(
-                    f"Hole{label} d={hole._diameter} at ({x:g}, {y:g}) does not cut the part. "
-                    f"The part spans X [{bb.min.X:g}, {bb.max.X:g}], Y [{bb.min.Y:g}, {bb.max.Y:g}]. "
+                    f"Hole{label} d={hole._diameter} along {axis.upper()} at "
+                    f"({u:g}, {v:g}) on the {plane_axes} plane does not cut the part. "
+                    f"The part spans X [{bb.min.X:g}, {bb.max.X:g}], "
+                    f"Y [{bb.min.Y:g}, {bb.max.Y:g}], Z [{bb.min.Z:g}, {bb.max.Z:g}]. "
                     f"Hole coordinates are measured from the part CENTER (0, 0), not a corner."
                 )
             solid = cut

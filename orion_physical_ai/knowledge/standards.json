@@ -1,0 +1,61 @@
+{
+  "metric_bolt_clearance_mm": {
+    "M2": 2.2, "M2.5": 2.7, "M3": 3.4, "M4": 4.5,
+    "M5": 5.5, "M6": 6.6, "M8": 9.0, "M10": 11.0, "M12": 13.5
+  },
+  "metric_bolt_clearance_close_mm": {
+    "M2": 2.1, "M2.5": 2.6, "M3": 3.2, "M4": 4.3,
+    "M5": 5.3, "M6": 6.4, "M8": 8.4, "M10": 10.5, "M12": 13.0
+  },
+  "metric_tap_drill_mm": {
+    "M2": 1.6, "M2.5": 2.05, "M3": 2.5, "M4": 3.3,
+    "M5": 4.2, "M6": 5.0, "M8": 6.8, "M10": 8.5, "M12": 10.2
+  },
+  "socket_head_cap_counterbore_mm": {
+    "M2": {"cb_dia": 4.4, "cb_depth": 2.0},
+    "M2.5": {"cb_dia": 5.0, "cb_depth": 2.5},
+    "M3": {"cb_dia": 6.0, "cb_depth": 3.0},
+    "M4": {"cb_dia": 8.0, "cb_depth": 4.0},
+    "M5": {"cb_dia": 10.0, "cb_depth": 5.0},
+    "M6": {"cb_dia": 11.0, "cb_depth": 6.0},
+    "M8": {"cb_dia": 15.0, "cb_depth": 8.0}
+  },
+  "nema_motors": {
+    "NEMA8":  {"face_mm": 20.4, "pcd_mm": 16.0,  "mount_thread": "M2",   "pilot_dia_mm": 15.0, "shaft_dia_mm": 4.0},
+    "NEMA11": {"face_mm": 28.2, "pcd_mm": 23.0,  "mount_thread": "M2.5", "pilot_dia_mm": 22.0, "shaft_dia_mm": 5.0},
+    "NEMA14": {"face_mm": 35.2, "pcd_mm": 26.0,  "mount_thread": "M3",   "pilot_dia_mm": 22.0, "shaft_dia_mm": 5.0},
+    "NEMA17": {"face_mm": 42.3, "pcd_mm": 31.0,  "mount_thread": "M3",   "pilot_dia_mm": 22.0, "shaft_dia_mm": 5.0},
+    "NEMA23": {"face_mm": 57.2, "pcd_mm": 47.14, "mount_thread": "M5",   "pilot_dia_mm": 38.1, "shaft_dia_mm": 6.35},
+    "NEMA34": {"face_mm": 86.0, "pcd_mm": 69.6,  "mount_thread": "M6",   "pilot_dia_mm": 73.0, "shaft_dia_mm": 14.0}
+  },
+  "deep_groove_bearings": {
+    "MR105ZZ": {"id_mm": 5,  "od_mm": 10, "width_mm": 4},
+    "625ZZ":   {"id_mm": 5,  "od_mm": 16, "width_mm": 5},
+    "688ZZ":   {"id_mm": 8,  "od_mm": 16, "width_mm": 5},
+    "608ZZ":   {"id_mm": 8,  "od_mm": 22, "width_mm": 7, "dynamic_load_n": 3300, "static_load_n": 1370},
+    "6800ZZ":  {"id_mm": 10, "od_mm": 19, "width_mm": 5},
+    "6000ZZ":  {"id_mm": 10, "od_mm": 26, "width_mm": 8},
+    "6801ZZ":  {"id_mm": 12, "od_mm": 21, "width_mm": 5},
+    "6001ZZ":  {"id_mm": 12, "od_mm": 28, "width_mm": 8},
+    "6802ZZ":  {"id_mm": 15, "od_mm": 24, "width_mm": 5},
+    "6902ZZ":  {"id_mm": 15, "od_mm": 28, "width_mm": 7}
+  },
+  "aluminum_extrusion": {
+    "2020": {"size_mm": [20, 20], "slot_mm": 6, "center_hole_tap": "M5", "center_hole_drill_mm": 4.2, "tnut_thread": "M5"},
+    "2040": {"size_mm": [20, 40], "slot_mm": 6, "center_hole_tap": "M5", "center_hole_drill_mm": 4.2, "tnut_thread": "M5"},
+    "3030": {"size_mm": [30, 30], "slot_mm": 8, "center_hole_tap": "M8", "center_hole_drill_mm": 6.8, "tnut_thread": "M6"},
+    "4040": {"size_mm": [40, 40], "slot_mm": 8, "center_hole_tap": "M8", "center_hole_drill_mm": 6.8, "tnut_thread": "M8"}
+  },
+  "keyways_din6885_mm": {
+    "shaft_8":  {"key_w": 2, "key_h": 2, "shaft_depth": 1.2, "hub_depth": 1.0},
+    "shaft_10": {"key_w": 3, "key_h": 3, "shaft_depth": 1.8, "hub_depth": 1.4},
+    "shaft_12": {"key_w": 4, "key_h": 4, "shaft_depth": 2.5, "hub_depth": 1.8},
+    "shaft_15": {"key_w": 5, "key_h": 5, "shaft_depth": 3.0, "hub_depth": 2.3},
+    "shaft_20": {"key_w": 6, "key_h": 6, "shaft_depth": 3.5, "hub_depth": 2.8}
+  },
+  "standard_drill_sizes_mm": [
+    1.0, 1.5, 2.0, 2.05, 2.5, 3.0, 3.2, 3.3, 3.4, 4.0, 4.2, 4.5, 5.0, 5.5,
+    6.0, 6.5, 6.6, 6.8, 7.0, 8.0, 8.5, 9.0, 10.0, 10.2, 11.0, 12.0, 13.0,
+    13.5, 14.0, 15.0, 16.0, 18.0, 20.0, 22.0, 25.0
+  ]
+}

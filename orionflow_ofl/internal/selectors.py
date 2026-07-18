@@ -9,6 +9,16 @@ def get_z_extent(solid):
     return bbox.min.Z, bbox.max.Z
 
 
+def get_axis_extent(solid, axis):
+    """Return (min, max) of the solid's bounding box along "x", "y", or "z"."""
+    bbox = solid.bounding_box()
+    return {
+        "x": (bbox.min.X, bbox.max.X),
+        "y": (bbox.min.Y, bbox.max.Y),
+        "z": (bbox.min.Z, bbox.max.Z),
+    }[axis]
+
+
 def get_top_face_z(solid):
     """Return the Z coordinate of the top face centroid (highest Z)."""
     faces = solid.faces()

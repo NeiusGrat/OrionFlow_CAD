@@ -353,7 +353,10 @@
       "Bash(git stash *)",
       "Bash(git update-ref *)",
       "Bash(git reflog *)",
-      "Bash(git gc *)"
+      "Bash(git gc *)",
+      "Bash(OFL_LLM_PROVIDER=k2think python scripts/run_robotics_bench.py --only heatsink)",
+      "Bash(pip cache *)",
+      "Bash(pip uninstall *)"
     ]
   }
 }

@@ -2,10 +2,12 @@
 
 Public API:
     Plane       — XY, XZ, YZ
-    Sketch      — .rect() / .rounded_rect() / .circle() / .polygon() → .extrude() → Part
-    Part        — booleans (+, -), .rotate() / .translate() / .at(),
-                  .fillet() / .chamfer() / .shell()
-    Hole        — .at() / .at_circular() / .through() / .to_depth() / .label()
+    Sketch      — .rect() / .rounded_rect() / .circle() / .slot() / .polygon()
+                  → .extrude() → Part
+    Part        — booleans (+, -; subtract Holes AND Parts), .rotate() /
+                  .translate() / .at(), .fillet() / .chamfer() / .shell()
+    Hole        — .at() / .at_circular() / .along("x"|"y"|"z") /
+                  .through() / .to_depth() / .label()
     Axis        — X, Y, Z (re-exported from build123d for Part.rotate)
     export()    — write Part to .step or .stl
 """

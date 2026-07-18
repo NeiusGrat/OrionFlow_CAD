@@ -27,6 +27,9 @@ DIMENSION RULES (critical):
 - "Hollow box with w mm walls" = solid outer box, then .shell(w, open_face=None).
   "Open-top box / tray" = .shell(w, open_face="top"). Never build walls piece by piece.
 - "t mm thick" is the plate/wall thickness (the small dimension), never the part height.
+- Exception: explicitly requested mounting EARS, lugs or tabs attach OUTSIDE the stated
+  body footprint (that is their purpose) — fuse them to the body, then drill their holes
+  at the ear centers.
 
 API:
 - Always start with: from orionflow_ofl import *
@@ -39,10 +42,17 @@ API:
 - part.rotate(angle_deg, axis="x") rotates about that global axis through the origin; axis: "x" | "y" | "z"
 - part.translate(x, y, z) moves the part; position pieces BEFORE fusing them
 - part += other_part to fuse two parts (boss on a plate, stacked steps, bracket legs)
+- Sketch(Plane.XY).slot(length, width).extrude(t) for a stadium/obround slot (length tip-to-tip, long axis along X; .rotate(90) for a Y slot)
 - Hole(diameter).at(x, y).through().label("name") for a through hole
 - Hole(diameter).at(x, y).to_depth(d) for a blind hole (from the top face down)
 - Hole(diameter).at_circular(radius, count, start_angle).through() for a circular bolt pattern (radius = PCD/2)
+- Hole(diameter).along("x").at(y, z).through() for a SIDE hole drilled along X; .along("y").at(x, z) drills along Y. Use this for holes in upright walls — do NOT rotate the part to drill it
+- .at() takes exactly TWO coordinates. Blind holes default to entering from the TOP face; Hole(d).at(x, y).to_depth(depth, from_face="bottom") enters from the bottom/min face
+- Hollow tube with bearing bores in both end walls: shell(wall, open_face=None) for a closed shell, then ONE Hole(...).through() cuts both end walls in a single operation
+- .translate()/.rotate() MUTATE the part and return it. In a loop, CREATE the piece inside the loop body — never reuse one piece with cumulative translates (use .copy() to clone)
+- Every piece you += must touch or overlap the main body — disconnected pieces are an error
 - part -= hole for boolean subtraction
+- part -= cutter_part subtracts another Part: use for slots, rectangular cutouts and pockets (build the cutter slightly taller than the plate and .translate(z=-1) so it cuts clean through)
 - part.fillet(r, edges="vertical") rounds edges; edges: "all" | "top" | "bottom" | "vertical"
 - part.chamfer(d, edges="top") chamfers edges; same edge selectors
 - part.shell(wall, open_face="top") hollows the part leaving a wall; open_face: "top" | "bottom" | None
@@ -120,6 +130,67 @@ FEW_SHOT = [
             "from orionflow_ofl import *\n\n"
             "leg = 40\nthickness = 5\n\n"
             "part = Sketch(Plane.XY).polygon([(0, 0), (leg, 0), (0, leg)]).extrude(thickness)\n\n"
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "Plate 80x40mm, 5mm thick, with a central slot 40mm long and 8mm wide.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "plate_w = 80\nplate_h = 40\nthickness = 5\nslot_len = 40\nslot_w = 8\n\n"
+            "part = Sketch(Plane.XY).rect(plate_w, plate_h).extrude(thickness)\n\n"
+            "# cutter taller than the plate, dropped 1mm so it cuts clean through\n"
+            "slot = Sketch(Plane.XY).slot(slot_len, slot_w).extrude(thickness + 2).translate(z=-1)\n"
+            "part -= slot\n\n"
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "Heat sink 40x40mm, 4mm base, with 5 fins 15mm tall and 2mm thick.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "base = 40\nbase_t = 4\nfin_count = 5\nfin_h = 15\nfin_t = 2\n\n"
+            "part = Sketch(Plane.XY).rect(base, base).extrude(base_t)\n\n"
+            "# fins sit ON the base (offset=base_t). Create each fin INSIDE the\n"
+            "# loop: transforms mutate, so a reused piece would drift.\n"
+            "pitch = (base - fin_t) / (fin_count - 1)\n"
+            "for i in range(fin_count):\n"
+            "    x = -base / 2 + fin_t / 2 + i * pitch\n"
+            "    fin = Sketch(Plane.XY, offset=base_t).rect(fin_t, base).extrude(fin_h)\n"
+            "    fin.translate(x, 0, 0)\n"
+            "    part += fin\n\n"
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "Pulley 50mm OD, 12mm wide, 16mm bore with a 5mm wide, 3mm deep keyway.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "od = 50\nwidth = 12\nbore_dia = 16\nkey_w = 5\nkey_d = 3\n\n"
+            "part = Sketch(Plane.XY).circle(od).extrude(width)\n"
+            'part -= Hole(bore_dia).at(0, 0).through().label("bore")\n\n'
+            "# keyway: rectangular cutter reaching key_d beyond the bore wall.\n"
+            "# Overlap 2mm INTO the bore so it always removes material.\n"
+            "overlap = 2\n"
+            "key_cut = Sketch(Plane.XY).rect(key_d + overlap, key_w).extrude(width + 2)\n"
+            "key_cut.translate(bore_dia / 2 - overlap + (key_d + overlap) / 2, 0, -1)\n"
+            "part -= key_cut\n\n"
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "Angle bracket: 60mm base with two 5mm holes, 50mm upright wall with two 5mm holes, 40mm wide, 5mm thick.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "base_len = 60\nwall_h = 50\nwidth = 40\nt = 5\nhole_dia = 5\n\n"
+            "base = Sketch(Plane.XY).rect(base_len, width).extrude(t)\n\n"
+            "wall = Sketch(Plane.XY).rect(wall_h, width).extrude(t)\n"
+            'wall.rotate(90, axis="y")  # wall_h now runs along Z, t along X\n'
+            "wall.translate(-base_len / 2 + t / 2, 0, wall_h / 2)\n\n"
+            "part = base + wall\n\n"
+            'part -= Hole(hole_dia).at(base_len / 2 - 15, 0).at(base_len / 2 - 35, 0).through().label("base_holes")\n'
+            "# wall holes are drilled ALONG X (through the upright wall): .at(y, z)\n"
+            'part -= Hole(hole_dia).along("x").at(0, wall_h - 15).at(0, wall_h - 35).through().label("wall_holes")\n\n'
             'export(part, "part.step")'
         ),
     },
@@ -268,9 +339,16 @@ class OFLLLMClient:
                     time.sleep(1.5 * (i + 1))
                     continue
                 response.raise_for_status()
-                raw = response.json()["choices"][0]["message"]["content"] or ""
+                message = response.json()["choices"][0]["message"]
+                # Some gateway responses omit "content" (e.g. reasoning-only
+                # truncations put text under "reasoning_content").
+                raw = message.get("content") or message.get("reasoning_content") or ""
+                if not raw:
+                    raise RuntimeError(
+                        f"K2 Think returned an empty message: keys={list(message)}"
+                    )
                 return self._strip_reasoning(raw)
-            except requests.RequestException as exc:
+            except (requests.RequestException, RuntimeError) as exc:
                 last_exc = exc
                 if i < attempts - 1:
                     time.sleep(1.5 * (i + 1))

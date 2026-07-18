@@ -1,0 +1,37 @@
+{
+  "cnc_milling": {
+    "min_internal_radius_mm": 1.5,
+    "max_depth_to_width_ratio": 5.0,
+    "min_hole_diameter_mm": 1.0,
+    "tapped_hole_min_depth_ratio": 1.5,
+    "min_wall_thickness_mm": 1.0,
+    "deep_cavity_max_ratio": 4.0,
+    "avoid_undercuts": true,
+    "prefer_standard_drills": true
+  },
+  "3d_printing_fdm": {
+    "min_wall_thickness_mm": 0.8,
+    "max_overhang_angle_deg": 45,
+    "bridge_max_span_mm": 10.0,
+    "min_feature_size_mm": 0.4,
+    "min_hole_diameter_mm": 2.0,
+    "layer_height_mm": 0.2,
+    "nozzle_diameter_mm": 0.4
+  },
+  "injection_molding": {
+    "min_wall_thickness_mm": 1.0,
+    "max_wall_thickness_mm": 4.0,
+    "wall_thickness_variation_max_pct": 25,
+    "min_draft_angle_deg": 0.5,
+    "rib_thickness_to_wall_ratio": 0.6,
+    "rib_height_max_ratio": 3.0,
+    "boss_od_to_id_ratio": 2.0
+  },
+  "sheet_metal": {
+    "min_bend_radius_thickness_ratio": 1.0,
+    "min_hole_to_edge_thickness_ratio": 1.5,
+    "min_hole_to_hole_thickness_ratio": 2.0,
+    "max_bend_angle_deg": 165,
+    "k_factor": 0.44
+  }
+}
