@@ -17,6 +17,7 @@ import {
 import Viewer from "../Viewer/Viewer";
 import ChatPanel from "../Panels/ChatPanel";
 import OFLCodePanel from "../Panels/OFLCodePanel";
+import AgentPanel from "../Panels/AgentPanel";
 import OrionFlowLogo, { OrionFlowWordmark } from "../OrionFlowLogo";
 import { useDesignStore } from "../../store/designStore";
 import { useOFLStore } from "../../store/oflStore";
@@ -508,7 +509,7 @@ function LeftDock() {
 /* ────────────────────────── Right dock ────────────────────────── */
 
 function RightDock({ onGenerate }: { onGenerate: (prompt: string) => void }) {
-    const [tab, setTab] = useState<"copilot" | "code">("copilot");
+    const [tab, setTab] = useState<"copilot" | "engineer" | "code">("copilot");
     const oflCode = useOFLStore((s) => s.oflCode);
 
     return (
@@ -527,6 +528,7 @@ function RightDock({ onGenerate }: { onGenerate: (prompt: string) => void }) {
                 {(
                     [
                         { id: "copilot", label: "Copilot" },
+                        { id: "engineer", label: "Engineer" },
                         { id: "code", label: `Code${oflCode ? "" : " ·"}` },
                     ] as const
                 ).map((t) => (
@@ -552,6 +554,8 @@ function RightDock({ onGenerate }: { onGenerate: (prompt: string) => void }) {
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
                 {tab === "copilot" ? (
                     <ChatPanel onGenerate={onGenerate} />
+                ) : tab === "engineer" ? (
+                    <AgentPanel />
                 ) : (
                     <OFLCodePanel />
                 )}

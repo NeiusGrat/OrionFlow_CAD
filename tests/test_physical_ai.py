@@ -198,6 +198,7 @@ class _StubResponse:
         self.success = success
         self.ofl_code = "# code"
         self.files = _StubFiles()
+        self.parameters = []
         self.stats = None
         self.repair_attempts = 1
         self.error = None if success else "boom"

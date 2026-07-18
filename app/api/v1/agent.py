@@ -40,6 +40,7 @@ class AgentDesignResponse(BaseModel):
     sourced_parts: list[dict[str, Any]] = []
     ofl_code: str = ""
     files: dict[str, Any] = {}
+    parameters: list[dict[str, Any]] = []
     stats: Optional[dict[str, Any]] = None
     analysis: Optional[dict[str, Any]] = None
     mass_properties: Optional[dict[str, Any]] = None

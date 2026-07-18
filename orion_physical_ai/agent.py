@@ -118,6 +118,7 @@ class PhysicalAIAgent:
             "sourced_parts": parts,
             "ofl_code": response.ofl_code,
             "files": response.files.model_dump() if response.files else {},
+            "parameters": [p.model_dump() for p in (response.parameters or [])],
             "stats": response.stats.model_dump() if response.stats else None,
             "repair_attempts": response.repair_attempts,
             "error": response.error,

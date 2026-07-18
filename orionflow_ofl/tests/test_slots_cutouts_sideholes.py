@@ -125,6 +125,22 @@ def test_disjoint_union_raises_teachable_error():
         base += floater
 
 
+def test_closed_shell_keeps_outer_envelope():
+    # shell(wall, open_face=None) must hollow the part, NOT return the cavity.
+    box = Sketch(Plane.XY).rect(60, 60).extrude(60)
+    box.shell(3, open_face=None)
+    bb = box._solid.bounding_box()
+    assert bb.size.X == pytest.approx(60, abs=1e-6)
+    assert bb.size.Z == pytest.approx(60, abs=1e-6)
+    assert box._solid.volume == pytest.approx(60**3 - 54**3, rel=1e-4)
+
+
+def test_closed_shell_wall_too_thick_raises():
+    box = Sketch(Plane.XY).rect(20, 20).extrude(20)
+    with pytest.raises(GeometryError, match="wall"):
+        box.shell(10, open_face=None)
+
+
 def test_part_copy_is_independent():
     fin = Sketch(Plane.XY).rect(2, 40).extrude(15)
     clone = fin.copy().translate(x=10)

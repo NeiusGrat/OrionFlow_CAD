@@ -127,17 +127,31 @@ class Part:
         return self
 
     def shell(self, wall_thickness: float, open_face: str | None = "top") -> Part:
-        """Hollow out the solid. open_face: 'top' | 'bottom' | None"""
+        """Hollow out the solid. open_face: 'top' | 'bottom' | None (fully closed)"""
         from build123d import offset as _offset, Axis as _Axis
-        
-        openings = []
+
+        if open_face is None:
+            # build123d's offset with no openings returns the SHRUNKEN interior
+            # solid, not a hollow shell — subtract it to get the closed shell.
+            inner = _offset(self._solid, amount=-wall_thickness)
+            if inner is None or inner.volume <= 0:
+                raise GeometryError(
+                    f"shell({wall_thickness}) leaves no interior cavity — the "
+                    "walls consume the whole part; reduce the wall thickness"
+                )
+            hollow = self._solid - inner
+            if hollow is None or hollow.volume <= 0:
+                raise GeometryError("Closed shell produced no geometry")
+            self._solid = hollow
+            return self
+
         if open_face == "top":
             openings = self._solid.faces().sort_by(_Axis.Z)[-1:]
         elif open_face == "bottom":
             openings = self._solid.faces().sort_by(_Axis.Z)[0:1]
-        elif open_face is not None:
+        else:
             raise ValueError(f"Unknown face selector: {open_face}")
-            
+
         # build123d offset: negative amount = hollow inwards
         self._solid = _offset(self._solid, amount=-wall_thickness, openings=openings)
         return self

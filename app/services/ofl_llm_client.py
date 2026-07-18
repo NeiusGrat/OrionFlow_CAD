@@ -146,6 +146,58 @@ FEW_SHOT = [
         ),
     },
     {
+        "user": "Closed hollow box 50 x 50 x 50 mm with 4 mm walls.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "size = 50\nwall = 4\n\n"
+            "# the stated 50 mm is the OUTER size: build the solid envelope first,\n"
+            "# then hollow it. The part itself is NEVER the inner cavity.\n"
+            "part = Sketch(Plane.XY).rect(size, size).extrude(size)\n"
+            "part.shell(wall, open_face=None)  # closed on all six faces\n\n"
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "T-shaped flat bracket 70 mm wide, 50 mm tall, 6 mm thick, arms 20 mm wide.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "width = 70\nheight = 50\nt = 6\narm_w = 20\n\n"
+            "# a FLAT bracket lies in the XY plane and is extruded by its thickness.\n"
+            "# T = top bar + stem, fused edge-to-edge inside the stated envelope.\n"
+            "top = Sketch(Plane.XY).rect(width, arm_w).extrude(t)\n"
+            "top.translate(0, height / 2 - arm_w / 2, 0)\n"
+            "stem = Sketch(Plane.XY).rect(arm_w, height - arm_w).extrude(t)\n"
+            "stem.translate(0, -arm_w / 2, 0)\n"
+            "part = top + stem\n\n"
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "Tube 50mm OD, 40mm ID, 70mm long.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "od = 50\nbore_dia = 40\nlength = 70\n\n"
+            "# circular tube = solid cylinder at the OD, then bore the ID through.\n"
+            "# NEVER shell() a round tube — the bore IS the inner diameter.\n"
+            "part = Sketch(Plane.XY).circle(od).extrude(length)\n"
+            'part -= Hole(bore_dia).at(0, 0).through().label("bore")\n\n'
+            'export(part, "part.step")'
+        ),
+    },
+    {
+        "user": "Hollow rectangular tube 100mm long, 40x25mm cross-section, 3mm walls, with a 20mm bore through each end wall.",
+        "assistant": (
+            "from orionflow_ofl import *\n\n"
+            "length = 100\nouter_w = 40\nouter_h = 25\nwall = 3\nbore_dia = 20\n\n"
+            "# the STATED cross-section is the OUTER envelope — sketch it directly\n"
+            "part = Sketch(Plane.XY).rect(outer_w, outer_h).extrude(length)\n"
+            "part.shell(wall, open_face=None)  # hollow, both end walls kept\n\n"
+            "# one through hole bores BOTH end walls in a single operation\n"
+            'part -= Hole(bore_dia).at(0, 0).through().label("end_bores")\n\n'
+            'export(part, "part.step")'
+        ),
+    },
+    {
         "user": "Heat sink 40x40mm, 4mm base, with 5 fins 15mm tall and 2mm thick.",
         "assistant": (
             "from orionflow_ofl import *\n\n"
@@ -340,9 +392,14 @@ class OFLLLMClient:
                     continue
                 response.raise_for_status()
                 message = response.json()["choices"][0]["message"]
-                # Some gateway responses omit "content" (e.g. reasoning-only
-                # truncations put text under "reasoning_content").
-                raw = message.get("content") or message.get("reasoning_content") or ""
+                # Some gateway responses omit "content" — text can land under
+                # "reasoning_content" or "reasoning" (observed shapes).
+                raw = (
+                    message.get("content")
+                    or message.get("reasoning_content")
+                    or message.get("reasoning")
+                    or ""
+                )
                 if not raw:
                     raise RuntimeError(
                         f"K2 Think returned an empty message: keys={list(message)}"
