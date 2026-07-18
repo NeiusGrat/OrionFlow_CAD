@@ -19,6 +19,7 @@ image = (
     .env({"PYTHONPATH": "/root", "ENVIRONMENT": "production", "DEBUG": "false"})
     .add_local_dir("app", "/root/app")
     .add_local_dir("orionflow_ofl", "/root/orionflow_ofl")
+    .add_local_dir("orion_physical_ai", "/root/orion_physical_ai")
     .add_local_dir("alembic", "/root/alembic")
     .add_local_file("alembic.ini", "/root/alembic.ini")
 )
