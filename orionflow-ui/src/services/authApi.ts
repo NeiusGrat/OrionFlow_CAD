@@ -51,6 +51,16 @@ export async function apiLogin(email: string, password: string): Promise<TokenRe
   return res.json();
 }
 
+export async function apiGoogleLogin(credential: string): Promise<TokenResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  });
+  if (!res.ok) throw new Error(await errorDetail(res));
+  return res.json();
+}
+
 export async function apiMe(accessToken: string): Promise<UserResponse> {
   const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },

@@ -12,8 +12,10 @@ Endpoints:
 """
 
 from datetime import datetime, timezone, timedelta
+import secrets
 import uuid
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
@@ -75,6 +77,12 @@ class RefreshRequest(BaseModel):
     """Token refresh request."""
 
     refresh_token: str
+
+
+class GoogleAuthRequest(BaseModel):
+    """Google sign-in request carrying the ID token from Google Identity Services."""
+
+    credential: str = Field(..., min_length=20)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -251,6 +259,130 @@ async def login(
     )
 
     logger.info("user_login", user_id=str(user.id))
+
+    return TokenResponse(
+        access_token=token_pair.access_token,
+        refresh_token=token_pair.refresh_token,
+        token_type="bearer",
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+    )
+
+
+GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+_GOOGLE_ISSUERS = ("accounts.google.com", "https://accounts.google.com")
+
+
+async def _fetch_google_claims(credential: str) -> dict:
+    """Validate a Google ID token via Google's tokeninfo endpoint.
+
+    tokeninfo verifies the signature and expiry server-side; we still must
+    check ``aud`` and ``iss`` ourselves. Kept as a module-level function so
+    tests can stub it without network access.
+    """
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(GOOGLE_TOKENINFO_URL, params={"id_token": credential})
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google credential",
+        )
+    return resp.json()
+
+
+@router.post(
+    "/google",
+    response_model=TokenResponse,
+    summary="Sign in or sign up with Google",
+)
+async def google_auth(
+    request: GoogleAuthRequest,
+    db: AsyncSession = Depends(get_db),
+    client_request: Request = None,
+):
+    """
+    Exchange a verified Google ID token for OrionFlow tokens.
+
+    Creates the account on first sign-in (email pre-verified by Google);
+    afterwards it behaves like a normal login for the same email.
+    """
+    if not settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google sign-in is not configured",
+        )
+
+    claims = await _fetch_google_claims(request.credential)
+
+    if claims.get("aud") != settings.google_client_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google credential was issued for a different application",
+        )
+    if claims.get("iss") not in _GOOGLE_ISSUERS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google credential issuer",
+        )
+    email = (claims.get("email") or "").lower()
+    if not email or str(claims.get("email_verified")).lower() != "true":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Google account has no verified email",
+        )
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        if user.status == UserStatus.SUSPENDED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account has been suspended",
+            )
+        # Google verified the address, so a pending account becomes active.
+        user.email_verified = True
+        user.email_verification_token = None
+        if user.status == UserStatus.PENDING_VERIFICATION:
+            user.status = UserStatus.ACTIVE
+        if not user.avatar_url and claims.get("picture"):
+            user.avatar_url = claims["picture"]
+        user.last_login_at = datetime.now(timezone.utc)
+        action = AuditAction.LOGIN
+    else:
+        user = User(
+            email=email,
+            # No password login until the user sets one via reset; the hash
+            # must be unguessable, not memorable.
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            name=claims.get("name") or email.split("@")[0],
+            role=UserRole.USER,
+            status=UserStatus.ACTIVE,
+            email_verified=True,
+            avatar_url=claims.get("picture"),
+        )
+        db.add(user)
+        # Populate user.id before the audit row references it.
+        await db.flush()
+        action = AuditAction.SIGNUP
+
+    audit = AuditLog(
+        user_id=user.id,
+        action=action,
+        ip_address=client_request.client.host if client_request else None,
+        details={"email": email, "provider": "google"},
+    )
+    db.add(audit)
+
+    await db.commit()
+    await db.refresh(user)
+
+    token_pair = create_token_pair(
+        user_id=str(user.id),
+        email=user.email,
+        role=user.role.value,
+    )
+
+    logger.info("google_auth", user_id=str(user.id), new_account=action == AuditAction.SIGNUP)
 
     return TokenResponse(
         access_token=token_pair.access_token,

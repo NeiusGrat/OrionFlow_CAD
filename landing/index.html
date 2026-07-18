@@ -5,13 +5,53 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="48x48" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta property="og:image" content="https://orionflow.in/og.png" />
+  <meta property="og:title" content="OrionFlow — AI for mechanical engineers" />
+  <meta property="og:description" content="Describe a part in plain English. OrionFlow builds an editable, parametric CAD model you can dimension, tweak, and export to STEP, STL, or GLB." />
+  <meta property="og:url" content="https://orionflow.in/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="OrionFlow" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="https://orionflow.in/og.png" />
+  <meta name="twitter:title" content="OrionFlow — AI for mechanical engineers" />
+  <meta name="twitter:description" content="Describe a part in plain English. Get an editable, parametric CAD model — export STEP, STL, or GLB." />
 
 <meta charset="UTF-8" />
 <link rel="canonical" href="https://orionflow.in/" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>OrionFlow — AI for mechanical engineers</title>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://orionflow.in/#org",
+      "name": "OrionFlow",
+      "url": "https://orionflow.in/",
+      "logo": "https://orionflow.in/og.png",
+      "email": "hello@orionflow.in",
+      "description": "AI for mechanical engineers. Describe a part in plain English; get an editable, parametric CAD model."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://orionflow.in/#site",
+      "url": "https://orionflow.in/",
+      "name": "OrionFlow",
+      "publisher": {"@id": "https://orionflow.in/#org"}
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "OrionFlow",
+      "url": "https://app.orionflow.in/",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Web",
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+      "description": "Text-to-CAD: describe a part in plain English and get an editable, parametric model with STEP, STL, and GLB export."
+    }
+  ]
+}
+</script>
 <script>(function(){try{var t=localStorage.getItem('of-theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <meta name="description" content="Describe a part in plain English. OrionFlow builds an editable, parametric CAD model you can dimension, tweak, and export to STEP, STL, or GLB." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -52,6 +92,8 @@
   }
   html{background:var(--paper);}
   *{box-sizing:border-box;}
+  /* The hidden attribute must beat class-level display:flex (.form, .signed). */
+  [hidden]{display:none!important;}
   html{scroll-behavior:smooth;}
   body{
     margin:0;background:var(--paper);color:var(--ink);
@@ -271,7 +313,20 @@
   .form input{font-family:var(--body);font-size:15px;padding:12px 14px;border:1px solid var(--line-strong);
     border-radius:8px;min-width:248px;background:var(--paper);color:var(--ink);}
   .form input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent;}
-  .form__ok{font-family:var(--mono);font-size:13px;color:var(--accent);align-self:center;}
+  .form__err{font-family:var(--mono);font-size:13px;color:#C0392B;align-self:center;}
+  .form__wait{font-family:var(--mono);font-size:12.5px;color:var(--slate);flex-basis:100%;}
+  .form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;}
+  .form button[disabled]{opacity:.75;cursor:wait;}
+  .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
+    border-radius:50%;display:inline-block;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .signed{display:flex;align-items:center;gap:14px;}
+  .signed__ico{width:44px;height:44px;border-radius:50%;flex:none;display:flex;align-items:center;
+    justify-content:center;background:var(--accent-soft);border:1px solid var(--line-strong);}
+  .signed__ico svg{width:22px;height:22px;stroke:var(--accent);}
+  .signed h3{font-family:var(--display);font-weight:700;font-size:19px;margin:0 0 2px;letter-spacing:-.01em;}
+  .signed p{margin:0;color:var(--slate);font-size:14.5px;max-width:36ch;}
+  .signed b{color:var(--ink);font-weight:600;}
 
   /* ---- footer ---- */
   footer{margin-top:80px;position:relative;color:#CFC9E6;
@@ -420,10 +475,10 @@
 <!-- ===== CREDIBILITY STRIP ===== -->
 <div class="wrap">
   <div class="proof">
-    <span class="k">Built on</span>
-    <b>build123d</b><span class="sep"></span>
-    <b>FreeCAD</b><span class="sep"></span>
-    <b>OpenCascade</b><span class="sep"></span>
+    <span class="k">Engineering-grade</span>
+    <b>Parametric solids</b><span class="sep"></span>
+    <b>Deterministic rebuilds</b><span class="sep"></span>
+    <b>Editable feature history</b><span class="sep"></span>
     <span>STEP / STL / GLB out</span>
   </div>
 </div>
@@ -469,7 +524,7 @@
       <div class="cap"><span class="cap__k">Fidelity</span><h3>Deterministic round-trip</h3><p>A model rebuilds to the same solid every time — verified, not approximate.</p></div>
       <div class="cap"><span class="cap__k">Exports</span><h3>STEP · STL · GLB</h3><p>Take the solid into your CAD, your slicer, or the browser — standard formats, no lock-in.</p></div>
       <div class="cap"><span class="cap__k">Topology</span><h3>Stable references</h3><p>Faces and edges are pinned by geometry, so edits survive instead of breaking on a renamed face.</p></div>
-      <div class="cap"><span class="cap__k">Open core</span><h3>Build123d + FreeCAD</h3><p>Standing on proven open kernels — your models aren't trapped in a black box.</p></div>
+      <div class="cap"><span class="cap__k">Open formats</span><h3>No black box</h3><p>Every model compiles to industry-standard STEP you can open in any CAD tool — never trapped in a proprietary format.</p></div>
     </div>
   </div>
 </section>
@@ -530,10 +585,21 @@
       <p>Be among the first engineers to design by describing. We'll send an invite when your seat opens.</p>
     </div>
     <form class="form" id="form" novalidate>
-      <input id="email" type="email" placeholder="you@company.com" aria-label="Work email" required />
-      <button class="btn btn--primary" type="submit">Get early access</button>
-      <span class="form__ok" id="ok" hidden>On the list — talk soon.</span>
+      <input id="email" type="email" placeholder="you@company.com" aria-label="Work email" autocomplete="email" maxlength="320" required />
+      <input id="hp" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
+      <button class="btn btn--primary" id="join" type="submit"><span id="join-label">Get early access</span></button>
+      <span class="form__err" id="err" hidden>Couldn't sign you up — please try again.</span>
+      <span class="form__wait" id="wait" hidden>Securing your spot — this first request can take a few seconds…</span>
     </form>
+    <div class="signed" id="signed" hidden role="status">
+      <span class="signed__ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
+      </span>
+      <div>
+        <h3>You're signed up!</h3>
+        <p>We've saved <b id="signed-email"></b> to the early-access list. Watch your inbox — we'll send your invite when your seat opens.</p>
+      </div>
+    </div>
   </div>
 </section>
 </main>
@@ -567,17 +633,16 @@
         <a href="#research">Round-trip fidelity</a>
         <a href="#research">Changelog</a>
       </nav>
-      <nav class="foot-col" aria-label="Company">
-        <h5>Company</h5>
-        <a href="#start">Early access</a>
+      <nav class="foot-col" aria-label="Resources">
+        <h5>Resources</h5>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/terms.html">Terms of Service</a>
         <a href="mailto:hello@orionflow.in">Contact</a>
-        <a href="#research">Blog</a>
-        <a href="#start">Careers</a>
       </nav>
     </div>
     <div class="foot-bot">
-      <span>© 2026 OrionFlow · AI for mechanical engineers</span>
-      <span class="mono">Built on build123d · FreeCAD · OpenCascade</span>
+      <span>© 2026 OrionFlow · Established 2026 · All rights reserved</span>
+      <span class="mono"><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></span>
     </div>
   </div>
 </footer>
@@ -643,15 +708,47 @@
     });
   }
 
-  // early-access form
+  // early-access form — stores the email in our own database
+  var API_ORIGIN = "https://sahilmaniyar57--orionflow-api-api.modal.run";
+  var WAITLIST_API = API_ORIGIN + "/api/v1/waitlist";
+
+  // The API scales to zero, so the first request after idle pays a cold
+  // start. Wake it as soon as the page loads: by the time a visitor has
+  // typed their email, the container is warm and the submit is instant.
+  try{ fetch(API_ORIGIN + "/health", {mode:"cors"}).catch(function(){}); }catch(e){}
+
   var form = document.getElementById("form");
   if(form){
     form.addEventListener("submit", function(e){
       e.preventDefault();
       var email = document.getElementById("email");
+      var err = document.getElementById("err"), wait = document.getElementById("wait");
+      var btn = document.getElementById("join"), label = document.getElementById("join-label");
+      var signed = document.getElementById("signed");
       if(!email.value || email.validity.typeMismatch){ email.focus(); return; }
-      document.getElementById("ok").hidden = false;
-      email.value = ""; email.blur();
+      var value = email.value.trim();
+      btn.disabled = true; err.hidden = true;
+      label.innerHTML = '<span class="spin" aria-hidden="true"></span>&nbsp;Signing you up…';
+      // If the API is cold-starting, tell the visitor we're still working.
+      var slow = setTimeout(function(){ wait.hidden = false; }, 3000);
+      fetch(WAITLIST_API, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          email: value,
+          source: "landing",
+          company: document.getElementById("hp").value || null
+        })
+      }).then(function(r){
+        if(!r.ok) throw new Error(r.status);
+        document.getElementById("signed-email").textContent = value;
+        form.hidden = true; signed.hidden = false;
+      }).catch(function(){
+        err.hidden = false;
+      }).then(function(){
+        clearTimeout(slow); wait.hidden = true;
+        btn.disabled = false; label.textContent = "Get early access";
+      });
     });
   }
 })();

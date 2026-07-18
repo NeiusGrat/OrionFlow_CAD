@@ -249,6 +249,14 @@ class Settings(BaseSettings):
     )
 
     # -------------------------------------------------------------------------
+    # Google OAuth (Sign in with Google)
+    # -------------------------------------------------------------------------
+    google_client_id: Optional[str] = Field(
+        default=None,
+        description="Google OAuth client ID; Google sign-in is disabled when unset",
+    )
+
+    # -------------------------------------------------------------------------
     # Stripe Configuration
     # -------------------------------------------------------------------------
     stripe_secret_key: Optional[str] = Field(

@@ -364,6 +364,36 @@ class OFLEvent(Base):
 
 
 # =============================================================================
+# Waitlist Model
+# =============================================================================
+
+
+class WaitlistEntry(Base):
+    """
+    Early-access waitlist signup from the public landing page.
+
+    Insert-only from the public endpoint; email is unique so repeat
+    submissions are idempotent and never leak whether an address exists.
+    """
+
+    __tablename__ = "waitlist_entries"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    source: Mapped[Optional[str]] = mapped_column(String(64))  # e.g. "landing"
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (Index("ix_waitlist_entries_created", "created_at"),)
+
+    def __repr__(self) -> str:
+        return f"<WaitlistEntry {self.email}>"
+
+
+# =============================================================================
 # API Key Model
 # =============================================================================
 

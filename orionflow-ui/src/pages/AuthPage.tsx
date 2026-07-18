@@ -1,8 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import OrionFlowLogo, { OrionFlowWordmark } from '../components/OrionFlowLogo';
+import OrionFlowLogo from '../components/OrionFlowLogo';
 import { useAuthStore } from '../store/authStore';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+
+declare global {
+    interface Window {
+        google?: any;
+    }
+}
+
+const inputStyle: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
+    background: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: '10px',
+    padding: '13px 16px',
+    color: '#f8fafc',
+    fontSize: '14.5px',
+    outline: 'none',
+    transition: 'border-color 0.15s ease, background 0.15s ease',
+};
 
 export default function AuthPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -14,7 +34,53 @@ export default function AuthPage() {
 
     const login = useAuthStore((state) => state.login);
     const signup = useAuthStore((state) => state.signup);
+    const googleLogin = useAuthStore((state) => state.googleLogin);
     const navigate = useNavigate();
+    const googleButtonRef = useRef<HTMLDivElement>(null);
+
+    // Render the official "Sign in with Google" button when a client ID is
+    // configured; without one the page falls back to email/password only.
+    useEffect(() => {
+        if (!GOOGLE_CLIENT_ID) return;
+
+        const init = () => {
+            if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+            window.google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: async (response: { credential: string }) => {
+                    setError('');
+                    setLoading(true);
+                    try {
+                        await googleLogin(response.credential);
+                        navigate('/app');
+                    } catch (err: any) {
+                        setError(err.message || 'Google sign-in failed');
+                    } finally {
+                        setLoading(false);
+                    }
+                },
+            });
+            window.google.accounts.id.renderButton(googleButtonRef.current, {
+                theme: 'outline',
+                size: 'large',
+                text: 'signin_with',
+                shape: 'rectangular',
+                logo_alignment: 'left',
+                width: 308,
+            });
+        };
+
+        if (window.google?.accounts?.id) {
+            init();
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = init;
+        document.head.appendChild(script);
+    }, [googleLogin, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,178 +113,113 @@ export default function AuthPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '48px',
-            position: 'relative',
+            padding: '48px 24px',
         }}>
-            {/* Background orbs */}
-            <div style={{
-                position: 'absolute',
-                width: '600px',
-                height: '600px',
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%)',
-                filter: 'blur(80px)',
-                top: '-200px',
-                right: '-100px',
-                pointerEvents: 'none',
-            }} />
-            <div style={{
-                position: 'absolute',
-                width: '500px',
-                height: '500px',
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 70%)',
-                filter: 'blur(80px)',
-                bottom: '-150px',
-                left: '-100px',
-                pointerEvents: 'none',
-            }} />
+            <div style={{ width: '100%', maxWidth: '372px' }}>
 
-            <div style={{
-                width: '100%',
-                maxWidth: '420px',
-                position: 'relative',
-                zIndex: 1,
-            }}>
-                {/* Logo — official constellation mark, links to the marketing home */}
-                <a href="https://orionflow.in" style={{ textDecoration: 'none', display: 'block' }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '12px',
-                        marginBottom: '48px',
-                    }}>
-                        <OrionFlowLogo size={40} />
-                        <OrionFlowWordmark size={28} />
-                    </div>
-                </a>
-
-                {/* Auth card */}
+                {/* Card — logo, brand, and form all inside, like the reference */}
                 <div style={{
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '20px',
-                    padding: '36px 32px',
-                    backdropFilter: 'blur(20px)',
+                    background: '#0d1526',
+                    border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '16px',
+                    padding: '40px 32px 32px',
+                    textAlign: 'center',
+                    boxShadow: '0 30px 70px -35px rgba(0, 0, 0, 0.7)',
                 }}>
-                    {/* Title */}
+                    {/* Logo mark */}
+                    <a href="https://orionflow.in" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                        <OrionFlowLogo size={46} />
+                    </a>
+
+                    {/* Brand name */}
                     <h1 style={{
                         fontSize: '24px',
-                        fontWeight: 600,
-                        marginBottom: '8px',
-                        textAlign: 'center',
+                        fontWeight: 700,
+                        margin: '14px 0 4px',
                         color: '#f8fafc',
+                        letterSpacing: '-0.015em',
                     }}>
-                        {isLogin ? 'Welcome back' : 'Create your account'}
+                        OrionFlow
                     </h1>
                     <p style={{
                         fontSize: '14px',
                         color: '#94a3b8',
-                        textAlign: 'center',
-                        marginBottom: '32px',
+                        margin: '0 0 26px',
                     }}>
-                        {isLogin ? 'Sign in to continue to OrionFlow' : 'Start designing CAD models today'}
+                        {isLogin ? 'Sign in to continue' : 'Create your account'}
                     </p>
 
-                    {/* Form */}
+                    {/* Google sign-in (only when configured) */}
+                    {GOOGLE_CLIENT_ID && (
+                        <>
+                            <div
+                                ref={googleButtonRef}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    minHeight: '44px',
+                                    marginBottom: '18px',
+                                }}
+                            />
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                margin: '0 0 18px',
+                            }}>
+                                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+                                <span style={{ color: '#64748b', fontSize: '13px' }}>or</span>
+                                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+                            </div>
+                        </>
+                    )}
+
+                    {/* Form — placeholder-only inputs, no labels */}
                     <form onSubmit={handleSubmit}>
                         {!isLogin && (
-                            <div style={{ marginBottom: '16px' }}>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    background: 'rgba(3, 7, 18, 0.6)',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    borderRadius: '10px',
-                                    padding: '0 14px',
-                                }}>
-                                    <User size={18} color="#64748b" />
-                                    <input
-                                        type="text"
-                                        placeholder="Full name"
-                                        value={name}
-                                        required
-                                        minLength={2}
-                                        onChange={(e) => setName(e.target.value)}
-                                        style={{
-                                            flex: 1,
-                                            background: 'transparent',
-                                            border: 'none',
-                                            padding: '14px 12px',
-                                            color: '#f8fafc',
-                                            fontSize: '14px',
-                                            outline: 'none',
-                                        }}
-                                    />
-                                </div>
+                            <div style={{ marginBottom: '14px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="Full name"
+                                    value={name}
+                                    required
+                                    minLength={2}
+                                    onChange={(e) => setName(e.target.value)}
+                                    style={inputStyle}
+                                />
                             </div>
                         )}
 
-                        <div style={{ marginBottom: '16px' }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                background: 'rgba(3, 7, 18, 0.6)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)',
-                                borderRadius: '10px',
-                                padding: '0 14px',
-                            }}>
-                                <Mail size={18} color="#64748b" />
-                                <input
-                                    type="email"
-                                    placeholder="Email address"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    style={{
-                                        flex: 1,
-                                        background: 'transparent',
-                                        border: 'none',
-                                        padding: '14px 12px',
-                                        color: '#f8fafc',
-                                        fontSize: '14px',
-                                        outline: 'none',
-                                    }}
-                                />
-                            </div>
+                        <div style={{ marginBottom: '14px' }}>
+                            <input
+                                type="email"
+                                placeholder="Email"
+                                autoComplete="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                style={inputStyle}
+                            />
                         </div>
 
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                background: 'rgba(3, 7, 18, 0.6)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)',
-                                borderRadius: '10px',
-                                padding: '0 14px',
-                            }}>
-                                <Lock size={18} color="#64748b" />
-                                <input
-                                    type="password"
-                                    placeholder={isLogin ? "Password" : "Password (8+ characters)"}
-                                    minLength={8}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    style={{
-                                        flex: 1,
-                                        background: 'transparent',
-                                        border: 'none',
-                                        padding: '14px 12px',
-                                        color: '#f8fafc',
-                                        fontSize: '14px',
-                                        outline: 'none',
-                                    }}
-                                />
-                            </div>
+                        <div style={{ marginBottom: isLogin ? '8px' : '20px' }}>
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                                minLength={8}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                style={inputStyle}
+                            />
                         </div>
 
                         {isLogin && (
-                            <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+                            <div style={{ textAlign: 'right', marginBottom: '18px' }}>
                                 <Link to="/auth/forgot-password" style={{
                                     color: '#64748b',
-                                    fontSize: '13px',
+                                    fontSize: '12.5px',
                                     textDecoration: 'none',
                                 }}>
                                     Forgot password?
@@ -231,10 +232,11 @@ export default function AuthPage() {
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 border: '1px solid rgba(239, 68, 68, 0.3)',
                                 borderRadius: '8px',
-                                padding: '12px',
+                                padding: '11px 12px',
                                 marginBottom: '16px',
                                 color: '#fca5a5',
                                 fontSize: '13px',
+                                textAlign: 'left',
                             }}>
                                 {error}
                             </div>
@@ -245,7 +247,7 @@ export default function AuthPage() {
                             disabled={loading}
                             style={{
                                 width: '100%',
-                                padding: '14px 24px',
+                                padding: '13px 24px',
                                 borderRadius: '10px',
                                 background: loading
                                     ? 'rgba(59, 130, 246, 0.5)'
@@ -255,36 +257,35 @@ export default function AuthPage() {
                                 fontSize: '15px',
                                 border: 'none',
                                 cursor: loading ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '10px',
-                                boxShadow: '0 4px 20px rgba(59, 130, 246, 0.3)',
+                                boxShadow: '0 4px 18px rgba(59, 130, 246, 0.28)',
                                 transition: 'all 0.25s ease',
                             }}
                         >
-                            {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
-                            {!loading && <ArrowRight size={18} />}
+                            {loading ? 'Please wait…' : (isLogin ? 'Sign in' : 'Sign up')}
                         </button>
                     </form>
 
                     {/* Toggle */}
                     <p style={{
-                        marginTop: '24px',
-                        textAlign: 'center',
-                        fontSize: '14px',
+                        marginTop: '22px',
+                        marginBottom: 0,
+                        fontSize: '13.5px',
                         color: '#94a3b8',
                     }}>
-                        {isLogin ? "Don't have an account? " : "Already have an account? "}
+                        {isLogin ? "Don't have an account? " : 'Already have an account? '}
                         <button
-                            onClick={() => setIsLogin(!isLogin)}
+                            onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                            type="button"
                             style={{
                                 background: 'none',
                                 border: 'none',
                                 color: '#60a5fa',
                                 cursor: 'pointer',
                                 fontWeight: 500,
-                                fontSize: '14px',
+                                fontSize: '13.5px',
+                                padding: 0,
+                                textDecoration: 'underline',
+                                textUnderlineOffset: '3px',
                             }}
                         >
                             {isLogin ? 'Sign up' : 'Sign in'}
@@ -292,18 +293,20 @@ export default function AuthPage() {
                     </p>
                 </div>
 
-                {/* Back to home */}
-                <a href="https://orionflow.in" style={{
-                    display: 'block',
+                {/* Legal */}
+                <p style={{
                     textAlign: 'center',
-                    marginTop: '24px',
-                    color: '#64748b',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s ease',
+                    marginTop: '18px',
+                    marginBottom: 0,
+                    color: '#475569',
+                    fontSize: '12px',
+                    lineHeight: 1.6,
                 }}>
-                    ← Back to orionflow.in
-                </a>
+                    By continuing, you agree to our{' '}
+                    <Link to="/terms" style={{ color: '#64748b' }}>Terms</Link>
+                    {' '}and{' '}
+                    <Link to="/privacy" style={{ color: '#64748b' }}>Privacy Policy</Link>.
+                </p>
             </div>
         </div>
     );

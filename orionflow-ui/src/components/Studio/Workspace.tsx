@@ -9,7 +9,6 @@ import {
     ChevronRight,
     Maximize2,
     Box,
-    Command,
     ArrowUp,
     Grid3x3,
     ExternalLink,
@@ -619,10 +618,6 @@ function BottomBar() {
             {ms > 0 && !isGenerating && <span>built in {(ms / 1000).toFixed(1)}s</span>}
             <span style={{ marginLeft: "auto", display: "flex", gap: "14px", alignItems: "center" }}>
                 <span>mm · centered origin</span>
-                <span>K2 Think · Groq fallback</span>
-                <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                    <Command size={10} />K to command
-                </span>
             </span>
         </div>
     );

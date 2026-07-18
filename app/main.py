@@ -58,6 +58,9 @@ from app.cad.describe import describe_feature_graph
 from app.api.v1 import api_router
 
 # Middleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
 from app.middleware.rate_limit import limiter
 from app.middleware.security import SecurityHeadersMiddleware
 
@@ -321,6 +324,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Add rate limiting (state stored in app)
 app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # =============================================================================

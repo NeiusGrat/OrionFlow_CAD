@@ -23,6 +23,7 @@ KEYS = [
     "K2THINK_API_KEY",
     "K2THINK_BASE_URL",
     "JWT_SECRET_KEY",
+    "GOOGLE_CLIENT_ID",
     "CORS_ORIGINS",
     "FRONTEND_URL",
     "DB_HOST",

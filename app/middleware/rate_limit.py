@@ -59,12 +59,15 @@ def get_identifier(request: Request) -> str:
     return f"ip:{get_remote_address(request)}"
 
 
-# Create limiter instance
+# Create limiter instance. Redis being down must never take endpoints down:
+# fall back to per-process in-memory counting and swallow storage errors.
 limiter = Limiter(
     key_func=get_identifier,
     default_limits=[settings.rate_limit_default],
     storage_uri=settings.redis_url if settings.redis_url else None,
     strategy="fixed-window",
+    in_memory_fallback_enabled=True,
+    swallow_errors=True,
 )
 
 
