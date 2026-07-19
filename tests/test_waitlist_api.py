@@ -4,7 +4,6 @@ Uses a minimal FastAPI app with only the waitlist router and a stubbed DB
 session, following the pattern in test_ofl_api.py.
 """
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
