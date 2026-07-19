@@ -189,6 +189,22 @@ export default function AgentPanel() {
                         </>
                     )}
 
+                    {plan?.knowledge_used && plan.knowledge_used.length > 0 && (
+                        <>
+                            <div style={label}>
+                                Knowledge applied · {plan.knowledge_used.length} rules
+                                {plan.reasoning_mode === "llm" ? " · LLM reasoning" : ""}
+                            </div>
+                            <div style={{ ...card, display: "flex", flexDirection: "column", gap: "4px", maxHeight: "160px", overflowY: "auto" }}>
+                                {plan.knowledge_used.map((k, i) => (
+                                    <div key={i} style={{ color: "var(--studio-text-faint)", fontSize: "11px", lineHeight: 1.45 }}>
+                                        <span style={{ color: "var(--studio-accent)" }}>▸</span> {k}
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
                     {plan?.features && plan.features.length > 0 && (
                         <>
                             <div style={label}>Engineering plan
@@ -238,6 +254,32 @@ export default function AgentPanel() {
                         {(analysis?.issues ?? []).map((iss, i) => (
                             <div key={i} style={{ color: iss.severity === "critical" ? "#f87171" : "#facc15", fontSize: "11px" }}>
                                 {iss.severity.toUpperCase()}: {iss.issue}
+                            </div>
+                        ))}
+                    </div>
+
+                    {plan?.risks && plan.risks.length > 0 && (
+                        <>
+                            <div style={label}>Engineering risks</div>
+                            <div style={{ ...card, display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {plan.risks.map((r, i) => (
+                                    <div key={i} style={{ color: "#facc15", fontSize: "11px" }}>⚠ {r}</div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    <div style={label}>Agent trace</div>
+                    <div style={{ ...card, display: "flex", flexDirection: "column", gap: "3px" }}>
+                        {result.trace.map((t, i) => (
+                            <div key={i} style={{ display: "flex", gap: "8px", fontSize: "11px" }}>
+                                <span style={{ color: "var(--studio-text-faint)", minWidth: "52px", textAlign: "right" }}>
+                                    {(t.t_ms / 1000).toFixed(1)}s
+                                </span>
+                                <span style={{ color: "var(--studio-text)" }}>{t.phase}</span>
+                                {typeof t.status === "string" && (
+                                    <span style={{ color: "var(--studio-text-faint)" }}>{t.status}</span>
+                                )}
                             </div>
                         ))}
                     </div>

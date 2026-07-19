@@ -91,6 +91,31 @@ def test_fallback_plan_grounds_motor_mount():
     assert pattern["dims_mm"]["hole_dia"] == 3.4  # clearance, not nominal 3.0
 
 
+def test_knowledge_context_pulls_material_heuristics_fits_dfm():
+    from orion_physical_ai import knowledge_context
+
+    prompt = "A strong bearing bracket for a 608ZZ bearing, CNC machined"
+    parts = source_parts(prompt)
+    lines, process = knowledge_context(prompt, parts, "aluminum_6061_t6", KB)
+    joined = "\n".join(lines)
+    assert process == "cnc_milling"
+    assert "608ZZ" in joined  # sourced part facts
+    assert "density 2.7" in joined  # material properties
+    assert "Design rule [mounting_bracket]" in joined  # bracket heuristics
+    assert "Design rule [bearing_seat]" in joined  # bearing fits heuristics
+    assert "Fit [" in joined  # ISO 286 fits
+    assert "DFM [cnc_milling]" in joined  # process rules
+    assert '"strong" requested' in joined  # strength keyword rule
+
+
+def test_fallback_plan_records_knowledge_used():
+    prompt = "NEMA 17 bracket with M3 holes"
+    parts = source_parts(prompt)
+    plan = design_reasoning(prompt, parts, KB, llm=None)
+    assert plan["knowledge_used"], "plan must record the knowledge it applied"
+    assert any("NEMA 17" in k for k in plan["knowledge_used"])
+
+
 def test_plan_to_brief_injects_constraints():
     prompt = "NEMA 17 bracket"
     parts = source_parts(prompt)

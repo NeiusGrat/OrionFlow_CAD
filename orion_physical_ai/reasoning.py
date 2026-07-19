@@ -70,6 +70,68 @@ def _infer_material(prompt: str) -> str:
     return "aluminum_6061_t6"
 
 
+def knowledge_context(
+    prompt: str, sourced_parts: list[dict], material_key: str, kb: KnowledgeBase
+) -> tuple[list[str], str]:
+    """Assemble every KB fact relevant to this brief: sourced-part dimensions,
+    material limits, design heuristics, ISO fits, and DFM rules.
+
+    Returns (lines, process). The lines are injected into the reasoning
+    prompt AND surfaced to the user as "knowledge applied" — the harness
+    shows its homework.
+    """
+    p = prompt.lower()
+    lines = list(kb.constraints_for_parts([h["part_id"] for h in sourced_parts]))
+
+    try:
+        mat = kb.material(material_key)
+        walls = ", ".join(f"{k} ≥{v} mm" for k, v in (mat.get("min_wall_thickness_mm") or {}).items())
+        lines.append(
+            f"Material {mat['name']}: density {mat['density_g_cm3']} g/cm³, "
+            f"yield {mat['yield_strength_mpa']} MPa"
+            + (f", min wall {walls}" if walls else "")
+        )
+        process = mat["typical_processes"][0]
+    except KeyError:
+        process = "cnc_milling"
+
+    heuristic_picks = []
+    if any(w in p for w in ("bracket", "mount", "plate", "flange")):
+        heuristic_picks.append("mounting_bracket")
+    if "bearing" in p:
+        heuristic_picks.append("bearing_seat")
+    if any(w in p for w in ("shaft", "keyway", "pulley", "collar")):
+        heuristic_picks.append("shaft")
+    if "gear" in p:
+        heuristic_picks.append("gear")
+    if any(w in p for w in ("enclosure", "box", "housing", "case")):
+        heuristic_picks.append("enclosure")
+    if any(w in p for w in ("print", "printable", "pla", "petg")):
+        heuristic_picks.append("3d_print_fits")
+    for key in heuristic_picks:
+        h = kb.heuristics.get(key)
+        if not h:
+            continue
+        facts = ", ".join(f"{a}={b}" for a, b in h.items() if a != "note")
+        note = h.get("note")
+        lines.append(f"Design rule [{key}]: {facts}" + (f" — {note}" if note else ""))
+
+    for word, rule in kb.heuristics.get("strength_keywords", {}).items():
+        if word in p:
+            lines.append(f'"{word}" requested: {rule}')
+
+    if any(w in p for w in ("bearing", "shaft", "fit", "press", "bore")):
+        for name, desc in kb.standards.get("iso286_fits", {}).items():
+            lines.append(f"Fit [{name}]: {desc}")
+
+    dfm = kb.dfm_rules.get(process)
+    if dfm:
+        facts = ", ".join(f"{a}={b}" for a, b in dfm.items())
+        lines.append(f"DFM [{process}]: {facts}")
+
+    return lines, process
+
+
 def _fallback_plan(prompt: str, sourced_parts: list[dict], kb: KnowledgeBase) -> dict:
     """Deterministic plan when no LLM is available: parts + regex extraction."""
     material = _infer_material(prompt)
@@ -119,14 +181,16 @@ def _fallback_plan(prompt: str, sourced_parts: list[dict], kb: KnowledgeBase) ->
                     "justification": f"{spec['thread']} clearance per ISO 273",
                 }
             )
+    knowledge, process = knowledge_context(prompt, sourced_parts, material, kb)
     return {
         "part_name": "generated_part",
         "material": material,
-        "process": kb.material(material)["typical_processes"][0],
+        "process": process,
         "envelope_mm": _extract_envelope(prompt),
         "features": features,
         "joints": [],
         "risks": [],
+        "knowledge_used": knowledge,
         "reasoning_mode": "deterministic_fallback",
     }
 
@@ -147,11 +211,14 @@ def design_reasoning(
     if llm is None:
         return _fallback_plan(prompt, sourced_parts, kb)
 
-    constraint_lines = kb.constraints_for_parts([h["part_id"] for h in sourced_parts])
+    material_guess = _infer_material(prompt)
+    knowledge, _process = knowledge_context(prompt, sourced_parts, material_guess, kb)
     user = prompt
-    if constraint_lines:
-        user += "\n\nENGINEERING CONSTRAINTS (hard facts from catalogs):\n" + "\n".join(
-            f"- {line}" for line in constraint_lines
+    if knowledge:
+        user += (
+            "\n\nENGINEERING KNOWLEDGE (hard facts from catalogs and standards — "
+            "your dimensions MUST respect them):\n"
+            + "\n".join(f"- {line}" for line in knowledge)
         )
 
     try:
@@ -167,6 +234,7 @@ def design_reasoning(
             raise ValueError("plan missing 'features'")
         plan.setdefault("joints", [])
         plan.setdefault("risks", [])
+        plan["knowledge_used"] = knowledge
         plan["reasoning_mode"] = "llm"
         return plan
     except Exception as e:
@@ -182,6 +250,15 @@ def plan_to_brief(prompt: str, plan: dict, sourced_parts: list[dict], kb: Knowle
     if constraints:
         lines.append("\nENGINEERING CONSTRAINTS (use these EXACT numbers):")
         lines.extend(f"- {c}" for c in constraints)
+    # Design rules travel with the brief too, but not the verbose DFM dump —
+    # the code generator needs numbers, not a manufacturing lecture.
+    rules = [
+        k for k in (plan.get("knowledge_used") or [])
+        if k.startswith(("Design rule", '"'))
+    ]
+    if rules:
+        lines.append("\nDESIGN RULES (apply where relevant):")
+        lines.extend(f"- {r}" for r in rules)
     features = plan.get("features") or []
     if features:
         lines.append("\nDESIGN PLAN (follow this feature sequence):")

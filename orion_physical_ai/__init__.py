@@ -14,7 +14,7 @@ Public API:
 from .agent import PhysicalAIAgent, classify_intent
 from .analyze import analyze_part
 from .knowledge import KnowledgeBase, get_knowledge_base
-from .reasoning import design_reasoning, plan_to_brief
+from .reasoning import design_reasoning, knowledge_context, plan_to_brief
 from .simulate import generate_sdf, generate_urdf, mass_properties
 from .sourcing import source_parts
 
@@ -25,6 +25,7 @@ __all__ = [
     "classify_intent",
     "source_parts",
     "design_reasoning",
+    "knowledge_context",
     "plan_to_brief",
     "analyze_part",
     "generate_urdf",

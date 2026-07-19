@@ -34,6 +34,7 @@ export interface DesignPlan {
   features?: PlanFeature[];
   joints?: Record<string, unknown>[];
   risks?: string[];
+  knowledge_used?: string[];
   reasoning_mode?: string;
 }
 

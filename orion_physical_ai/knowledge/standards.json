@@ -53,6 +53,13 @@
     "shaft_15": {"key_w": 5, "key_h": 5, "shaft_depth": 3.0, "hub_depth": 2.3},
     "shaft_20": {"key_w": 6, "key_h": 6, "shaft_depth": 3.5, "hub_depth": 2.8}
   },
+  "iso286_fits": {
+    "clearance_H7_g6": "running/sliding fit — shaft slides freely (e.g. shaft in bushing); hole H7, shaft g6",
+    "transition_H7_k6": "locational fit — light press, keyed hubs and locating dowels; hole H7, shaft k6",
+    "interference_H7_p6": "press fit — bearing outer race in housing, permanent joints; hole H7, shaft p6",
+    "bearing_housing_rule": "bearing OD seat: slip fit +0.05 mm for rotating shaft / stationary housing; press fit -0.02 mm when housing rotates",
+    "bearing_shaft_rule": "bearing ID seat on shaft: k6 transition for rotating shaft loads"
+  },
   "standard_drill_sizes_mm": [
     1.0, 1.5, 2.0, 2.05, 2.5, 3.0, 3.2, 3.3, 3.4, 4.0, 4.2, 4.5, 5.0, 5.5,
     6.0, 6.5, 6.6, 6.8, 7.0, 8.0, 8.5, 9.0, 10.0, 10.2, 11.0, 12.0, 13.0,

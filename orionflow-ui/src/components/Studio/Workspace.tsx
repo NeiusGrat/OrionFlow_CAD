@@ -499,7 +499,7 @@ function LeftDock() {
             <Section icon={<Layers size={12} />} title="Model">
                 <ModelTree />
             </Section>
-            <Section icon={<Shapes size={12} />} title="Examples" defaultOpen={false}>
+            <Section icon={<Shapes size={12} />} title="Examples" defaultOpen={true}>
                 <ExamplesList />
             </Section>
         </div>
