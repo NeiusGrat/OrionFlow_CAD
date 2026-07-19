@@ -32,15 +32,27 @@ def _linear_axis_data():
             },
             {"id": "arm", "part_number": "OF-ARM-001", "name": "Pivoting arm"},
             {"id": "carriage", "part_number": "OF-CARR-001", "name": "Carriage"},
-            {"id": "screw_left", "part_number": "ISO4762-M5X16", "name": "M5 socket screw"},
-            {"id": "screw_right", "part_number": "ISO4762-M5X16", "name": "M5 socket screw"},
+            {
+                "id": "screw_left",
+                "part_number": "ISO4762-M5X16",
+                "name": "M5 socket screw",
+            },
+            {
+                "id": "screw_right",
+                "part_number": "ISO4762-M5X16",
+                "name": "M5 socket screw",
+            },
         ],
         "interfaces": [
             {
                 "id": "base.pivot",
                 "part_id": "base",
                 "kind": "cylindrical",
-                "frame": {"origin": [0, 0, 0], "x_axis": [1, 0, 0], "z_axis": [0, 0, 1]},
+                "frame": {
+                    "origin": [0, 0, 0],
+                    "x_axis": [1, 0, 0],
+                    "z_axis": [0, 0, 1],
+                },
             },
             {"id": "base.slide", "part_id": "base", "kind": "rail"},
             {"id": "base.screw_left", "part_id": "base", "kind": "threaded_hole"},
@@ -88,11 +100,21 @@ class TestAssemblyGraphParsing:
         graph = parse_assembly_graph(_linear_axis_data())
 
         assert graph.id == "nema23_linear_axis"
-        assert graph.part("base").definition == {"kind": "feature_graph", "id": "base_plate_v1"}
+        assert graph.part("base").definition == {
+            "kind": "feature_graph",
+            "id": "base_plate_v1",
+        }
         assert graph.interface("arm.pivot").part_id == "arm"
-        assert [joint.kind for joint in graph.joints] == ["revolute", "prismatic", "fixed", "fixed"]
+        assert [joint.kind for joint in graph.joints] == [
+            "revolute",
+            "prismatic",
+            "fixed",
+            "fixed",
+        ]
         assert graph.validate() == []
-        assert graph.connected_components() == (("arm", "base", "carriage", "screw_left", "screw_right"),)
+        assert graph.connected_components() == (
+            ("arm", "base", "carriage", "screw_left", "screw_right"),
+        )
 
     def test_round_trip_is_plain_json_ready_and_canonical(self):
         graph = AssemblyGraph.from_dict(_linear_axis_data())
@@ -156,7 +178,9 @@ class TestAssemblyGraphValidation:
 
     def test_detects_duplicate_pairs_and_same_part_joint(self):
         data = _linear_axis_data()
-        data["interfaces"].append({"id": "base.extra", "part_id": "base", "kind": "planar"})
+        data["interfaces"].append(
+            {"id": "base.extra", "part_id": "base", "kind": "planar"}
+        )
         data["joints"].extend(
             [
                 {
@@ -196,9 +220,24 @@ class TestAssemblyGraphValidation:
                 {"id": "c.b", "part_id": "c", "kind": "pin"},
             ],
             "joints": [
-                {"id": "ab", "kind": "fixed", "parent_interface": "a.b", "child_interface": "b.a"},
-                {"id": "bc", "kind": "fixed", "parent_interface": "b.c", "child_interface": "c.b"},
-                {"id": "ca", "kind": "fixed", "parent_interface": "c.a", "child_interface": "a.c"},
+                {
+                    "id": "ab",
+                    "kind": "fixed",
+                    "parent_interface": "a.b",
+                    "child_interface": "b.a",
+                },
+                {
+                    "id": "bc",
+                    "kind": "fixed",
+                    "parent_interface": "b.c",
+                    "child_interface": "c.b",
+                },
+                {
+                    "id": "ca",
+                    "kind": "fixed",
+                    "parent_interface": "c.a",
+                    "child_interface": "a.c",
+                },
             ],
         }
 

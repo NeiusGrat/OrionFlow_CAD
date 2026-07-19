@@ -30,13 +30,21 @@ def _minimal_linear_axis_assembly():
                 "id": "structure.travel",
                 "part_id": "structure",
                 "kind": "rail",
-                "frame": {"origin": [0, 0, 0], "x_axis": [1, 0, 0], "z_axis": [0, 0, 1]},
+                "frame": {
+                    "origin": [0, 0, 0],
+                    "x_axis": [1, 0, 0],
+                    "z_axis": [0, 0, 1],
+                },
             },
             {
                 "id": "carriage.travel",
                 "part_id": "carriage",
                 "kind": "rail",
-                "frame": {"origin": [0, 0, 0], "x_axis": [1, 0, 0], "z_axis": [0, 0, 1]},
+                "frame": {
+                    "origin": [0, 0, 0],
+                    "x_axis": [1, 0, 0],
+                    "z_axis": [0, 0, 1],
+                },
             },
         ],
         "joints": [
@@ -70,7 +78,9 @@ def test_robotics_assets_validate_and_retain_status_boundaries():
     assert demo["data_status"] == "illustrative"
     assert demo["source_records"]
 
-    component = rk.get("component", "robotics.component.harmonic_drive_csg_17_100_2a_r.v1")
+    component = rk.get(
+        "component", "robotics.component.harmonic_drive_csg_17_100_2a_r.v1"
+    )
     assert component["data_status"] == "source_specific"
     assert component["engineering_review"] == "required"
 
@@ -95,35 +105,51 @@ def test_explicit_assembly_graph_is_validated_separately_from_demo_topology():
 def test_robotics_tools_return_source_status_and_validate_assembly_plan():
     registry = build_registry(SyntheticBridge(SyntheticModel(name="X")), sandbox=None)
 
-    lookup = registry.execute("lookup_robotics_knowledge", {"query": "parallel jaw gripper"})
+    lookup = registry.execute(
+        "lookup_robotics_knowledge", {"query": "parallel jaw gripper"}
+    )
     assert lookup.ok
     assert "data_status=" in lookup.content
 
-    demo = registry.execute("get_robotics_demo", {
-        "demo_id": "robotics.demo.nema23_belt_linear_axis.v1",
-    })
+    demo = registry.execute(
+        "get_robotics_demo",
+        {
+            "demo_id": "robotics.demo.nema23_belt_linear_axis.v1",
+        },
+    )
     assert demo.ok
     assert "Concept composition graph" in demo.content
     assert "composition_graph" in demo.raw
 
-    assembly = registry.execute("validate_assembly_graph", {
-        "graph": _minimal_linear_axis_assembly(),
-    })
+    assembly = registry.execute(
+        "validate_assembly_graph",
+        {
+            "graph": _minimal_linear_axis_assembly(),
+        },
+    )
     assert assembly.ok
     assert "BOM:" in assembly.content
     assert assembly.raw["assembly_graph"]["id"] == "reviewed_axis_plan"
 
-    readiness = registry.execute("assess_robotics_assembly", {
-        "graph": _minimal_linear_axis_assembly(),
-    })
+    readiness = registry.execute(
+        "assess_robotics_assembly",
+        {
+            "graph": _minimal_linear_axis_assembly(),
+        },
+    )
     assert readiness.ok
-    assert "planning_only" not in readiness.content  # custom parts require review, not fake selection
+    assert (
+        "planning_only" not in readiness.content
+    )  # custom parts require review, not fake selection
     assert "engineering_review_required" in readiness.content
 
-    urdf = registry.execute("export_assembly_urdf", {
-        "graph": _urdf_ready_linear_axis_assembly(),
-        "robot_name": "orion_axis",
-    })
+    urdf = registry.execute(
+        "export_assembly_urdf",
+        {
+            "graph": _urdf_ready_linear_axis_assembly(),
+            "robot_name": "orion_axis",
+        },
+    )
     assert urdf.ok
     assert '<robot name="orion_axis">' in urdf.content
     assert "Kinematic-only" in urdf.content
@@ -133,17 +159,24 @@ def test_compile_assembly_tool_requires_explicit_source_bindings_and_is_generate
     registry = build_registry(SyntheticBridge(SyntheticModel(name="X")), sandbox=None)
     graph = _minimal_linear_axis_assembly()
 
-    compiled = registry.execute("compile_assembly_graph", {
-        "graph": graph,
-        "bindings": {"structure": "StructureBody", "carriage": "CarriageBody"},
-        "root_part_id": "structure",
-        "joint_values": {"axis_travel": 120},
-        "label": "Reviewed Axis Arrangement",
-    })
+    compiled = registry.execute(
+        "compile_assembly_graph",
+        {
+            "graph": graph,
+            "bindings": {"structure": "StructureBody", "carriage": "CarriageBody"},
+            "root_part_id": "structure",
+            "joint_values": {"axis_travel": 120},
+            "label": "Reviewed Axis Arrangement",
+        },
+    )
 
     assert compiled.ok
     assert compiled.raw["assembly"]["root_part_id"] == "structure"
-    assert compiled.raw["created"] == ["OrionAssembly", "structure_link", "carriage_link"]
+    assert compiled.raw["created"] == [
+        "OrionAssembly",
+        "structure_link",
+        "carriage_link",
+    ]
     assert registry.get("compile_assembly_graph").doc_mutating is True
     assert "compile_assembly_graph" in GENERATE_PILLAR.tools
     assert "compile_assembly_graph" not in QUERY_PILLAR.tools

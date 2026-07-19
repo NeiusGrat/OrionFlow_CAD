@@ -382,7 +382,9 @@ async def google_auth(
         role=user.role.value,
     )
 
-    logger.info("google_auth", user_id=str(user.id), new_account=action == AuditAction.SIGNUP)
+    logger.info(
+        "google_auth", user_id=str(user.id), new_account=action == AuditAction.SIGNUP
+    )
 
     return TokenResponse(
         access_token=token_pair.access_token,

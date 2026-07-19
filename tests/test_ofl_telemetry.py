@@ -12,11 +12,13 @@ def _response(success=True):
         ofl_code="part = 1",
         generation_time_ms=123.4,
         repair_attempts=1,
-        stats=OFLGeometryStats(
-            watertight=True, volume_mm3=517.5, bbox_mm=[20, 20, 2], triangles=100
-        )
-        if success
-        else None,
+        stats=(
+            OFLGeometryStats(
+                watertight=True, volume_mm3=517.5, bbox_mm=[20, 20, 2], triangles=100
+            )
+            if success
+            else None
+        ),
     )
 
 

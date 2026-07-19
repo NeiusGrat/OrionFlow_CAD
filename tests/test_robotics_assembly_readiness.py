@@ -32,7 +32,9 @@ def _assembly(component_id: str):
 
 
 def test_candidate_component_keeps_plan_in_planning_only_state():
-    result = ra.assess_readiness(_assembly("robotics.component.bldc_motor_candidate.v1"))
+    result = ra.assess_readiness(
+        _assembly("robotics.component.bldc_motor_candidate.v1")
+    )
 
     assert result["status"] == "planning_only"
     assert any(issue["severity"] == "blocking" for issue in result["issues"])

@@ -416,10 +416,10 @@ class OFLLLMClient:
         """Drop K2 Think's inline chain-of-thought, keep the final answer."""
         i, j = content.find("<answer>"), content.rfind("</answer>")
         if i != -1 and j != -1 and j > i:
-            return content[i + len("<answer>"):j].strip()
+            return content[i + len("<answer>") : j].strip()
         end = content.rfind("</think>")
         if end != -1:
-            return content[end + len("</think>"):].strip()
+            return content[end + len("</think>") :].strip()
         return content.strip()
 
     def _chat_ollama(

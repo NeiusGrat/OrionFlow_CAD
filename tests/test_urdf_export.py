@@ -76,7 +76,10 @@ def test_exports_parseable_kinematic_only_urdf_with_explicit_metre_conversion():
     assert root.tag == "robot"
     assert root.attrib == {"name": "demo_axis"}
     assert [link.attrib["name"] for link in root.findall("link")] == [
-        "base", "slider", "tool", "sensor",
+        "base",
+        "slider",
+        "tool",
+        "sensor",
     ]
 
     slide = root.find("joint[@name='slide']")
@@ -118,7 +121,9 @@ def test_rejects_joint_without_explicit_urdf_origin_metadata():
     data = _serial_robot_data()
     data["joints"][0].pop("metadata")
 
-    with pytest.raises(URDFExportError, match=r"requires explicit metadata\.urdf_origin"):
+    with pytest.raises(
+        URDFExportError, match=r"requires explicit metadata\.urdf_origin"
+    ):
         export_urdf(_graph(data))
 
 
@@ -130,7 +135,10 @@ def test_rejects_movable_joint_without_axis_and_full_numeric_limits():
     errors = validate_urdf_export(_graph(data))
 
     assert any("requires a non-zero finite axis" in error for error in errors)
-    assert any("requires numeric lower, upper, velocity, and effort limits" in error for error in errors)
+    assert any(
+        "requires numeric lower, upper, velocity, and effort limits" in error
+        for error in errors
+    )
 
 
 def test_rejects_closed_loop_non_tree_topology():
@@ -175,6 +183,9 @@ def test_rejects_multiple_parent_joints_for_one_child_link():
 
     errors = validate_urdf_export(_graph(data))
 
-    assert any("child link 'tool' is referenced by multiple parent joints" in error for error in errors)
+    assert any(
+        "child link 'tool' is referenced by multiple parent joints" in error
+        for error in errors
+    )
     with pytest.raises(URDFExportError):
         export_urdf(_graph(data))

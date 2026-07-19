@@ -168,8 +168,18 @@ def test_urdf_is_valid_xml_with_inertia(box_stl):
 def test_urdf_renders_plan_joints(box_stl):
     props = mass_properties(box_stl, density_g_cm3=2.70)
     urdf = generate_urdf(
-        "gimbal", "box.stl", "box.stl", props,
-        joints=[{"name": "pan", "type": "revolute", "axis": [0, 0, 1], "limit_deg": [-90, 90]}],
+        "gimbal",
+        "box.stl",
+        "box.stl",
+        props,
+        joints=[
+            {
+                "name": "pan",
+                "type": "revolute",
+                "axis": [0, 0, 1],
+                "limit_deg": [-90, 90],
+            }
+        ],
     )
     root = ET.fromstring(urdf)
     joint = root.find(".//joint")
@@ -257,7 +267,9 @@ def test_agent_bundle_shape_and_grounded_brief():
 
 
 def test_agent_failure_propagates():
-    agent = PhysicalAIAgent(generation_service=_StubService(success=False), use_llm_reasoning=False)
+    agent = PhysicalAIAgent(
+        generation_service=_StubService(success=False), use_llm_reasoning=False
+    )
     bundle = agent.design("a plate")
     assert bundle["success"] is False
     assert bundle["error"] == "boom"
@@ -273,7 +285,9 @@ def test_agent_endpoint_smoke(monkeypatch):
 
     from app.api.v1 import agent as agent_mod
 
-    stub = PhysicalAIAgent(generation_service=_StubService(True), use_llm_reasoning=False)
+    stub = PhysicalAIAgent(
+        generation_service=_StubService(True), use_llm_reasoning=False
+    )
     monkeypatch.setattr(agent_mod, "_agent", stub)
 
     app = FastAPI()

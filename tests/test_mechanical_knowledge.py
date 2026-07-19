@@ -47,11 +47,29 @@ def test_bend_calculation_matches_packaged_formula():
     assert "fabricator" in mk.render_bend_calculation(result)
 
 
-@pytest.mark.parametrize("kwargs", [
-    {"thickness_mm": 0, "inside_radius_mm": 1, "bend_angle_deg": 90, "k_factor": 0.4},
-    {"thickness_mm": 1, "inside_radius_mm": 1, "bend_angle_deg": 180, "k_factor": 0.4},
-    {"thickness_mm": 1, "inside_radius_mm": 1, "bend_angle_deg": 90, "k_factor": 1.1},
-])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {
+            "thickness_mm": 0,
+            "inside_radius_mm": 1,
+            "bend_angle_deg": 90,
+            "k_factor": 0.4,
+        },
+        {
+            "thickness_mm": 1,
+            "inside_radius_mm": 1,
+            "bend_angle_deg": 180,
+            "k_factor": 0.4,
+        },
+        {
+            "thickness_mm": 1,
+            "inside_radius_mm": 1,
+            "bend_angle_deg": 90,
+            "k_factor": 1.1,
+        },
+    ],
+)
 def test_bend_calculation_rejects_unsafe_inputs(kwargs):
     with pytest.raises(mk.KnowledgeInputError):
         mk.calculate_bend(**kwargs)
@@ -81,18 +99,24 @@ def test_agent_tools_are_available_and_preserve_limitations():
     assert knowledge.ok
     assert "screening guideline" in knowledge.content.lower()
 
-    bend = reg.execute("calculate_sheet_metal_bend", {
-        "thickness_mm": 1.5,
-        "inside_radius_mm": 1.5,
-        "bend_angle_deg": 90,
-        "k_factor": 0.33,
-    })
+    bend = reg.execute(
+        "calculate_sheet_metal_bend",
+        {
+            "thickness_mm": 1.5,
+            "inside_radius_mm": 1.5,
+            "bend_angle_deg": 90,
+            "k_factor": 0.33,
+        },
+    )
     assert bend.ok and "bend allowance" in bend.content.lower()
 
-    dfm = reg.execute("check_sheet_metal_dfm", {
-        "thickness_mm": 2,
-        "hole_diameter_mm": 1.5,
-    })
+    dfm = reg.execute(
+        "check_sheet_metal_dfm",
+        {
+            "thickness_mm": 2,
+            "hole_diameter_mm": 1.5,
+        },
+    )
     assert dfm.ok and "needs_attention" in dfm.content
 
 

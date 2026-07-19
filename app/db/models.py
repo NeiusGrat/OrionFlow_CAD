@@ -337,7 +337,9 @@ class OFLEvent(Base):
     )
 
     # Request
-    event_type: Mapped[str] = mapped_column(String(16), nullable=False)  # generate|edit|rebuild
+    event_type: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )  # generate|edit|rebuild
     prompt: Mapped[Optional[str]] = mapped_column(Text)  # NL prompt / edit instruction
     input_code: Mapped[Optional[str]] = mapped_column(Text)  # pre-edit/rebuild code
 

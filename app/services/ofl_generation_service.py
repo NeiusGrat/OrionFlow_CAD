@@ -54,7 +54,7 @@ class OFLGenerationService:
         """Full pipeline: text → code → STEP/STL/GLB, with LLM self-repair."""
         t0 = time.time()
         try:
-            ofl_code = self._llm_call('generate', prompt)
+            ofl_code = self._llm_call("generate", prompt)
         except Exception as e:
             return OFLGenerateResponse(
                 success=False,
@@ -76,7 +76,7 @@ class OFLGenerationService:
         edited = self._try_rule_based_edit(current_code, edit_instruction)
         if edited is None:
             try:
-                edited = self._llm_call('generate_edit', current_code, edit_instruction)
+                edited = self._llm_call("generate_edit", current_code, edit_instruction)
             except Exception as e:
                 return OFLGenerateResponse(
                     success=False,
@@ -100,7 +100,9 @@ class OFLGenerationService:
                 f"{result['error']}"
             )
             try:
-                ofl_code = self._llm_call("repair", ofl_code, result["error"] or "", prompt)
+                ofl_code = self._llm_call(
+                    "repair", ofl_code, result["error"] or "", prompt
+                )
             except Exception as e:
                 logger.warning(f"OFL repair LLM call failed: {e}")
                 break

@@ -55,8 +55,11 @@ def ofl_generate(
     """Generate OFL code + STEP/STL/GLB from natural language prompt."""
     response = _get_generate_service().generate_from_prompt(request.prompt)
     background.add_task(
-        log_ofl_event, "generate", response,
-        prompt=request.prompt, authorization=authorization,
+        log_ofl_event,
+        "generate",
+        response,
+        prompt=request.prompt,
+        authorization=authorization,
     )
     return response
 
@@ -70,8 +73,11 @@ def ofl_rebuild(
     """Re-execute edited OFL code. No LLM call — instant rebuild."""
     response = _get_rebuild_service().rebuild_from_code(request.ofl_code)
     background.add_task(
-        log_ofl_event, "rebuild", response,
-        input_code=request.ofl_code, authorization=authorization,
+        log_ofl_event,
+        "rebuild",
+        response,
+        input_code=request.ofl_code,
+        authorization=authorization,
     )
     return response
 
@@ -87,8 +93,11 @@ def ofl_edit(
         request.ofl_code, request.edit_instruction
     )
     background.add_task(
-        log_ofl_event, "edit", response,
-        prompt=request.edit_instruction, input_code=request.ofl_code,
+        log_ofl_event,
+        "edit",
+        response,
+        prompt=request.edit_instruction,
+        input_code=request.ofl_code,
         authorization=authorization,
     )
     return response

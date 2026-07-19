@@ -9,10 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
-PACKAGE = (
-    Path(__file__).resolve().parents[1] / "orion_agent" / "knowledge" / "robotics"
-)
+PACKAGE = Path(__file__).resolve().parents[1] / "orion_agent" / "knowledge" / "robotics"
 STATUSES = {"source_specific", "candidate", "illustrative"}
 
 
