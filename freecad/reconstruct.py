@@ -22,6 +22,7 @@ import sys
 
 import FreeCAD as App  # type: ignore
 import Part  # type: ignore
+import Sketcher  # type: ignore
 
 SUPPORTED = {"Body", "Sketch", "Pad", "Pocket", "Revolution", "Groove", "Hole",
              "Thickness", "LinearPattern", "PolarPattern", "Fillet", "Chamfer",
@@ -247,7 +248,12 @@ def _select_faces(shape, selector):
     return names
 
 
-def _add_geometry(sketch, geom_list):
+def _add_geometry(sketch, geom_list, constrain=False):
+    """Add graph geometry to a sketch. With ``constrain=True`` every
+    non-construction circle gets named driven dimensions (radius + center
+    X/Y), keyed by the GRAPH index — ``r_geo3`` / ``x_geo3`` / ``y_geo3`` —
+    so the parametrics pass can bind spreadsheet expressions to them and a
+    human gets clickable dimensions when editing the sketch."""
     for g in geom_list:
         t = g.get("type")
         cons = bool(g.get("construction", False))
@@ -255,6 +261,24 @@ def _add_geometry(sketch, geom_list):
             if t == "Circle":
                 c = App.Vector(g["cx"], g["cy"], 0)
                 sketch.addGeometry(Part.Circle(c, App.Vector(0, 0, 1), g["radius"]), cons)
+                if constrain and not cons:
+                    gi = sketch.GeometryCount - 1
+                    gname = g.get("index", gi)
+                    for ctype, cname, val in (
+                        ("Radius", f"r_geo{gname}", float(g["radius"])),
+                        ("DistanceX", f"x_geo{gname}", float(g.get("cx", 0.0))),
+                        ("DistanceY", f"y_geo{gname}", float(g.get("cy", 0.0))),
+                    ):
+                        try:
+                            if ctype == "Radius":
+                                ci = sketch.addConstraint(
+                                    Sketcher.Constraint("Radius", gi, val))
+                            else:
+                                ci = sketch.addConstraint(
+                                    Sketcher.Constraint(ctype, gi, 3, val))
+                            sketch.renameConstraint(ci, cname)
+                        except Exception as e:  # noqa: BLE001
+                            sys.stderr.write(f"  constraint {cname} skipped: {e}\n")
             elif t == "LineSegment":
                 a = App.Vector(g["sx"], g["sy"], 0)
                 b = App.Vector(g["ex"], g["ey"], 0)
@@ -332,7 +356,13 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
                 else:
                     z = 0.0 if (not have_solid and plane in ("XY", "XZ", "YZ")) else current_top
                 obj.Placement = _plane_placement(plane if plane in ("XY", "XZ", "YZ") else "XY", z)
-            _add_geometry(obj, sk.get("geometry", []))
+            # Constrain only all-circle sketches: on mixed circle+spline
+            # profiles (gears) the solver nudges geometry enough to fall off
+            # gNucleus's 0.1% "matched" ramp (measured: mean 0.838 -> 0.802).
+            geo = sk.get("geometry", [])
+            all_circles = bool(geo) and all(
+                e.get("type") == "Circle" for e in geo if not e.get("construction"))
+            _add_geometry(obj, geo, constrain=all_circles)
             # Bake imported external geometry as real edges so ring/cutout
             # profiles (outer loop + borrowed inner loop) close into a face.
             _add_geometry(obj, sk.get("external_geometry", []))
@@ -626,7 +656,177 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
         report["volume"] = round(float(body.Shape.Volume), 4)
     except Exception:
         report["volume"] = None
+    _apply_parametrics(doc, graph, built_sketches, built_solids, report)
+
+    # GUI hygiene: headless documents carry no view state, so make the saved
+    # file open clean — sketches hidden, only the finished solid showing.
+    try:
+        for sk_obj in built_sketches.values():
+            sk_obj.Visibility = False
+        if built_solids:
+            for obj in built_solids.values():
+                obj.Visibility = False
+            list(built_solids.values())[-1].Visibility = True
+    except Exception:  # noqa: BLE001 - cosmetic only
+        pass
     return doc, report
+
+
+def _apply_parametrics(doc, graph, built_sketches, built_solids, report):
+    """Named-parameter layer: a ``Params`` spreadsheet whose aliased cells
+    drive sketch constraints and feature lengths via expressions.
+
+    Uses the graph's ``parameters`` section (name -> value -> bound_to targets
+    recovered by parameter_mapper). Change ``outer_diameter`` in one cell and
+    the whole part rebuilds. Fully rolled back if binding introduces any
+    recompute error the document did not already have."""
+    params = [p for p in graph.get("parameters", []) if p.get("bound_to")]
+    if not params:
+        return
+    info = {"cells": 0, "expressions": 0, "skipped": [], "rolled_back": False}
+    had_errors_before = _has_errors(doc)
+
+    def _body_volume():
+        try:
+            body = next(o for o in doc.Objects
+                        if o.TypeId == "PartDesign::Body")
+            return float(body.Shape.Volume)
+        except Exception:  # noqa: BLE001
+            return None
+
+    vol_before = _body_volume()
+
+    sheet = doc.addObject("Spreadsheet::Sheet", "Params")
+    for i, p in enumerate(params, start=1):
+        try:
+            sheet.set(f"A{i}", str(p["name"]))
+            sheet.set(f"B{i}", str(p["value"]))
+            sheet.setAlias(f"B{i}", str(p["name"]))
+            info["cells"] += 1
+        except Exception as e:  # noqa: BLE001
+            info["skipped"].append(f"cell {p['name']}: {e}")
+    doc.recompute()
+
+    sketch_meta = {s["id"]: s for s in graph.get("sketches", [])}
+    cnames = {sid: {c.Name for c in obj.Constraints if c.Name}
+              for sid, obj in built_sketches.items()}
+    applied, used = [], set()
+
+    def _close(a, b):
+        return abs(a - b) <= max(1e-4, 1e-3 * max(abs(a), abs(b)))
+
+    def bind(obj, path, expr, key, expected=None):
+        """Apply an expression only when the value it will drive matches the
+        geometry that already exists — a mis-binding must never reshape the
+        part. Records the original value so rollback can truly restore it."""
+        if key in used:
+            return
+        if path.startswith("Constraints."):
+            cname = path.split(".", 1)[1]
+            current = float(obj.getDatum(cname).Value)
+        else:
+            current = float(getattr(obj, path))
+        if expected is not None and not _close(expected, current):
+            info["skipped"].append(
+                f"{key}: nominal {expected:g} != modeled {current:g}")
+            return
+        obj.setExpression(path, expr)
+        applied.append((obj, path, current))
+        used.add(key)
+        info["expressions"] += 1
+
+    pad_len_param = None  # (name, master pad length) for through-cut coupling
+    for p in params:
+        name = str(p["name"])
+        for b in p["bound_to"]:
+            tgt, prop = b["target"], b["property"]
+            try:
+                pval = float(p["value"])
+                if prop == "Length" and tgt in built_solids:
+                    bind(built_solids[tgt], "Length", f"<<Params>>.{name}",
+                         (tgt, "Length"), expected=pval)
+                    feat = next((f for f in graph.get("features", [])
+                                 if f["id"] == tgt), None)
+                    if feat and feat.get("type") == "Pad":
+                        pad_len_param = (name, pval)
+                elif prop in ("Diameter", "Radius") and ":geo" in tgt:
+                    sid, gidx = tgt.split(":geo")
+                    cname = f"r_geo{gidx}"
+                    if sid in built_sketches and cname in cnames.get(sid, ()):
+                        if prop == "Diameter":
+                            expr, expected = f"<<Params>>.{name} / 2", pval / 2
+                        else:
+                            expr, expected = f"<<Params>>.{name}", pval
+                        bind(built_sketches[sid], f"Constraints.{cname}", expr,
+                             (sid, cname), expected=expected)
+                elif prop == "BoltCircleDiameter" and tgt in built_sketches:
+                    import math as _m
+                    for g in sketch_meta.get(tgt, {}).get("geometry", []):
+                        if g.get("type") != "Circle":
+                            continue
+                        d = _m.hypot(g.get("cx", 0.0), g.get("cy", 0.0))
+                        if d <= 1e-9:
+                            continue
+                        for ax, coeff in (("x", g["cx"] / (2 * d)),
+                                          ("y", g["cy"] / (2 * d))):
+                            cname = f"{ax}_geo{g['index']}"
+                            if cname in cnames.get(tgt, ()):
+                                bind(built_sketches[tgt],
+                                     f"Constraints.{cname}",
+                                     f"<<Params>>.{name} * {coeff:.10f}",
+                                     (tgt, cname), expected=pval * coeff)
+            except Exception as e:  # noqa: BLE001
+                info["skipped"].append(f"{name}->{tgt}.{prop}: {e}")
+
+    # Through-cut coupling: pockets cut at >=1.5x the pad depth stay through
+    # when the thickness parameter changes.
+    if pad_len_param:
+        tname, pad_len = pad_len_param
+        for f in graph.get("features", []):
+            if f.get("type") != "Pocket" or f["id"] not in built_solids:
+                continue
+            if (f["id"], "Length") in used:
+                continue
+            try:
+                if float(f["parameters"].get("Length", 0)) >= 1.5 * pad_len:
+                    bind(built_solids[f["id"]], "Length",
+                         f"<<Params>>.{tname} * 2", (f["id"], "Length"),
+                         expected=2 * pad_len)
+            except Exception as e:  # noqa: BLE001
+                info["skipped"].append(f"through-cut {f['id']}: {e}")
+
+    doc.recompute()
+    vol_after = _body_volume()
+    # The parametric layer must be a pure re-expression of the geometry that
+    # already exists. Any volume shift means a binding forced a nominal spec
+    # value onto the wrong (or a rounded) dimension — roll everything back;
+    # a file without a Params sheet beats a file with wrong geometry.
+    drifted = (
+        vol_before is not None and vol_after is not None and vol_before > 0
+        and abs(vol_after - vol_before) / vol_before > 0.001
+    )
+    if drifted or (_has_errors(doc) and not had_errors_before):
+        for obj, path, original in applied:
+            try:
+                obj.setExpression(path, None)
+                # Removing an expression keeps its last driven value —
+                # restore the recorded original or the rollback is a lie.
+                if path.startswith("Constraints."):
+                    obj.setDatum(path.split(".", 1)[1], original)
+                else:
+                    setattr(obj, path, original)
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            doc.removeObject(sheet.Name)
+        except Exception:  # noqa: BLE001
+            pass
+        doc.recompute()
+        info["rolled_back"] = True
+        if drifted:
+            info["skipped"].append(
+                f"volume drift {vol_before:.1f} -> {vol_after:.1f}")
+    report["parametrics"] = info
 
 
 def _has_errors(doc):

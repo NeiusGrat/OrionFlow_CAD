@@ -179,6 +179,14 @@ def inject(graph: dict[str, Any], schema: list[dict], values: dict[str, float]) 
         if f["type"] == "Pocket" and f["id"] not in mutated_features:
             if float(f["parameters"].get("Length", 0)) >= 1.5 * master_pad_len:
                 f["parameters"]["Length"] = 2.0 * new_pad_len
+
+    # Keep the graph's named-parameter section in sync with the injected
+    # values — reconstruct's parametrics layer (Params spreadsheet +
+    # expressions) reads these.
+    for p in g.get("parameters", []):
+        if p.get("name") in values:
+            new = values[p["name"]]
+            p["value"] = int(round(new)) if isinstance(p.get("value"), int) else new
     return g
 
 
