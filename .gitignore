@@ -108,3 +108,4 @@ htmlcov/
 
 # Benchmark run outputs (the frozen prompt set IS committed)
 benchmarks/results/
+freecad/variants/
