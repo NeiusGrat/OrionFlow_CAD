@@ -92,6 +92,7 @@ class OFLGenerationService:
         """Execute code; on failure feed the error back to the LLM and retry."""
         result = self.sandbox.execute(ofl_code)
         repairs = 0
+        trace: list[dict] = []
         for attempt in range(max_repairs):
             if result["success"]:
                 break
@@ -99,6 +100,10 @@ class OFLGenerationService:
                 f"OFL execution failed (repair attempt {attempt + 1}): "
                 f"{result['error']}"
             )
+            # Record the failing attempt BEFORE it gets overwritten — these
+            # (bad code, error) steps plus the final code are repair-training
+            # triples, the one dataset a generic model can't have.
+            trace.append({"code": ofl_code, "error": (result["error"] or "")[-2000:]})
             try:
                 ofl_code = self._llm_call(
                     "repair", ofl_code, result["error"] or "", prompt
@@ -108,7 +113,11 @@ class OFLGenerationService:
                 break
             repairs += 1
             result = self.sandbox.execute(ofl_code)
-        return self._respond_from_result(ofl_code, result, t0, repair_attempts=repairs)
+        response = self._respond_from_result(
+            ofl_code, result, t0, repair_attempts=repairs
+        )
+        response.repair_trace = trace
+        return response
 
     def _execute_and_respond(self, ofl_code: str, t0: float) -> OFLGenerateResponse:
         result = self.sandbox.execute(ofl_code)

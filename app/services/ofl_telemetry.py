@@ -58,6 +58,7 @@ async def log_ofl_event(
                     volume_mm3=stats.volume_mm3 if stats else None,
                     bbox_mm=stats.bbox_mm if stats else None,
                     triangles=stats.triangles if stats else None,
+                    repair_trace=response.repair_trace or None,
                 )
             )
     except Exception as e:

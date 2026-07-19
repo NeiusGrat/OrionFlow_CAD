@@ -52,3 +52,7 @@ class OFLGenerateResponse(BaseModel):
     generation_time_ms: float = 0
     repair_attempts: int = 0
     stats: Optional[OFLGeometryStats] = None
+    # Each self-repair step as {"code": <failed code>, "error": <traceback>}
+    # — persisted to telemetry: (bad code, error, fixed code) triples are
+    # training data for teaching a model to converge inside the harness.
+    repair_trace: list[dict] = []

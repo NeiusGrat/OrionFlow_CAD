@@ -355,6 +355,9 @@ class OFLEvent(Base):
     volume_mm3: Mapped[Optional[float]] = mapped_column(Float)
     bbox_mm: Mapped[Optional[List[float]]] = mapped_column(JSONB)
     triangles: Mapped[Optional[int]] = mapped_column(Integer)
+    # Self-repair steps: [{"code": <failed code>, "error": <traceback>}] —
+    # with ofl_code as the final fix these are repair-training triples.
+    repair_trace: Mapped[Optional[List[dict]]] = mapped_column(JSONB)
 
     __table_args__ = (
         Index("ix_ofl_events_created", "created_at"),

@@ -65,17 +65,29 @@ def load_masters() -> list[dict[str, Any]]:
             for f in sorted(glob.glob(str(TRAINING_DIR / "sample_*.json")))]
 
 
-def eligibility(sample: dict[str, Any]) -> Optional[str]:
-    """Return a rejection reason, or None when the master is variant-capable."""
+def eligibility(sample: dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
+    """Return (part_class, rejection_reason). Classes:
+    - "circle_pads": N Pads + M Pockets, every sketch all-circles
+    - "revolution": one Revolution of a line-segment profile, no cuts
+    """
     g = sample["feature_graph"]
     ops = [f["type"] for f in g["features"] if f["type"] not in _BOOKKEEPING]
-    if ops.count("Pad") != 1 or any(op not in ("Pad", "Pocket") for op in ops):
-        return f"features not 1xPad+Pockets: {ops}"
-    for sk in g["sketches"]:
-        kinds = {e["type"] for e in sk["geometry"]}
-        if kinds - {"Circle"}:
-            return f"non-circle geometry in {sk['id']}: {sorted(kinds)}"
-    return None
+
+    if ops and all(op in ("Pad", "Pocket") for op in ops) and "Pad" in ops:
+        for sk in g["sketches"]:
+            kinds = {e["type"] for e in sk["geometry"]}
+            if kinds - {"Circle"}:
+                return None, f"non-circle geometry in {sk['id']}: {sorted(kinds)}"
+        return "circle_pads", None
+
+    if ops == ["Revolution"]:
+        for sk in g["sketches"]:
+            kinds = {e["type"] for e in sk["geometry"]}
+            if kinds - {"LineSegment"}:
+                return None, f"revolution profile not line-only: {sorted(kinds)}"
+        return "revolution", None
+
+    return None, f"unsupported feature mix: {ops}"
 
 
 def build_schema(sample: dict[str, Any]) -> list[dict[str, Any]]:
@@ -120,8 +132,8 @@ def inject(graph: dict[str, Any], schema: list[dict], values: dict[str, float]) 
     g = copy.deepcopy(graph)
     mutated_features: set[str] = set()
 
-    pad = next(f for f in g["features"] if f["type"] == "Pad")
-    master_pad_len = float(pad["parameters"]["Length"])
+    master_total = sum(float(f["parameters"]["Length"])
+                       for f in g["features"] if f["type"] == "Pad")
 
     for p in schema:
         if p["kind"] == "fixed" or p["name"] not in values:
@@ -172,13 +184,14 @@ def inject(graph: dict[str, Any], schema: list[dict], values: dict[str, float]) 
                     })
                 sk["geometry"] = keep + new_ring
 
-    # Through-cut coupling: pockets cut at >=1.5x the master pad depth are
-    # through-cuts by construction; keep them through at the new thickness.
-    new_pad_len = float(pad["parameters"]["Length"])
+    # Through-cut coupling: pockets cut at >=1.5x the master stack height are
+    # through-cuts by construction; keep them through at the new height.
+    new_total = sum(float(f["parameters"]["Length"])
+                    for f in g["features"] if f["type"] == "Pad")
     for f in g["features"]:
         if f["type"] == "Pocket" and f["id"] not in mutated_features:
-            if float(f["parameters"].get("Length", 0)) >= 1.5 * master_pad_len:
-                f["parameters"]["Length"] = 2.0 * new_pad_len
+            if float(f["parameters"].get("Length", 0)) >= 1.5 * master_total:
+                f["parameters"]["Length"] = 2.0 * new_total
 
     # Keep the graph's named-parameter section in sync with the injected
     # values — reconstruct's parametrics layer (Params spreadsheet +
@@ -194,33 +207,74 @@ def inject(graph: dict[str, Any], schema: list[dict], values: dict[str, float]) 
 # fast rejection + analytic ground truth
 # ---------------------------------------------------------------------------
 
-def _pad_profile_radius(g: dict) -> float:
-    pad = next(f for f in g["features"] if f["type"] == "Pad")
-    idx = g["features"].index(pad)
-    sid = g["features"][idx - 1]["id"]  # profile sketch precedes its feature
-    return max(float(e["radius"]) for e in _sketch(g, sid)["geometry"])
+def _sketch_z(sk: dict) -> float:
+    gp = sk.get("global_placement") or {}
+    pos = gp.get("pos") or [0.0, 0.0, 0.0]
+    return float(pos[2])
+
+
+def _pads(g: dict) -> list[dict]:
+    """Every Pad with its profile sketch, base z, length, outer radius and
+    inner (annulus) circles. Pads extrude upward from their sketch plane."""
+    feats = g["features"]
+    out = []
+    for i, f in enumerate(feats):
+        if f["type"] != "Pad":
+            continue
+        sk = _sketch(g, feats[i - 1]["id"])
+        circles = [e for e in sk["geometry"] if e["type"] == "Circle"]
+        rmax = max(float(e["radius"]) for e in circles)
+        inner = [float(e["radius"]) for e in circles if float(e["radius"]) < rmax]
+        z = _sketch_z(sk)
+        out.append({"feat": f, "z": z, "len": float(f["parameters"]["Length"]),
+                    "r": rmax, "inner": inner})
+    return out
+
+
+def _pockets(g: dict) -> list[dict]:
+    feats = g["features"]
+    out = []
+    for i, f in enumerate(feats):
+        if f["type"] != "Pocket":
+            continue
+        sk = _sketch(g, feats[i - 1]["id"])
+        out.append({"feat": f, "sk": sk, "z": _sketch_z(sk),
+                    "len": float(f["parameters"]["Length"])})
+    return out
 
 
 def geometric_ok(g: dict[str, Any]) -> bool:
     try:
-        R = _pad_profile_radius(g)
-        pad = next(f for f in g["features"] if f["type"] == "Pad")
-        t = float(pad["parameters"]["Length"])
-        if t < 0.5 or R < 2.0:
+        pads = _pads(g)
+        if not pads:
             return False
-        feats = g["features"]
-        for i, f in enumerate(feats):
-            if f["type"] != "Pocket":
-                continue
-            if float(f["parameters"].get("Length", 0)) <= 0:
+        total_h = sum(p["len"] for p in pads)
+        for p in pads:
+            if p["len"] < 0.5 or p["r"] < 2.0:
                 return False
-            sk = _sketch(g, feats[i - 1]["id"])
-            circles = [e for e in sk["geometry"] if e["type"] == "Circle"]
+            for ri in p["inner"]:
+                if ri + MIN_WALL > p["r"]:
+                    return False
+        cuts = []
+        for pk in _pockets(g):
+            if pk["len"] <= 0:
+                return False
+            circles = [e for e in pk["sk"]["geometry"] if e["type"] == "Circle"]
             for e in circles:
                 r = float(e["radius"])
                 d = math.hypot(e.get("cx", 0.0), e.get("cy", 0.0))
-                if r < 0.4 or d + r > R - MIN_WALL:
+                if r < 0.4:
                     return False
+                # Radially each cut must be FULLY inside or FULLY outside
+                # every pad it axially overlaps — partial rim clips break
+                # the analytic volume.
+                through = pk["len"] >= 0.9 * total_h
+                for p in pads:
+                    if not through and not _z_overlap(pk, p):
+                        continue
+                    if d - r < p["r"] + MIN_WALL and d + r > p["r"] - MIN_WALL:
+                        return False
+                cuts.append((float(e.get("cx", 0)), float(e.get("cy", 0)), r))
             ring = [e for e in circles
                     if math.hypot(e.get("cx", 0), e.get("cy", 0)) > 1e-6]
             if len(ring) >= 2:
@@ -228,17 +282,6 @@ def geometric_ok(g: dict[str, Any]) -> bool:
                 gap = 2 * d * math.sin(math.pi / len(ring))
                 if gap < 2 * float(ring[0]["radius"]) + MIN_WALL:
                     return False
-        # No two cut circles may overlap ACROSS sketches either (e.g. a
-        # shrunken bolt circle colliding with the centre bore) — the analytic
-        # volume assumes disjoint cuts.
-        cuts = []
-        for i, f in enumerate(feats):
-            if f["type"] != "Pocket":
-                continue
-            for e in _sketch(g, feats[i - 1]["id"])["geometry"]:
-                if e["type"] == "Circle":
-                    cuts.append((float(e.get("cx", 0)), float(e.get("cy", 0)),
-                                 float(e["radius"])))
         for a in range(len(cuts)):
             for b in range(a + 1, len(cuts)):
                 x1, y1, r1 = cuts[a]
@@ -250,22 +293,90 @@ def geometric_ok(g: dict[str, Any]) -> bool:
         return False
 
 
+def _z_overlap(pocket: dict, pad: dict) -> float:
+    """Axial overlap between a pocket (cutting DOWN from its sketch plane)
+    and a pad's solid span."""
+    lo, hi = pocket["z"] - pocket["len"], pocket["z"]
+    plo, phi = pad["z"], pad["z"] + pad["len"]
+    return max(0.0, min(hi, phi) - max(lo, plo))
+
+
 def analytic_volume(g: dict[str, Any]) -> float:
-    R = _pad_profile_radius(g)
-    pad = next(f for f in g["features"] if f["type"] == "Pad")
-    t = float(pad["parameters"]["Length"])
-    vol = math.pi * R * R * t
-    feats = g["features"]
-    for i, f in enumerate(feats):
-        if f["type"] != "Pocket":
-            continue
-        depth = min(float(f["parameters"]["Length"]), t)
-        sk = _sketch(g, feats[i - 1]["id"])
-        for e in sk["geometry"]:
-            if e["type"] == "Circle":
-                r = float(e["radius"])
+    pads = _pads(g)
+    total_h = sum(p["len"] for p in pads)
+    vol = 0.0
+    for p in pads:
+        area = math.pi * (p["r"] ** 2 - sum(ri ** 2 for ri in p["inner"]))
+        vol += area * p["len"]
+    for pk in _pockets(g):
+        through = pk["len"] >= 0.9 * total_h
+        for e in pk["sk"]["geometry"]:
+            if e["type"] != "Circle":
+                continue
+            r = float(e["radius"])
+            d = math.hypot(e.get("cx", 0.0), e.get("cy", 0.0))
+            for p in pads:
+                if d + r > p["r"]:  # radially outside this pad (gate ensured full/none)
+                    continue
+                depth = p["len"] if through else _z_overlap(pk, p)
                 vol -= math.pi * r * r * depth
     return vol
+
+
+# ---------------------------------------------------------------------------
+# revolution class: uniform radial/axial scaling (volume scales r^2 * a)
+# ---------------------------------------------------------------------------
+
+def inject_revolution(graph: dict, schema: list[dict], rf: float, af: float) -> dict:
+    """Scale the revolve profile: local x (radial) by rf, local y (axial) by
+    af. Named parameter values are updated from the SCALED geometry so
+    prompts stay exact."""
+    g = copy.deepcopy(graph)
+    # These masters revolve about the LOCAL X axis (measured: volume scales
+    # exactly as radial^2 * axial with radial = local y). So y is radial.
+    for sk in g["sketches"]:
+        for e in sk["geometry"]:
+            if e["type"] == "LineSegment":
+                e["sx"] = e["sx"] * af
+                e["ex"] = e["ex"] * af
+                e["sy"] = e["sy"] * rf
+                e["ey"] = e["ey"] * rf
+        if sk.get("bbox"):
+            for k in ("xmin", "xmax", "span_x"):
+                sk["bbox"][k] = sk["bbox"][k] * af
+            for k in ("ymin", "ymax", "span_y"):
+                sk["bbox"][k] = sk["bbox"][k] * rf
+
+    sk_by_id = {s["id"]: s for s in g["sketches"]}
+    for p in g.get("parameters", []):
+        kinds = {b["property"] for b in p.get("bound_to", [])}
+        tgt = p["bound_to"][0]["target"] if p.get("bound_to") else ""
+        if kinds & {"Diameter", "Radius", "SpanY"}:
+            p["value"] = round(float(p["value"]) * rf, 3)
+        elif "EdgeLength" in kinds and ":geo" in tgt:
+            sid, gidx = tgt.split(":geo")
+            e = next((x for x in sk_by_id[sid]["geometry"]
+                      if x["index"] == int(gidx)), None)
+            if e:
+                p["value"] = round(math.hypot(e["ex"] - e["sx"], e["ey"] - e["sy"]), 3)
+        elif kinds & {"Length", "SpanX"}:
+            p["value"] = round(float(p["value"]) * af, 3)
+    return g
+
+
+def revolution_ok(g: dict) -> bool:
+    """Profile must stay on one side of the axis with sane sizes."""
+    xs, ys = [], []
+    for sk in g["sketches"]:
+        for e in sk["geometry"]:
+            if e["type"] == "LineSegment":
+                xs += [e["sx"], e["ex"]]
+                ys += [e["sy"], e["ey"]]
+    if not xs:
+        return False
+    if min(ys) < -1e-6:  # radial coordinate crossing the revolve (X) axis
+        return False
+    return (max(xs) - min(xs)) >= 0.5 and (max(ys) - min(ys)) >= 0.5
 
 
 # ---------------------------------------------------------------------------
@@ -312,30 +423,71 @@ def run(attempts: int, limit_masters: int, per_master_target: int, seed: int) ->
     REBUILT_DIR.mkdir(parents=True, exist_ok=True)
 
     masters = load_masters()
-    eligible = [(m, build_schema(m)) for m in masters if eligibility(m) is None]
+    eligible = []
+    for m in masters:
+        cls, _reason = eligibility(m)
+        if cls:
+            eligible.append((m, cls, build_schema(m)))
     if limit_masters:
         eligible = eligible[:limit_masters]
-    print(f"[eligible] {len(eligible)}/{len(masters)} masters are variant-capable")
+    n_by_class: dict[str, int] = {}
+    for _, cls, _ in eligible:
+        n_by_class[cls] = n_by_class.get(cls, 0) + 1
+    print(f"[eligible] {len(eligible)}/{len(masters)} masters: {n_by_class}")
+
+    # Master volumes from the last full rebuild — ground truth scale base
+    # for the revolution class.
+    try:
+        master_vol = {r["source_id"]: r.get("volume")
+                      for r in json.loads(
+                          (PKG_DIR / "rebuilt" / "_reports.json").read_text(encoding="utf-8"))}
+    except OSError:
+        master_vol = {}
 
     # Phase A: sample + inject + fast-reject; collect candidates
     manifest, candidates = [], {}
-    for m, schema in eligible:
+    for m, cls, schema in eligible:
         kept = 0
-        for k, vals in enumerate(sample_values(schema, attempts, seed)):
-            if kept >= per_master_target:
-                break
-            g = inject(m["feature_graph"], schema, vals)
-            if not geometric_ok(g):
+        if cls == "circle_pads":
+            for k, vals in enumerate(sample_values(schema, attempts, seed)):
+                if kept >= per_master_target:
+                    break
+                g = inject(m["feature_graph"], schema, vals)
+                if not geometric_ok(g):
+                    continue
+                vid = f"{m['id']}_v{k:03d}"
+                g["source_id"] = vid  # reports key on the graph's own id
+                gp = GRAPHS_DIR / f"{vid}.json"
+                gp.write_text(json.dumps(g), encoding="utf-8")
+                manifest.append({"id": vid, "graph": str(gp)})
+                candidates[vid] = {"master": m, "schema": schema, "values": vals,
+                                   "analytic": analytic_volume(g)}
+                kept += 1
+        else:  # revolution: sample radial/axial scale factors
+            v0 = master_vol.get(m["id"])
+            if not v0:
+                print(f"  {m['id']}: no master volume, skipped")
                 continue
-            vid = f"{m['id']}_v{k:03d}"
-            g["source_id"] = vid  # reports key on the graph's own id
-            gp = GRAPHS_DIR / f"{vid}.json"
-            gp.write_text(json.dumps(g), encoding="utf-8")
-            manifest.append({"id": vid, "graph": str(gp)})
-            candidates[vid] = {"master": m, "schema": schema, "values": vals,
-                               "analytic": analytic_volume(g)}
-            kept += 1
-        print(f"  {m['id']} ({m['name'][:34]}): {kept} candidates")
+            from scipy.stats import qmc
+            rows = qmc.LatinHypercube(d=2, seed=seed).random(n=attempts)
+            for k, (u1, u2) in enumerate(rows):
+                if kept >= per_master_target:
+                    break
+                rf = 0.6 + u1 * 1.0
+                af = 0.6 + u2 * 1.0
+                g = inject_revolution(m["feature_graph"], schema, rf, af)
+                if not revolution_ok(g):
+                    continue
+                vid = f"{m['id']}_v{k:03d}"
+                g["source_id"] = vid
+                gp = GRAPHS_DIR / f"{vid}.json"
+                gp.write_text(json.dumps(g), encoding="utf-8")
+                manifest.append({"id": vid, "graph": str(gp)})
+                vals = {p["name"]: p["value"] for p in g.get("parameters", [])}
+                candidates[vid] = {"master": m, "schema": schema, "values": vals,
+                                   "analytic": float(v0) * rf * rf * af}
+                kept += 1
+        print(f"  {m['id']} ({m['name'][:34]}) [{cls}]: {kept} candidates")
 
     if not manifest:
         return {"eligible": len(eligible), "accepted": 0}
