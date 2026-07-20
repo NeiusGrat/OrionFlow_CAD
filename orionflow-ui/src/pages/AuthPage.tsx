@@ -18,7 +18,7 @@ const inputStyle: React.CSSProperties = {
     border: '1px solid rgba(255, 255, 255, 0.08)',
     borderRadius: '10px',
     padding: '13px 16px',
-    color: '#f8fafc',
+    color: '#EFE7D8',
     fontSize: '14.5px',
     outline: 'none',
     transition: 'border-color 0.15s ease, background 0.15s ease',
@@ -109,7 +109,8 @@ export default function AuthPage() {
     return (
         <div style={{
             minHeight: '100vh',
-            background: '#030712',
+            width: '100%',
+            background: '#17140F',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -119,7 +120,7 @@ export default function AuthPage() {
 
                 {/* Card — logo, brand, and form all inside, like the reference */}
                 <div style={{
-                    background: '#0d1526',
+                    background: '#1F1B15',
                     border: '1px solid rgba(255, 255, 255, 0.07)',
                     borderRadius: '16px',
                     padding: '40px 32px 32px',
@@ -136,14 +137,14 @@ export default function AuthPage() {
                         fontSize: '24px',
                         fontWeight: 700,
                         margin: '14px 0 4px',
-                        color: '#f8fafc',
+                        color: '#EFE7D8',
                         letterSpacing: '-0.015em',
                     }}>
                         OrionFlow
                     </h1>
                     <p style={{
                         fontSize: '14px',
-                        color: '#94a3b8',
+                        color: '#A79D8B',
                         margin: '0 0 26px',
                     }}>
                         {isLogin ? 'Sign in to continue' : 'Create your account'}
@@ -168,7 +169,7 @@ export default function AuthPage() {
                                 margin: '0 0 18px',
                             }}>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
-                                <span style={{ color: '#64748b', fontSize: '13px' }}>or</span>
+                                <span style={{ color: '#7C7364', fontSize: '13px' }}>or</span>
                                 <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
                             </div>
                         </>
@@ -218,7 +219,7 @@ export default function AuthPage() {
                         {isLogin && (
                             <div style={{ textAlign: 'right', marginBottom: '18px' }}>
                                 <Link to="/auth/forgot-password" style={{
-                                    color: '#64748b',
+                                    color: '#7C7364',
                                     fontSize: '12.5px',
                                     textDecoration: 'none',
                                 }}>
@@ -229,12 +230,12 @@ export default function AuthPage() {
 
                         {error && (
                             <div style={{
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                background: 'rgba(222, 136, 113, 0.1)',
+                                border: '1px solid rgba(222, 136, 113, 0.3)',
                                 borderRadius: '8px',
                                 padding: '11px 12px',
                                 marginBottom: '16px',
-                                color: '#fca5a5',
+                                color: '#E8A594',
                                 fontSize: '13px',
                                 textAlign: 'left',
                             }}>
@@ -250,14 +251,14 @@ export default function AuthPage() {
                                 padding: '13px 24px',
                                 borderRadius: '10px',
                                 background: loading
-                                    ? 'rgba(59, 130, 246, 0.5)'
-                                    : 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                                    ? 'rgba(138, 165, 230, 0.5)'
+                                    : 'linear-gradient(135deg, #5B7FD4 0%, #8AA5E6 100%)',
                                 color: 'white',
                                 fontWeight: 600,
                                 fontSize: '15px',
                                 border: 'none',
                                 cursor: loading ? 'not-allowed' : 'pointer',
-                                boxShadow: '0 4px 18px rgba(59, 130, 246, 0.28)',
+                                boxShadow: '0 4px 18px rgba(138, 165, 230, 0.28)',
                                 transition: 'all 0.25s ease',
                             }}
                         >
@@ -270,7 +271,7 @@ export default function AuthPage() {
                         marginTop: '22px',
                         marginBottom: 0,
                         fontSize: '13.5px',
-                        color: '#94a3b8',
+                        color: '#A79D8B',
                     }}>
                         {isLogin ? "Don't have an account? " : 'Already have an account? '}
                         <button
@@ -279,7 +280,7 @@ export default function AuthPage() {
                             style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#60a5fa',
+                                color: '#A8BDEE',
                                 cursor: 'pointer',
                                 fontWeight: 500,
                                 fontSize: '13.5px',
@@ -298,14 +299,14 @@ export default function AuthPage() {
                     textAlign: 'center',
                     marginTop: '18px',
                     marginBottom: 0,
-                    color: '#475569',
+                    color: '#4A4133',
                     fontSize: '12px',
                     lineHeight: 1.6,
                 }}>
                     By continuing, you agree to our{' '}
-                    <Link to="/terms" style={{ color: '#64748b' }}>Terms</Link>
+                    <Link to="/terms" style={{ color: '#7C7364' }}>Terms</Link>
                     {' '}and{' '}
-                    <Link to="/privacy" style={{ color: '#64748b' }}>Privacy Policy</Link>.
+                    <Link to="/privacy" style={{ color: '#7C7364' }}>Privacy Policy</Link>.
                 </p>
             </div>
         </div>

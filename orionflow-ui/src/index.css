@@ -1,45 +1,49 @@
-/* OrionFlow - Premium Industrial Blue Theme */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap');
+/* OrionFlow Studio — the drawing sheet after dark.
+   Shares the orionflow.in system: warm neutrals, drafting-ink blue, redline.
+   Stays dark on purpose: the 3D viewport needs the contrast. */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
   /* Typography */
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --font-display: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Newsreader', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
 
-  /* Core Palette - Deep Slate with Warm Blue Accents */
-  --slate-950: #030712;
-  --slate-900: #0f172a;
-  --slate-850: #111827;
-  --slate-800: #1e293b;
-  --slate-700: #334155;
-  --slate-600: #475569;
-  --slate-500: #64748b;
-  --slate-400: #94a3b8;
-  --slate-300: #cbd5e1;
-  --slate-200: #e2e8f0;
-  --slate-100: #f1f5f9;
-  --slate-50: #f8fafc;
+  /* Core palette — warm dark, matching the landing sheet's dark theme.
+     Names kept (slate-*) so existing components resolve unchanged. */
+  --slate-950: #17140F;
+  --slate-900: #1B1712;
+  --slate-850: #1F1B15;
+  --slate-800: #262119;
+  --slate-700: #332C22;
+  --slate-600: #4A4133;
+  --slate-500: #7C7364;
+  --slate-400: #A79D8B;
+  --slate-300: #C4BAA6;
+  --slate-200: #D8CFBF;
+  --slate-100: #E6DED0;
+  --slate-50: #EFE7D8;
 
-  /* Primary Accent - Rich Warm Blue */
-  --blue-600: #2563eb;
-  --blue-500: #3b82f6;
-  --blue-400: #60a5fa;
-  --blue-300: #93c5fd;
-  --blue-glow: rgba(59, 130, 246, 0.4);
-  --blue-glow-strong: rgba(59, 130, 246, 0.6);
+  /* Primary accent — drafting ink, lifted to read on a dark viewport */
+  --blue-600: #5B7FD4;
+  --blue-500: #7396DF;
+  --blue-400: #8AA5E6;
+  --blue-300: #A8BDEE;
+  --blue-glow: rgba(138, 165, 230, 0.34);
+  --blue-glow-strong: rgba(138, 165, 230, 0.5);
 
-  /* Secondary Accent - Indigo for depth */
-  --indigo-600: #4f46e5;
-  --indigo-500: #6366f1;
-  --indigo-400: #818cf8;
-  --indigo-glow: rgba(99, 102, 241, 0.4);
+  /* Secondary accent — redline, the drawing's revision mark */
+  --indigo-600: #C2604A;
+  --indigo-500: #DE8871;
+  --indigo-400: #E8A594;
+  --indigo-glow: rgba(222, 136, 113, 0.32);
 
-  /* Tertiary - Cyan for highlights */
-  --cyan-500: #06b6d4;
-  --cyan-400: #22d3ee;
-  --cyan-300: #67e8f9;
-  --cyan-glow: rgba(6, 182, 212, 0.3);
+  /* Tertiary — muted blue; the viewport supplies the real colour */
+  --cyan-500: #6E93C8;
+  --cyan-400: #8FAEDC;
+  --cyan-300: #B0C7E8;
+  --cyan-glow: rgba(143, 174, 220, 0.26);
 
   /* Semantic Colors */
   --color-bg-app: var(--slate-950);
@@ -66,8 +70,8 @@
   --color-secondary-glow: var(--indigo-glow);
 
   /* Glass Effects */
-  --glass-bg: rgba(15, 23, 42, 0.85);
-  --glass-bg-light: rgba(30, 41, 59, 0.9);
+  --glass-bg: rgba(27, 23, 18, 0.85);
+  --glass-bg-light: rgba(38, 33, 25, 0.9);
   --glass-blur: blur(24px);
   --glass-border: rgba(255, 255, 255, 0.08);
 
@@ -304,8 +308,8 @@ a:hover {
 }
 
 @keyframes borderGlow {
-  0%, 100% { border-color: rgba(59, 130, 246, 0.3); }
-  50% { border-color: rgba(59, 130, 246, 0.6); }
+  0%, 100% { border-color: rgba(138, 165, 230, 0.3); }
+  50% { border-color: rgba(138, 165, 230, 0.6); }
 }
 
 @keyframes orbFloat {
@@ -365,8 +369,8 @@ a:hover {
 /* Grid Background */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(138, 165, 230, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(138, 165, 230, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
@@ -411,7 +415,7 @@ a:hover {
 }
 
 .card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(138, 165, 230, 0.3);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
@@ -436,7 +440,7 @@ a:hover {
 .orb-primary {
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(138, 165, 230, 0.15) 0%, transparent 70%);
   top: -200px;
   right: -100px;
 }
@@ -444,7 +448,7 @@ a:hover {
 .orb-secondary {
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(222, 136, 113, 0.12) 0%, transparent 70%);
   bottom: -150px;
   left: -100px;
   animation-delay: -4s;
@@ -453,7 +457,7 @@ a:hover {
 .orb-tertiary {
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(6, 182, 212, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(110, 147, 200, 0.08) 0%, transparent 70%);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -462,22 +466,22 @@ a:hover {
 
 /* ── Studio (app.orionflow.in) design tokens ─────────────────────────── */
 :root {
-  --studio-bg: #131417;          /* app chrome */
-  --studio-panel: #1a1c20;       /* dock surfaces */
-  --studio-panel-2: #202329;     /* raised elements */
-  --studio-border: #2a2d34;
-  --studio-border-soft: #24262c;
-  --studio-text: #e6e8eb;
-  --studio-text-dim: #9aa1ab;
-  --studio-text-faint: #6b7280;
-  --studio-accent: #4f8cff;      /* selection / primary */
-  --studio-accent-dim: rgba(79, 140, 255, 0.14);
-  --studio-ok: #34d399;
-  --studio-warn: #fbbf24;
-  --studio-err: #f87171;
-  --studio-viewport-hi: #26292e; /* viewport radial center */
-  --studio-viewport-lo: #16181b; /* viewport radial edge */
+  --studio-bg: #17140F;          /* app chrome */
+  --studio-panel: #1B1712;       /* dock surfaces */
+  --studio-panel-2: #221D16;     /* raised elements */
+  --studio-border: #332C22;
+  --studio-border-soft: #262019;
+  --studio-text: #EFE7D8;
+  --studio-text-dim: #A79D8B;
+  --studio-text-faint: #7C7364;
+  --studio-accent: #8AA5E6;      /* drafting ink — selection / primary */
+  --studio-accent-dim: rgba(138, 165, 230, 0.14);
+  --studio-ok: #7FB894;
+  --studio-warn: #D9A441;
+  --studio-err: #DE8871;         /* redline */
+  --studio-viewport-hi: #25201A; /* viewport radial center */
+  --studio-viewport-lo: #16130F; /* viewport radial edge */
 }
 .studio-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.studio-scroll::-webkit-scrollbar-thumb { background: #2e3239; border-radius: 4px; }
+.studio-scroll::-webkit-scrollbar-thumb { background: #3A3227; border-radius: 4px; }
 .studio-scroll::-webkit-scrollbar-track { background: transparent; }

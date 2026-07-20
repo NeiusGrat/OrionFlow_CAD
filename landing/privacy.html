@@ -13,19 +13,19 @@
 <script>(function(){try{var t=localStorage.getItem('of-theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --paper:#FFFFFF;--surface:#FFFFFF;--nav-bg:rgba(255,255,255,.82);
-    --ink:#161324;--slate:#6B6880;--accent:#5D4BD6;--accent-soft:#EFEBFB;
-    --tint:#FAF9FE;--line:#ECEAF7;--line-strong:#DCD8EF;
-    --display:"Archivo",system-ui,sans-serif;--body:"IBM Plex Sans",system-ui,sans-serif;
+    --paper:#FBF6EC;--surface:#FFFCF6;--nav-bg:#FBF6EC;
+    --ink:#23201C;--slate:#6A6358;--accent:#24468F;--accent-soft:#ECEFF8;
+    --tint:#F4EBDA;--line:#E4D9C5;--line-strong:#CFC2A8;
+    --display:"Newsreader",Georgia,serif;--body:"Instrument Sans",system-ui,sans-serif;
     --mono:"IBM Plex Mono",ui-monospace,monospace;
   }
   [data-theme="dark"]{
-    --paper:#0E0B18;--surface:#181426;--nav-bg:rgba(14,11,24,.8);
-    --ink:#ECEAF6;--slate:#9A93B4;--accent:#8B79F2;--accent-soft:#221C3A;
-    --tint:#141021;--line:#2A2442;--line-strong:#3A335A;
+    --paper:#17140F;--surface:#1F1B15;--nav-bg:#17140F;
+    --ink:#EFE7D8;--slate:#A79D8B;--accent:#8AA5E6;--accent-soft:#1C2233;
+    --tint:#131009;--line:#332C22;--line-strong:#4A4133;
   }
   *{box-sizing:border-box;}
   html{background:var(--paper);}
@@ -34,26 +34,24 @@
   a{color:var(--accent);text-decoration:none;}
   a:hover{text-decoration:underline;text-underline-offset:3px;}
   .wrap{max-width:780px;margin:0 auto;padding:0 28px;}
-  .nav{position:sticky;top:0;z-index:50;background:var(--nav-bg);backdrop-filter:saturate(160%) blur(10px);
-    border-bottom:1px solid var(--line);}
+  .nav{background:var(--nav-bg);border-bottom:1px solid var(--line);}
   .nav__in{display:flex;align-items:center;justify-content:space-between;height:64px;
     max-width:1140px;margin:0 auto;padding:0 28px;}
-  .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;
-    font-size:19px;color:var(--ink);}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--body);font-weight:600;
+    font-size:16px;color:var(--ink);}
   .brand:hover{text-decoration:none;}
-  .brand .wm{background:linear-gradient(96deg,#5D4BD6,#8B79F2);-webkit-background-clip:text;
-    background-clip:text;color:transparent;}
+  .brand .wm{color:var(--ink);}
   .nav__back{font-size:14.5px;color:var(--slate);font-weight:500;}
   .nav__back:hover{color:var(--ink);text-decoration:none;}
-  .eyebrow{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.22em;
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.2em;
     text-transform:uppercase;color:var(--accent);}
-  h1{font-family:var(--display);font-weight:700;font-size:clamp(32px,4.5vw,46px);
-    letter-spacing:-.025em;line-height:1.06;margin:14px 0 10px;}
+  h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,4.4vw,44px);
+    letter-spacing:-.02em;line-height:1.18;margin:16px 0 10px;}
   .updated{font-family:var(--mono);font-size:13px;color:var(--slate);margin:0 0 8px;}
   header.page{padding:64px 0 34px;border-bottom:1px solid var(--line);}
   main{padding:38px 0 70px;}
-  h2{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:-.015em;margin:40px 0 12px;}
-  h3{font-family:var(--display);font-weight:600;font-size:17px;margin:26px 0 8px;}
+  h2{font-family:var(--display);font-weight:400;font-size:25px;letter-spacing:-.015em;margin:44px 0 12px;}
+  h3{font-family:var(--display);font-weight:500;font-size:19px;margin:28px 0 8px;}
   p,li{color:var(--slate);}
   p b,li b{color:var(--ink);font-weight:600;}
   ul{padding-left:22px;margin:10px 0 18px;}
@@ -65,7 +63,7 @@
     text-transform:uppercase;color:var(--slate);font-weight:600;}
   td{color:var(--slate);}
   td:first-child{color:var(--ink);font-weight:500;white-space:nowrap;}
-  .card{border:1px solid var(--line);border-radius:12px;background:var(--tint);padding:18px 20px;margin:18px 0;}
+  .card{border:1px solid var(--line-strong);border-radius:2px;background:var(--tint);padding:18px 20px;margin:18px 0;}
   .card p{margin:0;}
   footer{border-top:1px solid var(--line);padding:26px 0 34px;font-size:13.5px;color:var(--slate);}
   footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;}
@@ -83,7 +81,7 @@
         <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.6"/>
         <circle cx="6" cy="19" r="2.6" fill="currentColor"/>
         <circle cx="20" cy="13" r="2.6" fill="currentColor"/>
-        <circle cx="13" cy="7" r="3.2" fill="#7059E8"/>
+        <circle cx="13" cy="7" r="3.2" fill="#24468F"/>
       </svg>
       <span class="wm">OrionFlow</span>
     </a>
@@ -160,7 +158,7 @@
       <li><b>Object to or restrict</b> certain processing, and <b>withdraw consent</b> where processing is based on consent;</li>
       <li><b>Complain</b> to your local data protection authority.</li>
     </ul>
-    <p>To exercise any of these rights, email <a href="mailto:hello@orionflow.in">hello@orionflow.in</a> from the address associated with your account. We respond within 30 days.</p>
+    <p>To exercise any of these rights, email <a href="mailto:sahilmaniyar@orionflow.in">sahilmaniyar@orionflow.in</a> from the address associated with your account. We respond within 30 days.</p>
 
     <h2>7. Children</h2>
     <p>The Service is not directed at children under 16, and we do not knowingly collect personal data from them. If you believe a child has provided us personal data, contact us and we will delete it.</p>
@@ -173,7 +171,7 @@
 
     <h2>10. Contact</h2>
     <p>OrionFlow · Established 2026<br />
-    Questions, requests, or complaints about privacy: <a href="mailto:hello@orionflow.in">hello@orionflow.in</a></p>
+    Questions, requests, or complaints about privacy: <a href="mailto:sahilmaniyar@orionflow.in">sahilmaniyar@orionflow.in</a></p>
 
   </div>
 </main>

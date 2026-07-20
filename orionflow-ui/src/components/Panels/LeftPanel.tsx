@@ -22,7 +22,7 @@ function PartCard({ version, files, onRegenerate }: { version: number, files?: {
                     alignItems: "center",
                     marginBottom: "16px",
                     background: "#000000",
-                    border: "1px solid #F97316", // Orange border
+                    border: "1px solid #D08A4E", // Orange border
                     borderRadius: "8px",
                     padding: "12px",
                     cursor: "pointer"
@@ -181,7 +181,7 @@ export default function LeftPanel() {
                         <div style={{
                             width: "32px", height: "32px", borderRadius: "50%",
                             background: msg.role === 'user'
-                                ? "linear-gradient(to bottom right, #FF8C00, #F97316)" // Orange Gradient for User
+                                ? "linear-gradient(to bottom right, #FF8C00, #D08A4E)" // Orange Gradient for User
                                 : "#EC4899", // Pink for Adam (Assistant) - keeping this distinct or change? User said "green round box add orange", assuming user avatar.
                             flexShrink: 0,
                             display: "flex", alignItems: "center", justifyContent: "center",
@@ -234,10 +234,10 @@ export default function LeftPanel() {
                 }}>
                     {/* Blue Border Input Container */}
                     <div style={{
-                        border: "1px solid #3b82f6", // Blue border
+                        border: "1px solid #8AA5E6", // Blue border
                         borderRadius: "8px",
                         padding: "8px 12px",
-                        background: "rgba(59, 130, 246, 0.05)"
+                        background: "rgba(138, 165, 230, 0.05)"
                     }}>
                         <input
                             type="text"

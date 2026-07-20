@@ -32,11 +32,11 @@ export default function ResetPasswordPage() {
 
     const inputStyle: React.CSSProperties = {
         width: '100%',
-        background: '#111827',
-        border: '1px solid #1f2937',
+        background: '#1F1B15',
+        border: '1px solid #241F18',
         borderRadius: '8px',
         padding: '12px 14px',
-        color: '#f8fafc',
+        color: '#EFE7D8',
         fontSize: '14px',
         outline: 'none',
     };
@@ -44,8 +44,9 @@ export default function ResetPasswordPage() {
     return (
         <div style={{
             minHeight: '100vh',
-            background: '#030712',
-            color: '#f8fafc',
+            width: '100%',
+            background: '#17140F',
+            color: '#EFE7D8',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -58,11 +59,11 @@ export default function ResetPasswordPage() {
 
             {done ? (
                 <>
-                    <p style={{ color: '#4ade80', fontSize: '15px' }}>
+                    <p style={{ color: '#7FB894', fontSize: '15px' }}>
                         Password updated. You can sign in with your new password.
                     </p>
                     <Link to="/auth" style={{
-                        background: '#3b82f6',
+                        background: '#8AA5E6',
                         color: '#fff',
                         padding: '10px 24px',
                         borderRadius: '8px',
@@ -73,7 +74,7 @@ export default function ResetPasswordPage() {
                     </Link>
                 </>
             ) : !token ? (
-                <p style={{ color: '#f87171', fontSize: '15px' }}>
+                <p style={{ color: '#DE8871', fontSize: '15px' }}>
                     Missing reset token. Use the link from your email.
                 </p>
             ) : (
@@ -103,13 +104,13 @@ export default function ResetPasswordPage() {
                         style={inputStyle}
                     />
                     {error && (
-                        <p style={{ color: '#f87171', fontSize: '13px' }}>{error}</p>
+                        <p style={{ color: '#DE8871', fontSize: '13px' }}>{error}</p>
                     )}
                     <button
                         type="submit"
                         disabled={loading}
                         style={{
-                            background: loading ? '#1f2937' : '#3b82f6',
+                            background: loading ? '#241F18' : '#8AA5E6',
                             color: '#fff',
                             border: 'none',
                             borderRadius: '8px',

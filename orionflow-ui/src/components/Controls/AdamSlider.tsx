@@ -100,7 +100,7 @@ export default function AdamSlider({
                     width: "100%",
                     height: "24px",
                     background: "#1ea2e022", // Very subtle opacity of the blue (or just dark bg)
-                    backgroundColor: "#27272a", // Dark track
+                    backgroundColor: "#241F18", // Dark track
                     borderRadius: "6px",
                     position: "relative",
                     cursor: "ew-resize",
@@ -115,7 +115,7 @@ export default function AdamSlider({
                         top: 0,
                         bottom: 0,
                         width: `${percent}%`,
-                        background: "#40a9ff", // Lighter blue for better visibility
+                        background: "#8AA5E6", // Lighter blue for better visibility
                         backgroundColor: "var(--color-accent)",
                         borderRight: "2px solid rgba(255,255,255,0.2)"
                     }}

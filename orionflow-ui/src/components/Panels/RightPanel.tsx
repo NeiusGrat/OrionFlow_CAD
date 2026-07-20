@@ -70,7 +70,7 @@ export default function RightPanel() {
                         gap: "10px",
                         width: "100%",
                         padding: "14px",
-                        background: "#F97316", // Orange color
+                        background: "#D08A4E", // Orange color
                         color: "white",
                         border: "none",
                         borderRadius: "8px",
@@ -100,7 +100,7 @@ export default function RightPanel() {
                         gap: "10px",
                         width: "100%",
                         padding: "14px",
-                        background: "#3B82F6", // Blue color for 3D Print
+                        background: "#8AA5E6", // Blue color for 3D Print
                         color: "white",
                         border: "none",
                         borderRadius: "8px",

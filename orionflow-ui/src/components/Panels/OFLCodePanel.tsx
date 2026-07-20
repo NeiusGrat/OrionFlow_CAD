@@ -52,13 +52,13 @@ export default function OFLCodePanel() {
             {/* Header */}
             <div style={{
                 padding: "12px 16px",
-                borderBottom: "1px solid #1f1f1f",
+                borderBottom: "1px solid #1F1B15",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
             }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Code size={16} style={{ color: "#3b82f6" }} />
+                    <Code size={16} style={{ color: "#8AA5E6" }} />
                     <span style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
                         OFL Code
                     </span>
@@ -67,9 +67,9 @@ export default function OFLCodePanel() {
                     <button
                         onClick={handleEdit}
                         style={{
-                            background: "#1f1f1f", border: "1px solid #333",
+                            background: "#1F1B15", border: "1px solid #333",
                             borderRadius: "6px", padding: "4px 10px",
-                            color: "#a1a1aa", fontSize: "12px", cursor: "pointer",
+                            color: "#A79D8B", fontSize: "12px", cursor: "pointer",
                         }}
                     >
                         Edit
@@ -78,7 +78,7 @@ export default function OFLCodePanel() {
                     <button
                         onClick={handleRebuild}
                         style={{
-                            background: "#3b82f6", border: "none",
+                            background: "#8AA5E6", border: "none",
                             borderRadius: "6px", padding: "4px 10px",
                             color: "#fff", fontSize: "12px", cursor: "pointer",
                             display: "flex", alignItems: "center", gap: "4px",
@@ -97,7 +97,7 @@ export default function OFLCodePanel() {
                         onChange={e => setEditedCode(e.target.value)}
                         style={{
                             width: "100%", minHeight: "200px",
-                            background: "#111", color: "#d4d4d4",
+                            background: "#111", color: "#C4BAA6",
                             border: "1px solid #333", borderRadius: "6px",
                             padding: "10px", fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                             fontSize: "12px", lineHeight: "1.6", resize: "vertical",
@@ -107,7 +107,7 @@ export default function OFLCodePanel() {
                     />
                 ) : (
                     <pre style={{
-                        background: "#111", color: "#d4d4d4",
+                        background: "#111", color: "#C4BAA6",
                         padding: "10px", borderRadius: "6px",
                         fontSize: "12px", lineHeight: "1.6",
                         fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
@@ -120,7 +120,7 @@ export default function OFLCodePanel() {
                 {/* Parameters */}
                 {parameters.length > 0 && (
                     <div style={{ marginTop: "16px" }}>
-                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#a1a1aa", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, color: "#A79D8B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                             Parameters
                         </span>
                         {parameters.map(p => (
@@ -128,7 +128,7 @@ export default function OFLCodePanel() {
                                 display: "flex", alignItems: "center", gap: "8px",
                                 marginTop: "8px",
                             }}>
-                                <label style={{ width: "100px", fontSize: "12px", color: "#a1a1aa", flexShrink: 0 }}>
+                                <label style={{ width: "100px", fontSize: "12px", color: "#A79D8B", flexShrink: 0 }}>
                                     {p.name}
                                 </label>
                                 <input
@@ -138,9 +138,9 @@ export default function OFLCodePanel() {
                                     step={p.value >= 10 ? 1 : 0.5}
                                     value={p.value}
                                     onChange={e => updateParameter(p.name, parseFloat(e.target.value))}
-                                    style={{ flex: 1, accentColor: "#3b82f6" }}
+                                    style={{ flex: 1, accentColor: "#8AA5E6" }}
                                 />
-                                <span style={{ width: "50px", fontSize: "12px", color: "#e4e4e7", textAlign: "right" }}>
+                                <span style={{ width: "50px", fontSize: "12px", color: "#D8CFBF", textAlign: "right" }}>
                                     {p.value}
                                 </span>
                             </div>
@@ -154,9 +154,9 @@ export default function OFLCodePanel() {
                         {stepUrl && (
                             <a href={stepUrl} download style={{
                                 display: "flex", alignItems: "center", gap: "4px",
-                                background: "#1f1f1f", border: "1px solid #333",
+                                background: "#1F1B15", border: "1px solid #333",
                                 borderRadius: "6px", padding: "6px 12px",
-                                color: "#a1a1aa", fontSize: "12px",
+                                color: "#A79D8B", fontSize: "12px",
                                 textDecoration: "none",
                             }}>
                                 <Download size={12} /> .step
@@ -165,9 +165,9 @@ export default function OFLCodePanel() {
                         {stlUrl && (
                             <a href={stlUrl} download style={{
                                 display: "flex", alignItems: "center", gap: "4px",
-                                background: "#1f1f1f", border: "1px solid #333",
+                                background: "#1F1B15", border: "1px solid #333",
                                 borderRadius: "6px", padding: "6px 12px",
-                                color: "#a1a1aa", fontSize: "12px",
+                                color: "#A79D8B", fontSize: "12px",
                                 textDecoration: "none",
                             }}>
                                 <Download size={12} /> .stl
@@ -180,9 +180,9 @@ export default function OFLCodePanel() {
                 {error && (
                     <div style={{
                         marginTop: "12px", padding: "8px 10px",
-                        background: "rgba(239, 68, 68, 0.1)",
-                        border: "1px solid rgba(239, 68, 68, 0.3)",
-                        borderRadius: "6px", fontSize: "12px", color: "#f87171",
+                        background: "rgba(222, 136, 113, 0.1)",
+                        border: "1px solid rgba(222, 136, 113, 0.3)",
+                        borderRadius: "6px", fontSize: "12px", color: "#DE8871",
                     }}>
                         {error}
                     </div>
@@ -190,7 +190,7 @@ export default function OFLCodePanel() {
 
                 {/* Timing */}
                 {generationTimeMs > 0 && (
-                    <div style={{ marginTop: "8px", fontSize: "11px", color: "#52525b" }}>
+                    <div style={{ marginTop: "8px", fontSize: "11px", color: "#4A4133" }}>
                         Generated in {(generationTimeMs / 1000).toFixed(1)}s
                     </div>
                 )}

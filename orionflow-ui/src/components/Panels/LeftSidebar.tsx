@@ -48,7 +48,7 @@ function FeatureTreePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                         width: "32px",
                         height: "32px",
                         borderRadius: "var(--radius-md)",
-                        background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
+                        background: "linear-gradient(135deg, #8AA5E6 0%, #8AA5E6 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -132,7 +132,7 @@ function FeatureTreePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                     transition: "all var(--duration-fast) var(--ease-out-quad)",
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.3)";
+                                    e.currentTarget.style.borderColor = "rgba(138, 165, 230, 0.3)";
                                     e.currentTarget.style.background = "var(--color-bg-element-hover)";
                                 }}
                                 onMouseLeave={(e) => {
@@ -151,11 +151,11 @@ function FeatureTreePanel({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                                         height: "8px",
                                         borderRadius: "var(--radius-full)",
                                         background: index === 0
-                                            ? "#3b82f6"
-                                            : "#6366f1",
+                                            ? "#8AA5E6"
+                                            : "#8AA5E6",
                                         boxShadow: index === 0
-                                            ? "0 0 8px rgba(59, 130, 246, 0.5)"
-                                            : "0 0 8px rgba(99, 102, 241, 0.5)",
+                                            ? "0 0 8px rgba(138, 165, 230, 0.5)"
+                                            : "0 0 8px rgba(222, 136, 113, 0.5)",
                                     }} />
                                     <span style={{
                                         fontSize: "13px",
@@ -311,7 +311,7 @@ function ExportDropdown({
                                 width: "36px",
                                 height: "36px",
                                 borderRadius: "var(--radius-md)",
-                                background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
+                                background: "linear-gradient(135deg, #8AA5E6 0%, #8AA5E6 100%)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -349,7 +349,7 @@ function ExportDropdown({
                                 width: "36px",
                                 height: "36px",
                                 borderRadius: "var(--radius-md)",
-                                background: "linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%)",
+                                background: "linear-gradient(135deg, #6E93C8 0%, #8FAEDC 100%)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -422,9 +422,9 @@ const NavButton = React.forwardRef<HTMLButtonElement, {
                 transform: "translateY(-50%)",
                 width: "3px",
                 height: "20px",
-                background: "#3b82f6",
+                background: "#8AA5E6",
                 borderRadius: "0 2px 2px 0",
-                boxShadow: "0 0 8px rgba(59, 130, 246, 0.5)",
+                boxShadow: "0 0 8px rgba(138, 165, 230, 0.5)",
             }} />
         )}
         {icon}
@@ -465,12 +465,12 @@ export default function LeftSidebar() {
                     width: "44px",
                     height: "44px",
                     borderRadius: "var(--radius-lg)",
-                    background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)",
+                    background: "linear-gradient(135deg, #8AA5E6 0%, #8AA5E6 50%, #A8BDEE 100%)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: "20px",
-                    boxShadow: "0 0 30px rgba(59, 130, 246, 0.4)",
+                    boxShadow: "0 0 30px rgba(138, 165, 230, 0.4)",
                     position: "relative",
                 }}>
                     <OrionFlowLogo size={26} theme="mono" />
@@ -478,7 +478,7 @@ export default function LeftSidebar() {
                         position: "absolute",
                         inset: "-2px",
                         borderRadius: "var(--radius-lg)",
-                        background: "linear-gradient(135deg, #60a5fa, #818cf8)",
+                        background: "linear-gradient(135deg, #A8BDEE, #A8BDEE)",
                         opacity: 0.4,
                         filter: "blur(8px)",
                         zIndex: -1,

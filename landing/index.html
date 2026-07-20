@@ -30,7 +30,7 @@
       "name": "OrionFlow",
       "url": "https://orionflow.in/",
       "logo": "https://orionflow.in/og.png",
-      "email": "hello@orionflow.in",
+      "email": "sahilmaniyar@orionflow.in",
       "description": "AI for mechanical engineers. Describe a part in plain English; get an editable, parametric CAD model."
     },
     {
@@ -56,593 +56,716 @@
 <meta name="description" content="Describe a part in plain English. OrionFlow builds an editable, parametric CAD model you can dimension, tweak, and export to STEP, STL, or GLB." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
+  /* ============================================================
+     OrionFlow — the drawing sheet
+     Vellum paper, drafting-ink blue, redline annotation.
+     ============================================================ */
   :root{
-    --paper:#FFFFFF;
-    --surface:#FFFFFF;
-    --nav-bg:rgba(255,255,255,.82);
-    --ink:#161324;
-    --slate:#6B6880;
-    --accent:#5D4BD6;
-    --accent-2:#8B79F2;
-    --accent-deep:#4C3CC2;
-    --accent-soft:#EFEBFB;
-    --tint:#FAF9FE;
-    --line:#ECEAF7;
-    --line-strong:#DCD8EF;
-    --display:"Archivo",system-ui,sans-serif;
-    --body:"IBM Plex Sans",system-ui,sans-serif;
+    --vellum:#FBF6EC;        /* the sheet itself */
+    --sheet:#FFFCF6;         /* raised surfaces */
+    --vellum-deep:#F4EBDA;   /* recessed bands */
+    --ink:#23201C;           /* warm near-black, never #000 */
+    --ink-soft:#6A6358;
+    --ink-faint:#9C9384;
+    --rule:#E4D9C5;          /* hairlines */
+    --rule-strong:#CFC2A8;
+    --blue:#24468F;          /* drafting ink */
+    --blue-deep:#1A3370;
+    --blue-wash:#ECEFF8;
+    --redline:#BE4630;       /* revision / dimension marker */
+
+    --serif:"Newsreader",Georgia,serif;
+    --sans:"Instrument Sans",system-ui,sans-serif;
     --mono:"IBM Plex Mono",ui-monospace,monospace;
-    --maxw:1140px;
+
+    --sheet-w:1080px;
+    --column:38rem;
   }
   [data-theme="dark"]{
-    --paper:#0E0B18;
-    --surface:#181426;
-    --nav-bg:rgba(14,11,24,.8);
-    --ink:#ECEAF6;
-    --slate:#9A93B4;
-    --accent:#8B79F2;
-    --accent-2:#A593F7;
-    --accent-deep:#6E5BE6;
-    --accent-soft:#221C3A;
-    --tint:#141021;
-    --line:#2A2442;
-    --line-strong:#3A335A;
+    --vellum:#17140F;
+    --sheet:#1F1B15;
+    --vellum-deep:#131009;
+    --ink:#EFE7D8;
+    --ink-soft:#A79D8B;
+    --ink-faint:#7C7364;
+    --rule:#332C22;
+    --rule-strong:#4A4133;
+    --blue:#8AA5E6;
+    --blue-deep:#A8BDEE;
+    --blue-wash:#1C2233;
+    --redline:#DE8871;
   }
-  html{background:var(--paper);}
+
   *{box-sizing:border-box;}
-  /* The hidden attribute must beat class-level display:flex (.form, .signed). */
   [hidden]{display:none!important;}
-  html{scroll-behavior:smooth;}
+  html{background:var(--vellum);scroll-behavior:smooth;}
   body{
-    margin:0;background:var(--paper);color:var(--ink);
-    font-family:var(--body);font-size:17px;line-height:1.6;
+    margin:0;background:var(--vellum);color:var(--ink);
+    font-family:var(--sans);font-size:16.5px;line-height:1.65;
     -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
   }
   a{color:inherit;text-decoration:none;}
-  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px;}
-  .mono{font-family:var(--mono);}
 
-  /* ---- eyebrow / labels ---- */
-  .eyebrow{
-    font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.22em;
-    text-transform:uppercase;color:var(--accent);display:inline-flex;align-items:center;gap:9px;
-  }
-  .eyebrow::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;}
+  .sheet{max-width:var(--sheet-w);margin:0 auto;padding:0 32px;}
+  .col{max-width:var(--column);}
+  .col--center{margin-left:auto;margin-right:auto;}
 
-  /* ---- nav ---- */
-  .nav{
-    position:sticky;top:0;z-index:50;background:var(--nav-bg);
-    backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid var(--line);
+  /* ---- utility type ------------------------------------------------ */
+  .tag{
+    font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--ink-soft);
   }
-  .nav__in{display:flex;align-items:center;justify-content:space-between;height:64px;}
-  .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;
-    font-size:19px;letter-spacing:-.01em;}
-  .brand svg{display:block;}
-  .nav__links{display:flex;align-items:center;gap:30px;font-size:14.5px;color:var(--slate);font-weight:500;}
-  .nav__links a:hover{color:var(--ink);}
-  .nav__login{font-weight:500;}
-  .brand .wm{background:linear-gradient(96deg,#5D4BD6,#8B79F2);-webkit-background-clip:text;
-    background-clip:text;color:transparent;}
+  .tag--blue{color:var(--blue);}
 
-  /* ---- announcement bar ---- */
-  .announce{background:var(--tint);border-bottom:1px solid var(--line);}
-  .announce a{display:flex;align-items:center;justify-content:center;gap:11px;height:40px;
-    font-size:13.5px;color:var(--ink);font-weight:500;}
-  .announce .pill{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;
-    color:var(--accent);border:1px solid var(--line-strong);border-radius:999px;padding:3px 9px;
-    background:var(--accent-soft);}
-  .announce .arr{color:var(--accent);transition:transform .16s ease;}
-  .announce a:hover .arr{transform:translateX(4px);}
+  /* Section rule: a drawing-sheet zone marker, not decoration.
+     The label names the sheet you're on. */
+  .zone{
+    display:flex;align-items:center;gap:18px;
+    padding-bottom:14px;border-bottom:1px solid var(--rule);
+    margin-bottom:52px;
+  }
+  .zone__n{
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--redline);
+    border:1px solid var(--rule-strong);padding:2px 7px;flex:none;
+  }
+  .zone__t{font-family:var(--mono);font-size:11px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--ink-soft);}
 
-  /* ---- theme toggle ---- */
-  .theme-btn{width:36px;height:36px;border:1px solid var(--line-strong);border-radius:8px;
-    background:transparent;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
-    color:var(--ink);transition:border-color .15s ease,background .15s ease;flex:none;}
-  .theme-btn:hover{border-color:var(--ink);background:var(--accent-soft);}
-  .theme-btn svg{width:17px;height:17px;}
-  .theme-btn .moon{display:none;}
-  [data-theme="dark"] .theme-btn .sun{display:none;}
-  [data-theme="dark"] .theme-btn .moon{display:inline;}
+  h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-.012em;}
 
-  /* ---- credibility strip ---- */
-  .proof{display:flex;align-items:center;gap:18px;flex-wrap:wrap;
-    font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--slate);
-    padding:24px 0 8px;}
-  .proof b{color:var(--ink);font-weight:500;}
-  .proof span.k{color:var(--slate);text-transform:uppercase;letter-spacing:.16em;font-size:11px;}
-  .proof .sep{width:4px;height:4px;border-radius:50%;background:var(--line-strong);}
-  .btn{
-    font-family:var(--body);font-weight:600;font-size:15px;border-radius:8px;
-    padding:10px 18px;border:1px solid transparent;cursor:pointer;display:inline-flex;
-    align-items:center;gap:8px;transition:transform .12s ease,background .15s ease,box-shadow .15s ease;
-  }
-  .btn--primary{background:linear-gradient(180deg,#6A58E2,var(--accent));color:#fff;
-    box-shadow:0 1px 0 rgba(0,0,0,.04),0 6px 16px -8px rgba(93,75,214,.5);}
-  .btn--primary:hover{background:linear-gradient(180deg,#5F4DDB,var(--accent-deep));transform:translateY(-1px);
-    box-shadow:0 10px 26px -8px rgba(93,75,214,.55);}
-  .btn--ghost{background:transparent;color:var(--ink);border-color:var(--line-strong);}
-  .btn--ghost:hover{border-color:var(--ink);}
-  .nav .btn{padding:8px 16px;}
+  /* ---- masthead ---------------------------------------------------- */
+  .top{border-bottom:1px solid var(--rule);background:var(--vellum);}
+  .top__in{display:flex;align-items:center;justify-content:space-between;
+    height:72px;gap:24px;}
+  .mark{display:flex;align-items:center;gap:10px;
+    font-family:var(--sans);font-weight:600;font-size:16px;letter-spacing:.01em;}
+  .mark svg{display:block;}
+  .top__nav{display:flex;align-items:center;gap:28px;
+    font-size:14px;color:var(--ink-soft);}
+  .top__nav a:hover{color:var(--ink);}
+  .top__nav a.on-sheet{position:relative;}
+  .top__nav a.on-sheet::after{content:"";position:absolute;left:0;right:0;bottom:-3px;
+    height:1px;background:var(--ink);transform:scaleX(0);transform-origin:left;
+    transition:transform .2s ease;}
+  .top__nav a.on-sheet:hover::after{transform:scaleX(1);}
 
-  /* ---- hero ---- */
-  .hero{padding:78px 0 44px;position:relative;overflow:hidden;isolation:isolate;}
-  .hero::before,.hero::after{content:"";position:absolute;border-radius:50%;
-    filter:blur(70px);z-index:-1;pointer-events:none;}
-  .hero::before{width:560px;height:560px;top:-220px;right:-90px;opacity:.7;
-    background:radial-gradient(circle,#C7BAF8,transparent 66%);animation:drift1 26s ease-in-out infinite;}
-  .hero::after{width:460px;height:460px;top:-80px;left:-150px;opacity:.6;
-    background:radial-gradient(circle,#CBD8FB,transparent 66%);animation:drift2 32s ease-in-out infinite;}
-  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(-44px,34px) scale(1.08);}}
-  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(34px,-22px) scale(1.06);}}
-  .hero .wrap{position:relative;z-index:1;}
-  .hero__grid{display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center;}
-  .hero h1{
-    font-family:var(--display);font-weight:700;font-size:clamp(40px,5.4vw,66px);
-    line-height:1.03;letter-spacing:-.028em;margin:20px 0 0;
-  }
-  .hero h1 em{font-style:normal;
-    background:linear-gradient(102deg,#5D4BD6 8%,#7059E8 46%,#5B8DEF 96%);
-    -webkit-background-clip:text;background-clip:text;color:transparent;}
-  .hero__sub{font-size:19px;color:var(--slate);max-width:30ch;margin:22px 0 30px;}
-  .hero__cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
-  .hero__note{font-family:var(--mono);font-size:12.5px;color:var(--slate);margin-top:22px;
-    display:flex;align-items:center;gap:8px;}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;
-    box-shadow:0 0 0 0 rgba(93,75,214,.45);animation:pulse 2.4s infinite;}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(93,75,214,.4);}70%{box-shadow:0 0 0 8px rgba(93,75,214,0);}100%{box-shadow:0 0 0 0 rgba(93,75,214,0);}}
+  .toggle{width:32px;height:32px;border:1px solid var(--rule-strong);border-radius:2px;
+    background:transparent;display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;color:var(--ink-soft);flex:none;
+    transition:color .15s ease,border-color .15s ease;}
+  .toggle:hover{color:var(--ink);border-color:var(--ink);}
+  .toggle svg{width:15px;height:15px;}
+  .toggle .moon{display:none;}
+  [data-theme="dark"] .toggle .sun{display:none;}
+  [data-theme="dark"] .toggle .moon{display:inline;}
 
-  /* ---- demo (signature) ---- */
-  .demo{
-    background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;
-    box-shadow:0 30px 70px -38px rgba(93,75,214,.34);
-    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
-    background-size:22px 22px;background-position:-1px -1px;
+  /* ---- buttons: quiet, squared, no gradients ----------------------- */
+  .act{
+    font-family:var(--sans);font-weight:500;font-size:14.5px;border-radius:2px;
+    padding:10px 18px;border:1px solid var(--blue);cursor:pointer;
+    display:inline-flex;align-items:center;gap:9px;
+    background:var(--blue);color:var(--sheet);
+    transition:background .16s ease,border-color .16s ease;
   }
-  .demo__bar{
-    display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--surface);
-    border-bottom:1px solid var(--line);
+  /* Only the filled button flips to dark text; the quiet one keeps ink,
+     which a bare `[data-theme="dark"] .act` would outrank. */
+  [data-theme="dark"] .act:not(.act--quiet){color:#15120D;}
+  .act:hover{background:var(--blue-deep);border-color:var(--blue-deep);}
+  .act--quiet{background:transparent;color:var(--ink);border-color:var(--rule-strong);}
+  .act--quiet:hover{background:transparent;border-color:var(--ink);}
+
+  /* A text link that behaves like a drawing leader line. */
+  .lead-link{color:var(--blue);border-bottom:1px solid var(--rule-strong);
+    padding-bottom:1px;transition:border-color .16s ease;}
+  .lead-link:hover{border-color:var(--blue);}
+
+  /* ---- the letter -------------------------------------------------- */
+  .letter{padding:96px 0 84px;}
+  .letter__eyebrow{margin-bottom:40px;display:block;}
+  .letter h1{
+    font-size:clamp(30px,3.9vw,44px);line-height:1.22;margin:0 0 34px;
+    letter-spacing:-.02em;
   }
-  .demo__bar i{width:9px;height:9px;border-radius:50%;background:var(--line-strong);display:block;}
-  .demo__bar i:first-child{background:var(--accent);}
-  .demo__tag{margin-left:6px;font-family:var(--mono);font-size:12px;color:var(--slate);}
-  .demo__body{padding:18px 18px 20px;position:relative;}
-  .prompt{
-    font-family:var(--mono);font-size:13.5px;background:var(--surface);border:1px solid var(--line);
-    border-radius:9px;padding:11px 13px;color:var(--ink);display:flex;align-items:center;
-    min-height:42px;white-space:nowrap;overflow:hidden;
+  .letter p{
+    font-family:var(--serif);font-size:19.5px;line-height:1.78;
+    color:var(--ink);margin:0 0 22px;font-weight:300;
   }
-  .prompt b{color:var(--accent);font-weight:600;margin-right:9px;}
-  .caret{width:8px;height:16px;background:var(--accent);margin-left:2px;display:inline-block;
-    animation:blink 1s steps(1) infinite;}
+  .letter em{font-style:italic;color:var(--ink);}
+  .letter .spec{
+    font-family:var(--mono);font-size:16px;font-style:normal;
+    color:var(--blue);letter-spacing:-.01em;
+  }
+  .letter .close{font-weight:500;}
+  .letter__sign{
+    margin-top:44px;padding-top:22px;border-top:1px solid var(--rule);
+    display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  }
+
+  /* ---- SIGNATURE: the drawing sheet -------------------------------- */
+  /* margin-bottom only: a shorthand here would cancel .sheet's auto centring. */
+  .plate{margin-bottom:96px;}
+  .plate__frame{
+    background:var(--sheet);border:1px solid var(--rule-strong);
+    /* faint drafting grid, printed on the sheet */
+    background-image:
+      linear-gradient(var(--rule) 1px,transparent 1px),
+      linear-gradient(90deg,var(--rule) 1px,transparent 1px);
+    background-size:26px 26px;
+    background-position:-1px -1px;
+  }
+  .plate__prompt{
+    display:flex;align-items:center;gap:10px;
+    padding:15px 20px;border-bottom:1px solid var(--rule);
+    background:var(--sheet);
+    font-family:var(--mono);font-size:13.5px;color:var(--ink);
+    white-space:nowrap;overflow:hidden;
+  }
+  .plate__prompt .caret-mark{color:var(--blue);flex:none;}
+  .caret{width:7px;height:15px;background:var(--blue);display:inline-block;
+    animation:blink 1.1s steps(1) infinite;flex:none;}
   @keyframes blink{50%{opacity:0;}}
 
-  .stage{display:grid;grid-template-columns:1fr 168px;gap:14px;margin-top:14px;align-items:stretch;}
-  .draw{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:6px;}
-  .draw svg{width:100%;height:auto;display:block;}
-  /* svg drawing */
-  .ln{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;
-    stroke-dasharray:680;stroke-dashoffset:680;transition:stroke-dashoffset 1s ease;}
-  .demo.is-draw .ln{stroke-dashoffset:0;}
-  .demo.is-draw .ln.l2{transition-delay:.5s;}
-  .demo.is-draw .ln.l3{transition-delay:.9s;}
-  .demo.is-draw .ln.l4{transition-delay:1.15s;}
-  .dimset{opacity:0;transition:opacity .5s ease .15s;}
-  .demo.is-dim .dimset{opacity:1;}
-  .dim{stroke:var(--accent);stroke-width:1;}
-  .dimt{fill:var(--accent);font-family:var(--mono);font-size:11px;font-weight:600;}
-  .hl{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5;}
+  .plate__body{display:grid;grid-template-columns:1fr 210px;}
+  .plate__view{padding:20px 24px 8px;}
+  .plate__view svg{width:100%;height:auto;display:block;}
 
-  .tree{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:12px;font-family:var(--mono);
-    font-size:12.5px;display:flex;flex-direction:column;gap:0;}
-  .tree h4{margin:0 0 10px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--slate);font-weight:600;}
-  .tree li{list-style:none;display:flex;align-items:center;gap:8px;padding:5px 0;color:var(--ink);
-    opacity:0;transform:translateX(-6px);transition:opacity .4s ease,transform .4s ease;}
-  .tree ul{margin:0;padding:0;}
-  .tree li.on{opacity:1;transform:none;}
-  .tree li b{color:var(--accent);font-weight:600;}
-  .node{width:7px;height:7px;border:1.5px solid var(--ink);border-radius:2px;flex:none;}
-  .tree li:last-child .node{border-color:var(--accent);background:var(--accent);}
+  /* drawing strokes */
+  .edge{fill:none;stroke:var(--ink);stroke-width:1.6;
+    stroke-linejoin:round;stroke-linecap:round;
+    stroke-dasharray:900;stroke-dashoffset:900;
+    transition:stroke-dashoffset 1.05s cubic-bezier(.4,0,.2,1);}
+  .is-drawn .edge{stroke-dashoffset:0;}
+  .is-drawn .edge.e2{transition-delay:.45s;}
+  .is-drawn .edge.e3{transition-delay:.62s;}
+  .is-drawn .edge.e4{transition-delay:.95s;}
+  /* centre marks — the detail every real drawing has */
+  /* children use stroke="currentColor", so set colour as well as stroke */
+  .centre{stroke:var(--blue);color:var(--blue);stroke-width:.9;opacity:0;
+    transition:opacity .4s ease;}
+  .is-drawn .centre{opacity:.85;transition-delay:.8s;}
+  /* dimensions arrive in redline, the way a checker marks a print */
+  .dims{opacity:0;transition:opacity .55s ease;color:var(--redline);}
+  .is-dimmed .dims{opacity:1;}
+  .dim{stroke:var(--redline);stroke-width:.9;fill:none;}
+  .witness{stroke:var(--redline);stroke-width:.7;opacity:.75;}
+  .dim-t{fill:var(--redline);font-family:"IBM Plex Mono",monospace;
+    font-size:11px;letter-spacing:.02em;}
+  /* marker contents don't inherit from the referencing line — colour them here
+     so the arrowheads follow the theme. */
+  #tip path{fill:var(--redline);}
 
-  .exports{display:flex;gap:8px;margin-top:14px;align-items:center;}
-  .chip{font-family:var(--mono);font-size:11.5px;font-weight:500;border:1px solid var(--line-strong);
-    border-radius:999px;padding:5px 11px;color:var(--slate);opacity:0;transform:translateY(4px);
-    transition:opacity .35s ease,transform .35s ease,border-color .2s,color .2s;}
-  .demo.is-exp .chip{opacity:1;transform:none;}
-  .demo.is-exp .chip:nth-child(2){transition-delay:.08s;}
-  .demo.is-exp .chip:nth-child(3){transition-delay:.16s;}
-  .chip.lead{border-color:var(--accent);color:var(--accent);}
+  /* build log */
+  .plate__log{border-left:1px solid var(--rule);padding:20px 20px;background:var(--sheet);}
+  .plate__log h4{margin:0 0 14px;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:500;}
+  .plate__log ul{margin:0;padding:0;list-style:none;}
+  .plate__log li{display:flex;align-items:baseline;gap:9px;padding:6px 0;
+    font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);
+    opacity:0;transform:translateY(3px);
+    transition:opacity .38s ease,transform .38s ease;}
+  .plate__log li.on{opacity:1;transform:none;}
+  .plate__log b{color:var(--blue);font-weight:500;}
+  .tick{width:5px;height:5px;border:1px solid var(--rule-strong);flex:none;
+    position:relative;top:-2px;}
+  .plate__log li.on .tick{border-color:var(--blue);background:var(--blue);}
 
-  /* ---- steps ---- */
-  .steps{padding:64px 0 12px;border-top:1px solid var(--line);margin-top:56px;}
-  .steps__head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:38px;}
-  .steps h2,.caps h2{font-family:var(--display);font-weight:700;font-size:clamp(26px,3.4vw,38px);
-    letter-spacing:-.02em;margin:14px 0 0;max-width:18ch;line-height:1.05;}
-  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
-    border:1px solid var(--line);border-radius:12px;overflow:hidden;}
-  .flow__cell{background:var(--surface);padding:26px 24px 30px;position:relative;}
-  .flow__n{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.1em;}
-  .flow__cell h3{font-family:var(--display);font-weight:600;font-size:20px;margin:14px 0 8px;letter-spacing:-.01em;}
-  .flow__cell p{margin:0;color:var(--slate);font-size:15.5px;}
-  .flow__cell::after{content:"→";position:absolute;right:-12px;top:50%;transform:translateY(-50%);
-    font-family:var(--mono);color:var(--line-strong);z-index:2;background:var(--paper);padding:2px;}
-  .flow__cell:last-child::after{display:none;}
+  /* the title block — the device every mechanical drawing carries */
+  .block{
+    display:grid;grid-template-columns:repeat(5,1fr);margin:0;
+    border-top:1px solid var(--rule-strong);background:var(--sheet);
+  }
+  .block div{padding:11px 16px;border-left:1px solid var(--rule);}
+  .block div:first-child{border-left:0;}
+  .block dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-faint);margin:0 0 3px;}
+  .block dd{margin:0;font-family:var(--mono);font-size:12.5px;color:var(--ink);}
+  .block .rev{color:var(--redline);}
 
-  /* ---- capabilities ---- */
-  .caps{padding:66px 0 56px;background:var(--tint);border-top:1px solid var(--line);
-    border-bottom:1px solid var(--line);margin-top:56px;}
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:34px;}
-  .cap{padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--surface);
-    transition:border-color .2s ease,transform .2s ease;}
-  .cap:hover{border-color:var(--line-strong);transform:translateY(-2px);}
-  .cap__k{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);}
-  .cap h3{font-family:var(--display);font-weight:600;font-size:18px;margin:12px 0 7px;letter-spacing:-.01em;}
-  .cap p{margin:0;color:var(--slate);font-size:14.5px;line-height:1.55;}
+  .plate__out{
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    margin-top:16px;font-family:var(--mono);font-size:11.5px;
+  }
+  .fmt{border:1px solid var(--rule-strong);border-radius:2px;padding:4px 11px;
+    color:var(--ink-soft);opacity:0;transform:translateY(3px);
+    transition:opacity .35s ease,transform .35s ease;}
+  .is-out .fmt{opacity:1;transform:none;}
+  .is-out .fmt:nth-child(2){transition-delay:.09s;}
+  .is-out .fmt:nth-child(3){transition-delay:.18s;}
+  .fmt--first{border-color:var(--blue);color:var(--blue);}
+  .plate__out span.note{color:var(--ink-faint);}
 
-  /* ---- research / writing ---- */
-  .research{padding:62px 0 8px;border-top:1px solid var(--line);margin-top:56px;}
-  .posts{list-style:none;margin:36px 0 0;padding:0;border-top:1px solid var(--line);}
-  .post{display:grid;grid-template-columns:158px 1fr 28px;gap:26px;align-items:baseline;
-    padding:26px 10px;border-bottom:1px solid var(--line);transition:background .18s ease;}
-  .post:hover{background:var(--tint);}
-  .post__meta{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;color:var(--slate);
-    text-transform:uppercase;white-space:nowrap;}
-  .post__title{font-family:var(--display);font-weight:600;font-size:21px;letter-spacing:-.015em;
-    line-height:1.2;display:inline-block;}
-  .post:hover .post__title{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
-  .post__desc{margin:8px 0 0;color:var(--slate);font-size:15px;max-width:62ch;}
-  .post__arrow{font-family:var(--mono);color:var(--slate);justify-self:end;align-self:center;
+  /* ---- generic section spacing ------------------------------------- */
+  .band{padding:88px 0;border-top:1px solid var(--rule);}
+  .band h2{font-size:clamp(25px,3vw,33px);line-height:1.24;margin:0 0 18px;max-width:20ch;}
+  .band__intro{color:var(--ink-soft);font-size:17px;margin:0;max-width:52ch;}
+
+  /* ---- method: three movements, hairline rows ---------------------- */
+  .steps{margin-top:58px;border-top:1px solid var(--rule);}
+  .step{display:grid;grid-template-columns:120px 1fr;gap:36px;
+    padding:30px 0;border-bottom:1px solid var(--rule);align-items:baseline;}
+  .step__k{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--blue);}
+  .step h3{font-size:22px;margin:0 0 7px;}
+  .step p{margin:0;color:var(--ink-soft);font-size:16px;max-width:56ch;}
+
+  /* ---- guarantees: a spec sheet, not feature cards ----------------- */
+  .spec-list{margin:56px 0 0;border-top:1px solid var(--rule);}
+  .spec-row{display:grid;grid-template-columns:190px 1fr;gap:36px;
+    padding:26px 0;border-bottom:1px solid var(--rule);align-items:baseline;}
+  .spec-row dt{font-family:var(--mono);font-size:11.5px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink);}
+  .spec-row dd{margin:0;color:var(--ink-soft);font-size:16px;max-width:60ch;}
+  .spec-row dd b{color:var(--ink);font-weight:500;}
+
+  /* ---- research index ---------------------------------------------- */
+  .posts{list-style:none;margin:56px 0 0;padding:0;border-top:1px solid var(--rule);}
+  .post{display:grid;grid-template-columns:150px 1fr 24px;gap:32px;
+    padding:28px 0;border-bottom:1px solid var(--rule);align-items:baseline;}
+  .post__meta{font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;}
+  .post__title{font-family:var(--serif);font-weight:400;font-size:22px;
+    line-height:1.3;letter-spacing:-.01em;display:inline-block;}
+  .post:hover .post__title{color:var(--blue);}
+  .post__desc{margin:7px 0 0;color:var(--ink-soft);font-size:15.5px;max-width:62ch;}
+  .post__go{font-family:var(--mono);color:var(--ink-faint);justify-self:end;
     transition:transform .18s ease,color .18s ease;}
-  .post:hover .post__arrow{transform:translateX(4px);color:var(--ink);}
-  @media (max-width:880px){.post{grid-template-columns:1fr;gap:7px;}.post__arrow{display:none;}}
+  .post:hover .post__go{transform:translate(2px,-2px);color:var(--blue);}
 
-  /* ---- early access ---- */
-  .cta{margin:80px 0 16px;border:1px solid var(--line);border-radius:20px;
-    background:linear-gradient(180deg,var(--surface),var(--tint));position:relative;overflow:hidden;
-    padding:50px 44px;display:flex;justify-content:space-between;align-items:center;gap:30px;flex-wrap:wrap;
-    box-shadow:0 24px 60px -44px rgba(93,75,214,.45);}
-  .cta::before{content:"";position:absolute;width:420px;height:420px;border-radius:50%;
-    filter:blur(80px);background:radial-gradient(circle,#D6CBFA,transparent 64%);
-    top:-200px;right:-70px;opacity:.8;pointer-events:none;}
-  .cta>*{position:relative;z-index:1;}
-  .cta h2{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,34px);letter-spacing:-.02em;margin:8px 0 6px;}
-  .cta p{margin:0;color:var(--slate);max-width:40ch;}
-  .form{display:flex;gap:10px;flex-wrap:wrap;}
-  .form input{font-family:var(--body);font-size:15px;padding:12px 14px;border:1px solid var(--line-strong);
-    border-radius:8px;min-width:248px;background:var(--paper);color:var(--ink);}
-  .form input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent;}
-  .form__err{font-family:var(--mono);font-size:13px;color:#C0392B;align-self:center;}
-  .form__wait{font-family:var(--mono);font-size:12.5px;color:var(--slate);flex-basis:100%;}
+  /* ---- early access ------------------------------------------------ */
+  .access{padding:88px 0 96px;border-top:1px solid var(--rule);
+    background:var(--vellum-deep);}
+  .access h2{font-size:clamp(25px,3vw,33px);margin:0 0 14px;}
+  .access p.said{color:var(--ink-soft);margin:0 0 32px;max-width:46ch;}
+  .form{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;}
+  .form input{font-family:var(--sans);font-size:15px;padding:11px 14px;
+    border:1px solid var(--rule-strong);border-radius:2px;min-width:270px;
+    background:var(--sheet);color:var(--ink);}
+  .form input::placeholder{color:var(--ink-faint);}
+  .form input:focus{outline:2px solid var(--blue);outline-offset:1px;border-color:transparent;}
+  .form__err{font-family:var(--mono);font-size:12.5px;color:var(--redline);
+    flex-basis:100%;margin-top:2px;}
+  .form__wait{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);
+    flex-basis:100%;margin-top:2px;}
   .form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;}
-  .form button[disabled]{opacity:.75;cursor:wait;}
-  .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
-    border-radius:50%;display:inline-block;animation:spin .7s linear infinite;}
+  .form button[disabled]{opacity:.7;cursor:wait;}
+  .spin{width:13px;height:13px;border:1.6px solid rgba(255,255,255,.4);
+    border-top-color:#fff;border-radius:50%;display:inline-block;
+    animation:spin .7s linear infinite;}
+  [data-theme="dark"] .spin{border-color:rgba(0,0,0,.3);border-top-color:#15120D;}
   @keyframes spin{to{transform:rotate(360deg);}}
-  .signed{display:flex;align-items:center;gap:14px;}
-  .signed__ico{width:44px;height:44px;border-radius:50%;flex:none;display:flex;align-items:center;
-    justify-content:center;background:var(--accent-soft);border:1px solid var(--line-strong);}
-  .signed__ico svg{width:22px;height:22px;stroke:var(--accent);}
-  .signed h3{font-family:var(--display);font-weight:700;font-size:19px;margin:0 0 2px;letter-spacing:-.01em;}
-  .signed p{margin:0;color:var(--slate);font-size:14.5px;max-width:36ch;}
-  .signed b{color:var(--ink);font-weight:600;}
+  .signed{display:flex;gap:14px;align-items:flex-start;
+    border-left:2px solid var(--blue);padding-left:18px;}
+  .signed h3{font-family:var(--sans);font-weight:600;font-size:16px;margin:0 0 4px;}
+  .signed p{margin:0;color:var(--ink-soft);font-size:15px;max-width:40ch;}
+  .signed b{color:var(--ink);font-weight:500;font-family:var(--mono);font-size:14px;}
 
-  /* ---- footer ---- */
-  footer{margin-top:80px;position:relative;color:#CFC9E6;
-    background:radial-gradient(1100px 380px at 50% -40%,#2A2147,transparent 70%),
-               linear-gradient(180deg,#181327,#100C1D);}
-  footer::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;
-    background:linear-gradient(90deg,transparent,rgba(139,121,242,.55),transparent);}
-  .foot-top{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px;padding:62px 0 46px;}
-  .foot-brand .brand{color:#fff;font-size:20px;}
-  .foot-brand p{color:#948CB4;font-size:14.5px;max-width:32ch;margin:16px 0 0;line-height:1.6;}
-  .foot-col h5{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
-    color:#7B739C;margin:5px 0 16px;}
-  .foot-col a{display:block;color:#C6C0DE;font-size:14.5px;padding:6px 0;width:fit-content;
-    transition:color .15s ease;}
-  .foot-col a:hover{color:#fff;}
-  .foot-bot{border-top:1px solid rgba(255,255,255,.08);padding:20px 0 26px;display:flex;
-    justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
-    font-size:13px;color:#857DA6;}
-  .foot-bot .mono{font-size:12px;letter-spacing:.03em;}
-  @media (max-width:880px){.foot-top{grid-template-columns:1fr 1fr;gap:30px;}}
+  /* ---- footer as a full title block -------------------------------- */
+  .foot{border-top:1px solid var(--rule-strong);background:var(--vellum);}
+  .foot__in{display:flex;justify-content:space-between;align-items:flex-start;
+    gap:44px;flex-wrap:wrap;padding:52px 0 40px;}
+  .foot__about p{color:var(--ink-soft);font-size:15px;max-width:34ch;margin:14px 0 0;}
+  .foot__contact h5{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--ink-faint);margin:3px 0 10px;font-weight:500;}
+  .foot__contact a{color:var(--blue);border-bottom:1px solid var(--rule-strong);
+    padding-bottom:1px;transition:border-color .16s ease;}
+  .foot__contact a:hover{border-color:var(--blue);}
+  .foot__legal{display:flex;gap:16px;padding:18px 0 30px;
+    border-top:1px solid var(--rule);font-family:var(--mono);
+    font-size:11.5px;color:var(--ink-faint);}
+  .foot__legal a:hover{color:var(--ink);}
 
-  a.btn:focus-visible,.nav__links a:focus-visible,.form input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  a:focus-visible,button:focus-visible,input:focus-visible{
+    outline:2px solid var(--blue);outline-offset:2px;}
 
-  @media (max-width:880px){
-    .hero__grid{grid-template-columns:1fr;gap:36px;}
-    .flow,.grid{grid-template-columns:1fr;}
-    .flow__cell::after{content:"↓";right:auto;left:50%;top:auto;bottom:-12px;transform:translateX(-50%);}
-    .nav__links a:not(.btn){display:none;}
-    .cta{padding:34px 26px;}
+  /* ---- responsive --------------------------------------------------- */
+  @media (max-width:900px){
+    .sheet{padding:0 22px;}
+    .letter{padding:64px 0 56px;}
+    .plate__body{grid-template-columns:1fr;}
+    .plate__log{border-left:0;border-top:1px solid var(--rule);}
+    .block{grid-template-columns:repeat(2,1fr);}
+    .block div:nth-child(odd){border-left:0;}
+    .block div{border-top:1px solid var(--rule);}
+    .step,.spec-row{grid-template-columns:1fr;gap:8px;}
+    .post{grid-template-columns:1fr;gap:6px;}
+    .post__go{display:none;}
+    .foot__in{gap:28px;}
+    .top__nav a:not(.act){display:none;}
+    .band{padding:64px 0;}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important;}
-    .ln{stroke-dashoffset:0;}.dimset,.tree li,.chip{opacity:1;transform:none;}
+    .edge{stroke-dashoffset:0;}
+    .dims,.centre,.plate__log li,.fmt{opacity:1;transform:none;}
   }
 </style>
 </head>
 <body>
 
-<!-- ===== ANNOUNCEMENT ===== -->
-<div class="announce">
-  <a href="#start"><span class="pill">Private beta</span> OrionFlow is now in private beta <span class="arr">→</span></a>
-</div>
-
-<!-- ===== NAV ===== -->
-<header class="nav">
-  <div class="wrap nav__in">
-    <a class="brand" href="#top" aria-label="OrionFlow home">
-      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-        <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.6"/>
-        <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.6"/>
-        <circle cx="6" cy="19" r="2.6" fill="currentColor"/>
-        <circle cx="20" cy="13" r="2.6" fill="currentColor"/>
-        <circle cx="13" cy="7" r="3.2" fill="#7059E8"/>
+<!-- ===== MASTHEAD ===== -->
+<header class="top">
+  <div class="sheet top__in">
+    <a class="mark" href="#top" aria-label="OrionFlow home">
+      <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="6" cy="19" r="2.4" fill="currentColor"/>
+        <circle cx="20" cy="13" r="2.4" fill="currentColor"/>
+        <circle cx="13" cy="7" r="3" fill="#24468F"/>
       </svg>
-      <span class="wm">OrionFlow</span>
+      <span>OrionFlow</span>
     </a>
-    <nav class="nav__links" aria-label="Primary">
-      <a href="#how">How it works</a>
-      <a href="#caps">Capabilities</a>
-      <a href="#research">Research</a>
-      <a href="https://app.orionflow.in/auth" class="nav__login">Log in</a>
-      <button class="theme-btn" id="theme" type="button" aria-label="Toggle dark mode">
-        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <nav class="top__nav" aria-label="Primary">
+      <a class="on-sheet" href="#method">Method</a>
+      <a class="on-sheet" href="#guarantees">What it guarantees</a>
+      <a class="on-sheet" href="#research">Research</a>
+      <a class="on-sheet" href="https://app.orionflow.in/auth">Log in</a>
+      <button class="toggle" id="theme" type="button" aria-label="Toggle dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
           <circle cx="12" cy="12" r="4.2"/>
           <path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/>
         </svg>
-        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/>
         </svg>
       </button>
-      <a class="btn btn--primary" href="https://app.orionflow.in">Try it</a>
+      <a class="act" href="https://app.orionflow.in">Open the studio</a>
     </nav>
   </div>
 </header>
 
 <main id="top">
-<!-- ===== HERO ===== -->
-<section class="hero">
-  <div class="wrap hero__grid">
-    <div>
-      <span class="eyebrow">Text&nbsp;→&nbsp;Parametric&nbsp;CAD</span>
-      <h1>AI for <em>mechanical engineers.</em></h1>
-      <p class="hero__sub">Describe a part in plain English. OrionFlow builds an editable, parametric model — not a frozen mesh — that you can re-dimension and export.</p>
-      <div class="hero__cta">
-        <a class="btn btn--primary" href="https://app.orionflow.in">Try it free</a>
-        <a class="btn btn--ghost" href="#how">See how it works</a>
+
+<!-- ===== THE LETTER ===== -->
+<section class="letter">
+  <div class="sheet">
+    <div class="col col--center">
+      <span class="tag tag--blue letter__eyebrow">Text → parametric solid</span>
+
+      <h1>To those who make things,</h1>
+
+      <p>You didn't take up engineering to name a face. You took it up because you
+        like it when a thing fits — when the tolerance stacks, when the bracket
+        lands on the bolt circle, when the part comes off the machine right.</p>
+
+      <p>Somewhere between the idea and the drawing, the work turned into
+        operation. Pick the plane. Set the constraint. Rename the reference.
+        Rebuild, and watch it fail three features deep because a chamfer moved.</p>
+
+      <p>So describe the part instead — the way you'd say it to someone across the
+        bench. <span class="spec">A plate, 100 × 50 × 10, two ⌀15 holes on a 50 pitch.</span>
+        What comes back is a model with its features intact: sketches you can open,
+        dimensions you can drive, a history you can edit.</p>
+
+      <p>Not a mesh. Not a picture of a part. A solid that rebuilds to the same
+        cubic millimetre, <em>every time</em>.</p>
+
+      <p class="close">The geometry is still yours. The bookkeeping isn't your job
+        anymore. This is for you.</p>
+
+      <div class="letter__sign">
+        <a class="act" href="https://app.orionflow.in">Open the studio</a>
+        <a class="act act--quiet" href="#method">Read the method</a>
       </div>
-      <p class="hero__note"><span class="dot"></span>Watch a real part build itself&nbsp;→</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SIGNATURE: THE DRAWING SHEET ===== -->
+<section class="sheet plate">
+  <div class="plate__frame" id="plate" aria-label="A typed description becoming a dimensioned parametric part">
+    <div class="plate__prompt">
+      <span class="caret-mark">›</span><span id="ptext"></span><span class="caret"></span>
     </div>
 
-    <!-- signature: self-drawing parametric part -->
-    <div class="demo" id="demo" aria-label="Demo: a prompt becoming a parametric CAD part">
-      <div class="demo__bar"><i></i><i></i><i></i><span class="demo__tag">orionflow · new part</span></div>
-      <div class="demo__body">
-        <div class="prompt"><b>›</b><span id="ptext"></span><span class="caret"></span></div>
+    <div class="plate__body">
+      <div class="plate__view">
+        <svg viewBox="0 0 460 250" role="img"
+             aria-label="Top view of a 100 by 50 by 10 plate with two 15 millimetre holes on a 50 millimetre pitch">
+          <!-- plate outline -->
+          <rect class="edge e1" x="96" y="66" width="268" height="112"/>
+          <!-- thickness hint, drawn as a folded edge -->
+          <path class="edge e4" d="M96 66 L112 48 L380 48 L364 66"/>
+          <path class="edge e4" d="M364 66 L380 48 L380 160 L364 178"/>
+          <!-- holes -->
+          <circle class="edge e2" cx="163" cy="122" r="20"/>
+          <circle class="edge e3" cx="297" cy="122" r="20"/>
+          <!-- centre marks -->
+          <g class="centre">
+            <path d="M163 96 v52 M137 122 h52" stroke="currentColor" fill="none"
+                  stroke-dasharray="10 3 2 3"/>
+            <path d="M297 96 v52 M271 122 h52" stroke="currentColor" fill="none"
+                  stroke-dasharray="10 3 2 3"/>
+          </g>
 
-        <div class="stage">
-          <div class="draw">
-            <svg viewBox="0 0 300 190" role="img" aria-label="Top view of a 100 by 50 plate with two 15mm holes 50mm apart">
-              <!-- plate -->
-              <rect class="ln l1" x="40" y="44" width="200" height="100" rx="2"/>
-              <!-- holes -->
-              <circle class="ln l2" cx="80" cy="94" r="15"/>
-              <circle class="ln l3" cx="180" cy="94" r="15"/>
-              <!-- highlight active hole + thickness hint -->
-              <path class="ln l4" d="M40 44 L52 32 L252 32 L240 44" />
-              <g class="dimset">
-                <!-- width 100 -->
-                <line class="dim" x1="40" y1="162" x2="240" y2="162"/>
-                <line class="dim" x1="40" y1="156" x2="40" y2="168"/>
-                <line class="dim" x1="240" y1="156" x2="240" y2="168"/>
-                <text class="dimt" x="130" y="176" text-anchor="middle">100</text>
-                <!-- pitch 50 between centres -->
-                <line class="dim" x1="80" y1="94" x2="180" y2="94" stroke-dasharray="3 3"/>
-                <text class="dimt" x="130" y="88" text-anchor="middle">50</text>
-                <!-- diameter leader -->
-                <line class="dim" x1="80" y1="94" x2="118" y2="60"/>
-                <text class="dimt" x="120" y="58">⌀15</text>
-                <!-- thickness -->
-                <text class="dimt" x="256" y="42">10</text>
-              </g>
-            </svg>
-          </div>
+          <!-- dimensions, in redline -->
+          <g class="dims">
+            <defs>
+              <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5"
+                      markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z"/>
+              </marker>
+            </defs>
 
-          <div class="tree" aria-hidden="true">
-            <h4>Feature tree</h4>
-            <ul>
-              <li id="t0"><span class="node"></span>Sketch <b>·rect</b></li>
-              <li id="t1"><span class="node"></span>Pad <b>10mm</b></li>
-              <li id="t2"><span class="node"></span>Pocket <b>⌀15</b></li>
-              <li id="t3"><span class="node"></span>Pattern <b>×2</b></li>
-            </ul>
-          </div>
+            <!-- overall width 100 -->
+            <line class="witness" x1="96"  y1="182" x2="96"  y2="222"/>
+            <line class="witness" x1="364" y1="182" x2="364" y2="222"/>
+            <line class="dim" x1="96" y1="214" x2="364" y2="214"
+                  marker-start="url(#tip)" marker-end="url(#tip)"/>
+            <text class="dim-t" x="230" y="209" text-anchor="middle">100</text>
+
+            <!-- hole pitch 50 -->
+            <line class="dim" x1="163" y1="122" x2="297" y2="122"
+                  marker-start="url(#tip)" marker-end="url(#tip)"/>
+            <text class="dim-t" x="230" y="116" text-anchor="middle">50</text>
+
+            <!-- diameter leader -->
+            <path class="dim" d="M177 108 L214 78 L246 78"/>
+            <text class="dim-t" x="250" y="75">2 × ⌀15</text>
+
+            <!-- height 50 -->
+            <line class="witness" x1="364" y1="66"  x2="410" y2="66"/>
+            <line class="witness" x1="364" y1="178" x2="410" y2="178"/>
+            <line class="dim" x1="402" y1="66" x2="402" y2="178"
+                  marker-start="url(#tip)" marker-end="url(#tip)"/>
+            <text class="dim-t" x="408" y="126">50</text>
+
+            <!-- thickness callout on the folded edge -->
+            <text class="dim-t" x="386" y="44">10 THK</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="plate__log" aria-hidden="true">
+        <h4>Feature history</h4>
+        <ul>
+          <li id="s0"><span class="tick"></span>Sketch <b>rect 100×50</b></li>
+          <li id="s1"><span class="tick"></span>Pad <b>10 mm</b></li>
+          <li id="s2"><span class="tick"></span>Pocket <b>⌀15</b></li>
+          <li id="s3"><span class="tick"></span>Pattern <b>linear ×2</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- the title block -->
+    <dl class="block">
+      <div><dt>Part</dt><dd>bracket-plate</dd></div>
+      <div><dt>Material</dt><dd>AL 6061-T6</dd></div>
+      <div><dt>Units</dt><dd>mm</dd></div>
+      <div><dt>Rebuild</dt><dd>deterministic</dd></div>
+      <div><dt>Rev</dt><dd class="rev">A</dd></div>
+    </dl>
+  </div>
+
+  <div class="plate__out">
+    <span class="fmt fmt--first">STEP</span>
+    <span class="fmt">STL</span>
+    <span class="fmt">GLB</span>
+    <span class="note">— open it in any CAD tool you already run.</span>
+  </div>
+</section>
+
+<!-- ===== METHOD ===== -->
+<section class="band" id="method">
+  <div class="sheet">
+    <div class="zone">
+      <span class="zone__n">01</span>
+      <span class="zone__t">Method</span>
+    </div>
+    <h2>From a sentence to an editable model.</h2>
+    <p class="band__intro">Three movements, in order. Every model is a feature
+      history you can open, change, and rebuild — the same way you'd work in CAD.</p>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step__k">Describe</span>
+        <div>
+          <h3>Brief it in words</h3>
+          <p>Type the part and its dimensions the way you'd hand it to a colleague.
+            No plane picking, no constraint hunting.</p>
         </div>
-
-        <div class="exports">
-          <span class="chip lead">STEP</span>
-          <span class="chip">STL</span>
-          <span class="chip">GLB</span>
+      </div>
+      <div class="step">
+        <span class="step__k">Generate</span>
+        <div>
+          <h3>It plans the features</h3>
+          <p>OrionFlow lays out sketches, pads, pockets and patterns — a parametric
+            tree, not a static mesh.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step__k">Edit &amp; export</span>
+        <div>
+          <h3>Change a number, rebuild</h3>
+          <p>Tweak any parameter and regenerate. Take the solid out as STEP, STL,
+            or GLB.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ===== CREDIBILITY STRIP ===== -->
-<div class="wrap">
-  <div class="proof">
-    <span class="k">Engineering-grade</span>
-    <b>Parametric solids</b><span class="sep"></span>
-    <b>Deterministic rebuilds</b><span class="sep"></span>
-    <b>Editable feature history</b><span class="sep"></span>
-    <span>STEP / STL / GLB out</span>
-  </div>
-</div>
-
-<!-- ===== HOW IT WORKS (a real sequence -> numbered) ===== -->
-<section class="steps" id="how">
-  <div class="wrap">
-    <div class="steps__head">
-      <div>
-        <span class="eyebrow">How it works</span>
-        <h2>From a sentence to an editable model.</h2>
-      </div>
-      <p style="max-width:34ch;color:var(--slate);margin:0;">Every model is a feature history you can open, change, and rebuild — the same way you'd work in CAD.</p>
+<!-- ===== WHAT IT GUARANTEES ===== -->
+<section class="band" id="guarantees">
+  <div class="sheet">
+    <div class="zone">
+      <span class="zone__n">02</span>
+      <span class="zone__t">What it guarantees</span>
     </div>
-    <div class="flow">
-      <div class="flow__cell">
-        <span class="flow__n">01 · Describe</span>
-        <h3>Brief it in words</h3>
-        <p>Type the part and its dimensions the way you'd hand it to a colleague.</p>
-      </div>
-      <div class="flow__cell">
-        <span class="flow__n">02 · Generate</span>
-        <h3>It plans the features</h3>
-        <p>OrionFlow lays out sketches, pads, pockets and patterns — a parametric tree, not a static mesh.</p>
-      </div>
-      <div class="flow__cell">
-        <span class="flow__n">03 · Edit &amp; export</span>
-        <h3>Change a number, rebuild</h3>
-        <p>Tweak any parameter and regenerate. Download STEP, STL, or GLB.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ===== CAPABILITIES ===== -->
-<section class="caps" id="caps">
-  <div class="wrap">
-    <span class="eyebrow">Built for real work</span>
     <h2>Engineering-grade, not a toy renderer.</h2>
-    <div class="grid">
-      <div class="cap"><span class="cap__k">Parametric</span><h3>Editable feature history</h3><p>Sketches, pads, pockets and patterns you can reopen and re-dimension — geometry stays driven by parameters.</p></div>
-      <div class="cap"><span class="cap__k">Constraints</span><h3>Constraint-aware sketches</h3><p>Profiles carry their dimensions and relations, so an edit moves what it should and holds the rest.</p></div>
-      <div class="cap"><span class="cap__k">Fidelity</span><h3>Deterministic round-trip</h3><p>A model rebuilds to the same solid every time — verified, not approximate.</p></div>
-      <div class="cap"><span class="cap__k">Exports</span><h3>STEP · STL · GLB</h3><p>Take the solid into your CAD, your slicer, or the browser — standard formats, no lock-in.</p></div>
-      <div class="cap"><span class="cap__k">Topology</span><h3>Stable references</h3><p>Faces and edges are pinned by geometry, so edits survive instead of breaking on a renamed face.</p></div>
-      <div class="cap"><span class="cap__k">Open formats</span><h3>No black box</h3><p>Every model compiles to industry-standard STEP you can open in any CAD tool — never trapped in a proprietary format.</p></div>
-    </div>
+    <p class="band__intro">The properties that decide whether a generated model is
+      worth anything on a Monday morning.</p>
+
+    <dl class="spec-list">
+      <div class="spec-row">
+        <dt>Feature history</dt>
+        <dd>Sketches, pads, pockets and patterns you can reopen and re-dimension.
+          Geometry stays <b>driven by parameters</b>, not baked into triangles.</dd>
+      </div>
+      <div class="spec-row">
+        <dt>Sketch constraints</dt>
+        <dd>Profiles carry their dimensions and relations, so an edit moves what it
+          should and <b>holds the rest</b>.</dd>
+      </div>
+      <div class="spec-row">
+        <dt>Deterministic rebuild</dt>
+        <dd>A model rebuilds to the same solid every time — <b>verified against
+          volume and topology</b>, not eyeballed.</dd>
+      </div>
+      <div class="spec-row">
+        <dt>Stable references</dt>
+        <dd>Faces and edges are pinned by geometric signature, so an edit survives
+          instead of <b>breaking on a renamed face</b>.</dd>
+      </div>
+      <div class="spec-row">
+        <dt>Exports</dt>
+        <dd><b>STEP · STL · GLB.</b> Into your CAD, your slicer, or the browser.
+          Standard formats, no lock-in.</dd>
+      </div>
+      <div class="spec-row">
+        <dt>No black box</dt>
+        <dd>Every model compiles to industry-standard STEP you can open anywhere.
+          Nothing is <b>trapped in a proprietary format</b>.</dd>
+      </div>
+    </dl>
   </div>
 </section>
 
-<!-- ===== RESEARCH / WRITING ===== -->
-<section class="research" id="research">
-  <div class="wrap">
-    <div class="steps__head">
-      <div>
-        <span class="eyebrow">Research &amp; writing</span>
-        <h2>How we're building it.</h2>
-      </div>
-      <a class="btn btn--ghost" href="research/index.html">All posts</a>
+<!-- ===== RESEARCH ===== -->
+<section class="band" id="research">
+  <div class="sheet">
+    <div class="zone">
+      <span class="zone__n">03</span>
+      <span class="zone__t">Research &amp; writing</span>
     </div>
+    <h2>How we're building it.</h2>
+    <p class="band__intro">Notes from the work — the representation, the training
+      signal, and the parts that are genuinely hard.</p>
+
     <ul class="posts">
       <li class="post">
         <span class="post__meta">Research · 2026</span>
         <div>
           <a class="post__title" href="research/feature-graph-ir.html">A kernel-independent IR for editable CAD</a>
-          <p class="post__desc">Why every OrionFlow model is a FeatureGraph first — one representation that compiles to FreeCAD and build123d alike.</p>
+          <p class="post__desc">Why every OrionFlow model is a FeatureGraph first — one
+            representation that compiles to FreeCAD and build123d alike.</p>
         </div>
-        <a class="post__arrow" href="research/feature-graph-ir.html" aria-label="Read post">↗</a>
+        <a class="post__go" href="research/feature-graph-ir.html" aria-label="Read: A kernel-independent IR for editable CAD">↗</a>
       </li>
       <li class="post">
         <span class="post__meta">Research · 2026</span>
         <div>
           <a class="post__title" href="research/multimodal-extraction.html">Teaching a model to think like a CAD engine</a>
-          <p class="post__desc">Multimodal extraction: feature graphs, rolling geometry, sketch constraints, and topology-stable anchors as training signal.</p>
+          <p class="post__desc">Multimodal extraction: feature graphs, rolling geometry,
+            sketch constraints, and topology-stable anchors as training signal.</p>
         </div>
-        <a class="post__arrow" href="research/multimodal-extraction.html" aria-label="Read post">↗</a>
+        <a class="post__go" href="research/multimodal-extraction.html" aria-label="Read: Teaching a model to think like a CAD engine">↗</a>
       </li>
       <li class="post">
         <span class="post__meta">Engineering · 2026</span>
         <div>
           <a class="post__title" href="research/deterministic-round-trip.html">Deterministic round-trip, verified</a>
-          <p class="post__desc">How we prove a generated model rebuilds to the exact same solid — down to the cubic millimetre.</p>
+          <p class="post__desc">How we prove a generated model rebuilds to the exact same
+            solid — down to the cubic millimetre.</p>
         </div>
-        <a class="post__arrow" href="research/deterministic-round-trip.html" aria-label="Read post">↗</a>
+        <a class="post__go" href="research/deterministic-round-trip.html" aria-label="Read: Deterministic round-trip, verified">↗</a>
       </li>
       <li class="post">
         <span class="post__meta">Engineering · 2026</span>
         <div>
           <a class="post__title" href="research/topological-naming.html">Beating the Topological Naming Problem</a>
-          <p class="post__desc">Replacing fragile face IDs with geometric coordinate signatures, so an edit doesn't break on a renamed face.</p>
+          <p class="post__desc">Replacing fragile face IDs with geometric coordinate
+            signatures, so an edit doesn't break on a renamed face.</p>
         </div>
-        <a class="post__arrow" href="research/topological-naming.html" aria-label="Read post">↗</a>
+        <a class="post__go" href="research/topological-naming.html" aria-label="Read: Beating the Topological Naming Problem">↗</a>
       </li>
     </ul>
+
+    <p style="margin:34px 0 0;">
+      <a class="lead-link" href="research/index.html">All posts →</a>
+    </p>
   </div>
 </section>
 
 <!-- ===== EARLY ACCESS ===== -->
-<section class="wrap" id="start">
-  <div class="cta">
-    <div>
-      <span class="eyebrow">Early access</span>
+<section class="access" id="start">
+  <div class="sheet">
+    <div class="col">
+      <span class="tag tag--blue" style="display:block;margin-bottom:22px;">Early access</span>
       <h2>Put a part into words.</h2>
-      <p>Be among the first engineers to design by describing. We'll send an invite when your seat opens.</p>
-    </div>
-    <form class="form" id="form" novalidate>
-      <input id="email" type="email" placeholder="you@company.com" aria-label="Work email" autocomplete="email" maxlength="320" required />
-      <input id="hp" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
-      <button class="btn btn--primary" id="join" type="submit"><span id="join-label">Get early access</span></button>
-      <span class="form__err" id="err" hidden>Couldn't sign you up — please try again.</span>
-      <span class="form__wait" id="wait" hidden>Securing your spot — this first request can take a few seconds…</span>
-    </form>
-    <div class="signed" id="signed" hidden role="status">
-      <span class="signed__ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>
-      </span>
-      <div>
-        <h3>You're signed up!</h3>
-        <p>We've saved <b id="signed-email"></b> to the early-access list. Watch your inbox — we'll send your invite when your seat opens.</p>
+      <p class="said">OrionFlow is in private beta. Leave your email and we'll send
+        an invite when a seat opens.</p>
+
+      <form class="form" id="form" novalidate>
+        <input id="email" type="email" placeholder="you@company.com" aria-label="Work email" autocomplete="email" maxlength="320" required />
+        <input id="hp" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
+        <button class="act" id="join" type="submit"><span id="join-label">Request an invite</span></button>
+        <span class="form__err" id="err" hidden>That didn't go through. Check the address and try again.</span>
+        <span class="form__wait" id="wait" hidden>Still working — the first request after a quiet spell takes a few seconds.</span>
+      </form>
+
+      <div class="signed" id="signed" hidden role="status">
+        <div>
+          <h3>You're on the list.</h3>
+          <p>We've saved <b id="signed-email"></b>. Watch your inbox — the invite
+            arrives when your seat opens.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <div class="foot-top">
-      <div class="foot-brand">
-        <span class="brand" style="font-family:var(--display);font-weight:700;">
-          <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
-            <line x1="6" y1="19" x2="13" y2="7" stroke="#EDEAFB" stroke-width="1.6"/>
-            <line x1="13" y1="7" x2="20" y2="13" stroke="#EDEAFB" stroke-width="1.6"/>
-            <circle cx="6" cy="19" r="2.6" fill="#EDEAFB"/><circle cx="20" cy="13" r="2.6" fill="#EDEAFB"/>
-            <circle cx="13" cy="7" r="3.2" fill="#8B79F2"/>
+<!-- ===== FOOTER AS TITLE BLOCK ===== -->
+<footer class="foot">
+  <div class="sheet">
+    <div class="foot__in">
+      <div class="foot__about">
+        <span class="mark">
+          <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true">
+            <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="6" cy="19" r="2.4" fill="currentColor"/>
+            <circle cx="20" cy="13" r="2.4" fill="currentColor"/>
+            <circle cx="13" cy="7" r="3" fill="#24468F"/>
           </svg>
-          <span class="wm" style="background:linear-gradient(96deg,#9C8BF5,#C9D6FB);-webkit-background-clip:text;background-clip:text;color:transparent;">OrionFlow</span>
+          <span>OrionFlow</span>
         </span>
-        <p>AI for mechanical engineers. Describe a part in plain English; get an editable, parametric model.</p>
+        <p>AI for mechanical engineers. Describe a part in plain English; get an
+          editable, parametric model.</p>
       </div>
-      <nav class="foot-col" aria-label="Product">
-        <h5>Product</h5>
-        <a href="#how">How it works</a>
-        <a href="#caps">Capabilities</a>
-        <a href="https://app.orionflow.in">Exports</a>
-        <a href="https://app.orionflow.in">Try it</a>
-      </nav>
-      <nav class="foot-col" aria-label="Research">
-        <h5>Research</h5>
-        <a href="#research">All posts</a>
-        <a href="#research">The FeatureGraph IR</a>
-        <a href="#research">Round-trip fidelity</a>
-        <a href="#research">Changelog</a>
-      </nav>
-      <nav class="foot-col" aria-label="Resources">
-        <h5>Resources</h5>
-        <a href="/privacy.html">Privacy Policy</a>
-        <a href="/terms.html">Terms of Service</a>
-        <a href="mailto:hello@orionflow.in">Contact</a>
-      </nav>
+      <div class="foot__contact">
+        <h5>Contact</h5>
+        <a href="mailto:sahilmaniyar@orionflow.in">sahilmaniyar@orionflow.in</a>
+      </div>
     </div>
-    <div class="foot-bot">
-      <span>© 2026 OrionFlow · Established 2026 · All rights reserved</span>
-      <span class="mono"><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></span>
+
+    <div class="foot__legal">
+      <span>© 2026 OrionFlow</span>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
     </div>
   </div>
 </footer>
@@ -650,9 +773,9 @@
 <script>
 (function(){
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var demo = document.getElementById("demo");
+  var plate = document.getElementById("plate");
   var ptext = document.getElementById("ptext");
-  var tree = ["t0","t1","t2","t3"].map(function(id){return document.getElementById(id);});
+  var log = ["s0","s1","s2","s3"].map(function(id){ return document.getElementById(id); });
   var PROMPT = "100×50×10 plate · 2× ⌀15 holes · 50mm apart";
   var timers = [];
   function clearAll(){ timers.forEach(clearTimeout); timers = []; }
@@ -660,41 +783,44 @@
 
   function showFinal(){
     ptext.textContent = PROMPT;
-    demo.classList.add("is-draw","is-dim","is-exp");
-    tree.forEach(function(li){ li.classList.add("on"); });
+    plate.classList.add("is-drawn","is-dimmed","is-out");
+    log.forEach(function(li){ li.classList.add("on"); });
   }
 
   function run(){
     clearAll();
-    demo.classList.remove("is-draw","is-dim","is-exp");
-    tree.forEach(function(li){ li.classList.remove("on"); });
+    plate.classList.remove("is-drawn","is-dimmed","is-out");
+    log.forEach(function(li){ li.classList.remove("on"); });
     ptext.textContent = "";
-    // type prompt
     var i = 0;
     (function type(){
-      if(i <= PROMPT.length){ ptext.textContent = PROMPT.slice(0,i); i++; timers.push(setTimeout(type, 34)); }
-      else { sequence(); }
+      if(i <= PROMPT.length){
+        ptext.textContent = PROMPT.slice(0,i); i++;
+        timers.push(setTimeout(type, 34));
+      } else { sequence(); }
     })();
   }
+
   function sequence(){
-    at(250,  function(){ demo.classList.add("is-draw"); });
-    at(700,  function(){ tree[0].classList.add("on"); });
-    at(1150, function(){ tree[1].classList.add("on"); });
-    at(1500, function(){ demo.classList.add("is-dim"); tree[2].classList.add("on"); });
-    at(1950, function(){ tree[3].classList.add("on"); });
-    at(2250, function(){ demo.classList.add("is-exp"); });
-    at(6200, run); // hold, then loop
+    at(260,  function(){ plate.classList.add("is-drawn"); });
+    at(700,  function(){ log[0].classList.add("on"); });
+    at(1150, function(){ log[1].classList.add("on"); });
+    at(1550, function(){ plate.classList.add("is-dimmed"); log[2].classList.add("on"); });
+    at(1980, function(){ log[3].classList.add("on"); });
+    at(2300, function(){ plate.classList.add("is-out"); });
+    at(6400, run);
   }
 
   if(reduce){ showFinal(); }
   else {
-    // start when hero is on screen
     var started = false;
     var io = new IntersectionObserver(function(es){
-      es.forEach(function(e){ if(e.isIntersecting && !started){ started = true; run(); io.disconnect(); } });
-    }, {threshold:.3});
-    io.observe(demo);
-    at(2600, function(){ if(!started){ started = true; run(); } }); // fallback
+      es.forEach(function(e){
+        if(e.isIntersecting && !started){ started = true; run(); io.disconnect(); }
+      });
+    }, {threshold:.25});
+    io.observe(plate);
+    at(2600, function(){ if(!started){ started = true; run(); } });
   }
 
   // theme toggle
@@ -728,7 +854,7 @@
       if(!email.value || email.validity.typeMismatch){ email.focus(); return; }
       var value = email.value.trim();
       btn.disabled = true; err.hidden = true;
-      label.innerHTML = '<span class="spin" aria-hidden="true"></span>&nbsp;Signing you up…';
+      label.innerHTML = '<span class="spin" aria-hidden="true"></span>&nbsp;Requesting…';
       // If the API is cold-starting, tell the visitor we're still working.
       var slow = setTimeout(function(){ wait.hidden = false; }, 3000);
       fetch(WAITLIST_API, {
@@ -747,7 +873,7 @@
         err.hidden = false;
       }).then(function(){
         clearTimeout(slow); wait.hidden = true;
-        btn.disabled = false; label.textContent = "Get early access";
+        btn.disabled = false; label.textContent = "Request an invite";
       });
     });
   }

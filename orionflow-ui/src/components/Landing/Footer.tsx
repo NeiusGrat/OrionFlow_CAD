@@ -38,7 +38,7 @@ export default function Footer() {
     return (
         <footer style={{
             padding: '80px 48px 40px',
-            background: 'linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.4) 100%)',
+            background: 'linear-gradient(180deg, transparent 0%, rgba(23, 20, 15, 0.4) 100%)',
             borderTop: '1px solid rgba(255, 255, 255, 0.06)',
         }}>
             <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
@@ -61,7 +61,7 @@ export default function Footer() {
                             Stay up to date
                         </h3>
                         <p style={{
-                            color: '#94a3b8',
+                            color: '#A79D8B',
                             fontSize: '15px',
                             lineHeight: 1.6,
                         }}>
@@ -79,17 +79,17 @@ export default function Footer() {
                             placeholder="Enter your email"
                             style={{
                                 flex: 1,
-                                background: 'rgba(15, 23, 42, 0.8)',
+                                background: 'rgba(23, 20, 15, 0.8)',
                                 border: '1px solid rgba(255, 255, 255, 0.1)',
                                 borderRadius: '12px',
                                 padding: '16px 20px',
                                 fontSize: '15px',
-                                color: '#f8fafc',
+                                color: '#EFE7D8',
                                 outline: 'none',
                             }}
                         />
                         <button style={{
-                            background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                            background: 'linear-gradient(135deg, #5B7FD4 0%, #8AA5E6 100%)',
                             color: 'white',
                             padding: '16px 24px',
                             borderRadius: '12px',
@@ -100,7 +100,7 @@ export default function Footer() {
                             gap: '8px',
                             border: 'none',
                             cursor: 'pointer',
-                            boxShadow: '0 4px 16px rgba(59, 130, 246, 0.3)',
+                            boxShadow: '0 4px 16px rgba(138, 165, 230, 0.3)',
                             transition: 'all 0.2s ease',
                             whiteSpace: 'nowrap',
                         }}>
@@ -132,12 +132,12 @@ export default function Footer() {
                                 fontWeight: 700,
                                 letterSpacing: '-0.02em',
                             }}>
-                                <span style={{ color: '#f8fafc' }}>Orion</span>
-                                <span style={{ color: '#3b82f6' }}>Flow</span>
+                                <span style={{ color: '#EFE7D8' }}>Orion</span>
+                                <span style={{ color: '#8AA5E6' }}>Flow</span>
                             </span>
                         </Link>
                         <p style={{
-                            color: '#64748b',
+                            color: '#7C7364',
                             fontSize: '14px',
                             lineHeight: 1.6,
                             marginBottom: '24px',
@@ -164,19 +164,19 @@ export default function Footer() {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        color: '#94a3b8',
+                                        color: '#A79D8B',
                                         transition: 'all 0.2s ease',
                                         textDecoration: 'none',
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)';
-                                        e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
-                                        e.currentTarget.style.color = '#60a5fa';
+                                        e.currentTarget.style.background = 'rgba(138, 165, 230, 0.15)';
+                                        e.currentTarget.style.borderColor = 'rgba(138, 165, 230, 0.3)';
+                                        e.currentTarget.style.color = '#A8BDEE';
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                                        e.currentTarget.style.color = '#94a3b8';
+                                        e.currentTarget.style.color = '#A79D8B';
                                     }}
                                 >
                                     <social.icon size={18} />
@@ -189,7 +189,7 @@ export default function Footer() {
                     {Object.entries(footerLinks).map(([category, links]) => (
                         <div key={category}>
                             <h4 style={{
-                                color: '#f8fafc',
+                                color: '#EFE7D8',
                                 fontSize: '14px',
                                 fontWeight: 600,
                                 marginBottom: '20px',
@@ -203,16 +203,16 @@ export default function Footer() {
                                         <Link
                                             to={link.href}
                                             style={{
-                                                color: '#64748b',
+                                                color: '#7C7364',
                                                 fontSize: '14px',
                                                 textDecoration: 'none',
                                                 transition: 'color 0.2s ease',
                                             }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.color = '#f8fafc';
+                                                e.currentTarget.style.color = '#EFE7D8';
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.currentTarget.style.color = '#64748b';
+                                                e.currentTarget.style.color = '#7C7364';
                                             }}
                                         >
                                             {link.name}
@@ -233,7 +233,7 @@ export default function Footer() {
                     borderTop: '1px solid rgba(255, 255, 255, 0.06)',
                 }}>
                     <p style={{
-                        color: '#475569',
+                        color: '#4A4133',
                         fontSize: '13px',
                     }}>
                         © 2026 OrionFlow. All rights reserved.
@@ -243,7 +243,7 @@ export default function Footer() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        color: '#475569',
+                        color: '#4A4133',
                         fontSize: '13px',
                     }}>
                         <span>Built with</span>

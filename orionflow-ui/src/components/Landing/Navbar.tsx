@@ -59,9 +59,9 @@ export default function Navbar() {
                         fontWeight: 700,
                         letterSpacing: '-0.02em',
                     }}>
-                        <span style={{ color: '#f8fafc' }}>Orion</span>
+                        <span style={{ color: '#EFE7D8' }}>Orion</span>
                         <span style={{
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)',
+                            background: 'linear-gradient(135deg, #8AA5E6 0%, #A8BDEE 100%)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
                             backgroundClip: 'text',
@@ -94,7 +94,7 @@ export default function Navbar() {
                                         style={{
                                             background: 'transparent',
                                             border: 'none',
-                                            color: '#94a3b8',
+                                            color: '#A79D8B',
                                             fontSize: '14px',
                                             fontWeight: 500,
                                             padding: '8px 16px',
@@ -103,11 +103,11 @@ export default function Navbar() {
                                             transition: 'all 0.2s ease',
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.color = '#f8fafc';
+                                            e.currentTarget.style.color = '#EFE7D8';
                                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.color = '#94a3b8';
+                                            e.currentTarget.style.color = '#A79D8B';
                                             e.currentTarget.style.background = 'transparent';
                                         }}
                                     >
@@ -121,24 +121,24 @@ export default function Navbar() {
                                     key={link.name}
                                     to={link.href}
                                     style={{
-                                        color: isActive ? '#60a5fa' : '#94a3b8',
+                                        color: isActive ? '#A8BDEE' : '#A79D8B',
                                         fontSize: '14px',
                                         fontWeight: 500,
                                         padding: '8px 16px',
                                         borderRadius: '8px',
                                         textDecoration: 'none',
                                         transition: 'all 0.2s ease',
-                                        background: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                        background: isActive ? 'rgba(138, 165, 230, 0.1)' : 'transparent',
                                     }}
                                     onMouseEnter={(e) => {
                                         if (!isActive) {
-                                            e.currentTarget.style.color = '#f8fafc';
+                                            e.currentTarget.style.color = '#EFE7D8';
                                             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isActive) {
-                                            e.currentTarget.style.color = '#94a3b8';
+                                            e.currentTarget.style.color = '#A79D8B';
                                             e.currentTarget.style.background = 'transparent';
                                         }
                                     }}
@@ -153,7 +153,7 @@ export default function Navbar() {
                     <Link to="/auth" style={{ textDecoration: 'none' }}>
                         <button style={{
                             background: 'transparent',
-                            color: '#cbd5e1',
+                            color: '#C4BAA6',
                             padding: '10px 18px',
                             borderRadius: '10px',
                             fontWeight: 500,
@@ -178,7 +178,7 @@ export default function Navbar() {
 
                     <Link to="/auth" style={{ textDecoration: 'none' }}>
                         <button style={{
-                            background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                            background: 'linear-gradient(135deg, #5B7FD4 0%, #8AA5E6 100%)',
                             color: 'white',
                             padding: '10px 20px',
                             borderRadius: '10px',
@@ -189,16 +189,16 @@ export default function Navbar() {
                             gap: '8px',
                             border: 'none',
                             cursor: 'pointer',
-                            boxShadow: '0 4px 20px rgba(59, 130, 246, 0.3)',
+                            boxShadow: '0 4px 20px rgba(138, 165, 230, 0.3)',
                             transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                         }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(59, 130, 246, 0.4)';
+                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(138, 165, 230, 0.4)';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 20px rgba(59, 130, 246, 0.3)';
+                                e.currentTarget.style.boxShadow = '0 4px 20px rgba(138, 165, 230, 0.3)';
                             }}
                         >
                             Get Started
@@ -215,7 +215,7 @@ export default function Navbar() {
                             border: '1px solid rgba(255, 255, 255, 0.1)',
                             borderRadius: '8px',
                             padding: '8px',
-                            color: '#f8fafc',
+                            color: '#EFE7D8',
                             cursor: 'pointer',
                             marginLeft: '12px',
                         }}
@@ -247,7 +247,7 @@ export default function Navbar() {
                             to={link.href.startsWith('#') ? '/' : link.href}
                             onClick={() => handleNavClick(link.href)}
                             style={{
-                                color: '#f8fafc',
+                                color: '#EFE7D8',
                                 fontSize: '18px',
                                 fontWeight: 500,
                                 padding: '16px',
@@ -264,7 +264,7 @@ export default function Navbar() {
                         <Link to="/auth" style={{ textDecoration: 'none' }}>
                             <button style={{
                                 width: '100%',
-                                background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                                background: 'linear-gradient(135deg, #5B7FD4 0%, #8AA5E6 100%)',
                                 color: 'white',
                                 padding: '16px',
                                 borderRadius: '12px',

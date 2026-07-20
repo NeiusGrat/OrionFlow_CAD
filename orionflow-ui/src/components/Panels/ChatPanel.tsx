@@ -16,7 +16,7 @@ function AgentAvatar({ size = 24 }: { size?: number }) {
             width: `${size}px`,
             height: `${size}px`,
             borderRadius: `${Math.round(size / 4)}px`,
-            background: "linear-gradient(135deg, #7059E8, #8B79F2)",
+            background: "linear-gradient(135deg, #8AA5E6, #8AA5E6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -62,7 +62,7 @@ function AgentWorking() {
                         gap: "8px",
                         padding: "3px 0",
                         fontSize: "12.5px",
-                        color: i < stage ? "#71717a" : i === stage ? "#e4e4e7" : "#3f3f46",
+                        color: i < stage ? "#7C7364" : i === stage ? "#D8CFBF" : "#3f3f46",
                         transition: "color 0.3s ease",
                     }}
                 >
@@ -71,14 +71,14 @@ function AgentWorking() {
                         height: "6px",
                         borderRadius: "50%",
                         flexShrink: 0,
-                        background: i < stage ? "#22c55e" : i === stage ? "#8B79F2" : "#3f3f46",
+                        background: i < stage ? "#22c55e" : i === stage ? "#8AA5E6" : "#3f3f46",
                         animation: i === stage ? "pulse 1.4s ease-in-out infinite" : "none",
                     }} />
                     {label}
                     {i < stage && <span style={{ fontSize: "11px", color: "#22c55e" }}>✓</span>}
                 </div>
             ))}
-            <div style={{ fontSize: "11px", color: "#52525b", marginTop: "6px" }}>
+            <div style={{ fontSize: "11px", color: "#4A4133", marginTop: "6px" }}>
                 {elapsed.toFixed(0)}s
             </div>
         </div>
@@ -167,7 +167,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                         </p>
                         <p style={{
                             fontSize: "14px",
-                            color: "#71717a",
+                            color: "#7C7364",
                             lineHeight: 1.5,
                         }}>
                             Describe a part to generate — then ask for CAD operations:
@@ -190,12 +190,12 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                             width: "24px",
                                             height: "24px",
                                             borderRadius: "6px",
-                                            background: "#27272a",
+                                            background: "#241F18",
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
                                         }}>
-                                            <span style={{ fontSize: "11px", fontWeight: 600, color: "#a1a1aa" }}>Y</span>
+                                            <span style={{ fontSize: "11px", fontWeight: 600, color: "#A79D8B" }}>Y</span>
                                         </div>
                                     ) : (
                                         <AgentAvatar />
@@ -203,7 +203,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                     <span style={{
                                         fontSize: "13px",
                                         fontWeight: 500,
-                                        color: msg.role === "user" ? "#a1a1aa" : "#fff",
+                                        color: msg.role === "user" ? "#A79D8B" : "#fff",
                                     }}>
                                         {msg.role === "user" ? "You" : "Orion Agent"}
                                     </span>
@@ -227,7 +227,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                 <p style={{
                                     fontSize: "14px",
                                     lineHeight: 1.6,
-                                    color: "#e4e4e7",
+                                    color: "#D8CFBF",
                                     margin: 0,
                                     paddingLeft: "32px",
                                     whiteSpace: "pre-line",
@@ -241,15 +241,15 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                         marginTop: "12px",
                                         marginLeft: "32px",
                                         padding: "8px 12px",
-                                        background: "rgba(59, 130, 246, 0.1)",
-                                        border: "1px solid rgba(59, 130, 246, 0.2)",
+                                        background: "rgba(138, 165, 230, 0.1)",
+                                        border: "1px solid rgba(138, 165, 230, 0.2)",
                                         borderRadius: "8px",
                                         display: "inline-flex",
                                         alignItems: "center",
                                         gap: "8px",
                                     }}>
-                                        <Box size={14} style={{ color: "#60a5fa" }} />
-                                        <span style={{ fontSize: "13px", color: "#60a5fa" }}>
+                                        <Box size={14} style={{ color: "#A8BDEE" }} />
+                                        <span style={{ fontSize: "13px", color: "#A8BDEE" }}>
                                             Model v{msg.partVersion}
                                         </span>
                                     </div>
@@ -294,21 +294,21 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                                 onClick={() => onGenerate(op)}
                                 style={{
                                     fontSize: "11px",
-                                    color: "#a1a1aa",
+                                    color: "#A79D8B",
                                     background: "#18181b",
-                                    border: "1px solid #27272a",
+                                    border: "1px solid #241F18",
                                     borderRadius: "999px",
                                     padding: "4px 10px",
                                     cursor: "pointer",
                                     transition: "all 0.15s",
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = "#e4e4e7";
-                                    e.currentTarget.style.borderColor = "#8B79F2";
+                                    e.currentTarget.style.color = "#D8CFBF";
+                                    e.currentTarget.style.borderColor = "#8AA5E6";
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = "#a1a1aa";
-                                    e.currentTarget.style.borderColor = "#27272a";
+                                    e.currentTarget.style.color = "#A79D8B";
+                                    e.currentTarget.style.borderColor = "#241F18";
                                 }}
                             >
                                 {op}
@@ -319,7 +319,7 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                 {/* Input Box */}
                 <div style={{
                     background: "#18181b",
-                    border: "1px solid #27272a",
+                    border: "1px solid #241F18",
                     borderRadius: "12px",
                     padding: "12px",
                     display: "flex",
@@ -363,9 +363,9 @@ export default function ChatPanel({ onGenerate }: ChatPanelProps) {
                             width: "32px",
                             height: "32px",
                             borderRadius: "8px",
-                            background: canSend ? "#3b82f6" : "#27272a",
+                            background: canSend ? "#8AA5E6" : "#241F18",
                             border: "none",
-                            color: canSend ? "#fff" : "#52525b",
+                            color: canSend ? "#fff" : "#4A4133",
                             cursor: canSend ? "pointer" : "not-allowed",
                             display: "flex",
                             alignItems: "center",

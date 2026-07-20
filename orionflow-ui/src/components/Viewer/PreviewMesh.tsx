@@ -20,7 +20,7 @@ export default function PreviewMesh({ geometry }: PreviewMeshProps) {
             {/* Solid preview */}
             <mesh ref={meshRef} geometry={geometry}>
                 <meshStandardMaterial
-                    color="#B8C4CE"
+                    color="#C4BAA6"
                     roughness={0.6}
                     metalness={0.1}
                     transparent
@@ -31,7 +31,7 @@ export default function PreviewMesh({ geometry }: PreviewMeshProps) {
             {/* Wireframe overlay to indicate "draft" mode */}
             <mesh geometry={geometry}>
                 <meshBasicMaterial
-                    color="#6B7280"
+                    color="#7C7364"
                     wireframe
                     transparent
                     opacity={0.3}

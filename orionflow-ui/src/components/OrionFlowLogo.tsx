@@ -13,7 +13,7 @@ interface OrionFlowLogoProps {
  */
 export default function OrionFlowLogo({ size = 40, className = '', theme = 'dark' }: OrionFlowLogoProps) {
   const stroke = theme === 'light' ? '#10121a' : '#EDEAFB';
-  const accent = theme === 'mono' ? '#ffffff' : theme === 'light' ? '#7059E8' : '#8B79F2';
+  const accent = theme === 'mono' ? '#ffffff' : theme === 'light' ? '#8AA5E6' : '#8AA5E6';
   const s = theme === 'mono' ? '#ffffff' : stroke;
 
   return (
@@ -43,7 +43,7 @@ export function OrionFlowWordmark({ size = 16 }: { size?: number }) {
         fontSize: `${size}px`,
         fontWeight: 700,
         letterSpacing: '-0.01em',
-        background: 'linear-gradient(96deg, #9C8BF5, #C9D6FB)',
+        background: 'linear-gradient(96deg, #8AA5E6, #B0C7E8)',
         WebkitBackgroundClip: 'text',
         backgroundClip: 'text',
         color: 'transparent',

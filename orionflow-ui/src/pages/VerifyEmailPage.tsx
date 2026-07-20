@@ -29,8 +29,9 @@ export default function VerifyEmailPage() {
     return (
         <div style={{
             minHeight: '100vh',
-            background: '#030712',
-            color: '#f8fafc',
+            width: '100%',
+            background: '#17140F',
+            color: '#EFE7D8',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -42,7 +43,7 @@ export default function VerifyEmailPage() {
             <OrionFlowLogo size={48} />
             <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Email verification</h1>
             <p style={{
-                color: status === 'error' ? '#f87171' : status === 'ok' ? '#4ade80' : '#94a3b8',
+                color: status === 'error' ? '#DE8871' : status === 'ok' ? '#7FB894' : '#A79D8B',
                 fontSize: '15px',
                 maxWidth: '420px',
             }}>
@@ -50,7 +51,7 @@ export default function VerifyEmailPage() {
             </p>
             {status !== 'working' && (
                 <Link to="/auth" style={{
-                    background: '#3b82f6',
+                    background: '#8AA5E6',
                     color: '#fff',
                     padding: '10px 24px',
                     borderRadius: '8px',

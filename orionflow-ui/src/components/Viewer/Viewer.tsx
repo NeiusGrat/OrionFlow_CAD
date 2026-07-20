@@ -28,10 +28,10 @@ const MAT_HOVER = new THREE.MeshStandardMaterial({
     envMapIntensity: 1.1,
 });
 const MAT_SELECTED = new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#9fc0ff"),
+    color: new THREE.Color("#A8BDEE"),
     metalness: 0.65,
     roughness: 0.3,
-    emissive: new THREE.Color("#1d4ed8"),
+    emissive: new THREE.Color("#24468F"),
     emissiveIntensity: 0.12,
     envMapIntensity: 1.1,
 });
@@ -42,7 +42,7 @@ const EDGE_MAT = new THREE.LineBasicMaterial({
     opacity: 0.55,
 });
 const EDGE_MAT_SELECTED = new THREE.LineBasicMaterial({
-    color: new THREE.Color("#2563eb"),
+    color: new THREE.Color("#5B7FD4"),
     transparent: true,
     opacity: 0.95,
 });

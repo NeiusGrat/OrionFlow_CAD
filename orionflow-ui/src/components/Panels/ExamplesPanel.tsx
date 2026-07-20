@@ -63,7 +63,7 @@ export default function ExamplesPanel({
                             width: "32px",
                             height: "32px",
                             borderRadius: "var(--radius-md)",
-                            background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
+                            background: "linear-gradient(135deg, #8AA5E6 0%, #8AA5E6 100%)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -116,11 +116,11 @@ export default function ExamplesPanel({
                             borderRadius: "var(--radius-full)",
                             border: "1px solid",
                             borderColor:
-                                activeCategory === cat ? "rgba(59, 130, 246, 0.5)" : "var(--color-border)",
+                                activeCategory === cat ? "rgba(138, 165, 230, 0.5)" : "var(--color-border)",
                             background:
-                                activeCategory === cat ? "rgba(59, 130, 246, 0.15)" : "transparent",
+                                activeCategory === cat ? "rgba(138, 165, 230, 0.15)" : "transparent",
                             color:
-                                activeCategory === cat ? "#60a5fa" : "var(--color-text-muted)",
+                                activeCategory === cat ? "#A8BDEE" : "var(--color-text-muted)",
                             cursor: "pointer",
                             transition: "all var(--duration-fast) var(--ease-out-quad)",
                         }}
@@ -136,7 +136,7 @@ export default function ExamplesPanel({
                         style={{
                             padding: "12px",
                             fontSize: "13px",
-                            color: "#f87171",
+                            color: "#DE8871",
                             textAlign: "center",
                         }}
                     >
@@ -172,7 +172,7 @@ export default function ExamplesPanel({
                                 transition: "all var(--duration-fast) var(--ease-out-quad)",
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = "rgba(59, 130, 246, 0.4)";
+                                e.currentTarget.style.borderColor = "rgba(138, 165, 230, 0.4)";
                                 e.currentTarget.style.background = "var(--color-bg-element-hover)";
                             }}
                             onMouseLeave={(e) => {
@@ -203,8 +203,8 @@ export default function ExamplesPanel({
                                         fontWeight: 500,
                                         padding: "2px 8px",
                                         borderRadius: "var(--radius-full)",
-                                        background: "rgba(99, 102, 241, 0.12)",
-                                        color: "#818cf8",
+                                        background: "rgba(222, 136, 113, 0.12)",
+                                        color: "#A8BDEE",
                                         whiteSpace: "nowrap",
                                     }}
                                 >

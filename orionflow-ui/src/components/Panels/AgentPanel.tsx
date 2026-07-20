@@ -30,9 +30,9 @@ const card: React.CSSProperties = {
 };
 
 function scoreColor(score: number): string {
-    if (score >= 90) return "#4ade80";
-    if (score >= 70) return "#facc15";
-    return "#f87171";
+    if (score >= 90) return "#7FB894";
+    if (score >= 70) return "#D9A441";
+    return "#DE8871";
 }
 
 export default function AgentPanel() {
@@ -151,7 +151,7 @@ export default function AgentPanel() {
                         <div key={p} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0", fontSize: "11.5px" }}>
                             <span style={{
                                 width: "7px", height: "7px", borderRadius: "50%", flexShrink: 0,
-                                background: i < phaseIdx ? "#4ade80" : i === phaseIdx ? "var(--studio-accent)" : "var(--studio-border)",
+                                background: i < phaseIdx ? "#7FB894" : i === phaseIdx ? "var(--studio-accent)" : "var(--studio-border)",
                             }} />
                             <span style={{ color: i <= phaseIdx ? "var(--studio-text)" : "var(--studio-text-faint)" }}>{p}</span>
                         </div>
@@ -160,7 +160,7 @@ export default function AgentPanel() {
             )}
 
             {error && (
-                <div style={{ ...card, marginTop: "12px", borderColor: "rgba(248,113,113,.4)", color: "#fca5a5" }}>
+                <div style={{ ...card, marginTop: "12px", borderColor: "rgba(248,113,113,.4)", color: "#E8A594" }}>
                     {error}
                 </div>
             )}
@@ -235,8 +235,8 @@ export default function AgentPanel() {
                     <div style={{ ...card, display: "flex", flexDirection: "column", gap: "5px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--studio-text)" }}>
                             {result.stats?.watertight
-                                ? <CheckCircle2 size={12} color="#4ade80" />
-                                : <AlertTriangle size={12} color="#facc15" />}
+                                ? <CheckCircle2 size={12} color="#7FB894" />
+                                : <AlertTriangle size={12} color="#D9A441" />}
                             {result.stats?.watertight ? "Watertight solid" : "Geometry flagged — check analysis"}
                             {typeof score === "number" && (
                                 <span style={{ marginLeft: "auto", fontWeight: 700, color: scoreColor(score) }}>
@@ -252,7 +252,7 @@ export default function AgentPanel() {
                             </div>
                         )}
                         {(analysis?.issues ?? []).map((iss, i) => (
-                            <div key={i} style={{ color: iss.severity === "critical" ? "#f87171" : "#facc15", fontSize: "11px" }}>
+                            <div key={i} style={{ color: iss.severity === "critical" ? "#DE8871" : "#D9A441", fontSize: "11px" }}>
                                 {iss.severity.toUpperCase()}: {iss.issue}
                             </div>
                         ))}
@@ -263,7 +263,7 @@ export default function AgentPanel() {
                             <div style={label}>Engineering risks</div>
                             <div style={{ ...card, display: "flex", flexDirection: "column", gap: "4px" }}>
                                 {plan.risks.map((r, i) => (
-                                    <div key={i} style={{ color: "#facc15", fontSize: "11px" }}>⚠ {r}</div>
+                                    <div key={i} style={{ color: "#D9A441", fontSize: "11px" }}>⚠ {r}</div>
                                 ))}
                             </div>
                         </>

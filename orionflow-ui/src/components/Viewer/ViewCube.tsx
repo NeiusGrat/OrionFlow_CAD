@@ -13,7 +13,7 @@ export default function ViewCube() {
                 color="white"
                 hoverColor="#d1d5db"
                 textColor="black"
-                strokeColor="#a1a1aa"
+                strokeColor="#A79D8B"
             />
         </GizmoHelper>
     );
