@@ -71,15 +71,26 @@ def _active_doc():
 
 
 def _surface_type(face) -> str:
-    surf = getattr(face, "Surface", None)
+    # OCC raises (not AttributeError) for geometry it has no Python binding
+    # for, so a bare getattr default is not enough: one unsupported face would
+    # abort the whole inspection instead of degrading to "Unknown".
+    try:
+        surf = face.Surface
+    except Exception:  # noqa: BLE001
+        return "Unknown"
     if surf is None:
         return "Unknown"
-    name = type(surf).__name__
-    return name.replace("Geom", "")
+    return type(surf).__name__.replace("Geom", "")
 
 
 def _curve_type(edge) -> str:
-    curve = getattr(edge, "Curve", None)
+    # Same guard as _surface_type: swept/elliptical seam edges raise
+    # "undefined curve type" here, which used to take down inspect_topology
+    # for the entire part.
+    try:
+        curve = edge.Curve
+    except Exception:  # noqa: BLE001
+        return "Unknown"
     if curve is None:
         return "Unknown"
     return type(curve).__name__.replace("Geom", "")

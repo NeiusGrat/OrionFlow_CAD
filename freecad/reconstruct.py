@@ -59,14 +59,24 @@ def _origin_axis(body, role):
 
 
 def _plane_placement(plane, z=0.0):
-    """Placement that puts a sketch on a principal plane at height ``z``."""
+    """Placement that puts a sketch on a principal plane, offset ``z`` along
+    that plane's own normal.
+
+    The offset has to follow the normal, not global Z: an XZ sketch offsets
+    along Y and a YZ sketch along X. Offsetting everything along Z silently
+    put off-plane profiles (sweep spines, flange-face hole patterns) on the
+    wrong axis while still compiling to a plausible-looking solid.
+    """
     if plane == "XZ":
         rot = App.Rotation(App.Vector(1, 0, 0), 90)
+        pos = App.Vector(0, z, 0)
     elif plane == "YZ":
         rot = App.Rotation(App.Vector(0, 1, 0), -90)
+        pos = App.Vector(z, 0, 0)
     else:  # XY (and any face-attached sketch, placed flat at height z)
         rot = App.Rotation()
-    return App.Placement(App.Vector(0, 0, z), rot)
+        pos = App.Vector(0, 0, z)
+    return App.Placement(pos, rot)
 
 
 def _load_sibling(stem):
@@ -287,6 +297,23 @@ def _add_geometry(sketch, geom_list, constrain=False):
                 c = App.Vector(g["cx"], g["cy"], 0)
                 circ = Part.Circle(c, App.Vector(0, 0, 1), g["radius"])
                 sketch.addGeometry(Part.ArcOfCircle(circ, g["first"], g["last"]), cons)
+            elif t == "Ellipse":
+                # Semi-axes are given per sketch-local axis (rx along +X, ry
+                # along +Y). Part.Ellipse wants the MAJOR endpoint first, so
+                # swap when the local Y axis is the longer one — otherwise OCC
+                # rejects the construction.
+                c = App.Vector(g["cx"], g["cy"], 0)
+                rx = float(g.get("rx", g.get("major_radius")))
+                ry = float(g.get("ry", g.get("minor_radius")))
+                if rx >= ry:
+                    s1, s2 = App.Vector(c.x + rx, c.y, 0), App.Vector(c.x, c.y + ry, 0)
+                else:
+                    s1, s2 = App.Vector(c.x, c.y + ry, 0), App.Vector(c.x + rx, c.y, 0)
+                ell = Part.Ellipse(s1, s2, c)
+                if "first" in g and "last" in g:
+                    sketch.addGeometry(Part.ArcOfEllipse(ell, g["first"], g["last"]), cons)
+                else:
+                    sketch.addGeometry(ell, cons)
             elif t == "BSpline":
                 poles = [App.Vector(*p) for p in g["poles"]]
                 bs = Part.BSplineCurve()
@@ -585,6 +612,17 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
                     op.Spine = spine
                 except Exception:  # noqa: BLE001 - some versions want a sub list
                     op.Spine = (spine, [])
+                # Transition frame. The default keeps the profile's original
+                # orientation, so on a curved spine the section shears and the
+                # swept solid bulges off-axis; "Frenet" keeps it normal to the
+                # path, which is what a swept groove/race actually means.
+                mode = params.get("Mode")
+                if mode:
+                    try:
+                        op.Mode = mode
+                    except Exception as e:  # noqa: BLE001
+                        report["recompute_errors"].append(
+                            {"id": fid, "error": f"sweep mode {mode!r} rejected: {e}"})
             body.addObject(op)
             doc.recompute()
             if op.State and "Invalid" in op.State:

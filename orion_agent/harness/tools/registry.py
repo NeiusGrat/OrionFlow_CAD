@@ -228,6 +228,46 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         lookup_mechanical_knowledge,
     ))
 
+    def resolve_design_context(args):
+        """Datum, material and process facts for a request — looked up, not recalled."""
+        from orion_agent.harness import design_rules
+        ctx = design_rules.resolve(
+            args.get("request", ""),
+            part=args.get("part", ""),
+            material=args.get("material", ""),
+            manufacturing=args.get("manufacturing", ""),
+            dimensions=args.get("dimensions") or {},
+            counts=args.get("counts") or {},
+        )
+        text = ctx.render()
+        if not text:
+            return _fail("could not classify the request into a part class")
+        return _ok(text, raw=ctx.to_dict())
+
+    reg.register(Tool(
+        "resolve_design_context",
+        "Resolve the modelling convention and engineering facts for a part BEFORE "
+        "writing a FeatureGraph: part class, sketch plane / axis / symmetry datum, "
+        "feature order, material properties (density, yield, modulus), "
+        "manufacturing constraints (min wall, draft, corner radius, tolerance), and "
+        "derived values computed from stated dimensions. Every number here is "
+        "looked up or computed - prefer it over your own recollection, and use the "
+        "given datum rather than choosing a plane yourself.",
+        {
+            "type": "object",
+            "properties": {
+                "request": {"type": "string", "description": "The user's request, verbatim"},
+                "part": {"type": "string", "description": "Optional part name"},
+                "material": {"type": "string", "description": "Optional stated material"},
+                "manufacturing": {"type": "string", "description": "Optional stated process"},
+                "dimensions": {"type": "object", "description": "Optional {name: mm} already extracted"},
+                "counts": {"type": "object", "description": "Optional {noun: n} already extracted"},
+            },
+            "required": ["request"],
+        },
+        resolve_design_context,
+    ))
+
     def calculate_sheet_metal_bend(args):
         from orion_agent.harness import mechanical_knowledge as mk
         try:

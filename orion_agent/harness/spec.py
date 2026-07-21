@@ -46,6 +46,13 @@ _COUNT_NOUNS = (r"(holes?|bolts?|screws?|bores?|slots?|ribs?|fins?|arms?|"
                 r"spokes?|teeth|pockets?|standoffs?|posts?|pins?|tabs?|"
                 r"counterbores?|mounts?)")
 
+_WORD_NUMBERS: dict[str, int] = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+    "twelve": 12, "sixteen": 16, "eighteen": 18, "twenty": 20,
+    "twentyfour": 24, "thirtysix": 36,
+}
+
 _ALLOY_RE = r"\b(\d{4})[- ]?t(\d{1,2})\b"
 _KNOWN_ALLOYS = {"6061", "7075", "5052", "6063", "2024", "304", "316", "4140"}
 _MATERIAL_WORDS = (
@@ -109,9 +116,23 @@ def extract_quantities(text: str) -> dict:
     for m in re.finditer(r"\bm(\d+(?:\.\d+)?)\b", low):
         raw.append(float(m.group(1)))
 
+    # Quantities spelled as words are still stated by the user, so they must
+    # ground — otherwise "two M6 holes" parses the count and the grounding
+    # guard immediately strips it again.
+    for word, value in _WORD_NUMBERS.items():
+        if re.search(rf"\b{word}\b", low):
+            raw.append(float(value))
+
     counts: dict[str, int] = {}
-    for m in re.finditer(r"(\d+)\s*(?:x\s*)?" + _COUNT_NOUNS + r"\b", low):
+    # The digit must not be the tail of a thread callout: in "two M6 holes"
+    # the 6 belongs to M6, and reading it as a quantity silently produced a
+    # 6-hole part. A letter immediately before the number disqualifies it.
+    for m in re.finditer(r"(?<![a-z])(\d+)\s*(?:x\s*)?" + _COUNT_NOUNS + r"\b", low):
         counts[m.group(2)] = int(m.group(1))
+    # Engineers write small quantities as words at least as often as digits.
+    for m in re.finditer(r"\b(" + "|".join(_WORD_NUMBERS) + r")\s+(?:\w+\s+){0,2}?"
+                         + _COUNT_NOUNS + r"\b", low):
+        counts.setdefault(m.group(2), _WORD_NUMBERS[m.group(1)])
 
     return {"mm": mm, "raw": raw, "counts": counts}
 
@@ -127,7 +148,9 @@ def _find_material(text: str) -> str:
         if m:
             parts.append(m.group(1))
     for word in _MATERIAL_WORDS:
-        if word in low:
+        # Whole words only: a substring test reads "plate" as the plastic
+        # "PLA" and silently assigns a material the user never mentioned.
+        if re.search(rf"\b{re.escape(word)}\b", low):
             parts.append(word)
             break
     return " ".join(parts)
@@ -145,9 +168,59 @@ _STOPWORDS = {"a", "an", "the", "with", "and", "of", "is", "at", "to", "must",
               "be", "in", "on", "for", "it", "its", "uses", "using", "has"}
 
 
+# Drawing designators, mapped to canonical names. Engineers write these
+# without a unit ("80 OD", "60 PCD", "10 thick") and the unit-qualified
+# extractor below never sees them, so the derived-value formulas had nothing
+# to work from.
+_DESIGNATORS: dict[str, str] = {
+    "od": "outer diameter", "o.d.": "outer diameter",
+    "outer diameter": "outer diameter", "outside diameter": "outer diameter",
+    "id": "inner diameter", "i.d.": "inner diameter",
+    "inner diameter": "inner diameter", "inside diameter": "inner diameter",
+    "bore": "bore diameter",
+    "pcd": "pcd", "bcd": "pcd", "bolt circle": "pcd",
+    "pitch circle": "pcd", "bolt circle diameter": "pcd",
+    "dia": "diameter", "diameter": "diameter", "ø": "diameter", "⌀": "diameter",
+    "thick": "wall thickness", "thk": "wall thickness",
+    "thickness": "wall thickness", "wall": "wall thickness",
+    "deep": "depth", "depth": "depth",
+    "long": "length", "length": "length",
+    "wide": "width", "width": "width",
+    "high": "height", "height": "height", "tall": "height",
+    "radius": "radius", "rad": "radius",
+}
+_DESIG_RE = "|".join(sorted((re.escape(k) for k in _DESIGNATORS), key=len,
+                            reverse=True))
+
+
+def _designator_dimensions(text: str) -> dict[str, float]:
+    """Catch 'NUMBER DESIGNATOR' and 'DESIGNATOR NUMBER' with no unit.
+
+    Values are taken as millimetres, which is the drawing default and matches
+    the rest of the pipeline. An explicit unit is still honoured.
+    """
+    dims: dict[str, float] = {}
+    low = text.lower()
+    patterns = (
+        rf"{_NUM_RE}\s*(?:{_UNIT_RE}\s*)?({_DESIG_RE})\b",   # 80 OD / 80mm OD
+        rf"\b({_DESIG_RE})\s*[:=]?\s*{_NUM_RE}",             # OD 80 / PCD: 60
+    )
+    for idx, pat in enumerate(patterns):
+        for m in re.finditer(pat, low):
+            if idx == 0:
+                value, unit, key = m.group(1), m.group(2), m.group(3)
+            else:
+                key, value, unit = m.group(1), m.group(2), None
+            name = _DESIGNATORS[key]
+            dims.setdefault(name, _to_mm(float(value), unit or "mm"))
+            if len(dims) >= _MAX_ITEMS:
+                return dims
+    return dims
+
+
 def _regex_dimensions(text: str) -> dict[str, float]:
     """Fallback naming: the words immediately before 'NUMBER unit'."""
-    dims: dict[str, float] = {}
+    dims: dict[str, float] = _designator_dimensions(text)
     low = text.lower()
     for m in re.finditer(r"([a-z][a-z\- ]{0,30}?)[\s:=]+" + _NUM_RE
                          + r"\s*" + _UNIT_RE + r"\b", low):
@@ -181,6 +254,10 @@ class EngineeringSpec:
     # High-confidence robotics demo candidates. These contain no derived
     # dimensions and must be retrieved in full before an agent uses them.
     robotics: list[dict] = field(default_factory=list)
+    # Deterministic design context: part class, datum/plane convention,
+    # material properties, process constraints and derived values. Resolved
+    # from tables in design_rules, never from the model's recollection.
+    design: dict[str, Any] = field(default_factory=dict)
     source: str = ""                  # llm | regex
     notes: str = ""                   # grounding audit trail
 
@@ -188,7 +265,7 @@ class EngineeringSpec:
         return not (self.part or self.material or self.manufacturing
                     or self.dimensions or self.counts or self.interfaces
                     or self.constraints or self.unresolved or self.standards
-                    or self.robotics)
+                    or self.robotics or self.design)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -241,6 +318,18 @@ class EngineeringSpec:
                 "state it explicitly as an assumption in your answer, and NEVER "
                 "present it as a user requirement):")
             lines += [f"  - {u}" for u in self.unresolved]
+        # Design context last: it is the standing engineering knowledge the
+        # model should lean on rather than recall, so it reads closest to the
+        # task in the assembled prompt.
+        if self.design:
+            try:
+                from orion_agent.harness.design_rules import DesignContext
+                block = DesignContext(**self.design).render()
+            except Exception:  # noqa: BLE001
+                block = ""
+            if block:
+                lines.append("")
+                lines.append(block)
         return "\n".join(lines)
 
 
@@ -371,6 +460,20 @@ class SpecParser:
             spec.robotics = robotics_knowledge.detect_intent(message)
         except Exception:  # noqa: BLE001 - optional knowledge assets
             spec.robotics = []
+        # Deterministic design context. Runs last so it can use the grounded
+        # dimensions and counts; a failure here must not lose the spec.
+        try:
+            from orion_agent.harness import design_rules
+            spec.design = design_rules.resolve(
+                message,
+                part=spec.part,
+                material=spec.material,
+                manufacturing=spec.manufacturing,
+                dimensions=spec.dimensions,
+                counts=spec.counts,
+            ).to_dict()
+        except Exception:  # noqa: BLE001
+            spec.design = {}
         return spec
 
     # ------------------------------------------------------------------ #

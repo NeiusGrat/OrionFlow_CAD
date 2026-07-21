@@ -33,17 +33,25 @@ from orion_agent.shared.config import get_config
 
 _RES = os.path.join(os.path.dirname(__file__), "resources")
 _LOGO = os.path.join(_RES, "orionflow_logo.png")
+_LOGO_SVG = os.path.join(_RES, "orionflow_mark.svg")
 
 # ---- brand palette -------------------------------------------------------- #
-BG = "#0d1117"
-PANEL = "#161b22"
-CARD = "#1c2330"
-ACCENT = "#ff6b2c"          # Orion orange
-ACCENT_DIM = "#b8501f"
-TEXT = "#e6edf3"
-MUTED = "#8b949e"
-USER_BUBBLE = "#21304a"
-TOOL_BUBBLE = "#15212b"
+# The drawing-sheet system shared with orionflow.in and the studio: warm
+# neutrals rather than cold slate, drafting-ink blue for actions, redline for
+# failures. Dark on purpose — it sits beside FreeCAD's 3D viewport.
+BG = "#17140F"              # app chrome
+PANEL = "#1B1712"           # dock surface
+CARD = "#221D16"            # raised bubble
+ACCENT = "#8AA5E6"          # drafting ink
+ACCENT_DIM = "#5B7FD4"
+REDLINE = "#DE8871"         # revision mark / errors
+OK = "#7FB894"
+TEXT = "#EFE7D8"
+MUTED = "#A79D8B"
+FAINT = "#7C7364"
+RULE = "#332C22"
+USER_BUBBLE = "#1C2233"     # blue wash
+TOOL_BUBBLE = "#1F1B15"
 
 
 class _HarnessStarter(QtCore.QThread):
@@ -122,6 +130,21 @@ class OrionChatPanel(QtWidgets.QWidget):
         self._ensure_harness_async()
 
     # ------------------------------------------------------------------ #
+    def _model_label(self) -> str:
+        """Short, human name for whichever model is configured.
+
+        Reads config so swapping the backend (k2think today, a self-hosted
+        open model later) updates the UI without a code change.
+        """
+        try:
+            model = getattr(self.cfg.llm, "model", "") or ""
+            provider = getattr(self.cfg.llm, "provider", "") or ""
+        except Exception:  # noqa: BLE001
+            return "model unset"
+        name = model.rsplit("/", 1)[-1] if model else provider
+        return name or "model unset"
+
+    # ------------------------------------------------------------------ #
     def _build_ui(self):
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -135,10 +158,17 @@ class OrionChatPanel(QtWidgets.QWidget):
         hl.setSpacing(10)
 
         logo = QtWidgets.QLabel()
-        if os.path.exists(_LOGO):
-            pix = QtGui.QPixmap(_LOGO).scaledToHeight(
-                34, QtCore.Qt.SmoothTransformation
-            )
+        pix = None
+        # Prefer the vector mark so the header stays crisp on HiDPI; the PNG
+        # is the fallback for Qt builds without SVG support.
+        for path in (_LOGO_SVG, _LOGO):
+            if os.path.exists(path):
+                candidate = QtGui.QPixmap(path)
+                if not candidate.isNull():
+                    pix = candidate.scaledToHeight(
+                        34, QtCore.Qt.SmoothTransformation)
+                    break
+        if pix is not None:
             logo.setPixmap(pix)
         else:
             logo.setText("◆")
@@ -148,7 +178,9 @@ class OrionChatPanel(QtWidgets.QWidget):
         title_box.setSpacing(0)
         title = QtWidgets.QLabel("OrionFlow Copilot")
         title.setObjectName("title")
-        subtitle = QtWidgets.QLabel("k2v2 think · reasoning CAD agent")
+        # Never hardcode the backend here — the model is a config value and
+        # this line is the one place a user checks which one is answering.
+        subtitle = QtWidgets.QLabel(f"{self._model_label()} · reasoning CAD agent")
         subtitle.setObjectName("subtitle")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
@@ -221,23 +253,33 @@ class OrionChatPanel(QtWidgets.QWidget):
     def _apply_theme(self):
         self.setStyleSheet(f"""
             QWidget {{ background: {BG}; color: {TEXT};
-                       font-family: 'Segoe UI','Inter',sans-serif; font-size: 13px; }}
-            #header {{ background: {PANEL}; border-bottom: 1px solid #21262d; }}
-            #title {{ font-size: 15px; font-weight: 700; color: {TEXT}; }}
-            #subtitle {{ font-size: 11px; color: {ACCENT}; }}
-            #statusDot {{ font-size: 14px; color: #d9534f; }}
-            #strip {{ background: {PANEL}; border-bottom: 1px solid #21262d; }}
-            #stripLabel {{ color: {MUTED}; font-size: 11px; }}
-            #transcript {{ background: {BG}; border: none; padding: 8px; }}
-            #inputFrame {{ background: {PANEL}; border-top: 1px solid #21262d; }}
-            #input {{ background: {CARD}; border: 1px solid #2a3340; border-radius: 8px;
-                      padding: 6px; color: {TEXT}; }}
-            #sendBtn {{ background: {ACCENT}; color: #1a1106; border: none;
-                        border-radius: 7px; padding: 6px 18px; font-weight: 700; }}
+                       font-family: 'Segoe UI','Instrument Sans',sans-serif;
+                       font-size: 13px; }}
+            #header {{ background: {PANEL}; border-bottom: 1px solid {RULE}; }}
+            #title {{ font-size: 15px; font-weight: 600; color: {TEXT};
+                      letter-spacing: 0.2px; }}
+            #subtitle {{ font-size: 10px; color: {FAINT};
+                         font-family: 'IBM Plex Mono',Consolas,monospace;
+                         letter-spacing: 0.8px; }}
+            #statusDot {{ font-size: 14px; color: {REDLINE}; }}
+            #strip {{ background: {PANEL}; border-bottom: 1px solid {RULE}; }}
+            #stripLabel {{ color: {MUTED}; font-size: 11px;
+                           font-family: 'IBM Plex Mono',Consolas,monospace; }}
+            #transcript {{ background: {BG}; border: none; padding: 10px; }}
+            #inputFrame {{ background: {PANEL}; border-top: 1px solid {RULE}; }}
+            #input {{ background: {CARD}; border: 1px solid {RULE}; border-radius: 3px;
+                      padding: 7px; color: {TEXT}; }}
+            #input:focus {{ border: 1px solid {ACCENT}; }}
+            #sendBtn {{ background: {ACCENT}; color: #15120D; border: none;
+                        border-radius: 3px; padding: 6px 18px; font-weight: 600; }}
             #sendBtn:hover {{ background: {ACCENT_DIM}; }}
+            #sendBtn:disabled {{ background: {RULE}; color: {FAINT}; }}
             #ghostBtn {{ background: transparent; color: {MUTED};
-                         border: 1px solid #2a3340; border-radius: 7px; padding: 6px 12px; }}
+                         border: 1px solid {RULE}; border-radius: 3px; padding: 6px 12px; }}
             #ghostBtn:hover {{ color: {TEXT}; border-color: {ACCENT}; }}
+            QScrollBar:vertical {{ background: transparent; width: 8px; }}
+            QScrollBar::handle:vertical {{ background: {RULE}; border-radius: 4px; }}
+            QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
         """)
 
     # ------------------------------------------------------------------ #
@@ -264,7 +306,7 @@ class OrionChatPanel(QtWidgets.QWidget):
 
     def _tool_trace(self, name: str, ok: bool, preview: str):
         icon = "✓" if ok else "✗"
-        color = "#3fb950" if ok else "#f85149"
+        color = OK if ok else REDLINE
         safe = html.escape(preview)[:240]
         self._append_html(
             f"""<table width="100%"><tr><td align="left">
@@ -299,7 +341,7 @@ class OrionChatPanel(QtWidgets.QWidget):
             )
         else:
             self._append_html(
-                f'<div style="text-align:center;color:#d9534f;font-size:10px;'
+                f'<div style="text-align:center;color:{REDLINE};font-size:10px;'
                 f'padding:4px;">⚠ harness not reachable: {html.escape(msg)}<br>'
                 f'It will be retried on your next message.</div>'
             )
@@ -371,7 +413,7 @@ class OrionChatPanel(QtWidgets.QWidget):
         except Exception:  # noqa: BLE001
             running = False
         self.status_dot.setStyleSheet(
-            f"color: {'#3fb950' if running else '#d9534f'};"
+            f"color: {OK if running else REDLINE};"
         )
         self.status_dot.setToolTip("Bridge running" if running else "Bridge stopped")
         self.bridge_btn.setText("Stop bridge" if running else "Start bridge")
