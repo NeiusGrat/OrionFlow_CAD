@@ -43,7 +43,8 @@ def _clean_count(db_path: str) -> int:
 
 
 def supervise(db_path: str, target: int, out_dir: str, seed: int,
-              max_restarts: int, stall_grace: int) -> int:
+              max_restarts: int, stall_grace: int,
+              workers: int = 8, batch: int = 200) -> int:
     launches = 0
     while launches < max_restarts:
         have = _clean_count(db_path)
@@ -54,18 +55,28 @@ def supervise(db_path: str, target: int, out_dir: str, seed: int,
         print(f"[supervisor] launch {launches}: {have}/{target} clean records",
               flush=True)
         before = have
-        proc = subprocess.run(
-            [sys.executable, "-m", "orion.forge_loop",
-             "--db", db_path, "--out", out_dir, "--no-json",
-             "--seed", str(seed), "--target", str(target)],
-            capture_output=True, text=True)
+        # Parallel batched forge, not the serial loop: at scale the serial
+        # backend is ~10x too slow. parallel_forge is itself resumable
+        # (--target) and cap-correct across restarts (it seeds the per-signature
+        # cap from the DB), so the supervisor only has to relaunch it after an
+        # outright process death (crash / OS suspend). Output goes to files, not
+        # capture_output pipes — a multi-hour run's output would otherwise buffer
+        # in memory unbounded and a killed child could wedge communicate().
+        log_path = os.path.join(out_dir, f"launch_{launches}.log")
+        os.makedirs(out_dir, exist_ok=True)
+        with open(log_path, "w", encoding="utf-8") as _lf:
+            proc = subprocess.run(
+                [sys.executable, "-m", "orion.parallel_forge",
+                 "--db", db_path, "--out", out_dir,
+                 "--workers", str(workers), "--batch", str(batch),
+                 "--seed", str(seed), "--target", str(target)],
+                stdout=_lf, stderr=subprocess.STDOUT)
         after = _clean_count(db_path)
         gained = after - before
         print(f"[supervisor] launch {launches} exited rc={proc.returncode}, "
               f"+{gained} records ({after}/{target})", flush=True)
         if proc.returncode != 0:
-            print("[supervisor] stderr tail:",
-                  (proc.stderr or "")[-500:], flush=True)
+            print(f"[supervisor] non-zero exit; see {log_path}", flush=True)
         if after >= target:
             print(f"[supervisor] target reached: {after}")
             return 0
@@ -91,9 +102,12 @@ def main():
     ap.add_argument("--seed", type=int, default=100000)
     ap.add_argument("--max-restarts", type=int, default=200)
     ap.add_argument("--stall-grace", type=int, default=30)
+    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--batch", type=int, default=200)
     args = ap.parse_args()
     rc = supervise(args.db, args.target, args.out, args.seed,
-                   args.max_restarts, args.stall_grace)
+                   args.max_restarts, args.stall_grace,
+                   args.workers, args.batch)
     sys.exit(rc)
 
 

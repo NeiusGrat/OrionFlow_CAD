@@ -149,10 +149,34 @@ def _run_batch(jobs, workers, scratch):
     return results
 
 
+def _seed_sig_drawn(sampler, db_path: str) -> None:
+    """Prime the per-signature clean cap from records already in the corpus.
+
+    The cap lives in the sampler process, so without this every resume — and
+    every supervisor relaunch — would start the counter at zero and refill each
+    signature up to the cap AGAIN, re-skewing the very distribution the cap
+    exists to flatten. Seeding makes the cap GLOBAL across restarts."""
+    if not db_path or not os.path.exists(db_path):
+        return
+    import sqlite3
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        for sig, ct in con.execute(
+                "SELECT topology_signature, COUNT(*) FROM records "
+                "WHERE status='clean' AND topology_signature IS NOT NULL "
+                "GROUP BY topology_signature"):
+            sampler.sig_drawn[sig] = ct
+    except Exception:  # noqa: BLE001 - table may predate the column
+        pass
+    finally:
+        con.close()
+
+
 def run(db_path: str, target: int, seed: int, workers: int, batch: int,
         out_dir: str) -> dict:
     already = _clean_count(db_path)
     sampler = TopologySampler(seed=seed + already)
+    _seed_sig_drawn(sampler, db_path)
     con = corpus_db.connect(db_path)
     os.makedirs(out_dir, exist_ok=True)
     scratch = tempfile.mkdtemp(prefix="orion_pforge_")
