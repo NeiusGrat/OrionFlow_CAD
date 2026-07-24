@@ -60,6 +60,11 @@ SIG_TOL = 0.05
 #: reachable topologies — each still bounded, so the distribution stays flat and
 #: 2^H stays near the distinct-topology ceiling — until the record target is met.
 PER_SIG_CAP = int(os.environ.get("ORION_SIG_CAP", "10"))
+#: How many candidates draw() tries before giving up. Env-tunable because late
+#: in a scale run most easy signatures are capped and the remaining capacity is
+#: a long tail of rare (base, attachment-set) combos — more attempts per draw
+#: reach that tail instead of the run starving with headroom still unfilled.
+DRAW_ATTEMPTS = int(os.environ.get("ORION_DRAW_ATTEMPTS", "40"))
 
 
 def _signature(bp) -> Optional[tuple]:
@@ -156,7 +161,7 @@ class TopologySampler:
         moment it is queued, never for stress/injected variants."""
         self.sig_drawn[sig_key] += 1
 
-    def draw(self, max_attempts: int = 40):
+    def draw(self, max_attempts: Optional[int] = None):
         """Sample one novel candidate. Returns
         ``(blueprint, faults, seq, family, meta)`` or None.
 
@@ -164,6 +169,8 @@ class TopologySampler:
         composition system (base + 0-3 attachments). Composition is where
         feature INTERACTION data comes from, so it takes the larger share.
         """
+        if max_attempts is None:
+            max_attempts = DRAW_ATTEMPTS
         for _ in range(max_attempts):
             use_compose = BASES and self.rng.random() < self.compose_p
             if use_compose:

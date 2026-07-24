@@ -44,8 +44,10 @@ def _clean_count(db_path: str) -> int:
 
 def supervise(db_path: str, target: int, out_dir: str, seed: int,
               max_restarts: int, stall_grace: int,
-              workers: int = 8, batch: int = 200) -> int:
+              workers: int = 8, batch: int = 200,
+              zero_streak_limit: int = 4) -> int:
     launches = 0
+    zero_streak = 0
     while launches < max_restarts:
         have = _clean_count(db_path)
         if have >= target:
@@ -80,15 +82,21 @@ def supervise(db_path: str, target: int, out_dir: str, seed: int,
         if after >= target:
             print(f"[supervisor] target reached: {after}")
             return 0
-        # A launch that made no progress twice in a row is a hard stall
-        # (sampler exhausted or a persistent build failure), not a transient
-        # interruption — stop rather than spin.
+        # Late in a scale run each fresh-seed relaunch re-explores different
+        # (base, attachment) combos, so a SINGLE zero-gain launch is normal —
+        # the next seed usually finds more of the uncapped tail. Only stop after
+        # several consecutive zero-gain launches, which means the reachable
+        # topology space is genuinely exhausted, not just unlucky this seed.
         if gained == 0:
+            zero_streak += 1
             time.sleep(stall_grace)
-            if _clean_count(db_path) == after:
-                print("[supervisor] no progress after grace period — stopping "
-                      "to avoid a spin loop; investigate the loop output.")
-                return 1
+            if zero_streak >= zero_streak_limit:
+                print(f"[supervisor] {zero_streak} consecutive zero-gain "
+                      f"launches — reachable topology space exhausted at "
+                      f"{_clean_count(db_path)}; stopping.")
+                return 0
+        else:
+            zero_streak = 0
     print(f"[supervisor] hit max-restarts={max_restarts}; "
           f"{_clean_count(db_path)}/{target}")
     return 1
