@@ -1,0 +1,2898 @@
+{
+ "0603c53148": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 189690.13171018107,
+    "cumulative_volume": 189690.13171018107
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 80020.53065064392,
+    "cumulative_volume": 149679.86638485908
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 13010.68562891181,
+    "cumulative_volume": 143174.52357040322
+   }
+  ],
+  "body_volume": 143174.52357040322,
+  "bbox": [
+   -53.578,
+   -53.578,
+   0.0,
+   53.578,
+   53.578,
+   21.034
+  ]
+ },
+ "067a9a8726": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 4539.601384437251,
+    "cumulative_volume": 4539.601384437251
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 13889.315425894827,
+    "cumulative_volume": 18428.916810332077
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 6870.663133400878,
+    "cumulative_volume": 11558.2536769312
+   }
+  ],
+  "body_volume": 11558.2536769312,
+  "bbox": [
+   -17.0,
+   -17.0,
+   0.0,
+   17.0,
+   17.0,
+   27.0
+  ]
+ },
+ "08d2da3057": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 9472.129386164303,
+    "cumulative_volume": 9472.129386164303
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1206.37157897848,
+    "cumulative_volume": 10678.500965142786
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 603.1857894892402,
+    "cumulative_volume": 10075.315175653532
+   }
+  ],
+  "body_volume": 10075.315175653532,
+  "bbox": [
+   -23.46643181662118,
+   -23.495957153799413,
+   0.0,
+   23.5,
+   23.495957153799417,
+   12.0
+  ]
+ },
+ "0e9bcbd4f4": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 7508.4402508110825,
+    "cumulative_volume": 7508.4402508110825
+   },
+   {
+    "name": "Hole1",
+    "type_id": "PartDesign::Hole",
+    "addsub_volume": 6373.563499881937,
+    "cumulative_volume": 5152.245760618738
+   }
+  ],
+  "body_volume": 5152.245760618738,
+  "bbox": [
+   -9.814954576223638,
+   -8.5,
+   0.0,
+   9.814954576223638,
+   8.5,
+   30.0
+  ]
+ },
+ "0f27beedee": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 918000000.0,
+    "cumulative_volume": 918000000.0
+   }
+  ],
+  "body_volume": 918000000.0,
+  "bbox": [
+   0.0,
+   -850.0000000000001,
+   -1200.0,
+   1500.0,
+   1.44e-13,
+   0.0
+  ]
+ },
+ "0fe9d9e3ce": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 49619.9399449168,
+    "cumulative_volume": 49619.9399449168
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 12546.845160977049,
+    "cumulative_volume": 37073.09478393975
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1873.0230437415812,
+    "cumulative_volume": 35200.07174019818
+   }
+  ],
+  "body_volume": 35200.07174019818,
+  "bbox": [
+   -34.727,
+   -34.727,
+   0.0,
+   34.727,
+   34.727,
+   13.097
+  ]
+ },
+ "14da78600e": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 14.316489935566754,
+    "cumulative_volume": 14.316489935566754
+   }
+  ],
+  "body_volume": 14.316489935566754,
+  "bbox": [
+   -4.0,
+   -4.0,
+   -5.846319249717789e-16,
+   4.0,
+   4.0,
+   0.6000000000000009
+  ]
+ },
+ "163672a65f": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 1.417088073746535,
+    "cumulative_volume": 1.417088073746535
+   }
+  ],
+  "body_volume": 1.417088073746535,
+  "bbox": [
+   0.0,
+   -0.3768,
+   -0.3768,
+   4.0,
+   0.3768,
+   0.3768
+  ]
+ },
+ "1b9f95801c": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 603185.7894892403,
+    "cumulative_volume": 603185.7894892403
+   }
+  ],
+  "body_volume": 67883.53405876833,
+  "bbox": [
+   -40.0,
+   -40.0,
+   0.0,
+   40.0,
+   40.0,
+   120.0
+  ]
+ },
+ "1db55e40f2": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 169037.19180068793,
+    "cumulative_volume": 169037.19180068793
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 23758.294442772814,
+    "cumulative_volume": 192795.4862434608
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2827.4333882308138,
+    "cumulative_volume": 189968.05285522973
+   }
+  ],
+  "body_volume": 189968.05285522973,
+  "bbox": [
+   -61.5,
+   -61.5,
+   0.0,
+   61.5,
+   61.5,
+   25.0
+  ]
+ },
+ "21d1517841": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 44.459819233602765,
+    "cumulative_volume": 44.459819233602765
+   }
+  ],
+  "body_volume": 44.459819233602765,
+  "bbox": [
+   -4.5,
+   -4.5,
+   0.0,
+   4.5,
+   4.5,
+   0.8
+  ]
+ },
+ "264ab71adf": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 15.758066159853342,
+    "cumulative_volume": 15.758066159853344
+   }
+  ],
+  "body_volume": 15.758066159853342,
+  "bbox": [
+   -4.0,
+   -4.0,
+   -8.591473518878982e-16,
+   4.0,
+   4.0,
+   0.6000000000000011
+  ]
+ },
+ "28177ca409": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 314.08,
+    "cumulative_volume": 314.08
+   }
+  ],
+  "body_volume": 314.08,
+  "bbox": [
+   0.0,
+   -4.0,
+   0.0,
+   18.0,
+   2.33e-15,
+   7.000000000000001
+  ]
+ },
+ "2c186f799d": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 284350.0232340303,
+    "cumulative_volume": 284350.0232340303
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 151315.81011266125,
+    "cumulative_volume": 208692.11817769965
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 26334.61198994866,
+    "cumulative_volume": 195524.8121827253
+   }
+  ],
+  "body_volume": 195524.8121827253,
+  "bbox": [
+   -62.70625,
+   -62.70625,
+   0.0,
+   62.70625,
+   62.70625,
+   23.01875
+  ]
+ },
+ "2fcd25f3ac": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2473.7828068026906,
+    "cumulative_volume": 2473.7828068026906
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1539.3804002589989,
+    "cumulative_volume": 4013.1632070616884
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 593.7610115284709,
+    "cumulative_volume": 3447.6765294155252
+   }
+  ],
+  "body_volume": 3447.6765294155252,
+  "bbox": [
+   -10.0,
+   -9.901531385114748,
+   0.0,
+   10.0,
+   9.901531385114746,
+   20.0
+  ]
+ },
+ "333ba9d41c": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 10783.809611637851,
+    "cumulative_volume": 10783.809611637851
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1608.4954386379736,
+    "cumulative_volume": 12392.305050275836
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 703.7167544041135,
+    "cumulative_volume": 11688.58829587171
+   }
+  ],
+  "body_volume": 11688.58829587171,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   14.0
+  ]
+ },
+ "33e0cf86f9": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3.919687649417661,
+    "cumulative_volume": 3.919687649417661
+   }
+  ],
+  "body_volume": 3.9196876494176616,
+  "bbox": [
+   -1.9078784028338913,
+   -1.0000000000000004,
+   -1.4,
+   1.9078784028338918,
+   2.4044605159699616e-17,
+   5.551115123125783e-16
+  ]
+ },
+ "3582a53285": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 7779.106766544466,
+    "cumulative_volume": 7779.106766544466
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 441.78646691106474,
+    "cumulative_volume": 7779.106766544466
+   }
+  ],
+  "body_volume": 7779.106766544466,
+  "bbox": [
+   -20.0,
+   -20.0,
+   0.0,
+   20.0,
+   20.0,
+   5.0
+  ]
+ },
+ "3ba87acac3": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 24521.661021059586,
+    "cumulative_volume": 24521.661021059586
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 8042.477193189868,
+    "cumulative_volume": 32564.13821424945
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2356.194490192345,
+    "cumulative_volume": 30207.943724057106
+   }
+  ],
+  "body_volume": 30207.943724057106,
+  "bbox": [
+   -22.0,
+   -22.0,
+   0.0,
+   22.0,
+   22.0,
+   30.0
+  ]
+ },
+ "3cebd4c4f6": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 133.90486225480862,
+    "cumulative_volume": 133.90486225480862
+   }
+  ],
+  "body_volume": 133.90486225480862,
+  "bbox": [
+   -5.0,
+   -2.5,
+   0.0,
+   5.0,
+   2.5,
+   3.0
+  ]
+ },
+ "41b24257f7": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 35507.495124204856,
+    "cumulative_volume": 35507.495124204856
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 11341.149479459153,
+    "cumulative_volume": 46848.64460366401
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2356.194490192345,
+    "cumulative_volume": 44492.45011347165
+   }
+  ],
+  "body_volume": 44492.45011347165,
+  "bbox": [
+   -26.0,
+   -26.0,
+   0.0,
+   26.0,
+   26.0,
+   30.0
+  ]
+ },
+ "4ca1b8519a": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 95.03317777109123,
+    "cumulative_volume": 95.03317777109123
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 27.270304020920683,
+    "cumulative_volume": 122.30348179201197
+   }
+  ],
+  "body_volume": 122.30348179201195,
+  "bbox": [
+   -6.671359641163506,
+   -1.0000000000000022,
+   -7.0,
+   6.671359641163507,
+   2.31e-15,
+   7.0
+  ]
+ },
+ "52e0552e1d": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12456.820874423549,
+    "cumulative_volume": 12456.820874423549
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 9621.127501618743,
+    "cumulative_volume": 22077.948376042295
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1570.7963267948965,
+    "cumulative_volume": 20507.152049247386
+   }
+  ],
+  "body_volume": 20507.152049247386,
+  "bbox": [
+   -21.0,
+   -21.0,
+   0.0,
+   21.0,
+   21.0,
+   20.0
+  ]
+ },
+ "539c2a6856": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 21136.635373352132,
+    "cumulative_volume": 21136.635373352132
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 67802.86091309128,
+    "cumulative_volume": 88939.4962864434
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 63617.25123519331,
+    "cumulative_volume": 57130.87066884676
+   }
+  ],
+  "body_volume": 57130.87066884676,
+  "bbox": [
+   -29.0,
+   -29.0,
+   0.0,
+   29.0,
+   29.0,
+   45.0
+  ]
+ },
+ "53b5d25579": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 232281.5068247953,
+    "cumulative_volume": 232281.5068247953
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 8295.768100885547,
+    "cumulative_volume": 240577.27492568086
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 8370.773625490005,
+    "cumulative_volume": 248948.04855117088
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 30790.749597833565,
+    "cumulative_volume": 218157.29895333727
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 9241.780188697774,
+    "cumulative_volume": 210235.77307731065
+   },
+   {
+    "name": "Extrude5",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 16084.95438637974,
+    "cumulative_volume": 196161.43798922835
+   }
+  ],
+  "body_volume": 196161.43798922835,
+  "bbox": [
+   -65.0,
+   -65.0,
+   -2.0,
+   65.0,
+   65.0,
+   20.0
+  ]
+ },
+ "553fe598d9": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 324000000.0,
+    "cumulative_volume": 324000000.0
+   }
+  ],
+  "body_volume": 324000000.0,
+  "bbox": [
+   0.0,
+   -1200.0,
+   0.0,
+   900.0,
+   1.4988e-13,
+   450.0000000000004
+  ]
+ },
+ "5709ae4446": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 55783.17540427436,
+    "cumulative_volume": 55783.17540427436
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 19634.95408493621,
+    "cumulative_volume": 75418.12948921054
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2356.194490192345,
+    "cumulative_volume": 73061.9349990182
+   }
+  ],
+  "body_volume": 73061.9349990182,
+  "bbox": [
+   -32.0,
+   -31.893323802168393,
+   -3.552713678800501e-15,
+   32.0,
+   31.893323802168393,
+   30.0
+  ]
+ },
+ "58a1b82005": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6951.499900979727,
+    "cumulative_volume": 6951.499900979727
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 9047.786842338604,
+    "cumulative_volume": 15999.286743318333
+   }
+  ],
+  "body_volume": 15999.286743318333,
+  "bbox": [
+   -15.985572395586617,
+   -15.826993518432552,
+   0.0,
+   15.985572395586626,
+   16.0,
+   30.0
+  ]
+ },
+ "58fd45a90e": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 880.7729893696171,
+    "cumulative_volume": 880.7729893696171
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 658.6123195780658,
+    "cumulative_volume": 1539.385308947683
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 402.1238596594934,
+    "cumulative_volume": 1137.2614492881894
+   }
+  ],
+  "body_volume": 1137.2614492881894,
+  "bbox": [
+   -8.95,
+   -8.95,
+   0.0,
+   8.95,
+   8.95,
+   8.0
+  ]
+ },
+ "5c47cdbfc1": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 13021.757421391316,
+    "cumulative_volume": 13021.757421391316
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1654.513735334993,
+    "cumulative_volume": 11367.243686056323
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1475.7367937977692,
+    "cumulative_volume": 9891.506892258552
+   }
+  ],
+  "body_volume": 9891.506892258552,
+  "bbox": [
+   -20.042,
+   -20.042,
+   0.0,
+   20.042,
+   20.042,
+   10.319
+  ]
+ },
+ "5c60c7a001": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3141.592653589793,
+    "cumulative_volume": 3141.592653589793
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 5301.437602932776,
+    "cumulative_volume": 8443.030256522568
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 21009.40087088174
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 33575.77148524092
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 14137.166941154075,
+    "cumulative_volume": 47712.93842639498
+   },
+   {
+    "name": "Extrude5",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12271.84630308513,
+    "cumulative_volume": 59984.78472948011
+   }
+  ],
+  "body_volume": 59984.78472948011,
+  "bbox": [
+   -20.0,
+   -20.0,
+   0.0,
+   20.0,
+   20.0,
+   165.0
+  ]
+ },
+ "5c60c7a002": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1570.7963267948965,
+    "cumulative_volume": 1570.7963267948965
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 5301.437602932776,
+    "cumulative_volume": 6872.233929727671
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 19438.604544086844
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 32004.975158446014
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 14137.166941154072,
+    "cumulative_volume": 46142.14209960009
+   },
+   {
+    "name": "Extrude5",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12271.84630308513,
+    "cumulative_volume": 58413.98840268523
+   },
+   {
+    "name": "Extrude6",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6283.185307179586,
+    "cumulative_volume": 64697.17370986479
+   },
+   {
+    "name": "Extrude7",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 39269.908169872426,
+    "cumulative_volume": 103967.0818797372
+   },
+   {
+    "name": "Extrude8",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 7068.583470577035,
+    "cumulative_volume": 111035.66535031427
+   },
+   {
+    "name": "Extrude9",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 39269.90816987242,
+    "cumulative_volume": 150305.57352018665
+   },
+   {
+    "name": "Extrude10",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 7068.583470577035,
+    "cumulative_volume": 157374.15699076364
+   }
+  ],
+  "body_volume": 157374.15699076364,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   224.99999999999994
+  ]
+ },
+ "5c60c7a003": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3141.592653589793,
+    "cumulative_volume": 3141.592653589793
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 5301.437602932776,
+    "cumulative_volume": 8443.030256522568
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 21009.40087088174
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 33575.77148524092
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 14137.166941154075,
+    "cumulative_volume": 47712.93842639498
+   }
+  ],
+  "body_volume": 47712.93842639498,
+  "bbox": [
+   -20.0,
+   -20.0,
+   0.0,
+   20.0,
+   20.0,
+   140.0
+  ]
+ },
+ "5c60c7a004": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1570.7963267948965,
+    "cumulative_volume": 1570.7963267948965
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 5301.437602932776,
+    "cumulative_volume": 6872.233929727671
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 19438.604544086844
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 32004.975158446014
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 14137.166941154072,
+    "cumulative_volume": 46142.14209960009
+   },
+   {
+    "name": "Extrude5",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12271.84630308513,
+    "cumulative_volume": 58413.98840268523
+   },
+   {
+    "name": "Extrude6",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6283.185307179586,
+    "cumulative_volume": 64697.17370986479
+   },
+   {
+    "name": "Extrude7",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 39269.908169872426,
+    "cumulative_volume": 103967.0818797372
+   },
+   {
+    "name": "Extrude8",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 7068.583470577035,
+    "cumulative_volume": 111035.66535031427
+   }
+  ],
+  "body_volume": 111035.66535031427,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   195.0
+  ]
+ },
+ "5c60c7a005": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1570.7963267948965,
+    "cumulative_volume": 1570.7963267948965
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 5301.437602932776,
+    "cumulative_volume": 6872.233929727671
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 19438.604544086844
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 32004.975158446014
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 14137.166941154072,
+    "cumulative_volume": 46142.14209960009
+   },
+   {
+    "name": "Extrude5",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12271.84630308513,
+    "cumulative_volume": 58413.98840268523
+   },
+   {
+    "name": "Extrude6",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6283.185307179586,
+    "cumulative_volume": 64697.17370986479
+   },
+   {
+    "name": "Extrude7",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 39269.908169872426,
+    "cumulative_volume": 103967.0818797372
+   }
+  ],
+  "body_volume": 103967.0818797372,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   185.0
+  ]
+ },
+ "6417ae5005": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 83674.76310641147,
+    "cumulative_volume": 83674.76310641147
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 9817.477042468106,
+    "cumulative_volume": 73857.28606394347
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 9817.477042468106,
+    "cumulative_volume": 64039.809021475376
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 314159.26535897935,
+    "cumulative_volume": 57756.62371429571
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 11403.981332530948,
+    "cumulative_volume": 61557.95082513932
+   },
+   {
+    "name": "Extrude5",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 113097.33552923256,
+    "cumulative_volume": 58165.0307592624
+   }
+  ],
+  "body_volume": 58165.0307592624,
+  "bbox": [
+   -32.0,
+   -31.893323802168393,
+   0.0,
+   32.0,
+   31.893323802168393,
+   30.0
+  ]
+ },
+ "641cfcd541": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 332.6159465025337,
+    "cumulative_volume": 332.6159465025337
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 60.5422203345356,
+    "cumulative_volume": 272.0737261679981
+   }
+  ],
+  "body_volume": 272.0737261679981,
+  "bbox": [
+   -3.666174209354123,
+   -3.1749999999999994,
+   0.0,
+   3.666174209354123,
+   3.175,
+   9.525
+  ]
+ },
+ "65bef2529b": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 189690.13171018107,
+    "cumulative_volume": 189690.13171018107
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 80020.53065064392,
+    "cumulative_volume": 149679.86638485908
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 13010.68562891181,
+    "cumulative_volume": 143174.52357040322
+   }
+  ],
+  "body_volume": 143174.52357040322,
+  "bbox": [
+   -53.578,
+   -53.578,
+   0.0,
+   53.578,
+   53.578,
+   21.034
+  ]
+ },
+ "669bfb187c": {
+  "features": [
+   {
+    "name": "Flange",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6543.741147886691,
+    "cumulative_volume": 6543.741147886691
+   },
+   {
+    "name": "HexBody",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 4489.475693218529,
+    "cumulative_volume": 11033.216841105217
+   },
+   {
+    "name": "ThroughHole",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 6433.9817545518945,
+    "cumulative_volume": 7816.225963829273
+   }
+  ],
+  "body_volume": 7816.225963829273,
+  "bbox": [
+   -17.25,
+   -17.25,
+   0.0,
+   17.25,
+   17.25,
+   16.0
+  ]
+ },
+ "67b7983b2c": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 340935.7002422068,
+    "cumulative_volume": 340935.7002422068
+   }
+  ],
+  "body_volume": 340935.7002422068,
+  "bbox": [
+   -20.637499999999996,
+   -20.637499999999996,
+   0.0,
+   20.637499999999996,
+   20.637499999999996,
+   304.8
+  ]
+ },
+ "6d8fcf43ca": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 16878.34934543552,
+    "cumulative_volume": 16878.34934543552
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2035.7520395261863,
+    "cumulative_volume": 18914.101384961723
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 703.7167544041135,
+    "cumulative_volume": 18210.384630557608
+   }
+  ],
+  "body_volume": 18210.384630557608,
+  "bbox": [
+   -31.0,
+   -31.0,
+   0.0,
+   31.0,
+   31.0,
+   14.0
+  ]
+ },
+ "732e9c56ac": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 606107.9115417015,
+    "cumulative_volume": 606107.9115417015
+   }
+  ],
+  "body_volume": 606107.9115417015,
+  "bbox": [
+   -27.516666666666666,
+   -27.516666666666666,
+   0.0,
+   27.516666666666666,
+   27.516666666666666,
+   304.8
+  ]
+ },
+ "740b422c57": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 3.163060203389324,
+    "cumulative_volume": 3.163060203389324
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 553.0512067257032,
+    "cumulative_volume": 3.031266028248101
+   }
+  ],
+  "body_volume": 3.0312660282481017,
+  "bbox": [
+   0.0,
+   -0.6444391598929793,
+   -0.65,
+   4.0,
+   0.65,
+   0.65
+  ]
+ },
+ "7476ec86b6": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 58862.99246168102,
+    "cumulative_volume": 58862.99246168102
+   }
+  ],
+  "body_volume": 58862.99246168102,
+  "bbox": [
+   -8.73125,
+   -8.73125,
+   0.0,
+   8.73125,
+   8.73125,
+   304.8
+  ]
+ },
+ "77178c2112": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 2.323725968036297,
+    "cumulative_volume": 2.323725968036297
+   }
+  ],
+  "body_volume": 2.323725968036297,
+  "bbox": [
+   0.0,
+   -0.5000000000000001,
+   -0.5000000000000001,
+   3.0,
+   0.5000000000000001,
+   0.5000000000000001
+  ]
+ },
+ "7aa55dda29": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 28274.333882308143,
+    "cumulative_volume": 28274.333882308143
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 7999.999999999998,
+    "cumulative_volume": 24274.333882308132
+   }
+  ],
+  "body_volume": 24274.333882308132,
+  "bbox": [
+   -30.0,
+   -30.0,
+   0.0,
+   30.0,
+   30.0,
+   10.0
+  ]
+ },
+ "7ba017c45b": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 461.8141200776997,
+    "cumulative_volume": 461.8141200776997
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 519.6152422706633,
+    "cumulative_volume": 981.4293623483629
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 508.93800988154646,
+    "cumulative_volume": 726.9603574075899
+   }
+  ],
+  "body_volume": 726.9603574075899,
+  "bbox": [
+   -7.0,
+   -7.0,
+   0.0,
+   7.0,
+   7.0,
+   9.0
+  ]
+ },
+ "7c683fcc0b": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 9542.587685278995,
+    "cumulative_volume": 9542.587685278995
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 33671.06769913898,
+    "cumulative_volume": 43213.65538441798
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 32572.032632418974,
+    "cumulative_volume": 26927.63906820849
+   }
+  ],
+  "body_volume": 26927.63906820849,
+  "bbox": [
+   -22.5,
+   -22.5,
+   0.0,
+   22.5,
+   22.5,
+   36.0
+  ]
+ },
+ "7c8d69d649": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6451.260514146641,
+    "cumulative_volume": 6451.260514146641
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 18706.148721743877,
+    "cumulative_volume": 25157.409235890518
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 18849.55592153876,
+    "cumulative_volume": 15732.63127512114
+   }
+  ],
+  "body_volume": 15732.63127512114,
+  "bbox": [
+   -18.5,
+   -18.5,
+   0.0,
+   18.5,
+   18.5,
+   30.0
+  ]
+ },
+ "82c93fd5d6": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 239215.68856138413,
+    "cumulative_volume": 239215.68856138413
+   }
+  ],
+  "body_volume": 239215.68856138413,
+  "bbox": [
+   -16.66875,
+   -16.66875,
+   0.0,
+   16.66875,
+   16.66875,
+   304.8
+  ]
+ },
+ "83ca2dab2e": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 74.14158662471911,
+    "cumulative_volume": 74.14158662471911
+   },
+   {
+    "name": "Sphere1",
+    "type_id": "PartDesign::AdditiveSphere",
+    "addsub_volume": 65.44984694978737,
+    "cumulative_volume": 88.27875356587289
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 31.41592653589792,
+    "cumulative_volume": 69.7433569096931
+   }
+  ],
+  "body_volume": 69.7433569096931,
+  "bbox": [
+   -2.5,
+   -2.5,
+   -2.95,
+   2.5,
+   2.5,
+   2.95
+  ]
+ },
+ "8450a6402b": {
+  "features": [
+   {
+    "name": "Sweep0",
+    "type_id": "PartDesign::AdditivePipe",
+    "addsub_volume": 831305.7087079338,
+    "cumulative_volume": 831305.7087079338
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 117228.52986870322,
+    "cumulative_volume": 948534.2385766369
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 117228.52986870318,
+    "cumulative_volume": 1065762.7684453395
+   }
+  ],
+  "body_volume": 1065762.7684453395,
+  "bbox": [
+   -100.0,
+   -100.0,
+   -5.00000000000001,
+   305.00000000000006,
+   100.0,
+   400.0
+  ]
+ },
+ "85145e0d4e": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 235451.96984672407,
+    "cumulative_volume": 235451.96984672407
+   }
+  ],
+  "body_volume": 235451.96984672407,
+  "bbox": [
+   -17.4625,
+   -17.4625,
+   0.0,
+   17.4625,
+   17.4625,
+   304.8
+  ]
+ },
+ "893b9137ff": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 4915.199999999999,
+    "cumulative_volume": 4915.199999999999
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 231.62334316386813,
+    "cumulative_volume": 2197.7033431638665
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 405.34085053676944,
+    "cumulative_volume": 2535.4873852778433
+   }
+  ],
+  "body_volume": 2535.4873852778433,
+  "bbox": [
+   0.0,
+   0.0,
+   0.0,
+   32.0,
+   16.0,
+   11.2
+  ]
+ },
+ "8acfa92b7f": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 111762.7869699876,
+    "cumulative_volume": 111762.7869699876
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6688.538724086971,
+    "cumulative_volume": 118451.32569407458
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3817.804764311728,
+    "cumulative_volume": 122269.13045838632
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 17294.17303370054,
+    "cumulative_volume": 105909.77758866956
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 10996.07065920354,
+    "cumulative_volume": 96462.44927583274
+   }
+  ],
+  "body_volume": 96462.44927583274,
+  "bbox": [
+   -54.0,
+   -54.0,
+   -2.0,
+   54.0,
+   54.0,
+   15.5
+  ]
+ },
+ "8ba92aba6e": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3.0889709766421634,
+    "cumulative_volume": 3.0889709766421634
+   }
+  ],
+  "body_volume": 3.0889709766421634,
+  "bbox": [
+   -2.0,
+   -2.0,
+   0.0,
+   2.0,
+   2.0,
+   0.3
+  ]
+ },
+ "8dce996259": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 11705.360263275285,
+    "cumulative_volume": 11705.360263275285
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1608.4954386379736,
+    "cumulative_volume": 13313.85570191327
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 703.7167544041135,
+    "cumulative_volume": 12610.138947509146
+   }
+  ],
+  "body_volume": 12610.138947509146,
+  "bbox": [
+   -26.0,
+   -25.970153796852166,
+   0.0,
+   26.0,
+   25.970153796852166,
+   14.0
+  ]
+ },
+ "9c9ce03e0f": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 30051.05632012231,
+    "cumulative_volume": 30051.05632012231
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2035.7520395261863,
+    "cumulative_volume": 32086.808359648476
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 703.7167544041135,
+    "cumulative_volume": 31383.09160524437
+   }
+  ],
+  "body_volume": 31383.09160524437,
+  "bbox": [
+   -41.0,
+   -41.0,
+   -8.0,
+   41.0,
+   41.0,
+   6.0
+  ]
+ },
+ "aa79a250e3": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 38570.73159109303,
+    "cumulative_volume": 38570.73159109303
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 51137.102205452225
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2356.194490192345,
+    "cumulative_volume": 48780.907715259855
+   }
+  ],
+  "body_volume": 48780.907715259855,
+  "bbox": [
+   -26.867784580856462,
+   -26.982338463850812,
+   0.0,
+   27.0,
+   26.982338463850812,
+   30.0
+  ]
+ },
+ "aad4a0fbad": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1463.5829323957012,
+    "cumulative_volume": 1463.5829323957012
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1507.9644737231006,
+    "cumulative_volume": 960.9281078213343
+   }
+  ],
+  "body_volume": 960.9281078213343,
+  "bbox": [
+   -6.500000000000001,
+   -7.505553499465135,
+   0.0,
+   6.500000000000001,
+   7.505553499465135,
+   10.0
+  ]
+ },
+ "ab46933317": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 83064.96782425868,
+    "cumulative_volume": 83064.96782425868
+   }
+  ],
+  "body_volume": 83064.96782425868,
+  "bbox": [
+   -11.112499999999999,
+   -11.112499999999999,
+   0.0,
+   11.112499999999999,
+   11.112499999999999,
+   304.8
+  ]
+ },
+ "ae6efafb3b": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3720.1222529780925,
+    "cumulative_volume": 3720.1222529780925
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2544.690049407733,
+    "cumulative_volume": 6264.812302385828
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1055.5751316061703,
+    "cumulative_volume": 5259.502653237095
+   }
+  ],
+  "body_volume": 5259.502653237095,
+  "bbox": [
+   -12.0,
+   -11.922949533048037,
+   0.0,
+   12.0,
+   11.922949533048037,
+   20.0
+  ]
+ },
+ "aff93db55d": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 95664.68561423897,
+    "cumulative_volume": 95664.68561423897
+   }
+  ],
+  "body_volume": 95664.68561423897,
+  "bbox": [
+   -11.43,
+   -11.43,
+   0.0,
+   11.43,
+   11.43,
+   304.8
+  ]
+ },
+ "b0baf87576": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 157079.6326794897,
+    "cumulative_volume": 157079.6326794897
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 599.9999999999995,
+    "cumulative_volume": 156487.97855768408
+   }
+  ],
+  "body_volume": 156487.97855768408,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   80.0
+  ]
+ },
+ "b2de850e9c": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 65842.65148092348,
+    "cumulative_volume": 65842.65148092348
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 15904.312808798324,
+    "cumulative_volume": 81746.96428972186
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1963.4954084936207,
+    "cumulative_volume": 79783.4688812282
+   }
+  ],
+  "body_volume": 79783.4688812282,
+  "bbox": [
+   -39.0,
+   -38.955230695278246,
+   0.0,
+   39.0,
+   38.955230695278246,
+   25.0
+  ]
+ },
+ "b55517ee4b": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1385442.3602330983,
+    "cumulative_volume": 1385442.3602330983
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1005309.6491487338,
+    "cumulative_volume": 2390752.0093818326
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 141371.6694115407,
+    "cumulative_volume": 2249380.339970292
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 44178.646691106456,
+    "cumulative_volume": 2205201.6932791863
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 16964.600329384888,
+    "cumulative_volume": 2188237.092949801
+   }
+  ],
+  "body_volume": 2188237.092949801,
+  "bbox": [
+   -140.0,
+   -140.0,
+   -50.0,
+   140.0,
+   140.0,
+   30.0
+  ]
+ },
+ "b849a4d94e": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1963495.4084936208,
+    "cumulative_volume": 1963495.4084936208
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 157079.6326794897,
+    "cumulative_volume": 2120575.0411731107
+   },
+   {
+    "name": "Hole2",
+    "type_id": "PartDesign::Hole",
+    "addsub_volume": 6597.7951916076545,
+    "cumulative_volume": 2114291.855865931
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 157079.63267948967,
+    "cumulative_volume": 2271371.4885454206
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2513274.1228718343,
+    "cumulative_volume": 964468.9446520673
+   },
+   {
+    "name": "Hole5",
+    "type_id": "PartDesign::Hole",
+    "addsub_volume": 6597.795191607651,
+    "cumulative_volume": 958185.7593448859
+   }
+  ],
+  "body_volume": 958185.7593448859,
+  "bbox": [
+   -50.0,
+   -50.00000000000013,
+   -1020.0,
+   50.0,
+   50.00000000000025,
+   20.000000000000025
+  ]
+ },
+ "bee61f8386": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2463.0086404143985,
+    "cumulative_volume": 2463.0086404143985
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 7125.657022338362,
+    "cumulative_volume": 9588.665662752759
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 3232.698840543898,
+    "cumulative_volume": 6355.966822208863
+   }
+  ],
+  "body_volume": 6355.966822208863,
+  "bbox": [
+   -14.0,
+   -14.0,
+   0.0,
+   14.0,
+   14.0,
+   21.0
+  ]
+ },
+ "bf26b04486": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 4353.353634765506,
+    "cumulative_volume": 4353.353634765506
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2978.9541839377116,
+    "cumulative_volume": 7332.307818703219
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 4310.2651207251965,
+    "cumulative_volume": 5177.1752583406205
+   }
+  ],
+  "body_volume": 5177.1752583406205,
+  "bbox": [
+   -14.95,
+   -14.95,
+   0.0,
+   14.95,
+   14.95,
+   14.0
+  ]
+ },
+ "c4bad6c5af": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1.9634954084936207,
+    "cumulative_volume": 1.9634954084936207
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 0.126,
+    "cumulative_volume": 1.8383405219265305
+   },
+   {
+    "name": "Revolve2",
+    "type_id": "PartDesign::Groove",
+    "addsub_volume": 0.019033862690548443,
+    "cumulative_volume": 1.8383405219265305
+   }
+  ],
+  "body_volume": 1.8383405219265305,
+  "bbox": [
+   -0.5,
+   -2.5,
+   -0.5,
+   0.5,
+   1.6500000642188798e-16,
+   0.5000000000000008
+  ]
+ },
+ "c5551173e6": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 37.66823443155728,
+    "cumulative_volume": 37.66823443155728
+   }
+  ],
+  "body_volume": 37.66823443155728,
+  "bbox": [
+   0.0,
+   -1.5,
+   -1.5,
+   6.0,
+   1.5,
+   1.5
+  ]
+ },
+ "c7364c0bbd": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 49618.51109754359,
+    "cumulative_volume": 49618.51109754359
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 25093.690321954098,
+    "cumulative_volume": 37071.66593656654
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 3746.0460874831624,
+    "cumulative_volume": 35198.64289282497
+   }
+  ],
+  "body_volume": 35198.64289282497,
+  "bbox": [
+   -34.7265,
+   -34.7265,
+   0.0,
+   34.7265,
+   34.7265,
+   13.097
+  ]
+ },
+ "c7ccc5660f": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6031.857894892402,
+    "cumulative_volume": 6031.857894892402
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6130.415255264896,
+    "cumulative_volume": 12162.273150157305
+   }
+  ],
+  "body_volume": 12162.273150157305,
+  "bbox": [
+   -11.0,
+   -11.0,
+   0.0,
+   11.0,
+   11.0,
+   50.0
+  ]
+ },
+ "cb6f0c2fb5": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 67732.73761139595,
+    "cumulative_volume": 67732.73761139595
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 166276.87752661225,
+    "cumulative_volume": 234009.61513800814
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 166276.87752661225,
+    "cumulative_volume": 400286.4926646204
+   }
+  ],
+  "body_volume": 400286.4926646204,
+  "bbox": [
+   -46.188021535170066,
+   -40.00000000000001,
+   -30.0,
+   46.188021535170066,
+   40.00000000000001,
+   140.0
+  ]
+ },
+ "cda06f9dbf": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1520.5308443374597,
+    "cumulative_volume": 1520.5308443374597
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2438.7275370569787,
+    "cumulative_volume": 3959.2583813944384
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2356.194490192345,
+    "cumulative_volume": 2781.1611362982662
+   }
+  ],
+  "body_volume": 2781.1611362982662,
+  "bbox": [
+   -11.0,
+   -11.0,
+   0.0,
+   11.0,
+   11.0,
+   15.0
+  ]
+ },
+ "d733bfa285": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 37019.35484772101,
+    "cumulative_volume": 37019.35484772101
+   }
+  ],
+  "body_volume": 37019.35484772101,
+  "bbox": [
+   -35.987099465039584,
+   -35.83744163069994,
+   0.0,
+   35.987099465039584,
+   36.0,
+   10.0
+  ]
+ },
+ "d7e1bdf8be": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 59.67482171244595,
+    "cumulative_volume": 59.67482171244595
+   }
+  ],
+  "body_volume": 59.67482171244595,
+  "bbox": [
+   -1.0,
+   -2.5,
+   -2.5,
+   6.0,
+   2.5,
+   2.5
+  ]
+ },
+ "d831ec007c": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 4438.436890525607,
+    "cumulative_volume": 4438.436890525607
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3141.592653589793,
+    "cumulative_volume": 7580.0295441154
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1005.3096491487335,
+    "cumulative_volume": 6574.719894966666
+   }
+  ],
+  "body_volume": 6574.719894966666,
+  "bbox": [
+   -13.0,
+   -13.0,
+   0.0,
+   13.0,
+   13.0,
+   20.0
+  ]
+ },
+ "da772a2e0b": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 388.4810985337092,
+    "cumulative_volume": 388.4810985337092
+   }
+  ],
+  "body_volume": 388.4810985337092,
+  "bbox": [
+   -18.0,
+   -3.5,
+   0.0,
+   18.0,
+   3.5,
+   3.0
+  ]
+ },
+ "db1ef53f08": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 99239.8798898336,
+    "cumulative_volume": 99239.8798898336
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 25093.690321954098,
+    "cumulative_volume": 74146.1895678795
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 3746.0460874831624,
+    "cumulative_volume": 70400.14348039636
+   }
+  ],
+  "body_volume": 70400.14348039636,
+  "bbox": [
+   -34.727,
+   -34.727,
+   0.0,
+   34.727,
+   34.727,
+   26.194
+  ]
+ },
+ "db4e2a4bcf": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 8640000.0,
+    "cumulative_volume": 8640000.0
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 4479999.999999998,
+    "cumulative_volume": 13119999.999999998
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 8640000.0,
+    "cumulative_volume": 21759999.999999993
+   }
+  ],
+  "body_volume": 21759999.999999993,
+  "bbox": [
+   0.0,
+   0.0,
+   0.0,
+   480.0,
+   2400.0,
+   90.0
+  ]
+ },
+ "dbf8356a78": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 104645.31993187734,
+    "cumulative_volume": 104645.31993187734
+   }
+  ],
+  "body_volume": 104645.31993187734,
+  "bbox": [
+   -11.641666666666667,
+   -11.641666666666667,
+   0.0,
+   11.641666666666667,
+   11.641666666666667,
+   304.8
+  ]
+ },
+ "dc935d877e": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 22500000.0,
+    "cumulative_volume": 22500000.0
+   }
+  ],
+  "body_volume": 6952000.000000004,
+  "bbox": [
+   0.0,
+   0.0,
+   0.0,
+   500.0,
+   300.0,
+   150.0
+  ]
+ },
+ "e0b89a1ecc": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 66433.80941248451,
+    "cumulative_volume": 66433.80941248451
+   }
+  ],
+  "body_volume": 66433.80941248451,
+  "bbox": [
+   -9.524999997,
+   -9.524999997,
+   0.0,
+   9.524999997,
+   9.524999997,
+   304.8
+  ]
+ },
+ "e20918a733": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 22993.5216323121,
+    "cumulative_volume": 22993.5216323121
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2035.7520395261863,
+    "cumulative_volume": 25029.27367183824
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 703.7167544041135,
+    "cumulative_volume": 24325.556917434125
+   }
+  ],
+  "body_volume": 24325.556917434125,
+  "bbox": [
+   -36.0,
+   -35.9793607124179,
+   0.0,
+   36.0,
+   35.9793607124179,
+   14.0
+  ]
+ },
+ "e4cf76d978": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 3065.2076276324483,
+    "cumulative_volume": 3065.2076276324483
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 2010.619298297467,
+    "cumulative_volume": 5075.826925929915
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 565.4866776461628,
+    "cumulative_volume": 4510.340248283754
+   }
+  ],
+  "body_volume": 4510.340248283754,
+  "bbox": [
+   -11.0,
+   -11.0,
+   0.0,
+   11.0,
+   11.0,
+   20.0
+  ]
+ },
+ "e50de66084": {
+  "features": [
+   {
+    "name": "Revolve0",
+    "type_id": "PartDesign::Revolution",
+    "addsub_volume": 0.43539078279410187,
+    "cumulative_volume": 0.4353907827941018
+   }
+  ],
+  "body_volume": 0.4353907827941018,
+  "bbox": [
+   -0.5333333333333339,
+   -0.40000000000000047,
+   -0.533333333333334,
+   0.5333333333333339,
+   0.40000000000000013,
+   0.533333333333334
+  ]
+ },
+ "e74ef5c001": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 35342.917352885175,
+    "cumulative_volume": 35342.917352885175
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 560.0,
+    "cumulative_volume": 34802.1316374345
+   }
+  ],
+  "body_volume": 34802.1316374345,
+  "bbox": [
+   -15.0,
+   -15.0,
+   0.0,
+   15.0,
+   15.0,
+   50.0
+  ]
+ },
+ "e74ef5c002": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 157079.6326794897,
+    "cumulative_volume": 157079.6326794897
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 999.9999999999998,
+    "cumulative_volume": 156087.97855768414
+   }
+  ],
+  "body_volume": 156087.97855768414,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   80.0
+  ]
+ },
+ "e74ef5c003": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 42411.50082346221,
+    "cumulative_volume": 42411.50082346221
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1080.0000000000002,
+    "cumulative_volume": 41367.719970586935
+   }
+  ],
+  "body_volume": 41367.719970586935,
+  "bbox": [
+   -15.0,
+   -15.0,
+   0.0,
+   15.0,
+   15.0,
+   60.0
+  ]
+ },
+ "e74ef5c004": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 157079.6326794897,
+    "cumulative_volume": 157079.6326794897
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1600.0,
+    "cumulative_volume": 155522.46470304078
+   }
+  ],
+  "body_volume": 155522.46470304078,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   80.0
+  ]
+ },
+ "e74ef5c005": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 157079.6326794897,
+    "cumulative_volume": 157079.6326794897
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 2400.0,
+    "cumulative_volume": 154765.29672659253
+   }
+  ],
+  "body_volume": 154765.29672659253,
+  "bbox": [
+   -25.0,
+   -25.0,
+   0.0,
+   25.0,
+   25.0,
+   80.0
+  ]
+ },
+ "ecdc59b900": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 1570.7963267948965,
+    "cumulative_volume": 1570.7963267948965
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 5301.437602932776,
+    "cumulative_volume": 6872.233929727671
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 19438.604544086844
+   },
+   {
+    "name": "Extrude3",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12566.370614359172,
+    "cumulative_volume": 32004.975158446014
+   },
+   {
+    "name": "Extrude4",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 14137.166941154072,
+    "cumulative_volume": 46142.14209960009
+   },
+   {
+    "name": "Extrude5",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 12271.84630308513,
+    "cumulative_volume": 58413.98840268523
+   },
+   {
+    "name": "Extrude6",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 6283.185307179586,
+    "cumulative_volume": 64697.17370986479
+   }
+  ],
+  "body_volume": 64697.17370986479,
+  "bbox": [
+   -20.0,
+   -20.0,
+   0.0,
+   20.0,
+   20.0,
+   165.0
+  ]
+ },
+ "eceefa2929": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 47113.849442463914,
+    "cumulative_volume": 47113.849442463914
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 6009.4195717428465,
+    "cumulative_volume": 41104.42987072107
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1929.6913958152031,
+    "cumulative_volume": 39174.73847490588
+   }
+  ],
+  "body_volume": 39174.73847490588,
+  "bbox": [
+   -33.3375,
+   -33.3375,
+   0.0,
+   33.3375,
+   33.3375,
+   13.49375
+  ]
+ },
+ "ecf3ef894f": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 284350.0232340303,
+    "cumulative_volume": 284350.0232340303
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 15174.864543083515,
+    "cumulative_volume": 269175.1586909468
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 13167.305994974326,
+    "cumulative_volume": 256007.8526959725
+   }
+  ],
+  "body_volume": 256007.8526959725,
+  "bbox": [
+   -62.70625,
+   -62.70625,
+   0.0,
+   62.70625,
+   62.70625,
+   23.01875
+  ]
+ },
+ "f0d323e9ce": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 265735.23782570014,
+    "cumulative_volume": 265735.23782570014
+   }
+  ],
+  "body_volume": 265735.23782570014,
+  "bbox": [
+   -19.0500000003,
+   -19.0500000003,
+   0.0,
+   19.0500000003,
+   19.0500000003,
+   304.8
+  ]
+ },
+ "f3e10795e7": {
+  "features": [
+   {
+    "name": "Loft0",
+    "type_id": "PartDesign::AdditiveLoft",
+    "addsub_volume": 9621.127501618743,
+    "cumulative_volume": 9621.127501618743
+   }
+  ],
+  "body_volume": 9621.127501618743,
+  "bbox": [
+   -12.5,
+   -12.5,
+   0.0,
+   12.5,
+   12.5,
+   30.0
+  ]
+ },
+ "f67dad96d1": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 47113.849442463914,
+    "cumulative_volume": 47113.849442463914
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 6837.384046071859,
+    "cumulative_volume": 40276.46539639205
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1929.6913958152031,
+    "cumulative_volume": 38346.77400057686
+   }
+  ],
+  "body_volume": 38346.77400057686,
+  "bbox": [
+   -33.3375,
+   -33.3375,
+   0.0,
+   33.3375,
+   33.3375,
+   13.49375
+  ]
+ },
+ "fa1a50cf2b": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 7943.9306292869815,
+    "cumulative_volume": 7943.9306292869815
+   },
+   {
+    "name": "Extrude1",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 5309.2915845667485,
+    "cumulative_volume": 13253.222213853729
+   },
+   {
+    "name": "Extrude2",
+    "type_id": "PartDesign::Pocket",
+    "addsub_volume": 1005.3096491487335,
+    "cumulative_volume": 12247.912564704995
+   }
+  ],
+  "body_volume": 12247.912564704995,
+  "bbox": [
+   -17.0,
+   -17.0,
+   0.0,
+   17.0,
+   17.0,
+   20.0
+  ]
+ },
+ "fc1e98cd09": {
+  "features": [
+   {
+    "name": "Extrude0",
+    "type_id": "PartDesign::Pad",
+    "addsub_volume": 36917.76347744829,
+    "cumulative_volume": 36917.76347744829
+   }
+  ],
+  "body_volume": 36917.76347744829,
+  "bbox": [
+   -7.408333333333333,
+   -7.408333333333333,
+   0.0,
+   7.408333333333333,
+   7.408333333333333,
+   304.8
+  ]
+ }
+}

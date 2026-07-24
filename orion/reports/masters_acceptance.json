@@ -1,0 +1,2233 @@
+{
+ "summary": {
+  "features_predicted": 229,
+  "features_passed": 229,
+  "features_failed": 0,
+  "features_skipped": 31,
+  "max_rel_err_passed": 0.0,
+  "skip_reasons": {
+   "area: unsupported geometry BSpline": 31
+  }
+ },
+ "failures": [],
+ "skips": [
+  {
+   "id": "08d2da3057",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "1db55e40f2",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "2fcd25f3ac",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "333ba9d41c",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "3ba87acac3",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "41b24257f7",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "52e0552e1d",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "5709ae4446",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "6417ae5005",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "67b7983b2c",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "6d8fcf43ca",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "732e9c56ac",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "7476ec86b6",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "82c93fd5d6",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "85145e0d4e",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "8dce996259",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "9c9ce03e0f",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "aa79a250e3",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "ab46933317",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "ae6efafb3b",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "aff93db55d",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "b2de850e9c",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "c7ccc5660f",
+   "feature": "Extrude1",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "d831ec007c",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "dbf8356a78",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "e0b89a1ecc",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "e20918a733",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "e4cf76d978",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "f0d323e9ce",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "fa1a50cf2b",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  },
+  {
+   "id": "fc1e98cd09",
+   "feature": "Extrude0",
+   "why": "area: unsupported geometry BSpline"
+  }
+ ],
+ "rows": [
+  {
+   "id": "0603c53148",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 189690.13171,
+   "measured": 189690.13171,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "0603c53148",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 80020.530651,
+   "measured": 80020.530651,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "0603c53148",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 13010.685629,
+   "measured": 13010.685629,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "067a9a8726",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 4539.601384,
+   "measured": 4539.601384,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "067a9a8726",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 13889.315426,
+   "measured": 13889.315426,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "067a9a8726",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 6870.663133,
+   "measured": 6870.663133,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "08d2da3057",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 1206.371579,
+   "measured": 1206.371579,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "08d2da3057",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 603.185789,
+   "measured": 603.185789,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "0e9bcbd4f4",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 7508.440251,
+   "measured": 7508.440251,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "0f27beedee",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 918000000.0,
+   "measured": 918000000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "0fe9d9e3ce",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 49619.939945,
+   "measured": 49619.939945,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "0fe9d9e3ce",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 12546.845161,
+   "measured": 12546.845161,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "0fe9d9e3ce",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1873.023044,
+   "measured": 1873.023044,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "14da78600e",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 14.31649,
+   "measured": 14.31649,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "163672a65f",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 1.417088,
+   "measured": 1.417088,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "1b9f95801c",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 603185.789489,
+   "measured": 603185.789489,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "1db55e40f2",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 23758.294443,
+   "measured": 23758.294443,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "1db55e40f2",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 2827.433388,
+   "measured": 2827.433388,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "21d1517841",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 44.459819,
+   "measured": 44.459819,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "264ab71adf",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 15.758066,
+   "measured": 15.758066,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "28177ca409",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 314.08,
+   "measured": 314.08,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "2c186f799d",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 284350.023234,
+   "measured": 284350.023234,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "2c186f799d",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 151315.810113,
+   "measured": 151315.810113,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "2c186f799d",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 26334.61199,
+   "measured": 26334.61199,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "2fcd25f3ac",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 1539.3804,
+   "measured": 1539.3804,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "2fcd25f3ac",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 593.761012,
+   "measured": 593.761012,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "333ba9d41c",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 1608.495439,
+   "measured": 1608.495439,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "333ba9d41c",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 703.716754,
+   "measured": 703.716754,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "33e0cf86f9",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 3.919688,
+   "measured": 3.919688,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "3582a53285",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 7779.106767,
+   "measured": 7779.106767,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "3582a53285",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 441.786467,
+   "measured": 441.786467,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "3ba87acac3",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 8042.477193,
+   "measured": 8042.477193,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "3ba87acac3",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 2356.19449,
+   "measured": 2356.19449,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "3cebd4c4f6",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 133.904862,
+   "measured": 133.904862,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "41b24257f7",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 11341.149479,
+   "measured": 11341.149479,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "41b24257f7",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 2356.19449,
+   "measured": 2356.19449,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "4ca1b8519a",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 95.033178,
+   "measured": 95.033178,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "4ca1b8519a",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 27.270304,
+   "measured": 27.270304,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "52e0552e1d",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 9621.127502,
+   "measured": 9621.127502,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "52e0552e1d",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1570.796327,
+   "measured": 1570.796327,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "539c2a6856",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 21136.635373,
+   "measured": 21136.635373,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "539c2a6856",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 67802.860913,
+   "measured": 67802.860913,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "539c2a6856",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 63617.251235,
+   "measured": 63617.251235,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "53b5d25579",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 232281.506825,
+   "measured": 232281.506825,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "53b5d25579",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 8295.768101,
+   "measured": 8295.768101,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "53b5d25579",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 8370.773625,
+   "measured": 8370.773625,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "53b5d25579",
+   "feature": "Extrude3",
+   "type": "Pocket",
+   "predicted": 30790.749598,
+   "measured": 30790.749598,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "53b5d25579",
+   "feature": "Extrude4",
+   "type": "Pocket",
+   "predicted": 9241.780189,
+   "measured": 9241.780189,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "53b5d25579",
+   "feature": "Extrude5",
+   "type": "Pocket",
+   "predicted": 16084.954386,
+   "measured": 16084.954386,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "553fe598d9",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 324000000.0,
+   "measured": 324000000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5709ae4446",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 19634.954085,
+   "measured": 19634.954085,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5709ae4446",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 2356.19449,
+   "measured": 2356.19449,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "58a1b82005",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 6951.499901,
+   "measured": 6951.499901,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "58a1b82005",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 9047.786842,
+   "measured": 9047.786842,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "58fd45a90e",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 880.772989,
+   "measured": 880.772989,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "58fd45a90e",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 658.61232,
+   "measured": 658.61232,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "58fd45a90e",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 402.12386,
+   "measured": 402.12386,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c47cdbfc1",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 13021.757421,
+   "measured": 13021.757421,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c47cdbfc1",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 1654.513735,
+   "measured": 1654.513735,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c47cdbfc1",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1475.736794,
+   "measured": 1475.736794,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a001",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 3141.592654,
+   "measured": 3141.592654,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a001",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 5301.437603,
+   "measured": 5301.437603,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a001",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a001",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a001",
+   "feature": "Extrude4",
+   "type": "Pad",
+   "predicted": 14137.166941,
+   "measured": 14137.166941,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a001",
+   "feature": "Extrude5",
+   "type": "Pad",
+   "predicted": 12271.846303,
+   "measured": 12271.846303,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1570.796327,
+   "measured": 1570.796327,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 5301.437603,
+   "measured": 5301.437603,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude4",
+   "type": "Pad",
+   "predicted": 14137.166941,
+   "measured": 14137.166941,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude5",
+   "type": "Pad",
+   "predicted": 12271.846303,
+   "measured": 12271.846303,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude6",
+   "type": "Pad",
+   "predicted": 6283.185307,
+   "measured": 6283.185307,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude7",
+   "type": "Pad",
+   "predicted": 39269.90817,
+   "measured": 39269.90817,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude8",
+   "type": "Pad",
+   "predicted": 7068.583471,
+   "measured": 7068.583471,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude9",
+   "type": "Pad",
+   "predicted": 39269.90817,
+   "measured": 39269.90817,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a002",
+   "feature": "Extrude10",
+   "type": "Pad",
+   "predicted": 7068.583471,
+   "measured": 7068.583471,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a003",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 3141.592654,
+   "measured": 3141.592654,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a003",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 5301.437603,
+   "measured": 5301.437603,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a003",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a003",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a003",
+   "feature": "Extrude4",
+   "type": "Pad",
+   "predicted": 14137.166941,
+   "measured": 14137.166941,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1570.796327,
+   "measured": 1570.796327,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 5301.437603,
+   "measured": 5301.437603,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude4",
+   "type": "Pad",
+   "predicted": 14137.166941,
+   "measured": 14137.166941,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude5",
+   "type": "Pad",
+   "predicted": 12271.846303,
+   "measured": 12271.846303,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude6",
+   "type": "Pad",
+   "predicted": 6283.185307,
+   "measured": 6283.185307,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude7",
+   "type": "Pad",
+   "predicted": 39269.90817,
+   "measured": 39269.90817,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a004",
+   "feature": "Extrude8",
+   "type": "Pad",
+   "predicted": 7068.583471,
+   "measured": 7068.583471,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1570.796327,
+   "measured": 1570.796327,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 5301.437603,
+   "measured": 5301.437603,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude4",
+   "type": "Pad",
+   "predicted": 14137.166941,
+   "measured": 14137.166941,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude5",
+   "type": "Pad",
+   "predicted": 12271.846303,
+   "measured": 12271.846303,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude6",
+   "type": "Pad",
+   "predicted": 6283.185307,
+   "measured": 6283.185307,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "5c60c7a005",
+   "feature": "Extrude7",
+   "type": "Pad",
+   "predicted": 39269.90817,
+   "measured": 39269.90817,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "6417ae5005",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 9817.477042,
+   "measured": 9817.477042,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "6417ae5005",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 9817.477042,
+   "measured": 9817.477042,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "6417ae5005",
+   "feature": "Extrude3",
+   "type": "Pocket",
+   "predicted": 314159.265359,
+   "measured": 314159.265359,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "6417ae5005",
+   "feature": "Extrude4",
+   "type": "Pad",
+   "predicted": 11403.981333,
+   "measured": 11403.981333,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "6417ae5005",
+   "feature": "Extrude5",
+   "type": "Pocket",
+   "predicted": 113097.335529,
+   "measured": 113097.335529,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "641cfcd541",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 332.615947,
+   "measured": 332.615947,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "641cfcd541",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 60.54222,
+   "measured": 60.54222,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "65bef2529b",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 189690.13171,
+   "measured": 189690.13171,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "65bef2529b",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 80020.530651,
+   "measured": 80020.530651,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "65bef2529b",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 13010.685629,
+   "measured": 13010.685629,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "669bfb187c",
+   "feature": "Flange",
+   "type": "Pad",
+   "predicted": 6543.741148,
+   "measured": 6543.741148,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "669bfb187c",
+   "feature": "HexBody",
+   "type": "Pad",
+   "predicted": 4489.475693,
+   "measured": 4489.475693,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "669bfb187c",
+   "feature": "ThroughHole",
+   "type": "Pocket",
+   "predicted": 6433.981755,
+   "measured": 6433.981755,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "6d8fcf43ca",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 2035.75204,
+   "measured": 2035.75204,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "6d8fcf43ca",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 703.716754,
+   "measured": 703.716754,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "740b422c57",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 3.16306,
+   "measured": 3.16306,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "740b422c57",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 553.051207,
+   "measured": 553.051207,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "77178c2112",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 2.323726,
+   "measured": 2.323726,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7aa55dda29",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 28274.333882,
+   "measured": 28274.333882,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7aa55dda29",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 8000.0,
+   "measured": 8000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7ba017c45b",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 461.81412,
+   "measured": 461.81412,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7ba017c45b",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 519.615242,
+   "measured": 519.615242,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7ba017c45b",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 508.93801,
+   "measured": 508.93801,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7c683fcc0b",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 9542.587685,
+   "measured": 9542.587685,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7c683fcc0b",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 33671.067699,
+   "measured": 33671.067699,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7c683fcc0b",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 32572.032632,
+   "measured": 32572.032632,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7c8d69d649",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 6451.260514,
+   "measured": 6451.260514,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7c8d69d649",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 18706.148722,
+   "measured": 18706.148722,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "7c8d69d649",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 18849.555922,
+   "measured": 18849.555922,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "83ca2dab2e",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 74.141587,
+   "measured": 74.141587,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "83ca2dab2e",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 31.415927,
+   "measured": 31.415927,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8450a6402b",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 117228.529869,
+   "measured": 117228.529869,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8450a6402b",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 117228.529869,
+   "measured": 117228.529869,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "893b9137ff",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 4915.2,
+   "measured": 4915.2,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "893b9137ff",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 231.623343,
+   "measured": 231.623343,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "893b9137ff",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 405.340851,
+   "measured": 405.340851,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8acfa92b7f",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 111762.78697,
+   "measured": 111762.78697,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8acfa92b7f",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 6688.538724,
+   "measured": 6688.538724,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8acfa92b7f",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 3817.804764,
+   "measured": 3817.804764,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8acfa92b7f",
+   "feature": "Extrude3",
+   "type": "Pocket",
+   "predicted": 17294.173034,
+   "measured": 17294.173034,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8acfa92b7f",
+   "feature": "Extrude4",
+   "type": "Pocket",
+   "predicted": 10996.070659,
+   "measured": 10996.070659,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8ba92aba6e",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 3.088971,
+   "measured": 3.088971,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8dce996259",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 1608.495439,
+   "measured": 1608.495439,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "8dce996259",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 703.716754,
+   "measured": 703.716754,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "9c9ce03e0f",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 2035.75204,
+   "measured": 2035.75204,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "9c9ce03e0f",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 703.716754,
+   "measured": 703.716754,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "aa79a250e3",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "aa79a250e3",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 2356.19449,
+   "measured": 2356.19449,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "aad4a0fbad",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1463.582932,
+   "measured": 1463.582932,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "aad4a0fbad",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 1507.964474,
+   "measured": 1507.964474,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ae6efafb3b",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 2544.690049,
+   "measured": 2544.690049,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ae6efafb3b",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1055.575132,
+   "measured": 1055.575132,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b0baf87576",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 157079.632679,
+   "measured": 157079.632679,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b0baf87576",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 600.0,
+   "measured": 600.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b2de850e9c",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 15904.312809,
+   "measured": 15904.312809,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b2de850e9c",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1963.495408,
+   "measured": 1963.495408,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b55517ee4b",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1385442.360233,
+   "measured": 1385442.360233,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b55517ee4b",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 1005309.649149,
+   "measured": 1005309.649149,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b55517ee4b",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 141371.669412,
+   "measured": 141371.669412,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b55517ee4b",
+   "feature": "Extrude3",
+   "type": "Pocket",
+   "predicted": 44178.646691,
+   "measured": 44178.646691,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b55517ee4b",
+   "feature": "Extrude4",
+   "type": "Pocket",
+   "predicted": 16964.600329,
+   "measured": 16964.600329,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b849a4d94e",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1963495.408494,
+   "measured": 1963495.408494,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b849a4d94e",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 157079.632679,
+   "measured": 157079.632679,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b849a4d94e",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 157079.632679,
+   "measured": 157079.632679,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "b849a4d94e",
+   "feature": "Extrude4",
+   "type": "Pocket",
+   "predicted": 2513274.122872,
+   "measured": 2513274.122872,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "bee61f8386",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 2463.00864,
+   "measured": 2463.00864,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "bee61f8386",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 7125.657022,
+   "measured": 7125.657022,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "bee61f8386",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 3232.698841,
+   "measured": 3232.698841,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "bf26b04486",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 4353.353635,
+   "measured": 4353.353635,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "bf26b04486",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 2978.954184,
+   "measured": 2978.954184,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "bf26b04486",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 4310.265121,
+   "measured": 4310.265121,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c4bad6c5af",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1.963495,
+   "measured": 1.963495,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c4bad6c5af",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 0.126,
+   "measured": 0.126,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c4bad6c5af",
+   "feature": "Revolve2",
+   "type": "Groove",
+   "predicted": 0.019034,
+   "measured": 0.019034,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c5551173e6",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 37.668234,
+   "measured": 37.668234,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c7364c0bbd",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 49618.511098,
+   "measured": 49618.511098,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c7364c0bbd",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 25093.690322,
+   "measured": 25093.690322,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c7364c0bbd",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 3746.046087,
+   "measured": 3746.046087,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "c7ccc5660f",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 6031.857895,
+   "measured": 6031.857895,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "cb6f0c2fb5",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 67732.737611,
+   "measured": 67732.737611,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "cb6f0c2fb5",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 166276.877527,
+   "measured": 166276.877527,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "cb6f0c2fb5",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 166276.877527,
+   "measured": 166276.877527,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "cda06f9dbf",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1520.530844,
+   "measured": 1520.530844,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "cda06f9dbf",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 2438.727537,
+   "measured": 2438.727537,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "cda06f9dbf",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 2356.19449,
+   "measured": 2356.19449,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "d733bfa285",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 37019.354848,
+   "measured": 37019.354848,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "d7e1bdf8be",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 59.674822,
+   "measured": 59.674822,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "d831ec007c",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 3141.592654,
+   "measured": 3141.592654,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "d831ec007c",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1005.309649,
+   "measured": 1005.309649,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "da772a2e0b",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 388.481099,
+   "measured": 388.481099,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "db1ef53f08",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 99239.87989,
+   "measured": 99239.87989,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "db1ef53f08",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 25093.690322,
+   "measured": 25093.690322,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "db1ef53f08",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 3746.046087,
+   "measured": 3746.046087,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "db4e2a4bcf",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 8640000.0,
+   "measured": 8640000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "db4e2a4bcf",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 4480000.0,
+   "measured": 4480000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "db4e2a4bcf",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 8640000.0,
+   "measured": 8640000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "dc935d877e",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 22500000.0,
+   "measured": 22500000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e20918a733",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 2035.75204,
+   "measured": 2035.75204,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e20918a733",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 703.716754,
+   "measured": 703.716754,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e4cf76d978",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 2010.619298,
+   "measured": 2010.619298,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e4cf76d978",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 565.486678,
+   "measured": 565.486678,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e50de66084",
+   "feature": "Revolve0",
+   "type": "Revolution",
+   "predicted": 0.435391,
+   "measured": 0.435391,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c001",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 35342.917353,
+   "measured": 35342.917353,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c001",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 560.0,
+   "measured": 560.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c002",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 157079.632679,
+   "measured": 157079.632679,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c002",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 1000.0,
+   "measured": 1000.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c003",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 42411.500823,
+   "measured": 42411.500823,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c003",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 1080.0,
+   "measured": 1080.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c004",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 157079.632679,
+   "measured": 157079.632679,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c004",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 1600.0,
+   "measured": 1600.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c005",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 157079.632679,
+   "measured": 157079.632679,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "e74ef5c005",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 2400.0,
+   "measured": 2400.0,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecdc59b900",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 1570.796327,
+   "measured": 1570.796327,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecdc59b900",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 5301.437603,
+   "measured": 5301.437603,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecdc59b900",
+   "feature": "Extrude2",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecdc59b900",
+   "feature": "Extrude3",
+   "type": "Pad",
+   "predicted": 12566.370614,
+   "measured": 12566.370614,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecdc59b900",
+   "feature": "Extrude4",
+   "type": "Pad",
+   "predicted": 14137.166941,
+   "measured": 14137.166941,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecdc59b900",
+   "feature": "Extrude5",
+   "type": "Pad",
+   "predicted": 12271.846303,
+   "measured": 12271.846303,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecdc59b900",
+   "feature": "Extrude6",
+   "type": "Pad",
+   "predicted": 6283.185307,
+   "measured": 6283.185307,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "eceefa2929",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 47113.849442,
+   "measured": 47113.849442,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "eceefa2929",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 6009.419572,
+   "measured": 6009.419572,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "eceefa2929",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1929.691396,
+   "measured": 1929.691396,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecf3ef894f",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 284350.023234,
+   "measured": 284350.023234,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecf3ef894f",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 15174.864543,
+   "measured": 15174.864543,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "ecf3ef894f",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 13167.305995,
+   "measured": 13167.305995,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "f67dad96d1",
+   "feature": "Extrude0",
+   "type": "Pad",
+   "predicted": 47113.849442,
+   "measured": 47113.849442,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "f67dad96d1",
+   "feature": "Extrude1",
+   "type": "Pocket",
+   "predicted": 6837.384046,
+   "measured": 6837.384046,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "f67dad96d1",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1929.691396,
+   "measured": 1929.691396,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "fa1a50cf2b",
+   "feature": "Extrude1",
+   "type": "Pad",
+   "predicted": 5309.291585,
+   "measured": 5309.291585,
+   "rel_err": 0.0,
+   "pass": true
+  },
+  {
+   "id": "fa1a50cf2b",
+   "feature": "Extrude2",
+   "type": "Pocket",
+   "predicted": 1005.309649,
+   "measured": 1005.309649,
+   "rel_err": 0.0,
+   "pass": true
+  }
+ ]
+}

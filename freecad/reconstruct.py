@@ -24,9 +24,23 @@ import FreeCAD as App  # type: ignore
 import Part  # type: ignore
 import Sketcher  # type: ignore
 
+#: PartDesign primitives: no profile sketch, geometry comes from scalars plus
+#: a placement. Each maps to ``PartDesign::Additive<name>`` (Subtractive via
+#: parameters.Subtractive) and takes the scalar properties named here.
+_PRIMITIVES = {
+    "Box": ("Length", "Width", "Height"),
+    "Cylinder": ("Radius", "Height", "Angle", "FirstAngle", "SecondAngle"),
+    "Sphere": ("Radius", "Angle1", "Angle2", "Angle3"),
+    "Cone": ("Radius1", "Radius2", "Height", "Angle"),
+    "Torus": ("Radius1", "Radius2", "Angle1", "Angle2", "Angle3"),
+    "Prism": ("Polygon", "Circumradius", "Height", "FirstAngle", "SecondAngle"),
+    "Wedge": ("Xmin", "Ymin", "Zmin", "X2min", "Z2min",
+              "Xmax", "Ymax", "Zmax", "X2max", "Z2max"),
+}
+
 SUPPORTED = {"Body", "Sketch", "Pad", "Pocket", "Revolution", "Groove", "Hole",
              "Thickness", "LinearPattern", "PolarPattern", "Fillet", "Chamfer",
-             "Loft", "Sweep", "Mirrored", "Draft"}
+             "Loft", "Sweep", "Mirrored", "Draft"} | set(_PRIMITIVES)
 _KIND = {
     "Pad": "PartDesign::Pad",
     "Pocket": "PartDesign::Pocket",
@@ -258,37 +272,274 @@ def _select_faces(shape, selector):
     return names
 
 
+#: Geometry we know how to constrain. A sketch containing anything else is
+#: left unconstrained wholesale — see ``_constrainable``.
+CONSTRAINABLE = {"Circle", "LineSegment", "ArcOfCircle"}
+
+_PT_TOL = 1e-6     # mm; endpoints closer than this are the same vertex
+_DRIFT_TOL = 1e-4  # mm; any solver nudge past this rolls the whole set back
+
+
+def _constrainable(geom_list):
+    """True when every real (non-construction) edge is a type we constrain.
+
+    Mixed circle+spline profiles (gears) are excluded deliberately: the solver
+    redistributes spline poles enough to fall off gNucleus's 0.1% "matched"
+    ramp (measured: mean 0.838 -> 0.802).
+    """
+    live = [g for g in geom_list if not g.get("construction")]
+    return bool(live) and all(g.get("type") in CONSTRAINABLE for g in live)
+
+
+def _snapshot(sketch):
+    """Sample every edge's defining points and radius, so solver drift can be
+    measured exactly rather than assumed absent."""
+    out = []
+    for geo in sketch.Geometry:
+        for attr in ("StartPoint", "EndPoint", "Center"):
+            p = getattr(geo, attr, None)
+            if p is not None:
+                out.append((p.x, p.y))
+        r = getattr(geo, "Radius", None)
+        if isinstance(r, (int, float)):
+            out.append((float(r), 0.0))
+    return out
+
+
+def _drift(before, after):
+    if len(before) != len(after):
+        return float("inf")
+    d = 0.0
+    for (ax, ay), (bx, by) in zip(before, after):
+        d = max(d, abs(ax - bx), abs(ay - by))
+    return d
+
+
+def _tangent_dir(geo, pt):
+    """Unit tangent of ``geo`` at point ``pt``. For an arc that is the
+    perpendicular to the radius; for a line it is the segment direction."""
+    centre = getattr(geo, "Center", None)
+    if centre is None:
+        d = geo.EndPoint.sub(geo.StartPoint)
+    else:
+        r = pt.sub(centre)
+        d = App.Vector(-r.y, r.x, 0)
+    n = (d.x * d.x + d.y * d.y) ** 0.5
+    return (d.x / n, d.y / n) if n > 1e-12 else None
+
+
+def _is_tangent(geo_a, geo_b, pt):
+    """True when two edges meet smoothly at ``pt``. Line-to-line is excluded:
+    collinear segments are a modelling artefact, not a tangency a drawing
+    would call out."""
+    if getattr(geo_a, "Center", None) is None and getattr(geo_b, "Center", None) is None:
+        return False
+    da, db = _tangent_dir(geo_a, pt), _tangent_dir(geo_b, pt)
+    if da is None or db is None:
+        return False
+    return abs(da[0] * db[1] - da[1] * db[0]) <= 1e-6
+
+
+def _constrain_sketch(sketch, added):
+    """Constrain a profile the way a draughtsman would.
+
+    Order is deliberate: stitch the chain with coincidences first (topology,
+    never dimensions), then call out horizontal/vertical runs, then add
+    *named* driven dimensions the parametrics pass can bind expressions to
+    (``r_geo3`` / ``x_geo3`` / ``y_geo3`` keyed by GRAPH index, so names stay
+    stable across rebuilds).
+
+    The whole plan is applied in ONE ``addConstraint`` call and whatever the
+    solver flags is then removed. Adding singly and verifying each is more
+    obviously correct but pathologically slow, because every add re-solves the
+    growing system: measured on a 138-arc sketch, 317s singly versus 0.8s
+    batched for the same 414 constraints.
+
+    Everything is rolled back if the geometry moved at all — a sketch that
+    rebuilds to a different shape than it was extracted from is worse than a
+    loose one.
+    """
+    info = {"coincident": 0, "tangent": 0, "hv": 0, "dimension": 0,
+            "rejected": 0, "drift": 0.0, "rolled_back": False}
+    if not added:
+        return info
+    before = _snapshot(sketch)
+
+    # Plan entries are (constraint, name, kind). Every constraint is named so
+    # survivors can be counted after the solver has had its say.
+    stitch_pref, stitch_safe, hv, dims = [], [], [], []
+
+    chain = [(n, gi, t) for n, gi, t in added
+             if t in ("LineSegment", "ArcOfCircle")]
+
+    # 1. Stitch the chain — a coordinate dump becomes a connected profile.
+    #    Where two edges meet smoothly the endpoint-to-endpoint TANGENT is
+    #    used instead: it implies the coincidence and additionally pins the
+    #    direction, which is both what a drawing calls out and what keeps a
+    #    slot or filleted corner from breaking open when a dimension changes.
+    ends = []
+    for _n, gi, _t in chain:
+        geo = sketch.Geometry[gi]
+        ends.append((gi, 1, geo.StartPoint))
+        ends.append((gi, 2, geo.EndPoint))
+    joined = set()
+    for i, (gi_a, pos_a, va) in enumerate(ends):
+        if (gi_a, pos_a) in joined:
+            continue
+        for gi_b, pos_b, vb in ends[i + 1:]:
+            if gi_b == gi_a or (gi_b, pos_b) in joined:
+                continue
+            if abs(va.x - vb.x) > _PT_TOL or abs(va.y - vb.y) > _PT_TOL:
+                continue
+            tag = f"{gi_a}p{pos_a}_{gi_b}p{pos_b}"
+            coincident = (Sketcher.Constraint("Coincident", gi_a, pos_a, gi_b, pos_b),
+                          f"co_{tag}", "coincident")
+            if _is_tangent(sketch.Geometry[gi_a], sketch.Geometry[gi_b], va):
+                stitch_pref.append(
+                    (Sketcher.Constraint("Tangent", gi_a, pos_a, gi_b, pos_b),
+                     f"tan_{tag}", "tangent"))
+            else:
+                stitch_pref.append(coincident)
+            stitch_safe.append(coincident)
+            joined.add((gi_a, pos_a))
+            joined.add((gi_b, pos_b))
+            break
+
+    # 2. Horizontal / vertical — free DOF removal, and what makes an edited
+    #    profile keep its character instead of skewing.
+    for n, gi, t in chain:
+        if t != "LineSegment":
+            continue
+        geo = sketch.Geometry[gi]
+        dx = abs(geo.EndPoint.x - geo.StartPoint.x)
+        dy = abs(geo.EndPoint.y - geo.StartPoint.y)
+        if dy <= _PT_TOL < dx:
+            hv.append((Sketcher.Constraint("Horizontal", gi), f"h_geo{n}", "hv"))
+        elif dx <= _PT_TOL < dy:
+            hv.append((Sketcher.Constraint("Vertical", gi), f"v_geo{n}", "hv"))
+
+    # 3. Named dimensions. Circles and arcs share the r_/x_/y_ convention, so
+    #    the existing Diameter/Radius expression binding starts working for
+    #    arcs at no extra cost.
+    for n, gi, t in added:
+        if t not in ("Circle", "ArcOfCircle"):
+            continue
+        geo = sketch.Geometry[gi]
+        dims += [
+            (Sketcher.Constraint("Radius", gi, float(geo.Radius)),
+             f"r_geo{n}", "dimension"),
+            (Sketcher.Constraint("DistanceX", gi, 3, float(geo.Center.x)),
+             f"x_geo{n}", "dimension"),
+            (Sketcher.Constraint("DistanceY", gi, 3, float(geo.Center.y)),
+             f"y_geo{n}", "dimension"),
+        ]
+
+    # 4. Line lengths — axis-aligned runs get the axis dimension a drawing
+    #    would carry; everything else gets a true length.
+    for n, gi, t in chain:
+        if t != "LineSegment":
+            continue
+        geo = sketch.Geometry[gi]
+        dx = geo.EndPoint.x - geo.StartPoint.x
+        dy = geo.EndPoint.y - geo.StartPoint.y
+        if abs(dy) <= _PT_TOL < abs(dx):
+            con = Sketcher.Constraint("DistanceX", gi, 1, gi, 2, dx)
+        elif abs(dx) <= _PT_TOL < abs(dy):
+            con = Sketcher.Constraint("DistanceY", gi, 1, gi, 2, dy)
+        else:
+            con = Sketcher.Constraint("Distance", gi, 1, gi, 2,
+                                      (dx * dx + dy * dy) ** 0.5)
+        dims.append((con, f"len_geo{n}", "dimension"))
+
+    # 5. Anchor the chain in the sketch plane, or it floats.
+    if chain:
+        n, gi, _t = chain[0]
+        sp = sketch.Geometry[gi].StartPoint
+        dims += [
+            (Sketcher.Constraint("DistanceX", gi, 1, float(sp.x)),
+             f"x1_geo{n}", "dimension"),
+            (Sketcher.Constraint("DistanceY", gi, 1, float(sp.y)),
+             f"y1_geo{n}", "dimension"),
+        ]
+
+    # A single malformed constraint makes the whole batch throw and nothing is
+    # added, so degrade: preferred plan -> coincidence instead of tangency ->
+    # dimensions only.
+    first = sketch.ConstraintCount
+    plan = []
+    for candidate in (stitch_pref + hv + dims, stitch_safe + hv + dims, dims):
+        if not candidate:
+            continue
+        try:
+            sketch.addConstraint([c for c, _n, _k in candidate])
+        except Exception:  # noqa: BLE001 - try the next, weaker plan
+            continue
+        plan = candidate
+        break
+    if not plan:
+        info["rejected"] = len(stitch_pref) + len(hv) + len(dims)
+        return info
+
+    for i, (_c, name, _k) in enumerate(plan):
+        try:
+            sketch.renameConstraint(first + i, name)
+        except Exception:  # noqa: BLE001 - a nameless constraint still holds
+            pass
+
+    # Drop whatever the solver objects to, ONE at a time: the flags are a
+    # snapshot of a coupled system, and removing the whole set at once
+    # over-deletes and can leave the profile broken. Diagnosis indices are
+    # 1-BASED while delConstraint is 0-based (both verified against FreeCAD
+    # 1.1). Highest index first, since deleting shifts everything above it.
+    rc = sketch.solve()
+    for _pass in range(len(plan) + 1):
+        flagged = sorted(set(list(getattr(sketch, "ConflictingConstraints", None) or [])
+                             + list(getattr(sketch, "RedundantConstraints", None) or [])),
+                         reverse=True)
+        if not flagged and rc == 0:
+            break
+        if not flagged:
+            break
+        try:
+            sketch.delConstraint(flagged[0] - 1)
+            info["rejected"] += 1
+        except Exception:  # noqa: BLE001
+            break
+        rc = sketch.solve()
+
+    survivors = {c.Name for c in sketch.Constraints if c.Name}
+    for _c, name, kind in plan:
+        if name in survivors:
+            info[kind] += 1
+
+    # A sketch that will not solve is worse than an unconstrained one: it
+    # produces a null profile and every feature built on it dies.
+    info["drift"] = round(_drift(before, _snapshot(sketch)), 9)
+    if rc != 0 or info["drift"] > _DRIFT_TOL:
+        info["solve"] = rc
+        for idx in range(sketch.ConstraintCount - 1, first - 1, -1):
+            try:
+                sketch.delConstraint(idx)
+            except Exception:  # noqa: BLE001
+                pass
+        sketch.solve()
+        info.update(coincident=0, tangent=0, hv=0, dimension=0, rolled_back=True)
+    return info
+
+
 def _add_geometry(sketch, geom_list, constrain=False):
-    """Add graph geometry to a sketch. With ``constrain=True`` every
-    non-construction circle gets named driven dimensions (radius + center
-    X/Y), keyed by the GRAPH index — ``r_geo3`` / ``x_geo3`` / ``y_geo3`` —
-    so the parametrics pass can bind spreadsheet expressions to them and a
-    human gets clickable dimensions when editing the sketch."""
+    """Add graph geometry to a sketch. With ``constrain=True`` the resulting
+    profile is auto-constrained by :func:`_constrain_sketch` — coincidences,
+    horizontal/vertical, and named driven dimensions keyed by GRAPH index."""
+    added = []  # (graph index, sketch geometry index, type)
     for g in geom_list:
         t = g.get("type")
         cons = bool(g.get("construction", False))
+        before_count = sketch.GeometryCount
         try:
             if t == "Circle":
                 c = App.Vector(g["cx"], g["cy"], 0)
                 sketch.addGeometry(Part.Circle(c, App.Vector(0, 0, 1), g["radius"]), cons)
-                if constrain and not cons:
-                    gi = sketch.GeometryCount - 1
-                    gname = g.get("index", gi)
-                    for ctype, cname, val in (
-                        ("Radius", f"r_geo{gname}", float(g["radius"])),
-                        ("DistanceX", f"x_geo{gname}", float(g.get("cx", 0.0))),
-                        ("DistanceY", f"y_geo{gname}", float(g.get("cy", 0.0))),
-                    ):
-                        try:
-                            if ctype == "Radius":
-                                ci = sketch.addConstraint(
-                                    Sketcher.Constraint("Radius", gi, val))
-                            else:
-                                ci = sketch.addConstraint(
-                                    Sketcher.Constraint(ctype, gi, 3, val))
-                            sketch.renameConstraint(ci, cname)
-                        except Exception as e:  # noqa: BLE001
-                            sys.stderr.write(f"  constraint {cname} skipped: {e}\n")
             elif t == "LineSegment":
                 a = App.Vector(g["sx"], g["sy"], 0)
                 b = App.Vector(g["ex"], g["ey"], 0)
@@ -332,6 +583,11 @@ def _add_geometry(sketch, geom_list, constrain=False):
             # Point / Other: skipped.
         except Exception as e:  # noqa: BLE001
             sys.stderr.write(f"  geom {t} skipped: {e}\n")
+            continue
+        if not cons and sketch.GeometryCount > before_count:
+            added.append((g.get("index", sketch.GeometryCount - 1),
+                          sketch.GeometryCount - 1, t))
+    return _constrain_sketch(sketch, added) if constrain else {}
 
 
 def compile_graph(graph, doc_name="rebuilt", doc=None):
@@ -383,13 +639,10 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
                 else:
                     z = 0.0 if (not have_solid and plane in ("XY", "XZ", "YZ")) else current_top
                 obj.Placement = _plane_placement(plane if plane in ("XY", "XZ", "YZ") else "XY", z)
-            # Constrain only all-circle sketches: on mixed circle+spline
-            # profiles (gears) the solver nudges geometry enough to fall off
-            # gNucleus's 0.1% "matched" ramp (measured: mean 0.838 -> 0.802).
             geo = sk.get("geometry", [])
-            all_circles = bool(geo) and all(
-                e.get("type") == "Circle" for e in geo if not e.get("construction"))
-            _add_geometry(obj, geo, constrain=all_circles)
+            cinfo = _add_geometry(obj, geo, constrain=_constrainable(geo))
+            if cinfo:
+                report.setdefault("constraints", {})[fid] = cinfo
             # Bake imported external geometry as real edges so ring/cutout
             # profiles (outer loop + borrowed inner loop) close into a face.
             _add_geometry(obj, sk.get("external_geometry", []))
@@ -406,8 +659,13 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
             if base_obj is None:
                 report["recompute_errors"].append({"id": fid, "error": "missing thickness base"})
                 continue
+            faces = list(base_ref.get("faces") or [])
+            if not faces and params.get("_Faces"):
+                # Authored graphs name faces semantically (top/bottom/...);
+                # only extraction replays carry literal face names.
+                faces = _select_faces(base_obj.Shape, params.get("_Faces"))
             op = doc.addObject("PartDesign::Thickness", fid)
-            op.Base = (base_obj, base_ref.get("faces", []))
+            op.Base = (base_obj, faces)
             if isinstance(params.get("Value"), (int, float)):
                 op.Value = float(params["Value"])
             for prop in ("Mode", "Join"):
@@ -569,6 +827,47 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
                     pass
             continue
 
+        # PartDesign primitives: no profile, so the scalars plus the placement
+        # ARE the geometry. Additive by default; parameters.Subtractive cuts.
+        if ftype in _PRIMITIVES:
+            subtractive = bool(params.get("Subtractive"))
+            kind_id = "PartDesign::%s%s" % (
+                "Subtractive" if subtractive else "Additive", ftype)
+            op = doc.addObject(kind_id, fid)
+            for prop in _PRIMITIVES[ftype]:
+                if prop in params and isinstance(params[prop], (int, float)):
+                    try:
+                        setattr(op, prop, params[prop])
+                    except Exception as e:  # noqa: BLE001
+                        report["recompute_errors"].append(
+                            {"id": fid, "error": f"{prop}={params[prop]!r} rejected: {e}"})
+            for prop, key in (("Placement", "_Placement"),
+                              ("AttachmentOffset", "_AttachmentOffset")):
+                pl = params.get(key)
+                if isinstance(pl, dict) and pl.get("q"):
+                    q = pl["q"]
+                    try:
+                        setattr(op, prop, App.Placement(
+                            App.Vector(*pl["pos"]),
+                            App.Rotation(q[0], q[1], q[2], q[3])))
+                    except Exception:  # noqa: BLE001
+                        pass
+            body.addObject(op)
+            doc.recompute()
+            if op.State and "Invalid" in op.State:
+                report["recompute_errors"].append(
+                    {"id": fid, "error": "invalid after recompute"})
+            else:
+                report["built"].append({"id": fid, "type": ftype})
+                built_solids[fid] = op
+                if not subtractive:
+                    have_solid = True
+                try:
+                    current_top = body.Shape.BoundBox.ZMax
+                except Exception:
+                    pass
+            continue
+
         # Multi-sketch solid ops: Loft (profile through section sketches) and
         # Sweep (profile along a spine path sketch). Additive by default;
         # parameters.Subtractive switches to the material-removing variant.
@@ -649,6 +948,17 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
         if ftype in ("Pad", "Pocket"):
             if isinstance(params.get("Length"), (int, float)):
                 op.Length = float(params["Length"])
+            # A two-sided extrusion carries half its material on Length2. Set
+            # only Length and it rebuilds at half height — silently, because
+            # the feature still recomputes clean.
+            if isinstance(params.get("Length2"), (int, float)):
+                op.Length2 = float(params["Length2"])
+            for prop in ("Type", "Type2"):
+                if isinstance(params.get(prop), str):
+                    try:
+                        setattr(op, prop, params[prop])
+                    except Exception:  # noqa: BLE001 - unknown enum member
+                        pass
         elif ftype == "Hole":
             for prop in ("Diameter", "Depth", "DepthType", "DrillPoint",
                          "DrillPointAngle", "ThreadType", "Tapered"):
@@ -670,7 +980,17 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
                 op.ReferenceAxis = (axis_obj, ax.get("subs", [""]))
             else:
                 report["recompute_errors"].append({"id": fid, "error": "no reference axis"})
-        if "Midplane" in params:
+        # FreeCAD 1.1 superseded Midplane with SideType ("One side" / "Two
+        # sides" / "Symmetric"). Setting both makes them contradict each other,
+        # so prefer SideType and keep Midplane only for graphs extracted before
+        # the property existed.
+        side = params.get("SideType")
+        if isinstance(side, str) and hasattr(op, "SideType"):
+            try:
+                op.SideType = side
+            except Exception:  # noqa: BLE001
+                pass
+        elif "Midplane" in params:
             op.Midplane = bool(params["Midplane"])
         if "Reversed" in params:
             op.Reversed = bool(params["Reversed"])

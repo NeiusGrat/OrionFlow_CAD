@@ -31,10 +31,36 @@ BOILERPLATE_TYPES = {
 }
 
 
+# FreeCAD spells the same operation twice — PartDesign::AdditiveLoft and
+# PartDesign::SubtractiveLoft — but to a FeatureGraph that is one operation
+# with a sense. Collapsing the pair to a single type plus a ``Subtractive``
+# flag is what lets a graph edit flip add/cut without retyping the feature,
+# and it is the vocabulary the compiler in reconstruct.py already speaks.
+# ``type_id`` still carries the exact FreeCAD class, so nothing is lost.
+_TYPE_ALIASES = {
+    "AdditiveLoft": "Loft", "SubtractiveLoft": "Loft",
+    "AdditivePipe": "Sweep", "SubtractivePipe": "Sweep",
+    "AdditiveBox": "Box", "SubtractiveBox": "Box",
+    "AdditiveCylinder": "Cylinder", "SubtractiveCylinder": "Cylinder",
+    "AdditiveSphere": "Sphere", "SubtractiveSphere": "Sphere",
+    "AdditiveCone": "Cone", "SubtractiveCone": "Cone",
+    "AdditiveTorus": "Torus", "SubtractiveTorus": "Torus",
+    "AdditivePrism": "Prism", "SubtractivePrism": "Prism",
+    "AdditiveWedge": "Wedge", "SubtractiveWedge": "Wedge",
+}
+
+#: PartDesign primitives — positioned by placement/attachment rather than by a
+#: profile sketch, so they need their transform captured to be rebuildable.
+PRIMITIVE_TYPES = {
+    "Box", "Cylinder", "Sphere", "Cone", "Torus", "Prism", "Wedge",
+}
+
+
 def _short_type(type_id):
     if type_id == "Sketcher::SketchObject":
         return "Sketch"
-    return type_id.split("::")[-1]
+    tail = type_id.split("::")[-1]
+    return _TYPE_ALIASES.get(tail, tail)
 
 
 def _qval(v):
@@ -132,7 +158,66 @@ def _feature_params(o):
         base = getattr(o, "Base", None)
         if base and base[0] is not None:
             p["_Base"] = {"object": base[0].Name, "edges": list(base[1])}
+    elif t in ("PartDesign::AdditiveLoft", "PartDesign::SubtractiveLoft"):
+        # Without the section list a loft is just its first profile — the
+        # feature cannot be rebuilt at all.
+        p["_Sections"] = _link_sub_list_names(o, "Sections")
+    elif t in ("PartDesign::AdditivePipe", "PartDesign::SubtractivePipe"):
+        p["_Spine"] = _link_name(o, "Spine")
+        aux = _link_name(o, "AuxiliarySpine")
+        if aux:
+            p["_AuxiliarySpine"] = aux
+
+    if _short_type(t) in PRIMITIVE_TYPES:
+        # A primitive carries no profile, so its transform IS its geometry.
+        # Both are editor-hidden, which is why the scalar sweep above misses
+        # them, and both are needed: MapMode-attached primitives place through
+        # AttachmentOffset while free ones use Placement.
+        p["_Placement"] = _placement_tuple(o, "Placement")
+        p["_AttachmentOffset"] = _placement_tuple(o, "AttachmentOffset")
+    if t.startswith("PartDesign::Subtractive"):
+        p["Subtractive"] = True
     return p
+
+
+def _link_name(o, prop):
+    """Name of a single App::PropertyLinkSub target, or None."""
+    ref = getattr(o, prop, None)
+    if not ref:
+        return None
+    try:
+        return getattr(ref[0], "Name", None)
+    except Exception:
+        return None
+
+
+def _link_sub_list_names(o, prop):
+    """Names of an App::PropertyLinkSubList's targets, order preserved."""
+    out = []
+    for entry in (getattr(o, prop, None) or []):
+        try:
+            name = getattr(entry[0], "Name", None)
+        except Exception:
+            name = None
+        if name:
+            out.append(name)
+    return out
+
+
+def _placement_tuple(o, prop):
+    """``{pos, q}`` for a placement property, or None when it is identity."""
+    pl = getattr(o, prop, None)
+    if pl is None:
+        return None
+    try:
+        pos = [round(float(v), GP) for v in (pl.Base.x, pl.Base.y, pl.Base.z)]
+        r = pl.Rotation.Q
+        q = [round(float(v), GP) for v in r]
+    except Exception:
+        return None
+    if pos == [0.0, 0.0, 0.0] and q[:3] == [0.0, 0.0, 0.0]:
+        return None
+    return {"pos": pos, "q": q}
 
 
 def _reference_axis(o, prop="ReferenceAxis"):
@@ -458,6 +543,15 @@ def extract(doc):
                     deps.append({"source": sk.Name, "target": o.Name, "kind": "profile"})
             except Exception:
                 pass
+        # section: loft cross-section sketches -> loft
+        for name in _link_sub_list_names(o, "Sections"):
+            if name in kept_names:
+                deps.append({"source": name, "target": o.Name, "kind": "section"})
+        # spine: sweep path sketch -> sweep
+        for prop, kind in (("Spine", "spine"), ("AuxiliarySpine", "spine")):
+            name = _link_name(o, prop)
+            if name and name in kept_names:
+                deps.append({"source": name, "target": o.Name, "kind": kind})
         # base: previous solid -> feature
         base = getattr(o, "BaseFeature", None)
         if base is not None and getattr(base, "Name", None) in kept_names:

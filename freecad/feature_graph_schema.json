@@ -4,44 +4,139 @@
   "title": "OrionFlow FeatureGraph (FCStd extraction IR)",
   "description": "Canonical, deterministic intermediate representation extracted from a FreeCAD PartDesign document. The single source of truth between description+parameters and the FreeCAD compiler.",
   "type": "object",
-  "required": ["schema_version", "document", "features", "sketches", "dependencies", "parameters", "constraints", "expressions"],
+  "required": [
+    "schema_version",
+    "document",
+    "features",
+    "sketches",
+    "dependencies",
+    "parameters",
+    "constraints",
+    "expressions"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": {"type": "string"},
-    "source_id": {"type": "string"},
-    "execution_order": {"type": "array", "items": {"type": "string"}},
+    "schema_version": {
+      "type": "string"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "execution_order": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "document": {
       "type": "object",
-      "required": ["name", "label", "object_count"],
+      "required": [
+        "name",
+        "label",
+        "object_count"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": {"type": "string"},
-        "label": {"type": "string"},
-        "object_count": {"type": "integer", "minimum": 0},
-        "uuid": {"type": ["string", "null"]},
-        "freecad_version": {"type": ["string", "null"]},
-        "body_count": {"type": "integer", "minimum": 0},
-        "body_names": {"type": "array", "items": {"type": "string"}},
-        "author": {"type": ["string", "null"]},
-        "created": {"type": ["string", "null"]},
-        "modified_by": {"type": ["string", "null"]},
-        "modified": {"type": ["string", "null"]},
-        "company": {"type": ["string", "null"]},
-        "comment": {"type": ["string", "null"]}
+        "name": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "object_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "uuid": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "freecad_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "body_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "body_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modified_by": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "modified": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "company": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "comment": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "features": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "type", "type_id", "label", "parameters"],
+        "required": [
+          "id",
+          "type",
+          "type_id",
+          "label",
+          "parameters"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": {"type": "string"},
-          "type": {"type": "string", "description": "Short kind, e.g. Body/Pad/Pocket/Fillet/Chamfer/LinearPattern/PolarPattern/Sketch"},
-          "type_id": {"type": "string", "description": "Full FreeCAD TypeId"},
-          "label": {"type": "string"},
-          "parameters": {"type": "object"}
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Short kind, e.g. Body/Pad/Pocket/Fillet/Chamfer/LinearPattern/PolarPattern/Sketch"
+          },
+          "type_id": {
+            "type": "string",
+            "description": "Full FreeCAD TypeId"
+          },
+          "label": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          }
         }
       }
     },
@@ -49,26 +144,74 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "plane", "geometry", "constraints"],
+        "required": [
+          "id",
+          "plane",
+          "geometry",
+          "constraints"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": {"type": "string"},
-          "plane": {"type": "string"},
-          "z": {"type": "number"},
-          "support": {"type": ["string", "null"]},
-          "placement": {"type": "object"},
-          "global_placement": {"type": ["object", "null"]},
-          "bbox": {"type": ["object", "null"]},
+          "id": {
+            "type": "string"
+          },
+          "plane": {
+            "type": "string"
+          },
+          "z": {
+            "type": "number"
+          },
+          "support": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "placement": {
+            "type": "object"
+          },
+          "global_placement": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "bbox": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "geometry": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["index", "type"],
+              "required": [
+                "index",
+                "type"
+              ],
               "additionalProperties": true,
               "properties": {
-                "index": {"type": "integer"},
-                "type": {"type": "string", "enum": ["Circle", "ArcOfCircle", "LineSegment", "Point", "BSpline", "Bezier", "Ellipse", "ArcOfEllipse", "Other"]},
-                "construction": {"type": "boolean"}
+                "index": {
+                  "type": "integer"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "Circle",
+                    "ArcOfCircle",
+                    "LineSegment",
+                    "Point",
+                    "BSpline",
+                    "Bezier",
+                    "Ellipse",
+                    "ArcOfEllipse",
+                    "Other"
+                  ]
+                },
+                "construction": {
+                  "type": "boolean"
+                }
               }
             }
           },
@@ -77,12 +220,26 @@
             "description": "Curves imported from other sketches/bodies via addExternal, resolved into this sketch's local 2D frame. Closes ring/cutout profiles for the compiler.",
             "items": {
               "type": "object",
-              "required": ["type"],
+              "required": [
+                "type"
+              ],
               "additionalProperties": true,
               "properties": {
-                "type": {"type": "string", "enum": ["Circle", "ArcOfCircle", "LineSegment", "Other"]},
-                "source_object": {"type": "string"},
-                "construction": {"type": "boolean"}
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "Circle",
+                    "ArcOfCircle",
+                    "LineSegment",
+                    "Other"
+                  ]
+                },
+                "source_object": {
+                  "type": "string"
+                },
+                "construction": {
+                  "type": "boolean"
+                }
               }
             }
           },
@@ -90,13 +247,27 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["index", "type"],
+              "required": [
+                "index",
+                "type"
+              ],
               "additionalProperties": true,
               "properties": {
-                "index": {"type": "integer"},
-                "name": {"type": "string"},
-                "type": {"type": "string"},
-                "value": {"type": ["number", "null"]}
+                "index": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
               }
             }
           }
@@ -107,12 +278,29 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["source", "target", "kind"],
+        "required": [
+          "source",
+          "target",
+          "kind"
+        ],
         "additionalProperties": false,
         "properties": {
-          "source": {"type": "string"},
-          "target": {"type": "string"},
-          "kind": {"type": "string", "enum": ["profile", "base", "ref"]}
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "profile",
+              "base",
+              "ref",
+              "section",
+              "spine"
+            ]
+          }
         }
       }
     },
@@ -120,22 +308,49 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "value"],
+        "required": [
+          "name",
+          "value"
+        ],
         "additionalProperties": false,
         "properties": {
-          "name": {"type": "string"},
-          "value": {"type": ["number", "integer"]},
-          "unit": {"type": ["string", "null"]},
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "number",
+              "integer"
+            ]
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "bound_to": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["target", "property"],
+              "required": [
+                "target",
+                "property"
+              ],
               "additionalProperties": false,
               "properties": {
-                "target": {"type": "string", "description": "feature/sketch id (or sketch:geo index)"},
-                "property": {"type": "string", "description": "Length/Radius/Diameter/BoltCircleDiameter/Count/etc"},
-                "relation": {"type": "string", "description": "how value maps, e.g. diameter=2*radius"}
+                "target": {
+                  "type": "string",
+                  "description": "feature/sketch id (or sketch:geo index)"
+                },
+                "property": {
+                  "type": "string",
+                  "description": "Length/Radius/Diameter/BoltCircleDiameter/Count/etc"
+                },
+                "relation": {
+                  "type": "string",
+                  "description": "how value maps, e.g. diameter=2*radius"
+                }
               }
             }
           }
@@ -144,20 +359,42 @@
     },
     "constraints": {
       "type": "array",
-      "items": {"type": "object"}
+      "items": {
+        "type": "object"
+      }
     },
     "expressions": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["object", "property", "expression"],
+        "required": [
+          "object",
+          "property",
+          "expression"
+        ],
         "additionalProperties": false,
         "properties": {
-          "object": {"type": "string"},
-          "property": {"type": "string"},
-          "expression": {"type": "string"},
-          "referenced_objects": {"type": "array", "items": {"type": "string"}},
-          "referenced_properties": {"type": "array", "items": {"type": "string"}},
+          "object": {
+            "type": "string"
+          },
+          "property": {
+            "type": "string"
+          },
+          "expression": {
+            "type": "string"
+          },
+          "referenced_objects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "referenced_properties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "result": {}
         }
       }
