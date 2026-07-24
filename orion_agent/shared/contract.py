@@ -37,9 +37,17 @@ class Capability:
     RENDER_VIEWS = "render_views"
     GET_MODEL_TIER = "get_model_tier"
     EXTRACT_FEATUREGRAPH = "extract_featuregraph"
+    LIST_DOCUMENTS = "list_documents"
+    LIST_LIBRARY_PARTS = "list_library_parts"
 
     # --- mutate (Phase 2/5) ------------------------------------------------
     SET_PARAMETER = "set_parameter"
+    NEW_DOCUMENT = "new_document"
+    OPEN_DOCUMENT = "open_document"
+    ACTIVATE_DOCUMENT = "activate_document"
+    RELOAD_DOCUMENT = "reload_document"
+    DELETE_OBJECT = "delete_object"
+    INSERT_LIBRARY_PART = "insert_library_part"
     EDIT_FEATURE = "edit_feature"
     EXECUTE_CODE = "execute_code"          # import sandbox artifact into doc
     IMPORT_SHAPE = "import_shape"
@@ -66,12 +74,20 @@ class Capability:
             RENDER_VIEWS,
             GET_MODEL_TIER,
             EXTRACT_FEATUREGRAPH,
+            LIST_DOCUMENTS,
+            LIST_LIBRARY_PARTS,
         }
     )
 
     ALL = READ_ONLY | frozenset(
         {
             SET_PARAMETER,
+            NEW_DOCUMENT,
+            OPEN_DOCUMENT,
+            ACTIVATE_DOCUMENT,
+            RELOAD_DOCUMENT,
+            DELETE_OBJECT,
+            INSERT_LIBRARY_PART,
             EDIT_FEATURE,
             EXECUTE_CODE,
             IMPORT_SHAPE,

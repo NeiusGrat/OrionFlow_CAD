@@ -18,6 +18,8 @@ GENERATE = "generate"
 # Read-only tool surface, shared by every pillar.
 _READ_TOOLS = {
     "list_objects",
+    "list_documents",
+    "list_library_parts",
     "inspect_topology",
     "expand_topology",
     "get_parameters",
@@ -27,6 +29,7 @@ _READ_TOOLS = {
     "get_model_tier",
     "lookup_standard",
     "lookup_mechanical_knowledge",
+    "lookup_nasa_requirement",
     "calculate_sheet_metal_bend",
     "check_sheet_metal_dfm",
     "lookup_robotics_knowledge",
@@ -48,6 +51,12 @@ _GROUNDING = (
     "calculation/check tools for their scoped numeric work. Always report the "
     "returned authority and limitation. A screening guideline is never a claim "
     "of standards compliance, released design validity, or supplier approval.\n\n"
+    "NASA REQUIREMENTS POLICY: lookup_nasa_requirement returns verbatim normative "
+    "text from public NASA Technical Standards. Quote it and cite the requirement "
+    "tag (e.g. NASA-STD-5020B [TFSR 3], p.18) rather than paraphrasing, and never "
+    "cite a tag you did not retrieve in this conversation. These requirements bind "
+    "NASA spaceflight hardware: offer them as engineering defaults and state that "
+    "applicability to the user's hardware is theirs to confirm.\n\n"
     "ROBOTICS ASSEMBLY POLICY: Retrieve robotics component/interface records before "
     "using them. Preserve each record's data_status and engineering_review state. A "
     "concept demo is a composition plan, not a mate-solved CAD assembly. Do not invent "
@@ -92,7 +101,9 @@ MODIFY_PILLAR = Pillar(
     name=MODIFY,
     description="Natural-language ECO-style parametric edits, verified and reversible.",
     tools=set(_READ_TOOLS)
-    | {"write_code", "import_shape", "set_parameter", "edit_feature", "select", "undo", "export"},
+    | {"write_code", "import_shape", "set_parameter", "edit_feature", "select",
+       "undo", "export", "delete_object", "insert_library_part",
+       "open_document", "activate_document", "reload_document"},
     verification="edit_loop",
     allow_mutation=True,
     system_prompt=(
@@ -112,14 +123,20 @@ MODIFY_PILLAR = Pillar(
         "nothing else moved. NEVER claim success unless verification passed. If "
         "the request is ambiguous, ask one clarifying question instead of "
         "guessing. Destructive operations require explicit user confirmation. "
-        "Every edit is wrapped in a FreeCAD transaction and is undoable."
+        "Every edit is wrapped in a FreeCAD transaction and is undoable.\n\n"
+        "REMOVING THINGS: prefer undo for your own last change. Use "
+        "delete_object to remove a feature the user asked to drop; it refuses "
+        "by default when something else depends on the target and names the "
+        "dependents, so read that list and decide deliberately — cascade=true "
+        "deletes them too and is not undone by a single undo."
     ),
 )
 
 RECONSTRUCT_PILLAR = Pillar(
     name=RECONSTRUCT,
     description="Turn a 2D drawing into a parametric 3D model, verified by render-compare.",
-    tools=set(_READ_TOOLS) | {"create_featuregraph", "write_code", "import_shape", "view"},
+    tools=set(_READ_TOOLS) | {"create_featuregraph", "write_code", "import_shape",
+                              "view", "new_document", "delete_object"},
     verification="render_compare",
     allow_mutation=True,
     system_prompt=(
@@ -142,6 +159,7 @@ GENERATE_PILLAR = Pillar(
     description="Text-to-CAD into a blank or new document, FeatureGraph-first.",
     tools=set(_READ_TOOLS) | {
         "create_featuregraph", "compile_assembly_graph", "write_code", "import_shape", "view",
+        "new_document", "delete_object", "insert_library_part", "activate_document",
     },
     verification="artifact",
     allow_mutation=True,
@@ -149,6 +167,15 @@ GENERATE_PILLAR = Pillar(
         "You are OrionFlow generating a new parametric model from a natural-"
         "language description. You never write geometry directly — you describe "
         "features and a deterministic compiler builds them.\n\n"
+        "START HERE: every CAD tool needs an active document. If get_model_tier "
+        "reports 'empty' or list_documents shows nothing open, call "
+        "new_document first and give it a name that describes the part. Do not "
+        "attempt to build into a session with no document.\n\n"
+        "STOCK PARTS: for a standard component — a bolt, nut, washer, bearing, "
+        "extrusion profile — search list_library_parts and place the real thing "
+        "with insert_library_part. Only model a standard part yourself when the "
+        "library has no match, and say so when you do: dimensions recalled from "
+        "memory are a common source of silently wrong assemblies.\n\n"
         "PREFERRED PATH: call create_featuregraph with a FeatureGraph (sketches "
         "+ Pad/Pocket/Revolution/Groove/Hole/patterns). It compiles into a "
         "native FreeCAD feature tree, so every sketch and dimension stays "

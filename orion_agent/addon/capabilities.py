@@ -132,6 +132,81 @@ class Capabilities:
     def cap_get_capabilities(self, params: dict[str, Any]) -> Any:
         return {"capabilities": sorted(Capability.ALL), "version": "1.0"}
 
+    # ---- document lifecycle -------------------------------------------- #
+    def cap_list_documents(self, params: dict[str, Any]) -> Any:
+        app = _app()
+        active = getattr(app.ActiveDocument, "Name", None)
+        return {
+            "active": active,
+            "documents": [
+                {
+                    "name": d.Name,
+                    "label": d.Label,
+                    "file_name": d.FileName or "",
+                    "object_count": len(d.Objects),
+                    "modified": bool(getattr(d, "Modified", False)),
+                    "active": d.Name == active,
+                }
+                for d in app.listDocuments().values()
+            ],
+        }
+
+    def cap_new_document(self, params: dict[str, Any]) -> Any:
+        """Open a blank document and make it active.
+
+        Without this every generate against a cold session died on NO_DOCUMENT
+        — the agent could fill a document but never start one.
+        """
+        app = _app()
+        label = str(params.get("label") or params.get("name") or "OrionFlow")
+        doc = app.newDocument(label)
+        app.setActiveDocument(doc.Name)
+        return {"name": doc.Name, "label": doc.Label, "created": True}
+
+    def cap_open_document(self, params: dict[str, Any]) -> Any:
+        path = params.get("path")
+        if not path or not os.path.exists(path):
+            raise CapabilityError(ErrorCode.BAD_REQUEST, f"No such file: {path!r}")
+        app = _app()
+        doc = app.openDocument(path)
+        app.setActiveDocument(doc.Name)
+        return {"name": doc.Name, "label": doc.Label,
+                "file_name": doc.FileName or "", "object_count": len(doc.Objects)}
+
+    def cap_activate_document(self, params: dict[str, Any]) -> Any:
+        app = _app()
+        name = params.get("name")
+        docs = app.listDocuments()
+        if name not in docs:
+            raise CapabilityError(
+                ErrorCode.OBJECT_NOT_FOUND,
+                f"No open document named {name!r}; open: {sorted(docs)}")
+        app.setActiveDocument(name)
+        return {"active": name}
+
+    def cap_reload_document(self, params: dict[str, Any]) -> Any:
+        """Re-read the active document from disk, discarding in-memory state.
+
+        The escape hatch for a document edited underneath us (a sandbox run,
+        another tool, the user). Refuses on an unsaved document rather than
+        silently destroying work.
+        """
+        app = _app()
+        name = params.get("name") or getattr(app.ActiveDocument, "Name", None)
+        doc = app.listDocuments().get(name) if name else None
+        if doc is None:
+            raise CapabilityError(ErrorCode.NO_DOCUMENT, f"No document named {name!r}")
+        path = doc.FileName
+        if not path or not os.path.exists(path):
+            raise CapabilityError(
+                ErrorCode.BAD_REQUEST,
+                "Document has never been saved - nothing on disk to reload")
+        app.closeDocument(doc.Name)
+        fresh = app.openDocument(path)
+        app.setActiveDocument(fresh.Name)
+        return {"name": fresh.Name, "reloaded": True,
+                "object_count": len(fresh.Objects)}
+
     # ---- read ---------------------------------------------------------- #
     def cap_get_document_state(self, params: dict[str, Any]) -> Any:
         doc = _active_doc()
@@ -339,6 +414,186 @@ class Capabilities:
         if self._has_errors(doc):
             raise CapabilityError(ErrorCode.RECOMPUTE_FAILED, self._error_report(doc))
         return {"name": obj.Name, "applied": applied}
+
+    def cap_delete_object(self, params: dict[str, Any]) -> Any:
+        """Remove an object, refusing to orphan whatever depends on it.
+
+        FreeCAD's ``removeObject`` does not cascade: deleting a sketch that a
+        pad consumes leaves a broken feature that only surfaces on the next
+        recompute. Dependents are reported so the agent can decide, and only
+        an explicit ``cascade`` removes them.
+        """
+        doc = _active_doc()
+        names = params.get("names") or ([params["name"]] if params.get("name") else [])
+        if not names:
+            raise CapabilityError(ErrorCode.BAD_REQUEST, "Give 'name' or 'names'")
+        cascade = bool(params.get("cascade", False))
+
+        targets = []
+        for n in names:
+            obj = doc.getObject(n)
+            if obj is None:
+                raise CapabilityError(ErrorCode.OBJECT_NOT_FOUND, f"No object named {n!r}")
+            targets.append(obj)
+
+        requested = {o.Name for o in targets}
+        blocked: dict[str, list[str]] = {}
+        for obj in targets:
+            outside = [d.Name for d in getattr(obj, "InList", [])
+                       if d.Name not in requested]
+            if outside:
+                blocked[obj.Name] = sorted(outside)
+        if blocked and not cascade:
+            detail = "; ".join(f"{k} <- {', '.join(v)}" for k, v in blocked.items())
+            raise CapabilityError(
+                ErrorCode.NOT_PERMITTED,
+                f"Refusing to orphan dependents ({detail}). "
+                f"Delete the dependents first, or pass cascade=true.")
+
+        # Depth-first over InList so dependents always precede their sources.
+        # Names, not object handles: removing a parent invalidates the Python
+        # proxies of everything it takes with it.
+        order: list[str] = []
+        seen: set[str] = set()
+
+        def visit(o):
+            if o.Name in seen:
+                return
+            seen.add(o.Name)
+            if cascade:
+                for d in getattr(o, "InList", []):
+                    visit(d)
+            order.append(o.Name)
+
+        for obj in targets:
+            visit(obj)
+
+        removed, failed = [], []
+        for name in order:
+            if doc.getObject(name) is None:
+                removed.append(name)   # already went with a parent
+                continue
+            try:
+                doc.removeObject(name)
+                removed.append(name)
+            except Exception as exc:  # noqa: BLE001
+                failed.append({"name": name, "error": str(exc)[:160]})
+        doc.recompute()
+        return {"removed": removed, "failed": failed,
+                "cascade": cascade, "remaining": len(doc.Objects)}
+
+    # ---- parts library --------------------------------------------------- #
+    def _library_roots(self) -> list[str]:
+        """Search roots for stock parts, most specific first.
+
+        ``$ORION_PARTS_LIBRARY`` lets a team point at its own vetted library;
+        the rest are where FreeCAD's Addon Manager installs parts_library.
+        """
+        app = _app()
+        roots = []
+        env = os.environ.get("ORION_PARTS_LIBRARY")
+        if env:
+            roots.extend(p for p in env.split(os.pathsep) if p)
+        try:
+            from orion_agent.shared.config import get_config
+            roots.append(os.path.join(get_config().repo_root, "parts_library"))
+        except Exception:  # noqa: BLE001
+            pass
+        for base in (app.getUserAppDataDir(), app.getResourceDir()):
+            if base:
+                roots.append(os.path.join(base, "Mod", "parts_library"))
+        return [r for r in roots if os.path.isdir(r)]
+
+    def cap_list_library_parts(self, params: dict[str, Any]) -> Any:
+        """Enumerate stock parts. ``query`` filters on the relative path, so
+        'M6' or 'bearing' narrows a large library to something an LLM can
+        actually choose from."""
+        query = str(params.get("query") or "").lower()
+        limit = int(params.get("limit") or 200)
+        roots = self._library_roots()
+        if not roots:
+            return {"roots": [], "parts": [], "count": 0,
+                    "hint": "No parts library found. Install 'parts_library' via "
+                            "FreeCAD's Addon Manager, or set $ORION_PARTS_LIBRARY "
+                            "to a directory of .FCStd/.step files."}
+        exts = (".fcstd", ".step", ".stp", ".igs", ".iges", ".brep")
+        parts, total = [], 0
+        for root in roots:
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+                for fn in sorted(filenames):
+                    if not fn.lower().endswith(exts):
+                        continue
+                    rel = os.path.relpath(os.path.join(dirpath, fn), root)
+                    if query and query not in rel.lower():
+                        continue
+                    total += 1
+                    if len(parts) < limit:
+                        parts.append({"path": rel.replace(os.sep, "/"),
+                                      "name": os.path.splitext(fn)[0],
+                                      "root": root})
+        return {"roots": roots, "parts": parts, "count": total,
+                "truncated": total > len(parts)}
+
+    def cap_insert_library_part(self, params: dict[str, Any]) -> Any:
+        """Insert a stock part by the relative path from list_library_parts.
+
+        A real fastener beats a hallucinated one: the agent should reach for
+        this instead of modelling an M6 cap screw from remembered dimensions.
+        """
+        rel = params.get("path") or params.get("relative_path")
+        if not rel:
+            raise CapabilityError(ErrorCode.BAD_REQUEST,
+                                  "Give 'path' from list_library_parts")
+        roots = self._library_roots()
+        if not roots:
+            raise CapabilityError(ErrorCode.BAD_REQUEST,
+                                  "No parts library configured; see list_library_parts")
+        target = None
+        for root in roots:
+            cand = os.path.normpath(os.path.join(root, rel))
+            # Containment check: a '../..' path must not read outside the library.
+            if os.path.commonpath([cand, os.path.normpath(root)]) != os.path.normpath(root):
+                raise CapabilityError(ErrorCode.BAD_REQUEST,
+                                      f"Path escapes the library: {rel!r}")
+            if os.path.isfile(cand):
+                target = cand
+                break
+        if target is None:
+            raise CapabilityError(ErrorCode.OBJECT_NOT_FOUND,
+                                  f"No library part at {rel!r}")
+
+        app = _app()
+        doc = app.ActiveDocument or app.newDocument("OrionFlow")
+        label = params.get("label") or os.path.splitext(os.path.basename(target))[0]
+        before = {o.Name for o in doc.Objects}
+
+        if target.lower().endswith(".fcstd"):
+            src = app.openDocument(target, True)   # hidden: no GUI tab
+            try:
+                roots_in_src = [o for o in src.Objects if not o.InList]
+                copied = doc.copyObject(roots_in_src or src.Objects, True)
+            finally:
+                app.closeDocument(src.Name)
+            app.setActiveDocument(doc.Name)
+            # copyObject returns a tuple for a list argument and a bare object
+            # for a single one. Label the root of the copy, not a child of it.
+            objs = [o for o in (copied if isinstance(copied, (list, tuple))
+                                else [copied]) if o is not None]
+            top = next((o for o in objs if not o.InList), objs[-1] if objs else None)
+        else:
+            import Part  # type: ignore
+            shape = Part.Shape()
+            shape.read(target)
+            top = doc.addObject("Part::Feature", "LibraryPart")
+            top.Shape = shape
+        if top is not None:
+            top.Label = label
+        doc.recompute()
+        return {"inserted": sorted({o.Name for o in doc.Objects} - before),
+                "name": getattr(top, "Name", None),
+                "label": getattr(top, "Label", label),
+                "source": target}
 
     def cap_import_shape(self, params: dict[str, Any]) -> Any:
         """Import a STEP/BREP artifact produced by the sandbox into the document.

@@ -70,6 +70,94 @@
       "license": "Copyrighted third-party reference supplied locally by the project owner; not committed or redistributed.",
       "use": "Candidate data source for a future thread and hole catalogue; values require source-by-source reconciliation.",
       "last_verified": "2026-07-11"
+    },
+    {
+      "id": "nasa_nasa_std_5001",
+      "title": "NASA-STD-5001B, Structural Design and Test Factors of Safety for Spaceflight Hardware",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "B",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-5001",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for structural design and test factors of safety requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
+    },
+    {
+      "id": "nasa_nasa_std_5002",
+      "title": "NASA-STD-5002B, Load Analyses of Spacecraft and Payloads",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "B",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-5002",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for load analyses of spacecraft and payloads requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
+    },
+    {
+      "id": "nasa_nasa_std_5006",
+      "title": "NASA-STD-5006A, General Welding Requirements for Aerospace Materials",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "A",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-5006",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for general welding requirements requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
+    },
+    {
+      "id": "nasa_nasa_std_5009",
+      "title": "NASA-STD-5009C, Nondestructive Evaluation Requirements for Fracture-Critical Metallic Components",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "C",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-5009",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for nondestructive evaluation requirements requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
+    },
+    {
+      "id": "nasa_nasa_std_5017",
+      "title": "NASA-STD-5017B, Design and Development Requirements for Mechanisms",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "B",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-5017",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for design and development requirements requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
+    },
+    {
+      "id": "nasa_nasa_std_5019",
+      "title": "NASA-STD-5019A, Fracture Control Requirements for Spaceflight Hardware",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "A",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-5019",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for fracture control requirements requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
+    },
+    {
+      "id": "nasa_nasa_std_5020",
+      "title": "NASA-STD-5020B, Requirements for Threaded Fastening Systems in Spaceflight Hardware",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "B",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-5020",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for requirements requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
+    },
+    {
+      "id": "nasa_nasa_std_6016",
+      "title": "NASA-STD-6016C, Standard Materials and Processes Requirements for Spacecraft",
+      "publisher": "National Aeronautics and Space Administration",
+      "kind": "normative_standard",
+      "revision": "C",
+      "official_url": "https://standards.nasa.gov/standard/NASA/NASA-STD-6016",
+      "license": "Work of the US Government, public domain. Requirement text is quoted verbatim in nasa_rules.json with section and page provenance.",
+      "use": "Normative source for standard materials and processes requirements requirements. Applies to NASA spaceflight hardware; confirm applicability before citing it as a constraint on non-NASA hardware.",
+      "last_verified": "2026-07-22"
     }
   ]
 }

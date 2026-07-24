@@ -228,6 +228,52 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
         lookup_mechanical_knowledge,
     ))
 
+    def lookup_nasa_requirement(args):
+        from orion_agent.harness import nasa_rules
+        hits = nasa_rules.search(
+            args.get("query", ""),
+            domain=args.get("domain", ""),
+            standard=args.get("standard", ""),
+            numeric_only=bool(args.get("numeric_only")),
+        )
+        if not hits:
+            return _fail(
+                "no NASA requirement matched; try terms such as 'preload', "
+                "'factor of safety', 'fitting factor', 'weld inspection', "
+                "'mechanism clearance', 'fracture control', 'material "
+                "selection', or an exact tag like 'TFSR 3'"
+            )
+        return _ok(nasa_rules.render(hits), raw={"results": hits})
+
+    reg.register(Tool(
+        "lookup_nasa_requirement",
+        "Retrieve verbatim normative requirements from public NASA Technical "
+        "Standards (factors of safety 5001, loads 5002, welding 5006, NDE 5009, "
+        "mechanisms 5017, fracture control 5019, threaded fasteners 5020, "
+        "materials 6016). Every result is quoted with its requirement tag, "
+        "section, and page, so cite the tag rather than paraphrasing. These bind "
+        "NASA spaceflight hardware: use them as engineering defaults, and never "
+        "tell the user their part is compliant.",
+        {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string",
+                          "description": "Topic or exact tag, e.g. 'bolt preload', "
+                                         "'minimum factor of safety', 'TFSR 3'"},
+                "domain": {"type": "string",
+                           "description": "Optional: fasteners, structural_margins, "
+                                          "loads, joining, inspection, mechanisms, "
+                                          "fracture_control, materials"},
+                "standard": {"type": "string",
+                             "description": "Optional, e.g. 'NASA-STD-5020'"},
+                "numeric_only": {"type": "boolean",
+                                 "description": "Only requirements carrying numbers"},
+            },
+            "required": ["query"],
+        },
+        lookup_nasa_requirement,
+    ))
+
     def resolve_design_context(args):
         """Datum, material and process facts for a request — looked up, not recalled."""
         from orion_agent.harness import design_rules
@@ -1005,6 +1051,177 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
     reg.register(Tool(
         "undo", "Undo the last change (revert one FreeCAD transaction).",
         {"type": "object", "properties": {}}, undo, mutating=True,
+    ))
+
+    # ---- documents ------------------------------------------------------- #
+    def list_documents(_args):
+        raw = bridge.list_documents()
+        docs = raw.get("documents", [])
+        if not docs:
+            return _ok("no documents open", raw=raw)
+        lines = ["%s%s  (%s, %d objects)%s"
+                 % ("* " if d["active"] else "  ", d["label"], d["name"],
+                    d["object_count"], "  [modified]" if d["modified"] else "")
+                 for d in docs]
+        return _ok("\n".join(lines), raw=raw)
+
+    reg.register(Tool(
+        "list_documents",
+        "List every open FreeCAD document and which one is active. Use before "
+        "switching documents so you never edit the wrong one.",
+        {"type": "object", "properties": {}},
+        list_documents,
+    ))
+
+    def new_document(args):
+        raw = bridge.new_document(args.get("label"))
+        return _ok(f"created empty document {raw['label']} ({raw['name']})", raw=raw)
+
+    reg.register(Tool(
+        "new_document",
+        "Create a blank document and make it active. Needed before generating "
+        "into a session with nothing open - every other CAD tool requires an "
+        "active document.",
+        {
+            "type": "object",
+            "properties": {
+                "label": {"type": "string", "description": "Document label, e.g. 'gripper_jaw'"}
+            },
+        },
+        new_document,
+        mutating=True,
+        doc_mutating=True,
+    ))
+
+    def open_document(args):
+        raw = bridge.open_document(args["path"])
+        return _ok("opened %s (%d objects)" % (raw["label"], raw["object_count"]),
+                   raw=raw)
+
+    reg.register(Tool(
+        "open_document",
+        "Open an existing .FCStd file and make it active.",
+        {
+            "type": "object",
+            "properties": {"path": {"type": "string"}},
+            "required": ["path"],
+        },
+        open_document,
+        mutating=True,
+        doc_mutating=True,
+    ))
+
+    def activate_document(args):
+        raw = bridge.activate_document(args["name"])
+        return _ok(f"active document is now {raw['active']}", raw=raw)
+
+    reg.register(Tool(
+        "activate_document",
+        "Switch the active document. Use the internal 'name' from "
+        "list_documents, not the label.",
+        {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        },
+        activate_document,
+        mutating=True,
+    ))
+
+    def reload_document(args):
+        raw = bridge.reload_document(args.get("name"))
+        return _ok("reloaded %s from disk (%d objects)"
+                   % (raw["name"], raw["object_count"]), raw=raw)
+
+    reg.register(Tool(
+        "reload_document",
+        "Discard in-memory state and re-read the document from disk. Use when "
+        "the file was changed outside FreeCAD. Fails on an unsaved document.",
+        {"type": "object", "properties": {"name": {"type": "string"}}},
+        reload_document,
+        mutating=True,
+        doc_mutating=True,
+    ))
+
+    def delete_object(args):
+        names = args.get("names") or ([args["name"]] if args.get("name") else [])
+        if not names:
+            return _fail("Give 'name' or 'names' - which object should be deleted?")
+        raw = bridge.delete_object(names, bool(args.get("cascade", False)))
+        msg = "removed: " + (", ".join(raw["removed"]) or "nothing")
+        if raw.get("failed"):
+            msg += "\nfailed: " + json.dumps(raw["failed"])
+        return _ok(msg, raw=raw)
+
+    reg.register(Tool(
+        "delete_object",
+        "Delete objects from the document. Refuses by default if anything else "
+        "depends on them (deleting a sketch under a pad breaks the pad) and "
+        "tells you what the dependents are; pass cascade=true to remove those "
+        "too. This is how you undo a mis-built feature.",
+        {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "names": {"type": "array", "items": {"type": "string"}},
+                "cascade": {
+                    "type": "boolean",
+                    "description": "Also delete every dependent object. Destructive.",
+                },
+            },
+        },
+        delete_object,
+        mutating=True,
+        destructive=True,
+        doc_mutating=True,
+    ))
+
+    # ---- stock parts ----------------------------------------------------- #
+    def list_library_parts(args):
+        raw = bridge.list_library_parts(args.get("query"), int(args.get("limit") or 60))
+        if not raw.get("roots"):
+            return _ok(raw.get("hint", "no parts library configured"), raw=raw)
+        parts = raw.get("parts", [])
+        if not parts:
+            return _ok("no library part matches %r" % (args.get("query") or ""), raw=raw)
+        head = "%d match%s%s:" % (raw["count"], "" if raw["count"] == 1 else "es",
+                                  " (truncated)" if raw.get("truncated") else "")
+        return _ok(head + "\n" + "\n".join("  " + p["path"] for p in parts), raw=raw)
+
+    reg.register(Tool(
+        "list_library_parts",
+        "Search the stock parts library (fasteners, bearings, profiles). Pass a "
+        "query like 'M6' or 'bearing' to narrow it. Prefer a real library part "
+        "over modelling a standard component from remembered dimensions.",
+        {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Substring filter, e.g. 'M6' or 'hex'"},
+                "limit": {"type": "integer"},
+            },
+        },
+        list_library_parts,
+    ))
+
+    def insert_library_part(args):
+        raw = bridge.insert_library_part(args["path"], args.get("label"))
+        return _ok("inserted %s as %s" % (args["path"], raw.get("label")), raw=raw)
+
+    reg.register(Tool(
+        "insert_library_part",
+        "Insert a stock part into the active document using the exact 'path' "
+        "returned by list_library_parts.",
+        {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Relative path from list_library_parts"},
+                "label": {"type": "string"},
+            },
+            "required": ["path"],
+        },
+        insert_library_part,
+        mutating=True,
+        doc_mutating=True,
     ))
 
     return reg

@@ -112,6 +112,34 @@ class BridgeClient:
     def list_objects(self) -> dict:
         return self._call(Capability.LIST_OBJECTS)
 
+    def list_documents(self) -> dict:
+        return self._call(Capability.LIST_DOCUMENTS)
+
+    def new_document(self, label: Optional[str] = None) -> dict:
+        return self._call(Capability.NEW_DOCUMENT, {"label": label})
+
+    def open_document(self, path: str) -> dict:
+        return self._call(Capability.OPEN_DOCUMENT, {"path": path})
+
+    def activate_document(self, name: str) -> dict:
+        return self._call(Capability.ACTIVATE_DOCUMENT, {"name": name})
+
+    def reload_document(self, name: Optional[str] = None) -> dict:
+        return self._call(Capability.RELOAD_DOCUMENT, {"name": name})
+
+    def delete_object(self, names: list, cascade: bool = False) -> dict:
+        return self._call(Capability.DELETE_OBJECT,
+                          {"names": names, "cascade": cascade})
+
+    def list_library_parts(self, query: Optional[str] = None,
+                           limit: int = 200) -> dict:
+        return self._call(Capability.LIST_LIBRARY_PARTS,
+                          {"query": query, "limit": limit})
+
+    def insert_library_part(self, path: str, label: Optional[str] = None) -> dict:
+        return self._call(Capability.INSERT_LIBRARY_PART,
+                          {"path": path, "label": label})
+
     def get_object_parameters(self, name: str) -> dict:
         return self._call(Capability.GET_OBJECT_PARAMETERS, {"name": name})
 
