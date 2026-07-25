@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="48x48" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>A verified data factory for CAD — OrionFlow</title>
+<meta name="description" content="Why we manufacture our own text-to-CAD training data instead of scraping it, why we build it in FreeCAD, and how every part is proven correct before it earns a place in the corpus." />
+<script>(function(){try{var t=localStorage.getItem('of-theme')||(window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="research.css" />
+</head>
+<body>
+<header class="rhead">
+  <div class="rhead__in">
+    <a class="brand" href="../index.html#top" aria-label="OrionFlow home">
+      <svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="6" cy="19" r="2.6" fill="currentColor"/><circle cx="20" cy="13" r="2.6" fill="currentColor"/>
+        <circle cx="13" cy="7" r="3.2" fill="#24468F"/>
+      </svg>
+      <span class="wm">OrionFlow</span>
+    </a>
+    <div class="rhead__r">
+      <a class="hidesm" href="index.html">Research</a>
+      <a class="hidesm" href="../index.html#start">Try it</a>
+      <button class="theme-btn" id="theme" type="button" aria-label="Toggle dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+<article>
+  <div class="art rwrap">
+    <span class="eyebrow">Research · 2026</span>
+    <h1>A verified data factory for CAD</h1>
+    <p class="art__lead">A text-to-CAD model is only as good as the data it learns from. So we stopped looking for CAD data and started manufacturing it — and we refuse to keep a single part we haven't proven correct.</p>
+    <div class="art__meta"><span>OrionFlow Research</span><span class="sep"></span><span>8 min read</span></div>
+  </div>
+
+  <div class="prose rwrap">
+    <p>The hard part of text-to-CAD is not the model. It's the data. There is very little clean, parametric CAD in the open, and most of what exists is dead geometry — meshes and STEP files with the design intent already stripped out. You can train a model to imitate the <em>surface</em> of a part from that. You cannot train it to reproduce the <em>reasoning</em> that built the part, because the reasoning was thrown away before the file was ever saved.</p>
+
+    <p>So we took the opposite position. Instead of harvesting whatever CAD we can find and hoping it teaches intent, we generate CAD we fully control and verify every piece of it before it earns a place in the corpus. A data factory, not a scraper. This note is about how we think about that factory — why it exists, why it runs on FreeCAD, and what "verified" actually buys us.</p>
+
+    <h2>What we want the model to learn</h2>
+    <p>We don't want a model that emits a shape. We want a model that reasons the way an engineer does: choose datums, express every dimension as a relationship, predict what the finished part should measure, and then check its own work. If that's the behaviour we want out, that's the behaviour the data has to carry in — the answer alone isn't enough.</p>
+
+    <p>So every record is built from a <strong>Blueprint</strong>: a part described entirely as expressions over named variables, with no magic numbers anywhere. A wall thickness is <code>(od - id) / 2</code>, never <code>3.0</code>. The design intent lives in the relationships between dimensions, and those relationships are exactly what we want the weights to absorb.</p>
+
+    <div class="callout">
+      <span class="k">Why no magic numbers</span>
+      <p>A constant teaches a model to memorise one part. A relationship teaches it to design a family of them. Freezing every dimension as an expression is what turns a dataset of shapes into a dataset of reasoning.</p>
+    </div>
+
+    <h2>Why we build it in FreeCAD</h2>
+    <p>To manufacture data at scale, we needed a CAD engine that is five things at once: <strong>open and scriptable</strong> end to end, able to run <strong>headless</strong> across many workers, <strong>deterministic</strong>, backed by a <strong>real B-rep kernel</strong>, and <strong>free to run</strong> tens of thousands of times. Only one option is all five, and it's FreeCAD.</p>
+
+    <p>The alternatives each fail on at least one axis:</p>
+    <ul>
+      <li><strong>Commercial and cloud CAD</strong> (Onshape and friends) have excellent kernels, but they're API-metered, license-gated, and cloud-bound. You can't cheaply build a solid a million times, and you can't ship the toolchain alongside the dataset so others can re-verify it.</li>
+      <li><strong>Code-CAD libraries</strong> like build123d are superb for code-native parts, and we compile to build123d as a second backend — but a library is not a full parametric <em>document</em>. It has no sketch-constraint history, no native feature tree, none of the editable structure an engineer actually manipulates.</li>
+    </ul>
+
+    <p>FreeCAD gives us the OpenCASCADE kernel for free, a scriptable headless process we can fan out across workers, and a native <code>PartDesign</code> history with real sketches, constraints, and feature order. Crucially, it also gives us the <em>same failure modes a real engineer hits</em> — boolean failures, self-intersections, walls too thin for the kernel to resolve. Those failures aren't noise to be filtered out. They're some of the most valuable signal we have.</p>
+
+    <div class="callout">
+      <span class="k">FreeCAD is a backend, not the source of truth</span>
+      <p>Our intermediate representation is kernel-independent — a <a href="feature-graph-ir.html">FeatureGraph</a> that compiles to FreeCAD and build123d alike. FreeCAD is the forge where we build and verify at scale, not the format we're locked into.</p>
+    </div>
+
+    <h2>How the factory works</h2>
+    <p>The loop is deliberately simple, and it runs the same way for every part: <strong>Blueprint → build → verify → keep or repair</strong>.</p>
+
+    <p>The build step turns the frozen Blueprint into a solid in FreeCAD. The verify step is where the discipline lives — a part is admitted only if it passes its own frozen assertions, checked at three tiers:</p>
+    <ul>
+      <li><strong>Closed-form exact</strong> — volume and extents matched to the governing expression to within one part in a million.</li>
+      <li><strong>Mesh-converged</strong> — quantities that have no closed form, checked to a tight tolerance <em>with demonstrated convergence</em>, so the number is real and not an artefact of a coarse mesh.</li>
+      <li><strong>Measured-bounded</strong> — properties we can bound but not solve exactly, held inside a proven envelope.</li>
+    </ul>
+
+    <p>When a part fails, we don't throw it away. We capture the whole episode — failure, diagnosis, fix, and re-verification — as a <strong>repair record</strong>. A model trained only on things that worked never learns to recover; a model trained on repairs learns to debug its own geometry.</p>
+
+    <p>Diversity is enforced by construction, too. Each part gets a topology signature, and a per-signature cap stops the factory from stamping out twenty-five thousand near-identical plates. A supervisor relaunches the run with fresh seeds to keep exploring the long tail of shapes rather than saturating the easy ones. The result is a Blueprint that reads less like a script and more like a specification with its own acceptance tests:</p>
+
+    <pre><code>PARAM od, id, t
+DERIVE wall = (od - id) / 2      # intent, not a constant
+DERIVE V    = pi*(od/2)**2*t - pi*(id/2)**2*t
+
+BUILD  tube from od, id, t
+ASSERT wall  > min_wall          # precondition, tier 1
+ASSERT volume == V   rel 1e-6    # closed-form, exact
+ASSERT extent_z == t rel 1e-6    # measured vs expression</code></pre>
+
+    <p>Only if the built solid satisfies every assertion does the record — reasoning and all — enter the corpus.</p>
+
+    <h2>What we have so far</h2>
+    <p>Running that loop gives us a corpus where every row is either provably correct, or a provably-correct fix of something that wasn't:</p>
+
+    <pre><code>CORPUS  corpus_v3_scale.db  (SQLite, source of truth)
+        42,723  verified records
+        25,000  clean synthetic parts
+         3,126  distinct verified topologies
+           700  real-CAD topologies preserved
+        ~17,000 repair records (failure -> fix -> re-verified)
+
+TRAIN   rl_corpus_v3_scale.jsonl
+        85,342  packed rows
+                - reasoning traces (plan + derivation + check)
+                - stepwise sequences with per-assertion reward
+                - preference pairs (verified vs. faulted)
+                - repair pairs (natural failures weighted 3x)
+
+        frozen, checksummed, and backed up off-machine</code></pre>
+
+    <p>It's not a large dataset by web-scraping standards, and it isn't meant to be. Every one of those rows was built, measured, and checked against its own definition of correct. That's the trade we're making: not the most CAD we can gather, but the most CAD we can <em>trust</em>.</p>
+
+    <h2>What's next</h2>
+    <p>The factory works and the corpus is frozen. The next step is the reason we built any of it — <strong>fine-tuning a model on this data</strong>, and then closing the loop: feeding the model's own failures back through the same verify-and-repair machinery, so the factory grows exactly where the model is weakest.</p>
+
+    <p>That's the subject of the next note in this series. We'll cover the training setup, what the verified data does to a model's behaviour, and the first results — once the model is trained.</p>
+
+    <blockquote>To be continued — the fine-tuned model and its results will be added here as they land.</blockquote>
+
+    <hr />
+    <p style="color:var(--slate);font-size:16px;">Related: <a href="feature-graph-ir.html">A kernel-independent IR for editable CAD →</a></p>
+    <a class="backlink" href="index.html">← All research</a>
+  </div>
+</article>
+</main>
+
+<footer class="rfoot">
+  <div class="rfoot__in">
+    <a class="brand" href="../index.html#top" aria-label="OrionFlow home">
+      <svg width="22" height="22" viewBox="0 0 26 26" aria-hidden="true">
+        <line x1="6" y1="19" x2="13" y2="7" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="13" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="6" cy="19" r="2.6" fill="currentColor"/><circle cx="20" cy="13" r="2.6" fill="currentColor"/>
+        <circle cx="13" cy="7" r="3.2" fill="#24468F"/>
+      </svg>
+      <span class="wm">OrionFlow</span>
+    </a>
+    <span>© 2026 OrionFlow · AI for mechanical engineers</span>
+  </div>
+</footer>
+<script src="theme.js"></script>
+</body>
+</html>
