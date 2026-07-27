@@ -1,0 +1,25 @@
+🦥 Unsloth: Will patch your computer to enable 2x faster free finetuning.
+🦥 Unsloth Zoo will now patch everything to make training faster!
+300 prompts from sft_v2/test.jsonl
+loading Qwen/Qwen3-32B + adapter runs/orionflow-32b-v2
+==((====))==  Unsloth 2026.7.5: Fast Qwen3 patching. Transformers: 4.57.6.
+   \\   /|    AMD Instinct MI300X VF. Num GPUs = 1. Max memory: 191.688 GB. Platform: Linux.
+O^O/ \_/ \    Torch: 2.11.0+rocm7.2. ROCm Toolkit: 7.2.26015. Triton: 3.7.1
+\        /    Bfloat16 = TRUE. FA [Xformers = None. FA2 = False]
+ "-____-"     Free license: http://github.com/unslothai/unsloth
+Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+Loading checkpoint shards:   0%|          | 0/14 [00:00<?, ?it/s]Loading checkpoint shards:   7%|▋         | 1/14 [00:01<00:22,  1.77s/it]Loading checkpoint shards:  14%|█▍        | 2/14 [00:03<00:20,  1.74s/it]Loading checkpoint shards:  21%|██▏       | 3/14 [00:05<00:19,  1.74s/it]Loading checkpoint shards:  29%|██▊       | 4/14 [00:07<00:17,  1.78s/it]Loading checkpoint shards:  36%|███▌      | 5/14 [00:08<00:15,  1.76s/it]Loading checkpoint shards:  43%|████▎     | 6/14 [00:10<00:14,  1.75s/it]Loading checkpoint shards:  50%|█████     | 7/14 [00:12<00:12,  1.73s/it]Loading checkpoint shards:  57%|█████▋    | 8/14 [00:13<00:10,  1.73s/it]Loading checkpoint shards:  64%|██████▍   | 9/14 [00:15<00:08,  1.73s/it]Loading checkpoint shards:  71%|███████▏  | 10/14 [00:17<00:06,  1.72s/it]Loading checkpoint shards:  79%|███████▊  | 11/14 [00:19<00:05,  1.72s/it]Loading checkpoint shards:  86%|████████▌ | 12/14 [00:20<00:03,  1.71s/it]Loading checkpoint shards:  93%|█████████▎| 13/14 [00:22<00:01,  1.71s/it]Loading checkpoint shards: 100%|██████████| 14/14 [00:23<00:00,  1.41s/it]Loading checkpoint shards: 100%|██████████| 14/14 [00:23<00:00,  1.66s/it]
+  24/300  362s  (15.1s/sample)
+  48/300  718s  (15.0s/sample)
+  72/300  1189s  (16.5s/sample)
+  96/300  1562s  (16.3s/sample)
+  120/300  1959s  (16.3s/sample)
+  144/300  2411s  (16.7s/sample)
+  168/300  2734s  (16.3s/sample)
+  192/300  3093s  (16.1s/sample)
+  216/300  3555s  (16.5s/sample)
+  240/300  3930s  (16.4s/sample)
+  264/300  4330s  (16.4s/sample)
+  288/300  4683s  (16.3s/sample)
+  300/300  4925s  (16.4s/sample)
+wrote v2_completions.jsonl (300 completions in 4925s)

@@ -1,0 +1,4 @@
+latest: Pulling from rocm/vllm
+Digest: sha256:e7f02dd2ce3824959658bc0391296f6158638e3ebce164f6c019c4eca8150ec7
+Status: Image is up to date for rocm/vllm:latest
+docker.io/rocm/vllm:latest

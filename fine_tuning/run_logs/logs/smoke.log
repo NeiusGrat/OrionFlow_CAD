@@ -1,0 +1,98 @@
+🦥 Unsloth: Will patch your computer to enable 2x faster free finetuning.
+🦥 Unsloth Zoo will now patch everything to make training faster!
+torch 2.11.0+rocm7.2 | HIP 7.2.26015 | GPUs 1 | backend unsloth
+train 200 | val 16
+==((====))==  Unsloth 2026.7.5: Fast Qwen3 patching. Transformers: 4.57.6.
+   \\   /|    AMD Instinct MI300X VF. Num GPUs = 1. Max memory: 191.688 GB. Platform: Linux.
+O^O/ \_/ \    Torch: 2.11.0+rocm7.2. ROCm Toolkit: 7.2.26015. Triton: 3.7.1
+\        /    Bfloat16 = TRUE. FA [Xformers = None. FA2 = False]
+ "-____-"     Free license: http://github.com/unslothai/unsloth
+Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+Loading checkpoint shards:   0%|          | 0/14 [00:00<?, ?it/s]Loading checkpoint shards:   7%|▋         | 1/14 [00:01<00:21,  1.67s/it]Loading checkpoint shards:  14%|█▍        | 2/14 [00:03<00:20,  1.67s/it]Loading checkpoint shards:  21%|██▏       | 3/14 [00:04<00:18,  1.66s/it]Loading checkpoint shards:  29%|██▊       | 4/14 [00:06<00:16,  1.66s/it]Loading checkpoint shards:  36%|███▌      | 5/14 [00:08<00:14,  1.66s/it]Loading checkpoint shards:  43%|████▎     | 6/14 [00:09<00:13,  1.66s/it]Loading checkpoint shards:  50%|█████     | 7/14 [00:11<00:11,  1.65s/it]Loading checkpoint shards:  57%|█████▋    | 8/14 [00:13<00:09,  1.65s/it]Loading checkpoint shards:  64%|██████▍   | 9/14 [00:14<00:08,  1.64s/it]Loading checkpoint shards:  71%|███████▏  | 10/14 [00:16<00:06,  1.66s/it]Loading checkpoint shards:  79%|███████▊  | 11/14 [00:18<00:04,  1.66s/it]Loading checkpoint shards:  86%|████████▌ | 12/14 [00:19<00:03,  1.65s/it]Loading checkpoint shards:  93%|█████████▎| 13/14 [00:21<00:01,  1.65s/it]Loading checkpoint shards: 100%|██████████| 14/14 [00:22<00:00,  1.37s/it]Loading checkpoint shards: 100%|██████████| 14/14 [00:22<00:00,  1.59s/it]
+Unsloth 2026.7.5 patched 64 layers with 64 QKV layers, 64 O layers and 64 MLP layers.
+Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):   0%|          | 0/200 [00:00<?, ? examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):   4%|▍         | 9/200 [00:00<00:19,  9.79 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  14%|█▎        | 27/200 [00:01<00:05, 31.90 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  22%|██▎       | 45/200 [00:01<00:02, 54.50 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  32%|███▏      | 63/200 [00:01<00:01, 75.30 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  40%|████      | 80/200 [00:01<00:01, 93.88 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  48%|████▊     | 96/200 [00:01<00:00, 106.51 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  56%|█████▌    | 112/200 [00:01<00:00, 114.78 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  64%|██████▍   | 128/200 [00:01<00:00, 123.06 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  72%|███████▏  | 144/200 [00:01<00:00, 130.26 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  84%|████████▍ | 168/200 [00:01<00:00, 141.76 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24):  92%|█████████▏| 184/200 [00:02<00:00, 145.64 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=24): 100%|██████████| 200/200 [00:02<00:00, 85.73 examples/s] 
+num_proc must be <= 16. Reducing num_proc to 16 for dataset of size 16.
+[datasets.arrow_dataset|WARNING]num_proc must be <= 16. Reducing num_proc to 16 for dataset of size 16.
+Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16):   0%|          | 0/16 [00:00<?, ? examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16):   6%|▋         | 1/16 [00:00<00:10,  1.48 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16):  19%|█▉        | 3/16 [00:00<00:02,  4.68 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16):  31%|███▏      | 5/16 [00:00<00:01,  7.71 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16):  50%|█████     | 8/16 [00:01<00:00, 11.40 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16):  62%|██████▎   | 10/16 [00:01<00:00, 13.14 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16):  81%|████████▏ | 13/16 [00:01<00:00, 15.73 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16): 100%|██████████| 16/16 [00:01<00:00, 17.37 examples/s]Unsloth: Tokenizing ["prompt"+"completion"] (num_proc=16): 100%|██████████| 16/16 [00:01<00:00, 10.12 examples/s]
+==((====))==  Unsloth - 2x faster free finetuning | Num GPUs used = 1
+   \\   /|    Num examples = 200 | Num Epochs = 1 | Total steps = 13
+O^O/ \_/ \    Batch size per device = 4 | Gradient accumulation steps = 4
+\        /    Data Parallel GPUs = 1 | Total batch size (4 x 4 x 1) = 16
+ "-____-"     Trainable parameters = 536,870,912 of 33,298,994,176 (1.61% trained)
+🦥 Unsloth: Padding-free auto-enabled, enabling faster training.
+mask check: 2412/2754 tokens supervised (88% — expect the assistant turn only)
+first supervised tokens: '<think>\nA = (span*w + stem*w)   — T: top bar (span x w, y in [0,w]) plus the stem hanging below it (w x stem, y'
+  0%|          | 0/13 [00:00<?, ?it/s]  8%|▊         | 1/13 [01:09<13:59, 69.95s/it] 15%|█▌        | 2/13 [01:39<08:27, 46.17s/it] 23%|██▎       | 3/13 [01:57<05:34, 33.45s/it]Unsloth: Will smartly offload gradients to save VRAM!
+Unsloth: Double buffering enabled (parallel H2D + compute) for backward pass.
+Traceback (most recent call last):
+  File "/root/orionflow/train_orionflow.py", line 233, in <module>
+    main()
+    ~~~~^^
+  File "/root/orionflow/train_orionflow.py", line 226, in main
+    trainer.train(resume_from_checkpoint=args.resume)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/unsloth/trainer.py", line 844, in _train_with_reset
+    return _orig_train(*train_args, **train_kwargs)
+  File "/root/orionflow/unsloth_compiled_cache/UnslothSFTTrainer.py", line 101, in wrapper
+    output = f(self, *args, **kwargs)
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/transformers/trainer.py", line 2325, in train
+    return inner_training_loop(
+        args=args,
+    ...<2 lines>...
+        ignore_keys_for_eval=ignore_keys_for_eval,
+    )
+  File "<string>", line 334, in _fast_inner_training_loop
+  File "/root/orionflow/unsloth_compiled_cache/UnslothSFTTrainer.py", line 1490, in training_step
+    return super().training_step(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "<string>", line 91, in _unsloth_training_step
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/accelerate/accelerator.py", line 2850, in backward
+    loss.backward(**kwargs)
+    ~~~~~~~~~~~~~^^^^^^^^^^
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/torch/_tensor.py", line 631, in backward
+    torch.autograd.backward(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        self, gradient, retain_graph, create_graph, inputs=inputs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/torch/autograd/__init__.py", line 381, in backward
+    _engine_run_backward(
+    ~~~~~~~~~~~~~~~~~~~~^
+        tensors,
+        ^^^^^^^^
+    ...<5 lines>...
+        accumulate_grad=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/torch/autograd/graph.py", line 869, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        t_outputs, *args, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )  # Calls into the C++ engine to run the backward pass
+    ^
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/torch/autograd/function.py", line 317, in apply
+    return user_fn(self, *args)
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/unsloth_zoo/gradient_checkpointing.py", line 808, in backward
+    torch.autograd.backward(outputs_with_grad, args_with_grad)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/torch/autograd/__init__.py", line 381, in backward
+    _engine_run_backward(
+    ~~~~~~~~~~~~~~~~~~~~^
+        tensors,
+        ^^^^^^^^
+    ...<5 lines>...
+        accumulate_grad=True,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/root/.unsloth/studio/unsloth_studio/lib/python3.13/site-packages/torch/autograd/graph.py", line 869, in _engine_run_backward
+    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        t_outputs, *args, **kwargs
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )  # Calls into the C++ engine to run the backward pass
+    ^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 27.18 GiB. GPU 0 has a total capacity of 191.69 GiB of which 15.64 GiB is free. Of the allocated memory 151.02 GiB is allocated by PyTorch, and 23.18 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)

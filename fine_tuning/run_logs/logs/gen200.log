@@ -1,0 +1,24 @@
+🦥 Unsloth: Will patch your computer to enable 2x faster free finetuning.
+🦥 Unsloth Zoo will now patch everything to make training faster!
+96 prompts from sft_v1/test.jsonl
+loading Qwen/Qwen3-32B + adapter runs/orionflow-32b/checkpoint-200
+==((====))==  Unsloth 2026.7.5: Fast Qwen3 patching. Transformers: 4.57.6.
+   \\   /|    AMD Instinct MI300X VF. Num GPUs = 1. Max memory: 191.688 GB. Platform: Linux.
+O^O/ \_/ \    Torch: 2.11.0+rocm7.2. ROCm Toolkit: 7.2.26015. Triton: 3.7.1
+\        /    Bfloat16 = TRUE. FA [Xformers = None. FA2 = False]
+ "-____-"     Free license: http://github.com/unslothai/unsloth
+Unsloth: Fast downloading is enabled - ignore downloading bars which are red colored!
+Loading checkpoint shards:   0%|          | 0/14 [00:00<?, ?it/s]Loading checkpoint shards:   7%|▋         | 1/14 [00:03<00:41,  3.16s/it]Loading checkpoint shards:  14%|█▍        | 2/14 [00:05<00:29,  2.43s/it]Loading checkpoint shards:  21%|██▏       | 3/14 [00:06<00:22,  2.08s/it]Loading checkpoint shards:  29%|██▊       | 4/14 [00:08<00:19,  1.91s/it]Loading checkpoint shards:  36%|███▌      | 5/14 [00:10<00:16,  1.82s/it]Loading checkpoint shards:  43%|████▎     | 6/14 [00:11<00:14,  1.77s/it]Loading checkpoint shards:  50%|█████     | 7/14 [00:13<00:12,  1.73s/it]Loading checkpoint shards:  57%|█████▋    | 8/14 [00:15<00:10,  1.71s/it]Loading checkpoint shards:  64%|██████▍   | 9/14 [00:16<00:08,  1.70s/it]Loading checkpoint shards:  71%|███████▏  | 10/14 [00:18<00:06,  1.69s/it]Loading checkpoint shards:  79%|███████▊  | 11/14 [00:20<00:05,  1.69s/it]Loading checkpoint shards:  86%|████████▌ | 12/14 [00:21<00:03,  1.68s/it]Loading checkpoint shards:  93%|█████████▎| 13/14 [00:23<00:01,  1.68s/it]Loading checkpoint shards: 100%|██████████| 14/14 [00:24<00:00,  1.39s/it]Loading checkpoint shards: 100%|██████████| 14/14 [00:24<00:00,  1.72s/it]
+  8/96  166s  (20.7s/sample)
+  16/96  339s  (21.2s/sample)
+  24/96  499s  (20.8s/sample)
+  32/96  675s  (21.1s/sample)
+  40/96  851s  (21.3s/sample)
+  48/96  1016s  (21.2s/sample)
+  56/96  1239s  (22.1s/sample)
+  64/96  1410s  (22.0s/sample)
+  72/96  1556s  (21.6s/sample)
+  80/96  1744s  (21.8s/sample)
+  88/96  1926s  (21.9s/sample)
+  96/96  2099s  (21.9s/sample)
+wrote ckpt200_completions.jsonl (96 completions in 2099s)
