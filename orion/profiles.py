@@ -248,7 +248,111 @@ def arc_spine(radius, sweep_deg, cx=0.0, cy=0.0):
             "area": 0.0, "centroid": (cx, cy), "loops": 0}
 
 
+def involute_gear(module, teeth, bore_r, pressure_angle=20.0,
+                  addendum_coef=1.0, dedendum_coef=1.25, flank_pts=8,
+                  cx=0.0, cy=0.0):
+    """Standard involute spur-gear profile, minus a central bore.
+
+    Geometry follows ISO 53 / DIN 867 basic rack proportions::
+
+        pitch radius     rp = module * teeth / 2
+        base radius      rb = rp * cos(alpha)
+        tip radius       ra = rp + addendum_coef * module
+        root radius      rf = rp - dedendum_coef * module
+
+    The flank is the involute of the base circle. At radius r the pressure
+    angle is ``beta = acos(rb / r)`` and the involute function is
+    ``inv(beta) = tan(beta) - beta``; the angular half-thickness of a tooth is
+
+        psi(r) = pi / (2 * teeth) + inv(alpha) - inv(beta_r)
+
+    which is the standard result and is what makes the flanks conjugate.
+
+    **Why the area is exact rather than approximate.** The flank is emitted as
+    a polyline, and that polyline *is* the geometry FreeCAD builds — the sketch
+    contains exactly these segments. Shoelace over those vertices is therefore
+    the exact area of the solid that gets made, not a discretisation of some
+    other ideal shape. Raising ``flank_pts`` makes the gear a better involute;
+    it does not make the verification more correct, because prediction and
+    geometry are the same polygon by construction.
+    """
+    _require(module > 0, f"module must be > 0, got {module}")
+    # Blueprint.resolve() evaluates every argument to a float, so counts arrive
+    # as 20.0 / 5.0 and must be coerced before they index anything.
+    teeth = int(round(teeth))
+    flank_pts = max(3, int(round(flank_pts)))
+    _require(teeth >= 6, f"teeth must be >= 6, got {teeth}")
+    _require(0 < pressure_angle < 45, "pressure_angle out of range")
+    alpha = math.radians(pressure_angle)
+    rp = module * teeth / 2.0
+    rb = rp * math.cos(alpha)
+    ra = rp + addendum_coef * module
+    rf = rp - dedendum_coef * module
+    _require(rf > bore_r > 0,
+             f"bore_r must satisfy 0 < bore_r < root radius {rf:.3f}")
+    _require(ra > rb, "tip radius must exceed base radius")
+
+    def inv(b: float) -> float:
+        return math.tan(b) - b
+
+    inv_a = inv(alpha)
+    half = math.pi / (2.0 * teeth)          # angular half-thickness at pitch
+
+    def psi(r: float) -> float:
+        """Angular half-thickness of the tooth at radius r."""
+        b = math.acos(max(-1.0, min(1.0, rb / r)))
+        return half + inv_a - inv(b)
+
+    # Flank sample radii: the involute exists only at or above the base circle.
+    r_start = max(rb, rf)
+    radii = [r_start + (ra - r_start) * i / (flank_pts - 1)
+             for i in range(flank_pts)]
+
+    pts: list[tuple[float, float]] = []
+    pitch = 2.0 * math.pi / teeth
+    for k in range(teeth):
+        centre = k * pitch                  # tooth centreline angle
+        # Below the base circle there is no involute; a radial flank down to
+        # the root is the conventional substitute and is what gets cut.
+        if rf < rb:
+            a0 = centre - psi(rb)
+            pts.append((cx + rf * math.cos(a0), cy + rf * math.sin(a0)))
+        # rising flank (root -> tip) on the -psi side
+        for r in radii:
+            a = centre - psi(r)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+        # Tip land: without a point on the tooth centreline the tip is a chord
+        # between the two flank ends, so the polygon's outer radius falls short
+        # of ra everywhere except at those ends — which both understates the
+        # tooth and breaks any tip-diameter assertion.
+        pts.append((cx + ra * math.cos(centre), cy + ra * math.sin(centre)))
+        # falling flank (tip -> root) on the +psi side
+        for r in reversed(radii):
+            a = centre + psi(r)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+        if rf < rb:
+            a1 = centre + psi(rb)
+            pts.append((cx + rf * math.cos(a1), cy + rf * math.sin(a1)))
+        # root land across to the next tooth
+        nxt = (k + 1) * pitch
+        a_end = nxt - (psi(rb) if rf < rb else psi(r_start))
+        a_beg = centre + (psi(rb) if rf < rb else psi(r_start))
+        for j in range(1, 3):
+            a = a_beg + (a_end - a_beg) * j / 3.0
+            pts.append((cx + rf * math.cos(a), cy + rf * math.sin(a)))
+
+    outer = polyline(pts)
+    geo = list(outer["geometry"])
+    area = outer["area"] - math.pi * bore_r * bore_r
+    _require(area > 0, "bore consumed the gear body")
+    geo.append(_circle(len(geo), cx, cy, bore_r))
+    # The gear polygon and the bore are both centred on (cx, cy), so the
+    # centroid is unchanged by the subtraction.
+    return {"geometry": geo, "area": area, "centroid": (cx, cy), "loops": 2}
+
+
 BUILDERS = {
+    "involute_gear": involute_gear,
     "circle": circle,
     "arc_spine": arc_spine,
     "poly_with_holes": poly_with_holes,

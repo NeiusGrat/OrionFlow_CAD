@@ -26,6 +26,13 @@ from .blueprint import Blueprint, perturbed
 DEFAULT_RECORDS = "data/forge/records"
 BUILD_TIMEOUT_S = 90   # per-part wall clock for build+measure
 
+# Tier-2 verification re-tessellates the body at several densities to
+# demonstrate convergence, so it costs a multiple of a plain build (a swept
+# manifold_runner is ~11 s alone, and several times that under a loaded box).
+# Sharing the 90 s budget starves it and reports "kernel did not converge" for
+# what is really a starved worker — a false failure that reads as a bad part.
+MESH_BUILD_TIMEOUT_S = 300
+
 
 def _freecad_python() -> str:
     env = os.environ.get("ORION_FREECAD_PYTHON")
@@ -38,7 +45,8 @@ def _freecad_python() -> str:
 
 
 def build_and_measure(graph: dict, workdir: str, tag: str,
-                      mesh_body: bool = False) -> tuple[dict, dict]:
+                      mesh_body: bool = False,
+                      timeout_s: int | None = None) -> tuple[dict, dict]:
     """Compile with the production reconstruct.py and measure, in ONE FreeCAD
     process (build_measure_fc.py) — interpreter startup dominates cycle time,
     so this halves the loop cost. Returns (build_log, measurement).
@@ -70,15 +78,15 @@ def build_and_measure(graph: dict, workdir: str, tag: str,
     # cleanly.
     opath = os.path.join(workdir, f"{tag}.stdout.txt")
     epath = os.path.join(workdir, f"{tag}.stderr.txt")
+    budget = timeout_s or (MESH_BUILD_TIMEOUT_S if mesh_body
+                           else BUILD_TIMEOUT_S)
     try:
         with open(opath, "w", encoding="utf-8") as _of, \
                 open(epath, "w", encoding="utf-8") as _ef:
-            r1 = subprocess.run(cmd, stdout=_of, stderr=_ef,
-                                timeout=BUILD_TIMEOUT_S)
+            r1 = subprocess.run(cmd, stdout=_of, stderr=_ef, timeout=budget)
     except subprocess.TimeoutExpired:
-        return ({"stdout": "", "stderr": "TIMEOUT after "
-                 f"{BUILD_TIMEOUT_S}s — kernel did not converge",
-                 "returncode": -9, "timeout": True}, {})
+        return ({"stdout": "", "stderr": f"TIMEOUT after {budget}s — kernel "
+                 "did not converge", "returncode": -9, "timeout": True}, {})
 
     def _tail(path: str, n: int = 4000) -> str:
         try:
@@ -95,8 +103,15 @@ def build_and_measure(graph: dict, workdir: str, tag: str,
     return build_log, measured
 
 
-def check_assertions(bp: Blueprint, measured: dict) -> list[dict]:
-    """Frozen assertions vs measurements. Every row carries its evidence."""
+def check_assertions(bp: Blueprint, measured: dict,
+                     analysis: Optional[dict] = None) -> list[dict]:
+    """Frozen assertions vs measurements. Every row carries its evidence.
+
+    ``analysis`` is the per-sketch exact area/centroid the profile builders
+    computed during :meth:`Blueprint.resolve`. It is required only by
+    ``body_volume_profile`` (see below) and is derived, never authored, so it
+    cannot smuggle a measurement into the frozen contract.
+    """
     rows = []
     feats = {f["name"]: f for f in measured.get("features", [])}
     for a in bp.resolve_assertions():
@@ -136,6 +151,37 @@ def check_assertions(bp: Blueprint, measured: dict) -> list[dict]:
                          "target": target, "measured": None, "passed": ok,
                          "why": None if ok else "precondition violated"})
             continue
+        elif kind == "body_volume_profile":
+            # Some outlines have no closed form in the expression language — an
+            # involute flank is the standard example. But the builder emits the
+            # exact area of the polygon that FreeCAD then builds, so area x
+            # extrusion length is the exact volume of the resulting solid, not
+            # an approximation of it. Refining the flank makes a better gear;
+            # it does not make this prediction more correct, because prediction
+            # and geometry are the same polygon by construction.
+            sk = (analysis or {}).get(a.get("sketch"))
+            length = a.get("length")
+            if sk is None or length is None:
+                rows.append({"id": a.get("id"), "kind": kind,
+                             "tier": a.get("tier"), "target": None,
+                             "measured": measured.get("body_volume"),
+                             "passed": False,
+                             "why": "no profile analysis for "
+                                    f"sketch {a.get('sketch')!r}"})
+                continue
+            target = sk["area"] * bp._num(length)
+            got = measured.get("body_volume")
+            row = {"id": a.get("id"), "kind": kind, "tier": a.get("tier"),
+                   "target": target, "measured": got,
+                   "profile_area": sk["area"], "builder": sk.get("builder")}
+            if got is None:
+                row.update(passed=False, why="no measurement")
+            else:
+                err = abs(got - target) / max(abs(target), 1e-12)
+                row.update(rel_err=err, passed=err <= tol)
+            rows.append(row)
+            continue
+
         elif kind == "body_mesh_converged":
             # Tier-2 numerical: the mesh-sampled body volume must CONVERGE to
             # OCC's across tessellation densities (monotone decrease, finest
@@ -208,7 +254,7 @@ def failed_preconditions(bp: Blueprint) -> list[dict]:
 
 
 def run_blueprint(bp: Blueprint, tag: str, workdir: str,
-                  force: bool = False) -> dict:
+                  force: bool = False, timeout_s: int | None = None) -> dict:
     """One full forge cycle. Returns the verdict record (not yet persisted).
 
     ``force=True`` bypasses precondition refusal and builds anyway — stress
@@ -229,8 +275,10 @@ def run_blueprint(bp: Blueprint, tag: str, workdir: str,
     mesh_body = any(a.get("kind") == "body_mesh_converged"
                     for a in bp.assertions)
     build_log, measured = build_and_measure(graph, workdir, tag,
-                                            mesh_body=mesh_body)
-    rows = check_assertions(bp, measured) if measured else []
+                                            mesh_body=mesh_body,
+                                            timeout_s=timeout_s)
+    rows = check_assertions(bp, measured,
+                            analysis=graph.get("_analysis")) if measured else []
     passed = bool(rows) and all(r["passed"] for r in rows) and not pre
     return {
         "tag": tag,
