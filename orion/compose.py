@@ -49,6 +49,18 @@ MAX_ATTACHMENTS = 3
 # --------------------------------------------------------------------------- #
 # attachment modules — each returns a dict fragment, or raises ValueError
 # when the land cannot host it. All volume deltas are exact Tier 1.
+#
+# Subtractive attachments cut ONE-SIDED, downward from the mount plane, with the
+# overshoot on the far side only ("thickness + 1"). They must not cut *above* the
+# plane: a mount guarantees ``thickness`` of solid BELOW the land and says
+# nothing about what sits above it, so an upward overshoot is outside the closed
+# form by construction. The old idiom cut 1 mm upward as well (SideType "Two
+# sides", Length2 "1") for boolean robustness. Where the land is exposed that
+# extra millimetre cuts air and costs nothing; where another feature rises off
+# the same plane it silently bites ``overlap_area * 1 mm`` out of that feature —
+# material no ``delta`` expression accounts for. Measured on pillow_block: 9 of
+# 26 parts mispredicted by 1e-5..4e-4 relative, exactly the overlap volume, while
+# the downward overshoot alone builds every one of them watertight and exact.
 # --------------------------------------------------------------------------- #
 def _att_bolt_boss(rng, i, mount, land_w, land_h):
     """Raised cylindrical boss with a concentric through-hole (its own bolt
@@ -70,8 +82,7 @@ def _att_bolt_boss(rng, i, mount, land_w, land_h):
             {"id": f"{p}_hole", "type": "Pocket",
              "rationale": "through-hole down the boss axis",
              "parameters": {"Length": f"{p}_bh + {mount['thickness']} + 2",
-                            "Type": "Length", "Length2": "2",
-                            "Type2": "Length", "SideType": "Two sides"}}],
+                            "Type": "Length"}}],
         "sketches": [
             {"id": f"s_{p}_boss", "plane": "XY", "z": mount["z"],
              "profile": {"builder": "circle",
@@ -87,6 +98,7 @@ def _att_bolt_boss(rng, i, mount, land_w, land_h):
         "delta": (f"(pi*{p}_br**2*{p}_bh"
                   f" - pi*{p}_hr**2*({p}_bh + {mount['thickness']}))"),
         "footprint": br,
+        "footprint_expr": f"{p}_br",
         "variables": v,
         "guards": [(f"{p}_ring", f"{p}_br - {p}_hr - 1.5")],
         "protrusion": f"{p}_bh",
@@ -116,6 +128,7 @@ def _att_locating_pin(rng, i, mount, land_w, land_h):
         "profile_deps": [(f"s_{p}_pin", f"{p}_pin")],
         "delta": f"pi*{p}_pr**2*{p}_ph",
         "footprint": pr,
+        "footprint_expr": f"{p}_pr",
         "variables": {f"{p}_pr": pr, f"{p}_ph": ph},
         "guards": [],
         "protrusion": f"{p}_ph",
@@ -143,6 +156,7 @@ def _att_thermal_relief(rng, i, mount, land_w, land_h):
         "profile_deps": [(f"s_{p}_relief", f"{p}_relief")],
         "delta": f"(-{p}_rl*{p}_rw*{p}_rd)",
         "footprint": math.hypot(rl / 2, rw / 2),
+        "footprint_expr": f"sqrt(({p}_rl/2)**2 + ({p}_rw/2)**2)",
         "variables": {f"{p}_rl": rl, f"{p}_rw": rw,
                       f"{p}_rd": None},   # depth needs thickness: set below
         "guards": [],
@@ -165,8 +179,7 @@ def _att_vent_slot(rng, i, mount, land_w, land_h):
              "rationale": "vent slot through the section for airflow / wire "
                           "pass-through",
              "parameters": {"Length": f"{mount['thickness']} + 1",
-                            "Type": "Length", "Length2": "1",
-                            "Type2": "Length", "SideType": "Two sides"}}],
+                            "Type": "Length"}}],
         "sketches": [
             {"id": f"s_{p}_vent", "plane": "XY", "z": mount["z"],
              "profile": {"builder": "slot",
@@ -176,6 +189,7 @@ def _att_vent_slot(rng, i, mount, land_w, land_h):
         "delta": (f"(-({p}_sl*2*{p}_sr + pi*{p}_sr**2)"
                   f"*{mount['thickness']})"),
         "footprint": sl / 2 + sr,
+        "footprint_expr": f"{p}_sl/2 + {p}_sr",
         "variables": {f"{p}_sl": sl, f"{p}_sr": sr},
         "guards": [],
         "seq": ("Sketch", "Pocket"),
@@ -193,8 +207,7 @@ def _att_counterbore(rng, i, mount, land_w, land_h):
             {"id": f"{p}_thru", "type": "Pocket",
              "rationale": "fastener clearance hole",
              "parameters": {"Length": f"{mount['thickness']} + 1",
-                            "Type": "Length", "Length2": "1",
-                            "Type2": "Length", "SideType": "Two sides"}},
+                            "Type": "Length"}},
             {"id": f"{p}_cb", "type": "Pocket",
              "rationale": "counterbore seats the cap head flush",
              "parameters": {"Length": f"{p}_cd", "Type": "Length"}}],
@@ -212,6 +225,7 @@ def _att_counterbore(rng, i, mount, land_w, land_h):
         "delta": (f"(-(pi*{p}_hr**2*{mount['thickness']}"
                   f" + pi*({p}_cr**2 - {p}_hr**2)*{p}_cd))"),
         "footprint": cr,
+        "footprint_expr": f"{p}_cr",
         "variables": {f"{p}_hr": hr, f"{p}_cr": cr, f"{p}_cd": None},
         "guards": [(f"{p}_cb_ring", f"{p}_cr - {p}_hr - 1")],
         "seq": ("Sketch", "Pocket", "Sketch", "Pocket"),
@@ -243,6 +257,7 @@ def _att_alignment_rib(rng, i, mount, land_w, land_h):
         "profile_deps": [(f"s_{p}_rib", f"{p}_rib")],
         "delta": f"({p}_rl*{p}_rt*{p}_rh)",
         "footprint": math.hypot(rl / 2, rt / 2),
+        "footprint_expr": f"sqrt(({p}_rl/2)**2 + ({p}_rt/2)**2)",
         "variables": {f"{p}_rl": rl, f"{p}_rt": rt, f"{p}_rh": rh},
         "guards": [],
         "protrusion": f"{p}_rh",
@@ -263,8 +278,7 @@ def _att_lightening(rng, i, mount, land_w, land_h):
              "rationale": "lightening hole: mass removal where the section "
                           "carries no load path",
              "parameters": {"Length": f"{mount['thickness']} + 1",
-                            "Type": "Length", "Length2": "1",
-                            "Type2": "Length", "SideType": "Two sides"}}],
+                            "Type": "Length"}}],
         "sketches": [
             {"id": f"s_{p}_light", "plane": "XY", "z": mount["z"],
              "profile": {"builder": "circle",
@@ -273,6 +287,7 @@ def _att_lightening(rng, i, mount, land_w, land_h):
         "profile_deps": [(f"s_{p}_light", f"{p}_light")],
         "delta": f"(-pi*{p}_lr**2*{mount['thickness']})",
         "footprint": lr,
+        "footprint_expr": f"{p}_lr",
         "variables": {f"{p}_lr": lr},
         "guards": [],
         "seq": ("Sketch", "Pocket"),
@@ -400,6 +415,27 @@ def compose(base_draft: dict, rng, n_attachments: int | None = None):
         for gid, gexpr in frag["guards"]:
             assertions.append({"id": gid, "kind": "precondition",
                                "tier": 1, "target": gexpr})
+        # Land containment as a FROZEN guard, not merely a sampling invariant.
+        # The placement loop above already keeps every generated attachment
+        # inside its land, so these guards never fire during generation — which
+        # is exactly the problem they fix. A constraint enforced only by the
+        # generator is invisible in the corpus: a model trained on it never sees
+        # the guard, never learns the constraint exists, and nothing refuses the
+        # blueprint when the model later chooses a centre that hangs the
+        # attachment off its land. The delta expressions assume the footprint
+        # lies within the declared free region; outside it the closed form is
+        # simply not a description of the solid, so the verifier must refuse
+        # rather than mispredict.
+        fp_expr = frag.get("footprint_expr")
+        if fp_expr:
+            for axis, half, centre in (
+                    ("x", f"({land['w']})/2", land.get("cx", "0")),
+                    ("y", f"({land['h']})/2", land.get("cy", "0"))):
+                assertions.append(
+                    {"id": f"{p}_in_land_{axis}", "kind": "precondition",
+                     "tier": 1,
+                     "target": f"{half} - ({fp_expr}) "
+                               f"- abs({p}_c{axis} - ({centre}))"})
         derivation.append(
             {"step": len(derivation) + 1,
              "eq": f"V += {frag['delta']}",

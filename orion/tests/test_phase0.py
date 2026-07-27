@@ -206,6 +206,48 @@ def test_checker_rejects_raw_sketch_geometry():
     assert any("profile builder" in p for p in problems)
 
 
+def test_checker_rejects_computed_assertion_target():
+    """A target is a CLAIM about what the kernel will measure. Arriving as a
+    bare number means the author evaluated it instead of deriving it, and the
+    proposition under test — that a closed form over the named variables
+    predicts the solid — is no longer being tested at all."""
+    bp = _cap_blueprint()
+    bp.assertions[0]["target"] = 6597.34   # what the expression evaluates to
+    problems = check_blueprint(bp)
+    assert any("bare numeric literal" in p and "vol.target" in p
+               for p in problems)
+    with pytest.raises(BlueprintError):
+        bp.freeze()
+
+
+def test_checker_rejects_targetless_assertion():
+    """Previously silent: no target -> resolve_assertions() emits no
+    target_value -> forge reported "no measurement", blaming the kernel for a
+    defect in the authored contract."""
+    bp = _cap_blueprint()
+    bp.assertions[0].pop("target")
+    problems = check_blueprint(bp)
+    assert any("none was authored" in p for p in problems)
+
+
+def test_checker_allows_structural_target():
+    """`solids == 1` is topology, not design intent; it must stay writable as
+    a plain 1 or the rule becomes noise."""
+    bp = _cap_blueprint()
+    bp.assertions.append({"id": "one_solid", "kind": "solids", "tier": 1,
+                          "tol_rel": 0, "target": 1})
+    assert not [p for p in check_blueprint(bp) if "one_solid" in p]
+    assert bp.freeze().verify_hash()
+
+
+def test_expression_target_resolves_identically_after_the_rule():
+    """The enforcement must not change what a valid target evaluates to."""
+    bp = _cap_blueprint().freeze()
+    got = bp.resolve_assertions()[0]["target_value"]
+    assert got == pytest.approx(
+        math.pi * ((40.0 / 2) ** 2 - (10.0 / 2) ** 2) * 8.0)
+
+
 def test_checker_rejects_unused_variable():
     bp = _cap_blueprint(variables={"od": 40.0, "height": 8.0, "bore": 10.0,
                                    "orphan": 5.0})

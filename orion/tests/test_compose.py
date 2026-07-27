@@ -17,7 +17,9 @@ import pytest
 
 from orion import expr as E
 from orion.bases import BASES
+from orion.blueprint import Blueprint
 from orion.compose import ATTACHMENTS, MAX_ATTACHMENTS, compose
+from orion.forge import failed_preconditions
 
 SEEDS = [11, 22, 33]
 
@@ -126,6 +128,74 @@ def test_signature_separates_topologies():
         _bp, meta = _compose("mount_plate", seed, natt=MAX_ATTACHMENTS)
         sigs.add(meta["feature_sequence_hash"])
     assert len(sigs) > 3, "composition is not producing distinct topologies"
+
+
+@pytest.mark.parametrize("name", sorted(BASES))
+def test_no_attachment_cuts_above_its_mount_plane(name):
+    """A mount guarantees ``thickness`` of solid BELOW the land and says
+    nothing about what sits above it, so a subtractive attachment must not cut
+    upward. The old idiom did (SideType "Two sides", Length2 "1") for boolean
+    robustness: harmless over an exposed land, but where another feature rises
+    off the same plane it removed ``overlap_area * 1mm`` that no delta
+    expression accounts for — 9 of 26 pillow_blocks mispredicted by 1e-5..4e-4
+    relative, which is a wrong answer wearing a rounding error's clothes."""
+    for seed in SEEDS:
+        bp, meta = _compose(name, seed, natt=MAX_ATTACHMENTS)
+        for f in bp.template["features"]:
+            p = f.get("parameters") or {}
+            if f["type"] != "Pocket" or not f["id"].startswith("att"):
+                continue
+            assert p.get("SideType") != "Two sides", \
+                f"{name}: {f['id']} cuts on both sides of its mount plane"
+            assert "Length2" not in p, \
+                f"{name}: {f['id']} carries a second-side depth"
+
+
+@pytest.mark.parametrize("name", sorted(BASES))
+def test_land_containment_is_a_frozen_guard(name):
+    """Containment was enforced only by the placement sampler, so it was
+    invisible in the corpus: a model trained on it never saw the constraint and
+    nothing refused a blueprint that hung an attachment off its land. It has to
+    live in the assertions to be part of the contract."""
+    for seed in SEEDS:
+        bp, meta = _compose(name, seed, natt=MAX_ATTACHMENTS)
+        if not meta["attachments"]:
+            continue
+        for i, _att in enumerate(meta["attachments"]):
+            if f"att{i}_cx" not in bp.variables:
+                continue
+            ids = {a.get("id") for a in bp.assertions}
+            for axis in ("x", "y"):
+                assert f"att{i}_in_land_{axis}" in ids, \
+                    f"{name}: attachment {i} has no {axis} containment guard"
+
+
+@pytest.mark.parametrize("name", sorted(BASES))
+def test_land_guards_pass_for_every_generated_part(name):
+    """The guards must encode the sampler's own invariant exactly — too strict
+    and they refuse the corpus they were derived from."""
+    for seed in SEEDS:
+        bp, _meta = _compose(name, seed, natt=MAX_ATTACHMENTS)
+        for a in bp.resolve_assertions():
+            if "_in_land_" in str(a.get("id", "")):
+                assert a["target_value"] > 0, \
+                    f"{name}: {a['id']} refuses a legally placed attachment"
+
+
+def test_land_guard_catches_an_attachment_pushed_off_its_land():
+    """The negative case the corpus never contained."""
+    for seed in range(60):
+        bp, meta = _compose("mount_plate", seed, natt=MAX_ATTACHMENTS)
+        if not meta["attachments"] or "att0_cx" not in bp.variables:
+            continue
+        moved = Blueprint(**{**bp.__dict__, "blueprint_hash": "",
+                             "variables": {**bp.variables,
+                                           "att0_cx": 10_000.0}}).freeze()
+        bad = {f["id"] for f in failed_preconditions(moved)}
+        assert "att0_in_land_x" in bad, \
+            "an attachment 10 m off its land was not refused"
+        return
+    pytest.skip("no mount_plate draw carried an attachment")
 
 
 def test_attachments_stay_inside_their_land():

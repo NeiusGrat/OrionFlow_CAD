@@ -17,6 +17,13 @@ from . import expr as E
 
 STRUCTURAL_CONSTANTS = {0.0, 1.0, -1.0, 2.0, 90.0, 180.0, 270.0, 360.0}
 
+#: Assertion kinds whose verdict compares a measurement against an authored
+#: ``target``. ``watertight`` and ``body_mesh_converged`` derive their own
+#: pass condition, and ``body_volume_profile`` reads the builder's exact area,
+#: so none of them authors a target.
+_TARGETED_KINDS = {"body_volume", "feature_volume", "bbox_extent", "solids",
+                   "precondition"}
+
 #: Parameters that are enums/strings/bools/links — not dimensional.
 NON_DIMENSIONAL = {
     "Type", "Type2", "SideType", "Mode", "Transition", "Transformation",
@@ -143,26 +150,38 @@ def check_blueprint(bp) -> list[str]:
 
     for a in bp.assertions:
         aid = a.get("id", "?")
+        kind = a.get("kind")
         if "tier" not in a or a["tier"] not in (1, 2, 3):
             problems.append(f"assertions.{aid}: tier must be 1, 2 or 3")
-        if "tol_rel" not in a and a.get("kind") not in (
+        if "tol_rel" not in a and kind not in (
                 "precondition", "watertight", "volume_between"):
             problems.append(f"assertions.{aid}: missing tol_rel")
-        for key in ("lo", "hi"):
-            if isinstance(a.get(key), str):
-                _check_expr(f"assertions.{aid}.{key}", a[key],
-                            variables, problems)
+        # The prediction side of the contract is held to the same no-magic-number
+        # rule as the geometry side. A target is what the author CLAIMS the
+        # kernel will measure; if it arrives as a bare number, the author did the
+        # arithmetic instead of deriving it, and the one thing the verification
+        # proves — that a closed form over the named variables predicts the
+        # solid — is no longer being tested. Checking these only `if isinstance
+        # str` (as this did) let a computed literal through the gate silently,
+        # and it failed later wearing the wrong costume: resolve_assertions()
+        # emits no target_value for a non-string, so forge.check_assertions saw
+        # target=None and reported "no measurement" — blaming the kernel for a
+        # bad authored target.
+        for key in ("target", "lo", "hi"):
+            if key not in a or a[key] is None:
+                continue
+            _check_expr(f"assertions.{aid}.{key}", a[key], variables, problems)
+            if isinstance(a[key], str):
                 try:
                     used |= E.names(a[key])
                 except E.ExprError:
                     pass
-        if isinstance(a.get("target"), str):
-            _check_expr(f"assertions.{aid}.target", a["target"],
-                        variables, problems)
-            try:
-                used |= E.names(a["target"])
-            except E.ExprError:
-                pass
+        if kind in _TARGETED_KINDS and a.get("target") is None:
+            problems.append(f"assertions.{aid}: kind {kind!r} is checked "
+                            f"against a target, but none was authored")
+        if kind == "volume_between" and (a.get("lo") is None
+                                         or a.get("hi") is None):
+            problems.append(f"assertions.{aid}: volume_between needs lo and hi")
 
     dead = set(variables) - used
     if dead:
