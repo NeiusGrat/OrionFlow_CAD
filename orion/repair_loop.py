@@ -1,0 +1,128 @@
+"""Diagnose a failed Blueprint and ask the model to fix it.
+
+The corpus already contains 17,023 repair records shaped
+``failure -> diagnosis -> fix -> re-verified``, but the SFT run trains only on
+*verified* records, so the model has no learned recovery behaviour. This module
+supplies that behaviour at the harness level: the verifier already knows exactly
+what went wrong, so the diagnosis is derived, not guessed.
+
+Two uses:
+
+* **Demo** — a part fails, the machine explains *why* in engineering terms, the
+  model corrects it, and the fix re-verifies. Live.
+* **Metric** — ``VERIFIED @1 repair`` alongside raw ``VERIFIED``, which is the
+  number that reflects how the system actually behaves in front of a user.
+
+Diagnosis strings deliberately mirror the corpus ``repair_trace.diagnosis``
+phrasing, so a model later trained on repair records sees a familiar prompt.
+"""
+
+from __future__ import annotations
+
+from . import profiles as P
+
+#: closed vocabularies — an out-of-grammar name is detectable before any build
+VALID_BUILDERS = sorted(P.BUILDERS)
+
+
+def diagnose(payload: dict | None, error: str, verdict: dict | None = None) -> str:
+    """Turn a failure into an engineering explanation and a concrete instruction.
+
+    ``error`` is the eval harness's classification (``parse:``, ``freeze:``,
+    ``build:``, ``assert:``, ``precondition:``, ``timeout:``).
+    """
+    kind = (error or "").split(":", 1)[0].strip()
+    detail = (error or "").split(":", 1)[-1].strip()
+
+    if kind == "parse":
+        return ("The response did not contain a single parseable JSON object. "
+                "Emit the Blueprint as one JSON object after </think>, with no "
+                "commentary after it.")
+
+    if kind == "freeze":
+        return (f"The Blueprint failed its static check: {detail}. Every "
+                "dimension must be an expression over the named variables — a "
+                "bare number in a feature parameter or sketch argument is "
+                "rejected before anything is built.")
+
+    if kind == "build":
+        # The highest-value case: an invented builder is a closed-vocabulary
+        # violation, so we can name the exact legal set.
+        if "unknown profile builder" in detail:
+            bad = detail.split("'")[1] if "'" in detail else "?"
+            return (f"There is no sketch profile builder called '{bad}'. The "
+                    f"available builders are: {', '.join(VALID_BUILDERS)}. "
+                    "Compose the outline from one of those — a non-rectangular "
+                    "plate outline is built with 'poly_with_holes', passing the "
+                    "corner points explicitly as expressions.")
+        return (f"The geometry kernel could not build the part: {detail}. "
+                "Re-check that each feature's profile lies on the face it "
+                "attaches to and that no cut extends past the material it "
+                "removes from.")
+
+    if kind == "precondition":
+        # "choose better values" is useless without the arithmetic. Show the
+        # expression, what it evaluated to, and the variables in play — a
+        # violated guard is very often the right formula over the wrong
+        # variable (a width guard written against the thickness, say), which is
+        # only visible when the numbers are in front of you.
+        failing = {i.strip() for i in detail.split(",") if i.strip()}
+        exprs = {a.get("id"): a.get("target")
+                 for a in (payload or {}).get("assertions", [])
+                 if a.get("kind") == "precondition"}
+        values = {p.get("id"): p.get("target")
+                  for p in (verdict or {}).get("failed_preconditions", [])}
+        lines = []
+        for i in sorted(failing or values):
+            e, v = exprs.get(i), values.get(i)
+            lines.append(f"  {i}: {e} evaluated to "
+                         f"{v if v is None else round(float(v), 4)} "
+                         "— it must be greater than 0")
+        body = "\n".join(lines)
+        variables = (payload or {}).get("variables") or {}
+        vs = ", ".join(f"{k}={v}" for k, v in sorted(variables.items()))
+        return ("The part violates preconditions you authored, so the closed "
+                f"form is not valid and nothing was built:\n{body}\n"
+                f"Your variables are: {vs}\n"
+                "Either the guard references the wrong variable (check that a "
+                "width or length guard is not written against a thickness), or "
+                "the values need to change. Fix whichever is actually wrong.")
+
+    if kind == "assert":
+        failed = [i for i in detail.split(",") if i]
+        rows = []
+        for a in (verdict or {}).get("assertions", []):
+            if a.get("id") in failed and a.get("measured") is not None:
+                rows.append(f"{a['id']}: predicted {a.get('target')}, "
+                            f"measured {a.get('measured')}")
+        measured = ("  " + "; ".join(rows)) if rows else ""
+        return (f"The part built, but the measured geometry disagrees with the "
+                f"prediction for: {', '.join(failed)}.{measured} The feature "
+                "tree is valid, so the derivation is what is wrong — check "
+                "whether a subtracted feature actually intersects the full "
+                "extent you assumed (on a drafted or tapered body the section "
+                "narrows with height, so a cut does not remove a full prism).")
+
+    if kind == "timeout":
+        return ("The kernel did not converge on this geometry. Simplify the "
+                "feature that is most likely to be self-intersecting.")
+
+    return f"The part failed verification: {error}"
+
+
+def build_repair_messages(original_messages: list[dict], bad_completion: str,
+                          diagnosis: str) -> list[dict]:
+    """The second-turn conversation: original ask, failed attempt, diagnosis.
+
+    Kept as a real multi-turn exchange rather than a rewritten single prompt so
+    the model sees its own output as its own — which is the shape the repair
+    records use.
+    """
+    convo = [m for m in original_messages if m["role"] in ("system", "user")]
+    convo.append({"role": "assistant", "content": bad_completion})
+    convo.append({"role": "user", "content":
+                  f"That part failed verification.\n\n{diagnosis}\n\n"
+                  "Correct the Blueprint. Re-derive the volume if the "
+                  "derivation was at fault, then emit the corrected Blueprint "
+                  "as a single JSON object."})
+    return convo
