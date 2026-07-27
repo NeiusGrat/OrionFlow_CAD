@@ -32,7 +32,6 @@ ground-truth audit that keeps the cheap signal honest.
 
 from __future__ import annotations
 
-import math
 from typing import Optional
 
 from .blueprint import Blueprint, BlueprintError
@@ -58,8 +57,6 @@ def analytic_volume(bp: Blueprint) -> Optional[float]:
     by_sketch = {d["source"]: d["target"]
                  for d in bp.template.get("dependencies", [])
                  if d.get("kind") == "profile"}
-    feats = {f["id"]: f for f in bp.template.get("features", [])}
-
     # Exactly ONE Pad, and nothing else that makes or removes material.
     #
     # An earlier version summed over every Pad assuming they were disjoint.

@@ -16,7 +16,6 @@ pillow block whose vent slot spans x 30.5..40.5 while the housing ends at 35.
 """
 
 import math
-import os
 import tempfile
 
 import pytest
@@ -189,7 +188,7 @@ def test_clear_of_the_housing_both_idioms_agree():
                           "variables": clear}).freeze()
         measured = _build(bp)
         out[label] = (measured["body_volume"], _predicted(bp))
-    (g1, w1), (g2, w2) = out["one"], out["two"]
-    assert abs(g1 - g2) < 1e-9, "removing the up-cut changed clear geometry"
+    assert abs(out["one"][0] - out["two"][0]) < 1e-9, \
+        "removing the up-cut changed clear geometry"
     for got, want in (out["one"], out["two"]):
         assert abs(got - want) / want < 1e-12

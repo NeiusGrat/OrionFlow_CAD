@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import statistics
 import tempfile
 import threading
@@ -222,12 +221,12 @@ def main() -> None:
         return m
 
     if args.completions:
-        rows = [json.loads(l) for l in open(args.completions, encoding="utf-8")]
+        rows = [json.loads(ln) for ln in open(args.completions, encoding="utf-8")]
         pairs = [(r["completion"], _meta(r)) for r in rows][:args.n]
     else:
         if not args.data:
             ap.error("need --data or --completions")
-        data = [json.loads(l) for l in open(args.data, encoding="utf-8")][:args.n]
+        data = [json.loads(ln) for ln in open(args.data, encoding="utf-8")][:args.n]
         for r in data:      # packed rows carry the full 3-turn conversation
             r.setdefault("meta", {})
             r["meta"]["_messages"] = [m for m in r["messages"]

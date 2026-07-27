@@ -189,7 +189,7 @@ def sample_params(cls: str, rng: random.Random) -> dict:
         # rejected. Two constraints bound free length from opposite sides:
         # buckling caps it at 2.6*D, and the allowable shear at solid caps the
         # deflection the wire can take. Earlier blind sampling passed 1/10.
-        from .families import spring_mechanics, SPRING_MATERIALS
+        from .families import SPRING_MATERIALS
         wire_d = rng.choice([1.6, 2.0, 2.5, 3.0, 4.0])
         coil_d = wire_d * rng.choice([6.0, 7.0, 8.0, 9.0, 10.0])
         n_active = rng.choice([6.0, 7.0, 8.0, 9.0, 10.0])

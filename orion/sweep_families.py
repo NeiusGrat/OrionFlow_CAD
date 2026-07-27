@@ -33,7 +33,7 @@ def main() -> None:
                     help="keep FCStd files in this dir instead of a temp dir")
     args = ap.parse_args()
 
-    rows = [json.loads(l) for l in open(args.data, encoding="utf-8")]
+    rows = [json.loads(ln) for ln in open(args.data, encoding="utf-8")]
     by_family: dict[str, list] = collections.defaultdict(list)
     for r in rows:
         by_family[r["meta"].get("base_family") or "?"].append(r)

@@ -512,7 +512,10 @@ def compression_spring(wire_d: float, coil_d: float, n_active: float,
     all analytic. What is verified is the **envelope**: the annulus the spring
     occupies, which is what a designer actually has to make room for.
     """
-    k = spring_mechanics(wire_d, coil_d, n_active, free_len, material)
+    # Nothing is read from spring_mechanics() here on purpose: every quantity it
+    # computes — index, rate, Wahl-corrected stress — is restated below as an
+    # EXPRESSION over the variables, so the contract stays derivable rather than
+    # carrying numbers this function happened to evaluate.
     return Blueprint(
         part_class="compression_spring",
         variables={"wire_d": wire_d, "coil_d": coil_d,

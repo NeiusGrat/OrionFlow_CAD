@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Cpu, Download, CheckCircle2, AlertTriangle, Wrench } from "lucide-react";
-import { designWithAgent, type AgentDesignResponse } from "../../services/agentApi";
+import {
+    designWithAgent,
+    type AgentDesignResponse,
+    type AnalysisIssue,
+    type VerificationReport,
+} from "../../services/agentApi";
 import { getFullUrl } from "../../services/oflApi";
 import { useOFLStore } from "../../store/oflStore";
 
@@ -33,6 +38,133 @@ function scoreColor(score: number): string {
     if (score >= 90) return "#7FB894";
     if (score >= 70) return "#D9A441";
     return "#DE8871";
+}
+
+const VERDICT = {
+    verified: { color: "#7FB894", text: "Verified", sub: "every check that ran, passed" },
+    refused: { color: "#DE8871", text: "Refused", sub: "this geometry is not correct as drawn" },
+    unproven: { color: "#D9A441", text: "Unproven", sub: "nothing failed, but nothing was proved" },
+} as const;
+
+/** The verdict panel.
+ *
+ *  Two rules keep this honest. A check is rendered only if the backend ran it,
+ *  so an absent row means "not tested" and never "fine". And a refusal leads —
+ *  the failing guard and its measured value come first, because a user who
+ *  cannot see WHY a part was rejected will assume the tool is broken and ship
+ *  the part anyway.
+ */
+function VerificationCard({
+    report, score, material, repairs, issues,
+    fallbackWatertight, fallbackBbox, fallbackMass,
+}: {
+    report?: VerificationReport | null;
+    score?: number;
+    material?: string;
+    repairs: number;
+    issues: AnalysisIssue[];
+    fallbackWatertight?: boolean;
+    fallbackBbox?: number[];
+    fallbackMass?: number;
+}) {
+    // An older API build returns no report; degrade to what we can observe
+    // rather than inventing a verdict.
+    if (!report) {
+        return (
+            <div style={{ ...card, display: "flex", flexDirection: "column", gap: "5px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--studio-text)" }}>
+                    {fallbackWatertight
+                        ? <CheckCircle2 size={12} color="#7FB894" />
+                        : <AlertTriangle size={12} color="#D9A441" />}
+                    {fallbackWatertight ? "Watertight solid" : "Geometry flagged — check analysis"}
+                    {typeof score === "number" && (
+                        <span style={{ marginLeft: "auto", fontWeight: 700, color: scoreColor(score) }}>
+                            DFM {score}/100
+                        </span>
+                    )}
+                </div>
+                {fallbackMass != null && (
+                    <div style={{ color: "var(--studio-text-faint)" }}>
+                        Mass ≈ {fallbackMass} g ({material?.replace(/_/g, " ")}) ·
+                        {" "}{fallbackBbox?.map((v) => Math.round(v)).join("×")} mm
+                    </div>
+                )}
+                {issues.map((iss, i) => (
+                    <div key={i} style={{ color: iss.severity === "critical" ? "#DE8871" : "#D9A441", fontSize: "11px" }}>
+                        {iss.severity.toUpperCase()}: {iss.issue}
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    const v = VERDICT[report.verdict] ?? VERDICT.unproven;
+    const m = report.measured ?? {};
+
+    return (
+        <div style={{ ...card, borderColor: v.color, display: "flex", flexDirection: "column", gap: "7px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                {report.verdict === "verified"
+                    ? <CheckCircle2 size={15} color={v.color} />
+                    : <AlertTriangle size={15} color={v.color} />}
+                <span style={{ fontWeight: 700, fontSize: "13px", letterSpacing: "0.03em", color: v.color }}>
+                    {v.text}
+                </span>
+                {typeof score === "number" && (
+                    <span style={{ marginLeft: "auto", fontWeight: 700, color: scoreColor(score) }}>
+                        DFM {score}/100
+                    </span>
+                )}
+            </div>
+            <div style={{ color: "var(--studio-text-faint)", fontSize: "11px", marginTop: "-4px" }}>
+                {v.sub}
+            </div>
+
+            {report.failed.length > 0 && (
+                <div style={{
+                    borderLeft: `2px solid ${VERDICT.refused.color}`, paddingLeft: "8px",
+                    display: "flex", flexDirection: "column", gap: "4px",
+                }}>
+                    {report.failed.map((c) => (
+                        <div key={c.id}>
+                            <div style={{ color: VERDICT.refused.color, fontWeight: 600, fontSize: "11px" }}>
+                                {c.label} failed
+                            </div>
+                            <div style={{ color: "var(--studio-text)", fontSize: "11px" }}>{c.detail}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                {report.checks.map((c) => (
+                    <div key={c.id} style={{ display: "flex", alignItems: "flex-start", gap: "6px", fontSize: "11px" }}>
+                        <span style={{ color: c.status === "pass" ? "#7FB894" : VERDICT.refused.color, lineHeight: "15px" }}>
+                            {c.status === "pass" ? "✓" : "✕"}
+                        </span>
+                        <span style={{ color: "var(--studio-text)" }}>{c.label}</span>
+                        <span style={{ color: "var(--studio-text-faint)", marginLeft: "auto", textAlign: "right", maxWidth: "58%" }}>
+                            {c.detail}
+                        </span>
+                    </div>
+                ))}
+            </div>
+
+            {(m.volume_cm3 != null || m.mass_g != null) && (
+                <div style={{ color: "var(--studio-text-faint)", fontSize: "11px", borderTop: "1px solid var(--studio-border)", paddingTop: "6px" }}>
+                    Measured: {m.volume_cm3 != null && <>{m.volume_cm3} cm³ · </>}
+                    {m.mass_g != null && <>{m.mass_g} g ({material?.replace(/_/g, " ")}) · </>}
+                    {m.bbox_mm?.map((x) => Math.round(x)).join("×")} mm · {repairs} repair{repairs === 1 ? "" : "s"}
+                </div>
+            )}
+
+            {issues.filter((i) => i.severity !== "critical").map((iss, i) => (
+                <div key={i} style={{ color: "#D9A441", fontSize: "11px" }}>
+                    {iss.severity.toUpperCase()}: {iss.issue}
+                </div>
+            ))}
+        </div>
+    );
 }
 
 export default function AgentPanel() {
@@ -231,32 +363,17 @@ export default function AgentPanel() {
                         </>
                     )}
 
-                    <div style={label}>Validation</div>
-                    <div style={{ ...card, display: "flex", flexDirection: "column", gap: "5px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--studio-text)" }}>
-                            {result.stats?.watertight
-                                ? <CheckCircle2 size={12} color="#7FB894" />
-                                : <AlertTriangle size={12} color="#D9A441" />}
-                            {result.stats?.watertight ? "Watertight solid" : "Geometry flagged — check analysis"}
-                            {typeof score === "number" && (
-                                <span style={{ marginLeft: "auto", fontWeight: 700, color: scoreColor(score) }}>
-                                    DFM {score}/100
-                                </span>
-                            )}
-                        </div>
-                        {analysis?.properties?.mass_g != null && (
-                            <div style={{ color: "var(--studio-text-faint)" }}>
-                                Mass ≈ {analysis.properties.mass_g} g ({analysis.material?.replace(/_/g, " ")}) ·
-                                {" "}{result.stats?.bbox_mm?.map((v) => Math.round(v)).join("×")} mm ·
-                                {" "}{result.repair_attempts} repair{result.repair_attempts === 1 ? "" : "s"}
-                            </div>
-                        )}
-                        {(analysis?.issues ?? []).map((iss, i) => (
-                            <div key={i} style={{ color: iss.severity === "critical" ? "#DE8871" : "#D9A441", fontSize: "11px" }}>
-                                {iss.severity.toUpperCase()}: {iss.issue}
-                            </div>
-                        ))}
-                    </div>
+                    <div style={label}>Verification</div>
+                    <VerificationCard
+                        report={result.verification}
+                        score={score}
+                        material={analysis?.material}
+                        repairs={result.repair_attempts}
+                        issues={analysis?.issues ?? []}
+                        fallbackWatertight={result.stats?.watertight}
+                        fallbackBbox={result.stats?.bbox_mm}
+                        fallbackMass={analysis?.properties?.mass_g}
+                    />
 
                     {plan?.risks && plan.risks.length > 0 && (
                         <>

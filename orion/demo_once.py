@@ -19,7 +19,6 @@ import os
 import time
 import urllib.request
 
-from .blueprint import Blueprint
 from . import forge
 from .eval_blueprint import extract_blueprint, to_blueprint
 from .inspect_sample import export_step

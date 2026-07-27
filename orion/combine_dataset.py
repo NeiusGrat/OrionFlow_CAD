@@ -27,7 +27,7 @@ def _read(path: str) -> list[dict]:
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as fh:
-        return [json.loads(l) for l in fh if l.strip()]
+        return [json.loads(ln) for ln in fh if ln.strip()]
 
 
 def group_of(row: dict) -> tuple[str, str]:

@@ -805,7 +805,9 @@ def four_bar(ground: float = 100.0, crank: float = 30.0, coupler: float = 90.0,
          "tolerance": "H7/g6"},
     ]
     lengths = sorted([ground, crank, coupler, rocker])
-    s, p, q, l = lengths[0], lengths[1], lengths[2], lengths[3]
+    # s/p/q/l is Grashof's own notation (shortest, the two intermediates,
+    # longest); renaming `l` here would obscure the criterion it feeds.
+    s, p, q, l = lengths  # noqa: E741
     variables = {
         "ground": ground, "crank": crank, "coupler": coupler,
         "rocker": rocker, "theta_deg": theta_deg, "link_w": link_w,

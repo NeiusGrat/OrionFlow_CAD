@@ -57,6 +57,33 @@ export interface AnalysisReport {
   manufacturability_score?: number;
 }
 
+/** One thing that was actually checked, with the evidence behind it. A check
+ *  only exists in the response when it was performed — there is no implied
+ *  pass, so an absent check means "not tested", never "fine". */
+export interface VerificationCheck {
+  id: string;
+  label: string;
+  status: 'pass' | 'fail';
+  detail: string;
+  evidence?: Record<string, unknown>;
+}
+
+export interface VerificationReport {
+  /** `verified` = every check that ran passed. `refused` = at least one
+   *  failed, so the geometry must not be presented as correct. `unproven` =
+   *  nothing failed but nothing was provable either. */
+  verdict: 'verified' | 'refused' | 'unproven';
+  checks: VerificationCheck[];
+  failed: VerificationCheck[];
+  /** Observations, not claims of correctness. */
+  measured: {
+    volume_cm3?: number;
+    mass_g?: number;
+    bbox_mm?: number[];
+    center_of_mass_mm?: number[];
+  };
+}
+
 export interface TraceStep {
   phase: string;
   t_ms: number;
@@ -80,6 +107,7 @@ export interface AgentDesignResponse {
   trace: TraceStep[];
   error?: string | null;
   generation_time_ms: number;
+  verification?: VerificationReport | null;
 }
 
 export async function designWithAgent(prompt: string): Promise<AgentDesignResponse> {

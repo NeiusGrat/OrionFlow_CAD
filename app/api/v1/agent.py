@@ -50,6 +50,10 @@ class AgentDesignResponse(BaseModel):
     trace: list[dict[str, Any]] = []
     error: Optional[str] = None
     generation_time_ms: float = 0
+    #: Explicit record of what was checked and what it proved. Present on every
+    #: response, including failures — a refusal is the useful answer when the
+    #: alternative is geometry the caller cannot tell is wrong.
+    verification: dict[str, Any] = {}
 
 
 # Sync handler on purpose: LLM HTTP + sandbox subprocess + trimesh are
@@ -65,4 +69,11 @@ def agent_design(request: AgentDesignRequest):
         max_repairs=request.max_repairs,
     )
     bundle.pop("prompt", None)
+    # Derived, never authored by the model: the report is built from the build
+    # log and the measured geometry, so a model cannot talk its way to a green
+    # tick. See orion_physical_ai/verify.py for what each check does and does
+    # not claim.
+    from orion_physical_ai import verify
+
+    bundle["verification"] = verify.from_bundle(bundle)
     return AgentDesignResponse(**bundle)

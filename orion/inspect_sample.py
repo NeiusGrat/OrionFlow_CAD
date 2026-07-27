@@ -67,7 +67,7 @@ def main() -> None:
     ap.add_argument("--full-json", action="store_true")
     args = ap.parse_args()
 
-    rows = [json.loads(l) for l in open(args.data, encoding="utf-8")]
+    rows = [json.loads(ln) for ln in open(args.data, encoding="utf-8")]
     idx = args.index if args.index is not None else \
         random.Random(args.seed).randrange(len(rows))
     row = rows[idx]
@@ -90,15 +90,15 @@ def main() -> None:
     t = payload["template"]
     print(f"part_class : {payload['part_class']}")
     print(f"variables  : {json.dumps(payload['variables'])}")
-    print(f"features   : " + ", ".join(
+    print("features   : " + ", ".join(
         f"{f['id']}:{f['type']}" for f in t.get("features", [])))
-    print(f"sketches   : " + ", ".join(
+    print("sketches   : " + ", ".join(
         f"{s['id']}[{s['profile']['builder']} on {s.get('plane','XY')}]"
         for s in t.get("sketches", [])))
     for f in t.get("features", []):
         if f.get("parameters"):
             print(f"  {f['id']}.parameters = {json.dumps(f['parameters'])}")
-    print(f"assertions : " + ", ".join(
+    print("assertions : " + ", ".join(
         f"{a['id']}({a['kind']})" for a in payload["assertions"]))
     if args.full_json:
         print(json.dumps(payload, indent=1))

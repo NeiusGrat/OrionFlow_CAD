@@ -58,8 +58,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=1602)
     args = ap.parse_args()
 
-    rng = random.Random(args.seed)
-    recs = [json.loads(l) for l in open(args.src, encoding="utf-8")]
+    recs = [json.loads(ln) for ln in open(args.src, encoding="utf-8")]
     rows = []
     for i, rec in enumerate(recs):
         if not rec.get("verified"):
