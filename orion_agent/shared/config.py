@@ -156,8 +156,14 @@ def get_config() -> OrionConfig:
     llm = LLMConfig(
         provider=_env("ORION_LLM_PROVIDER", "k2think"),
         model=_env("ORION_LLM_MODEL", "MBZUAI-IFM/K2-Think-v2"),
-        base_url=_env("K2THINK_BASE_URL", "https://api.k2think.ai/v1/chat/completions"),
-        api_key=_env("K2THINK_API_KEY", ""),
+        # Provider-neutral names win; the K2THINK_* names stay as fallbacks so
+        # existing .env files keep working. Pointing the agent at a self-hosted
+        # endpoint should not require setting a variable named after the vendor
+        # being replaced.
+        base_url=_env("ORION_LLM_BASE_URL",
+                      _env("K2THINK_BASE_URL",
+                           "https://api.k2think.ai/v1/chat/completions")),
+        api_key=_env("ORION_LLM_API_KEY", _env("K2THINK_API_KEY", "")),
         max_tokens=_env_int("ORION_LLM_MAX_TOKENS", 8192),
         temperature=_env_float("ORION_LLM_TEMPERATURE", 0.2),
         request_timeout=_env_float("ORION_LLM_TIMEOUT", 300.0),

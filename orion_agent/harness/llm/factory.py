@@ -19,7 +19,8 @@ def get_llm_client(provider: Optional[str] = None, config=None) -> LLMClient:
         from orion_agent.harness.llm.mock import MockClient
         return MockClient(cfg)
     if provider in ("openai", "vllm"):
-        # Future self-hosted endpoint plugs in here behind the same interface.
-        from orion_agent.harness.llm.k2think import K2ThinkClient
-        return K2ThinkClient(cfg)
+        # Self-hosted fine-tuned OrionFlow model behind an OpenAI-compatible
+        # server. Same interface, so the agent loop is untouched.
+        from orion_agent.harness.llm.vllm_client import VLLMClient
+        return VLLMClient(cfg)
     raise ValueError(f"unknown LLM provider: {provider}")
