@@ -116,13 +116,16 @@ def from_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
 
 
 def from_assertion_rows(rows: list[dict],
-                        refused: Optional[list[dict]] = None) -> dict[str, Any]:
+                        refused: Optional[list[dict]] = None,
+                        measured: Optional[dict] = None) -> dict[str, Any]:
     """Verification report for the forge path, where a frozen closed form is
     compared against what the kernel measured.
 
     ``rows`` are ``orion.forge.check_assertions`` verdicts; ``refused`` are
     preconditions that failed before the build, in which case no geometry was
-    produced at all and the guard is the whole story.
+    produced at all and the guard is the whole story. ``measured`` carries
+    observations (volume, extent) for display — they are reported, never
+    ticked, unless a row above actually checked them.
     """
     if refused:
         checks = [_check(f"guard:{r.get('id')}", f"Guard {r.get('id')}", FAIL,
@@ -148,6 +151,11 @@ def from_assertion_rows(rows: list[dict],
         elif err is not None:
             detail = (f"predicted {r.get('target')}, measured "
                       f"{r.get('measured')} (rel err {err:.2e})")
+        elif kind == "precondition":
+            # A precondition has no measurement — it is a guard the model
+            # authored and the resolved variables satisfy. Reporting it as
+            # "measured None" reads like a check that failed to run.
+            detail = f"holds at {r.get('target')}"
         else:
             detail = f"measured {r.get('measured')}"
         checks.append(_check(f"{kind}:{r.get('id')}",
@@ -158,4 +166,4 @@ def from_assertion_rows(rows: list[dict],
                               "rel_err": err, "tier": r.get("tier")}))
     return {"verdict": verdict_for(checks), "checks": checks,
             "failed": [c for c in checks if c["status"] == FAIL],
-            "measured": {}}
+            "measured": dict(measured or {})}

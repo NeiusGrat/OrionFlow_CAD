@@ -6,7 +6,9 @@ All v1 endpoints are mounted under /api/v1/
 
 from fastapi import APIRouter
 
-from app.api.v1 import agent, auth, users, designs, billing, jobs, ofl, waitlist
+from app.api.v1 import (
+    agent, auth, users, designs, billing, jobs, ofl, studio, waitlist,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -19,3 +21,4 @@ api_router.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 api_router.include_router(ofl.router, prefix="/ofl", tags=["OFL"])
 api_router.include_router(waitlist.router, prefix="/waitlist", tags=["Waitlist"])
 api_router.include_router(agent.router, prefix="/agent", tags=["Agent"])
+api_router.include_router(studio.router, prefix="/studio", tags=["Studio"])

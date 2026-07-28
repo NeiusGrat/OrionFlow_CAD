@@ -1,0 +1,20 @@
+{#-
+  The EXACT framing the model was trained and evaluated with.
+
+  Qwen3's packaged chat template is deliberately not used: it rewrites the
+  assistant turn and injects its own empty <think></think> pair, which our
+  model then has to fight — it was trained to open <think> itself and put the
+  derivation inside. Serving through the packaged template silently changes the
+  distribution the 94-95% VERIFIED numbers were measured on.
+
+  This reproduces fine_tuning/generate_batch.py:build_prompt() token for token:
+  every turn as <|im_start|>role\ncontent<|im_end|>\n, then a bare assistant
+  header with nothing after it. Keep the two in sync — if one changes, the
+  served model stops matching the evaluated model.
+-#}
+{% for message in messages -%}
+{{ '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n' }}
+{%- endfor -%}
+{% if add_generation_prompt -%}
+{{ '<|im_start|>assistant\n' }}
+{%- endif -%}

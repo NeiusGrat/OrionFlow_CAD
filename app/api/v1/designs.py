@@ -369,7 +369,12 @@ async def delete_design(
             status_code=status.HTTP_404_NOT_FOUND, detail="Design not found"
         )
 
-    # TODO: Delete associated files from storage
+    # Drop the artifacts too, or deleted designs quietly keep costing storage
+    # forever. Best-effort by design: the row must go even if the object store
+    # errors, otherwise the user cannot get rid of their own design.
+    from app.services.storage import delete_artifacts
+
+    removed = delete_artifacts(design.glb_path, design.step_path, design.stl_path)
 
     await db.delete(design)
     await db.commit()
@@ -378,6 +383,7 @@ async def delete_design(
         "design_deleted",
         user_id=str(current_user.id),
         design_id=design_id,
+        artifacts_removed=removed,
     )
 
     return MessageResponse(message="Design deleted successfully")

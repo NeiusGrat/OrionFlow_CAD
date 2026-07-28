@@ -485,3 +485,10 @@ a:hover {
 .studio-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
 .studio-scroll::-webkit-scrollbar-thumb { background: #3A3227; border-radius: 4px; }
 .studio-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Spinner for live agent phases. Reuses the existing spin keyframes. */
+.of-spin { animation: spin 0.9s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .of-spin { animation-duration: 2.4s; }
+}

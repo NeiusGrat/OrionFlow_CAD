@@ -45,6 +45,17 @@ class LocalStorage:
             return f"outputs/{filename}"
         return None
 
+    def delete(self, key: str) -> bool:
+        path = settings.output_dir / Path(key).name
+        try:
+            path.unlink()
+            return True
+        except FileNotFoundError:
+            return False
+        except OSError as e:
+            logger.warning(f"Local artifact delete failed for {key}: {e}")
+            return False
+
 
 class S3Storage:
     """Upload artifacts to an S3-compatible bucket, serve presigned URLs."""
@@ -92,6 +103,14 @@ class S3Storage:
             ExpiresIn=settings.s3_presign_expiry_seconds,
         )
 
+    def delete(self, key: str) -> bool:
+        try:
+            self._client.delete_object(Bucket=self._bucket, Key=key)
+            return True
+        except Exception as e:
+            logger.warning(f"S3 artifact delete failed for {key}: {e}")
+            return False
+
 
 @lru_cache(maxsize=1)
 def get_storage():
@@ -103,6 +122,42 @@ def get_storage():
         except Exception as e:
             logger.error(f"S3 storage init failed, falling back to local: {e}")
     return LocalStorage()
+
+
+def storage_key_for(path: str | None) -> str | None:
+    """Storage key behind a client-facing artifact path.
+
+    Download links are served as ``/api/v1/ofl/download/<request_id>/<file>``
+    while the object is stored under ``ofl/<request_id>/<file>``; deleting the
+    design has to reach the object, not the link.
+    """
+    if not path:
+        return None
+    marker = "/ofl/download/"
+    if marker in path:
+        return "ofl/" + path.split(marker, 1)[1].lstrip("/")
+    return path.rsplit("/", 1)[-1] or None
+
+
+def delete_artifacts(*paths) -> int:
+    """Best-effort removal of stored artifacts. Returns how many went away.
+
+    Never raises: a design the user asked to delete must disappear from their
+    library even if the object store is having a bad day. The alternative — a
+    row that refuses to delete because of a storage error — is worse.
+    """
+    storage = get_storage()
+    removed = 0
+    for p in paths:
+        key = storage_key_for(p)
+        if not key:
+            continue
+        try:
+            if storage.delete(key):
+                removed += 1
+        except Exception as e:
+            logger.warning(f"Artifact delete failed for {key}: {e}")
+    return removed
 
 
 def publish_artifacts(*paths) -> dict:

@@ -170,7 +170,13 @@ def score_one(idx: int, completion: str, meta: dict, workdir: str,
 def generate(rows: list[dict], endpoint: str, model: str, max_tokens: int,
              temperature: float, workers: int) -> list[str]:
     """Sample completions from an OpenAI-compatible server (vLLM)."""
+    import os
     import urllib.request
+
+    # A local vLLM accepts any bearer token, but a served endpoint on a public
+    # IP must not — so take the real key from the environment when there is
+    # one and fall back to the placeholder for the unauthenticated local case.
+    api_key = os.environ.get("ORION_LLM_API_KEY") or "EMPTY"
 
     def one(row: dict) -> str:
         msgs = row.get("repair_messages") or \
@@ -181,7 +187,7 @@ def generate(rows: list[dict], endpoint: str, model: str, max_tokens: int,
         req = urllib.request.Request(
             endpoint.rstrip("/") + "/chat/completions", data=body,
             headers={"Content-Type": "application/json",
-                     "Authorization": "Bearer EMPTY"})
+                     "Authorization": f"Bearer {api_key}"})
         with urllib.request.urlopen(req, timeout=600) as resp:
             data = json.load(resp)
         return data["choices"][0]["message"]["content"]

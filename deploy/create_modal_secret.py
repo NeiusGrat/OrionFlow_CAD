@@ -22,6 +22,21 @@ KEYS = [
     "GROQ_API_KEY",
     "K2THINK_API_KEY",
     "K2THINK_BASE_URL",
+    # Our own fine-tuned model, served from the MI300X, plus the fallback it
+    # is allowed to drop to. The studio reads these via
+    # orion_agent/shared/config.py.
+    "ORION_LLM_PROVIDER",
+    "ORION_LLM_MODEL",
+    "ORION_LLM_BASE_URL",
+    "ORION_LLM_API_KEY",
+    "ORION_LLM_FALLBACK_PROVIDER",
+    # Blueprints are long; the default token budget truncates them mid-JSON.
+    "ORION_LLM_MAX_TOKENS",
+    "ORION_LLM_TEMPERATURE",
+    "ORION_LLM_TIMEOUT",
+    # FreeCAD is not in the API image; Blueprint builds go to the separate
+    # orionflow-builder Modal app.
+    "ORION_BUILDER_MODE",
     "JWT_SECRET_KEY",
     "GOOGLE_CLIENT_ID",
     "CORS_ORIGINS",

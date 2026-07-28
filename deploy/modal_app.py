@@ -20,6 +20,12 @@ image = (
     .add_local_dir("app", "/root/app")
     .add_local_dir("orionflow_ofl", "/root/orionflow_ofl")
     .add_local_dir("orion_physical_ai", "/root/orion_physical_ai")
+    # The studio path needs both: `orion` for the Blueprint contract and its
+    # assertion checker, `orion_agent` for the LLM client and config. Neither
+    # pulls FreeCAD in at import time — the build itself goes to the separate
+    # builder app — so this stays cheap.
+    .add_local_dir("orion", "/root/orion")
+    .add_local_dir("orion_agent", "/root/orion_agent")
     .add_local_dir("alembic", "/root/alembic")
     .add_local_file("alembic.ini", "/root/alembic.ini")
 )

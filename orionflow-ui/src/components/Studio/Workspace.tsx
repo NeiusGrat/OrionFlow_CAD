@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-    Layers,
     Shapes,
     Download,
     LogOut,
@@ -9,19 +8,22 @@ import {
     ChevronRight,
     Maximize2,
     Box,
-    ArrowUp,
     Grid3x3,
     ExternalLink,
     History,
+    User,
 } from "lucide-react";
 import Viewer from "../Viewer/Viewer";
-import ChatPanel from "../Panels/ChatPanel";
 import OFLCodePanel from "../Panels/OFLCodePanel";
-import AgentPanel from "../Panels/AgentPanel";
+import AssistantPanel from "../Panels/AssistantPanel";
+import ProjectTree from "../Panels/ProjectTree";
+import VerificationCard from "../Panels/VerificationCard";
 import OrionFlowLogo, { OrionFlowWordmark } from "../OrionFlowLogo";
 import { useDesignStore } from "../../store/designStore";
 import { useOFLStore } from "../../store/oflStore";
 import { useAuthStore } from "../../store/authStore";
+import { useStudioStore } from "../../store/studioStore";
+import { useLibraryStore } from "../../store/libraryStore";
 import { fetchExamples, loadExampleIntoStudio, type ExampleEntry } from "../../lib/examples";
 import { openInFreeCAD } from "../../lib/freecadBridge";
 
@@ -312,14 +314,120 @@ function TopBar() {
             <div style={{ width: "1px", height: "20px", background: "var(--studio-border)" }} />
             <FreeCADButton />
             <ExportMenu />
-            <ToolButton
-                icon={<LogOut size={13} strokeWidth={2.2} />}
-                label="Sign out"
-                onClick={() => {
-                    logout();
-                    navigate("/auth");
+            <AccountMenu onSignOut={() => { logout(); navigate("/auth"); }} />
+        </div>
+    );
+}
+
+/** Who is signed in, how much they have saved, and the way out. */
+function AccountMenu({ onSignOut }: { onSignOut: () => void }) {
+    const user = useAuthStore((s) => s.user);
+    const savedCount = useLibraryStore((s) => s.designs.length);
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const close = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        if (open) document.addEventListener("mousedown", close);
+        return () => document.removeEventListener("mousedown", close);
+    }, [open]);
+
+    const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
+
+    return (
+        <div ref={ref} style={{ position: "relative" }}>
+            <button
+                onClick={() => setOpen(!open)}
+                title={user?.email || "Account"}
+                style={{
+                    width: "26px",
+                    height: "26px",
+                    borderRadius: "50%",
+                    border: `1px solid ${open ? "var(--studio-accent)" : "var(--studio-border)"}`,
+                    background: open ? "var(--studio-accent-dim)" : "var(--studio-panel-2)",
+                    color: "var(--studio-text)",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                 }}
-            />
+            >
+                {initial}
+            </button>
+            {open && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "34px",
+                        right: 0,
+                        minWidth: "216px",
+                        background: "var(--studio-panel-2)",
+                        border: "1px solid var(--studio-border)",
+                        borderRadius: "8px",
+                        padding: "10px",
+                        zIndex: 300,
+                        boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+                    }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <User size={13} style={{ color: "var(--studio-text-faint)" }} />
+                        <div style={{ minWidth: 0 }}>
+                            {user?.name && (
+                                <div style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--studio-text)" }}>
+                                    {user.name}
+                                </div>
+                            )}
+                            <div
+                                style={{
+                                    fontSize: "11px",
+                                    color: "var(--studio-text-faint)",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                }}
+                            >
+                                {user?.email || "signed in"}
+                            </div>
+                        </div>
+                    </div>
+                    <div
+                        style={{
+                            margin: "9px 0",
+                            paddingTop: "9px",
+                            borderTop: "1px solid var(--studio-border)",
+                            fontSize: "11.5px",
+                            color: "var(--studio-text-dim)",
+                        }}
+                    >
+                        {savedCount} part{savedCount === 1 ? "" : "s"} saved
+                    </div>
+                    <button
+                        onClick={onSignOut}
+                        style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "7px",
+                            padding: "7px 8px",
+                            borderRadius: "6px",
+                            border: "none",
+                            background: "transparent",
+                            color: "var(--studio-text-dim)",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--studio-panel)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                        <LogOut size={12} />
+                        Sign out
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -363,76 +471,6 @@ function Section({
                 {title}
             </button>
             {open && <div style={{ paddingBottom: "8px" }}>{children}</div>}
-        </div>
-    );
-}
-
-function ModelTree() {
-    const current = useDesignStore((s) => s.current);
-    const creations = useDesignStore((s) => s.creations);
-    const setCurrent = useDesignStore((s) => s.setCurrent);
-    const parameters = useOFLStore((s) => s.parameters);
-
-    return (
-        <div>
-            {creations.length === 0 && (
-                <div style={{ padding: "4px 14px 8px", fontSize: "12px", color: "var(--studio-text-faint)" }}>
-                    No parts yet — describe one below.
-                </div>
-            )}
-            {creations.map((c) => {
-                const active = current?.id === c.id;
-                return (
-                    <div key={c.id}>
-                        <button
-                            onClick={() => setCurrent(c.id)}
-                            style={{
-                                width: "100%",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                                padding: "6px 14px",
-                                background: active ? "var(--studio-accent-dim)" : "transparent",
-                                border: "none",
-                                borderLeft: `2px solid ${active ? "var(--studio-accent)" : "transparent"}`,
-                                color: active ? "var(--studio-text)" : "var(--studio-text-dim)",
-                                fontSize: "12px",
-                                textAlign: "left",
-                                cursor: "pointer",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                            }}
-                            title={c.prompt}
-                        >
-                            <Box size={13} strokeWidth={2} style={{ flexShrink: 0 }} />
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {c.prompt.slice(0, 42) || "Untitled"}
-                            </span>
-                        </button>
-                        {active && parameters.length > 0 && (
-                            <div style={{ padding: "2px 0 4px 34px" }}>
-                                {parameters.map((p) => (
-                                    <div
-                                        key={p.name}
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            padding: "2.5px 12px 2.5px 0",
-                                            fontSize: "11px",
-                                            fontFamily: "var(--font-mono)",
-                                            color: "var(--studio-text-faint)",
-                                        }}
-                                    >
-                                        <span>{p.name}</span>
-                                        <span style={{ color: "var(--studio-text-dim)" }}>{p.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
         </div>
     );
 }
@@ -484,38 +522,157 @@ function ExamplesList() {
     );
 }
 
+/** The left dock is the primary surface: the saved-parts list sits above the
+ *  assistant, which owns the rest of the height. The assistant is where the
+ *  work happens — the derivation, the checks, the conversation — so it gets
+ *  the space rather than a 348px strip on the far side of the viewport. */
 function LeftDock() {
     return (
         <div
-            className="studio-scroll"
             style={{
-                width: "232px",
+                width: "412px",
                 flexShrink: 0,
+                display: "flex",
+                flexDirection: "column",
                 background: "var(--studio-panel)",
                 borderRight: "1px solid var(--studio-border)",
-                overflowY: "auto",
+                minHeight: 0,
             }}
         >
-            <Section icon={<Layers size={12} />} title="Model">
-                <ModelTree />
-            </Section>
-            <Section icon={<Shapes size={12} />} title="Examples" defaultOpen={true}>
-                <ExamplesList />
-            </Section>
+            <div
+                className="studio-scroll"
+                style={{
+                    flexShrink: 0,
+                    maxHeight: "30%",
+                    overflowY: "auto",
+                    borderBottom: "1px solid var(--studio-border)",
+                }}
+            >
+                <ProjectTree />
+            </div>
+            <div style={{ flex: 1, minHeight: 0 }}>
+                <AssistantPanel />
+            </div>
         </div>
     );
 }
 
 /* ────────────────────────── Right dock ────────────────────────── */
 
-function RightDock({ onGenerate }: { onGenerate: (prompt: string) => void }) {
-    const [tab, setTab] = useState<"copilot" | "engineer" | "code">("copilot");
+/** Read-only properties of the part currently open: what the model named, what
+ *  it committed to, and what the kernel measured. */
+function PropertiesPanel() {
+    const part = useStudioStore((s) => s.part);
+    const partPrompt = useStudioStore((s) => s.partPrompt);
+
+    if (!part) {
+        return (
+            <div className="studio-scroll" style={{ flex: 1, overflowY: "auto" }}>
+                <div style={{ padding: "14px", fontSize: "12px", color: "var(--studio-text-faint)", lineHeight: 1.6 }}>
+                    No part open. Describe one in the assistant and its variables,
+                    measurements and verification will appear here.
+                </div>
+                <Section icon={<Shapes size={12} />} title="Examples">
+                    <ExamplesList />
+                </Section>
+            </div>
+        );
+    }
+
+    const variables = Object.entries(part.variables ?? {});
+
+    return (
+        <div className="studio-scroll" style={{ flex: 1, overflowY: "auto", padding: "12px" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--studio-text)" }}>
+                {(part.partClass || "part").replace(/_/g, " ")}
+            </div>
+            {partPrompt && (
+                <div style={{ marginTop: "4px", fontSize: "11.5px", color: "var(--studio-text-faint)", lineHeight: 1.5 }}>
+                    {partPrompt}
+                </div>
+            )}
+
+            {variables.length > 0 && (
+                <>
+                    <div style={sectionLabel}>Variables</div>
+                    <div
+                        style={{
+                            border: "1px solid var(--studio-border)",
+                            borderRadius: "7px",
+                            overflow: "hidden",
+                        }}
+                    >
+                        {variables.map(([k, v], i) => (
+                            <div
+                                key={k}
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    padding: "5px 9px",
+                                    fontFamily: "var(--font-mono)",
+                                    fontSize: "11px",
+                                    background: i % 2 ? "transparent" : "var(--studio-panel-2)",
+                                    color: "var(--studio-text-faint)",
+                                }}
+                            >
+                                <span>{k}</span>
+                                <span style={{ color: "var(--studio-text)" }}>{v}</span>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {part.stats && (
+                <>
+                    <div style={sectionLabel}>Measured</div>
+                    <div
+                        style={{
+                            border: "1px solid var(--studio-border)",
+                            borderRadius: "7px",
+                            padding: "9px",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            color: "var(--studio-text-dim)",
+                            lineHeight: 1.7,
+                        }}
+                    >
+                        <div>volume&nbsp;&nbsp;{(part.stats.volume_mm3 / 1000).toFixed(3)} cm³</div>
+                        {part.stats.bbox_mm?.length === 3 && (
+                            <div>extent&nbsp;&nbsp;{part.stats.bbox_mm.map((v) => v.toFixed(1)).join(" × ")} mm</div>
+                        )}
+                        <div>solid&nbsp;&nbsp;&nbsp;{part.stats.watertight ? "watertight" : "open mesh"}</div>
+                    </div>
+                </>
+            )}
+
+            {part.verification && (
+                <>
+                    <div style={sectionLabel}>Verification</div>
+                    <VerificationCard report={part.verification} />
+                </>
+            )}
+        </div>
+    );
+}
+
+const sectionLabel: React.CSSProperties = {
+    fontSize: "10px",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "var(--studio-text-faint)",
+    margin: "14px 0 6px",
+};
+
+function RightDock() {
+    const [tab, setTab] = useState<"properties" | "code">("properties");
     const oflCode = useOFLStore((s) => s.oflCode);
 
     return (
         <div
             style={{
-                width: "348px",
+                width: "300px",
                 flexShrink: 0,
                 display: "flex",
                 flexDirection: "column",
@@ -527,8 +684,7 @@ function RightDock({ onGenerate }: { onGenerate: (prompt: string) => void }) {
             <div style={{ display: "flex", borderBottom: "1px solid var(--studio-border)", flexShrink: 0 }}>
                 {(
                     [
-                        { id: "copilot", label: "Copilot" },
-                        { id: "engineer", label: "Engineer" },
+                        { id: "properties", label: "Properties" },
                         { id: "code", label: `Code${oflCode ? "" : " ·"}` },
                     ] as const
                 ).map((t) => (
@@ -552,13 +708,7 @@ function RightDock({ onGenerate }: { onGenerate: (prompt: string) => void }) {
                 ))}
             </div>
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                {tab === "copilot" ? (
-                    <ChatPanel onGenerate={onGenerate} />
-                ) : tab === "engineer" ? (
-                    <AgentPanel />
-                ) : (
-                    <OFLCodePanel />
-                )}
+                {tab === "properties" ? <PropertiesPanel /> : <OFLCodePanel />}
             </div>
         </div>
     );
@@ -627,137 +777,6 @@ function BottomBar() {
     );
 }
 
-/* ────────────────────────── Command bar (empty state) ────────────────────────── */
-
-const STARTERS = [
-    "NEMA 17 motor mount, 6 mm plate",
-    "Flange, 100 mm OD, 6× M8 on 75 PCD",
-    "Enclosure 100×64×25, 2.5 mm walls",
-];
-
-function CommandBar() {
-    const [value, setValue] = useState("");
-    const inputRef = useRef<HTMLInputElement>(null);
-    const isGenerating = useDesignStore((s) => s.isGenerating);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-                e.preventDefault();
-                inputRef.current?.focus();
-            }
-        };
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, []);
-
-    const submit = () => {
-        if (!value.trim() || isGenerating) return;
-        window.dispatchEvent(new CustomEvent("generate-request", { detail: { prompt: value } }));
-        setValue("");
-    };
-
-    return (
-        <div
-            style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 40,
-                pointerEvents: "none",
-            }}
-        >
-            <div style={{ pointerEvents: "auto", width: "min(560px, 82%)" }}>
-                <div
-                    style={{
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: "var(--studio-text-dim)",
-                        textAlign: "center",
-                        marginBottom: "14px",
-                        letterSpacing: "0.01em",
-                    }}
-                >
-                    Describe a part to machine it into existence
-                </div>
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        background: "rgba(26, 28, 32, 0.92)",
-                        backdropFilter: "blur(8px)",
-                        border: "1px solid var(--studio-border)",
-                        borderRadius: "10px",
-                        padding: "4px 4px 4px 14px",
-                        boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
-                    }}
-                >
-                    <input
-                        ref={inputRef}
-                        id="of-command-input"
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && submit()}
-                        placeholder="Mounting plate 120×80×6 with four M5 corner holes…"
-                        autoFocus
-                        style={{
-                            flex: 1,
-                            background: "transparent",
-                            border: "none",
-                            outline: "none",
-                            color: "var(--studio-text)",
-                            fontSize: "13.5px",
-                            padding: "10px 0",
-                        }}
-                    />
-                    <button
-                        onClick={submit}
-                        disabled={!value.trim() || isGenerating}
-                        style={{
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "7px",
-                            border: "none",
-                            background: value.trim() ? "var(--studio-accent)" : "var(--studio-panel-2)",
-                            color: value.trim() ? "#fff" : "var(--studio-text-faint)",
-                            cursor: value.trim() ? "pointer" : "default",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        <ArrowUp size={16} />
-                    </button>
-                </div>
-                <div style={{ display: "flex", gap: "8px", justifyContent: "center", marginTop: "14px", flexWrap: "wrap" }}>
-                    {STARTERS.map((s) => (
-                        <button
-                            key={s}
-                            onClick={() => setValue(s)}
-                            style={{
-                                fontSize: "11px",
-                                color: "var(--studio-text-dim)",
-                                background: "rgba(34, 29, 22, 0.85)",
-                                border: "1px solid var(--studio-border-soft)",
-                                borderRadius: "999px",
-                                padding: "5px 12px",
-                                cursor: "pointer",
-                            }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--studio-text)")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--studio-text-dim)")}
-                        >
-                            {s}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 /* ────────────────────────── Version timeline ────────────────────────── */
 
 /** Every successful generate/edit snapshots a version; clicking a chip
@@ -820,9 +839,8 @@ function VersionStrip() {
 
 /* ────────────────────────── Workspace ────────────────────────── */
 
-export default function Workspace({ onGenerate }: { onGenerate: (prompt: string) => void }) {
+export default function Workspace() {
     const current = useDesignStore((s) => s.current);
-    const isGenerating = useDesignStore((s) => s.isGenerating);
 
     return (
         <div
@@ -842,9 +860,8 @@ export default function Workspace({ onGenerate }: { onGenerate: (prompt: string)
                 <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
                     <Viewer url={current ? current.files.glb : ""} />
                     <VersionStrip />
-                    {!current && !isGenerating && <CommandBar />}
                 </div>
-                <RightDock onGenerate={onGenerate} />
+                <RightDock />
             </div>
             <BottomBar />
         </div>

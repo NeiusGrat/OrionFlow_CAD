@@ -48,6 +48,11 @@ boto3
 # Logging
 structlog
 
+# Modal client — the API container calls the FreeCAD builder app by name
+# (app/services/blueprint_service.py, ORION_BUILDER_MODE=modal). Without this
+# in the image, Blueprint builds fail at import, not at call time.
+modal
+
 # Testing
 pytest>=7.0
 pytest-cov
