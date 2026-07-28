@@ -35,6 +35,28 @@ export interface StudioFiles {
     glb?: string;
 }
 
+/** A stage that genuinely happened, reported when it happened. */
+export interface StudioStep {
+    id: string;
+    label: string;
+    status: 'active' | 'done' | 'fail';
+    detail: string;
+    items: string[];
+}
+
+/** The readable account of a design, derived from the frozen Blueprint. */
+export interface NarrativeSection {
+    title: string;
+    body: string;
+    items?: string[];
+}
+
+export interface DesignNarrative {
+    headline: string;
+    sections: NarrativeSection[];
+    verdict: string;
+}
+
 /** Terminal payload of a successful design turn. */
 export interface StudioDesignResult {
     intent: 'design';
@@ -43,6 +65,7 @@ export interface StudioDesignResult {
     part_class: string;
     variables: Record<string, number>;
     blueprint: Record<string, unknown> | null;
+    narrative: DesignNarrative | null;
     thinking: string;
     files: StudioFiles;
     stats: StudioStats | null;
@@ -62,6 +85,8 @@ export interface StudioExplainResult {
 export type StudioEvent =
     | { type: 'model'; model: string; provider: string }
     | { type: 'phase'; phase: 'reasoning' | 'building' }
+    | { type: 'step'; step: StudioStep }
+    | { type: 'narrative'; narrative: DesignNarrative }
     | { type: 'thinking'; text: string }
     | { type: 'answer'; text: string }
     | { type: 'built'; success: boolean; files: StudioFiles; stats: StudioStats | null; error: string | null }
@@ -143,6 +168,19 @@ function toEvent(event: string, d: any): StudioEvent {
             return { type: 'model', model: d.model, provider: d.provider };
         case 'phase':
             return { type: 'phase', phase: d.phase };
+        case 'step':
+            return {
+                type: 'step',
+                step: {
+                    id: d.id,
+                    label: d.label,
+                    status: d.status,
+                    detail: d.detail ?? '',
+                    items: d.items ?? [],
+                },
+            };
+        case 'narrative':
+            return { type: 'narrative', narrative: d as DesignNarrative };
         case 'thinking':
             return { type: 'thinking', text: d.text ?? '' };
         case 'answer':

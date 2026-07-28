@@ -167,47 +167,107 @@ class StudioAgent:
 
     # ------------------------------------------------------------------ #
     def design(self, prompt: str, on_event: EventSink = None) -> dict:
-        """Prompt → Blueprint → geometry → verdict."""
+        """Prompt → Blueprint → geometry → verdict.
+
+        Emits ``step`` events as each stage genuinely completes. They are
+        derived from real state — the parsed part class, the actual feature
+        list, the checks that ran — never from a timer, so a stalled stage
+        looks stalled instead of animating cheerfully towards a result that
+        will not arrive.
+        """
         from orion.pack_sft import SYSTEM_PROMPT
         from orion_agent.harness.llm.base import LLMMessage
-        from app.services import blueprint_service
+        from app.services import blueprint_service, design_narrative
+
+        def step(sid: str, label: str, status: str = "active",
+                 detail: str = "", items: Optional[list] = None) -> None:
+            if on_event:
+                on_event("step", {"id": sid, "label": label, "status": status,
+                                  "detail": detail, "items": items or []})
 
         messages = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(prompt)]
 
+        step("understand", "Understanding the request")
         if on_event:
             on_event("phase", {"phase": "reasoning"})
         resp, label = self._complete(messages, on_event, "answer",
                                      max_tokens=4096)
         if resp is None:
+            step("understand", "Understanding the request", "fail",
+                 "no model is reachable")
             return {"success": False, "model": "",
                     "error": "no model is reachable — the inference endpoint "
                              "is down and the fallback also failed",
                     "verification": {}, "files": {}}
 
         completion = resp.content
-        if on_event:
-            on_event("phase", {"phase": "building"})
 
+        # ---- interpretation: real facts, straight off the parsed Blueprint --
         try:
-            bundle = blueprint_service.build_from_completion(completion)
+            _, payload = blueprint_service.parse_completion(completion)
         except blueprint_service.BlueprintBuildError as exc:
-            # The model answered but not with a Blueprint. That is a model
+            # The model answered, but not with a Blueprint. That is a model
             # failure and must read as one — not as a kernel error.
+            step("understand", "Understanding the request", "fail",
+                 "the model did not return a Blueprint")
             return {"success": False, "model": label, "error": str(exc),
                     "raw_completion": completion[:4000],
                     "verification": {}, "files": {}}
 
+        part_class = payload.get("part_class", "")
+        variables = payload.get("variables", {}) or {}
+        template = payload.get("template", {}) or {}
+
+        step("understand", "Understanding the request", "done",
+             design_narrative._readable_class(part_class))
+        step("dimensions", "Solving dimensions", "done",
+             f"{len(variables)} parameters",
+             [f"{k} = {v}" for k, v in variables.items()])
+
+        features = [f for f in (template.get("features") or [])
+                    if f.get("type") not in ("Body", "Sketch")]
+        step("build", "Building the model", "active",
+             f"{len(features)} features",
+             [f.get("rationale") or f.get("id", "") for f in features])
+        if on_event:
+            on_event("phase", {"phase": "building"})
+
+        bundle = blueprint_service.build_from_payload(payload)
         bundle["model"] = label
         bundle["thinking"] = resp.thinking or bundle.get("thinking", "")
         bundle["prompt"] = prompt
+
+        if not bundle.get("success"):
+            step("build", "Building the model", "fail",
+                 bundle.get("error") or "the build failed")
+            if on_event:
+                on_event("built", {"success": False, "files": {},
+                                   "stats": None, "error": bundle.get("error")})
+            return bundle
+
+        step("build", "Building the model", "done", f"{len(features)} features")
         if on_event:
             on_event("built", {
-                "success": bundle["success"],
+                "success": True,
                 "files": bundle["files"],
                 "stats": bundle["stats"],
-                "error": bundle["error"],
+                "error": None,
             })
-            on_event("verification", bundle.get("verification") or {})
+
+        report = bundle.get("verification") or {}
+        checks = report.get("checks") or []
+        step("verify", "Running verification",
+             "done" if report.get("verdict") == "verified" else "fail",
+             f"{len(checks)} checks",
+             [c.get("label", "") for c in checks])
+        if on_event:
+            on_event("verification", report)
+
+        # The readable account of the design. Derived, never authored — see
+        # design_narrative for why a second model pass is the wrong tool.
+        bundle["narrative"] = design_narrative.build(bundle, prompt=prompt)
+        if on_event and bundle["narrative"]:
+            on_event("narrative", bundle["narrative"])
         return bundle
 
     # ------------------------------------------------------------------ #

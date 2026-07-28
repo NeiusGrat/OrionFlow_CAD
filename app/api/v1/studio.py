@@ -112,6 +112,10 @@ def studio_chat(request: StudioChatRequest):
                 "part_class": bundle.get("part_class", ""),
                 "variables": bundle.get("variables", {}),
                 "blueprint": bundle.get("blueprint"),
+                # The readable account. `thinking` and `blueprint` stay in the
+                # payload untouched — they are the debugging record — but the
+                # UI leads with this.
+                "narrative": bundle.get("narrative"),
                 "thinking": bundle.get("thinking", ""),
                 "files": bundle.get("files", {}),
                 "stats": bundle.get("stats"),

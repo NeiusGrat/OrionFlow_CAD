@@ -11,7 +11,13 @@ import {
 import OrionFlowLogo from "../OrionFlowLogo";
 import VerificationCard from "./VerificationCard";
 import { useStudioStore, type StudioMessage, type DesignOutcome } from "../../store/studioStore";
-import { fetchStudioHealth, fullUrl, type StudioHealth } from "../../services/studioApi";
+import {
+    fetchStudioHealth,
+    fullUrl,
+    type StudioHealth,
+    type StudioStep,
+    type DesignNarrative,
+} from "../../services/studioApi";
 
 /* ────────────────────────── bits ────────────────────────── */
 
@@ -60,51 +66,167 @@ function ModelBadge({ model }: { model: string }) {
     );
 }
 
-const PHASE_LABEL: Record<string, string> = {
-    reasoning: "Deriving the part",
-    building: "Building geometry in the kernel",
-};
-
-/** Real phase, driven by server events — never a timer. */
-function PhaseLine({ phase }: { phase: "reasoning" | "building" }) {
+/** The live progress list.
+ *
+ *  Every row is a stage the server actually reported reaching, with the real
+ *  thing it found — the part class it recognised, the features it is building,
+ *  the checks it ran. Nothing here is on a timer, so a stage that stalls looks
+ *  stalled instead of animating towards a result that is not coming.
+ */
+function Steps({ steps }: { steps: StudioStep[] }) {
+    if (!steps.length) return null;
     return (
-        <div
-            style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "7px",
-                fontSize: "12px",
-                color: "var(--studio-text-dim)",
-                padding: "2px 0",
-            }}
-        >
-            <Loader2 size={12} className="of-spin" style={{ color: "var(--studio-accent)" }} />
-            {PHASE_LABEL[phase] ?? phase}…
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px", margin: "2px 0 4px" }}>
+            {steps.map((s) => {
+                const color =
+                    s.status === "done"
+                        ? "var(--studio-ok)"
+                        : s.status === "fail"
+                          ? "var(--studio-err)"
+                          : "var(--studio-accent)";
+                return (
+                    <div key={s.id}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "12px" }}>
+                            {s.status === "active" ? (
+                                <Loader2 size={11} className="of-spin" style={{ color }} />
+                            ) : (
+                                <span style={{ color, fontSize: "11px", width: "11px", textAlign: "center" }}>
+                                    {s.status === "done" ? "✓" : "✕"}
+                                </span>
+                            )}
+                            <span style={{ color: s.status === "active" ? "var(--studio-text)" : "var(--studio-text-dim)" }}>
+                                {s.label}
+                            </span>
+                            {s.detail && (
+                                <span
+                                    style={{
+                                        marginLeft: "auto",
+                                        fontFamily: "var(--font-mono)",
+                                        fontSize: "10px",
+                                        color: "var(--studio-text-faint)",
+                                        textAlign: "right",
+                                        maxWidth: "55%",
+                                    }}
+                                >
+                                    {s.detail}
+                                </span>
+                            )}
+                        </div>
+                        {s.status !== "active" && s.items.length > 0 && (
+                            <div style={{ paddingLeft: "18px", marginTop: "2px" }}>
+                                {s.items.slice(0, 8).map((it, i) => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            fontSize: "10.5px",
+                                            fontFamily: "var(--font-mono)",
+                                            color: "var(--studio-text-faint)",
+                                            lineHeight: 1.5,
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                        }}
+                                    >
+                                        · {it}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }
 
-/** The model's derivation. Open while it streams — this is the evidence for
- *  every number it is about to commit to — then collapsed to stay out of the
- *  way, but never discarded. */
-function Reasoning({ text, live }: { text: string; live: boolean }) {
-    const [open, setOpen] = useState(true);
-    const boxRef = useRef<HTMLPreElement>(null);
-    const closedOnce = useRef(false);
+/** Minimal inline markdown: **bold** only. The narrative is generated by us,
+ *  so the input set is known — a full markdown renderer would be weight for
+ *  nothing. */
+function RichText({ text }: { text: string }) {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return (
+        <>
+            {parts.map((p, i) =>
+                p.startsWith("**") && p.endsWith("**") ? (
+                    <strong key={i} style={{ color: "var(--studio-text)", fontWeight: 650 }}>
+                        {p.slice(2, -2)}
+                    </strong>
+                ) : (
+                    <span key={i}>{p}</span>
+                )
+            )}
+        </>
+    );
+}
 
-    useEffect(() => {
-        if (!live && !closedOnce.current) {
-            closedOnce.current = true;
-            setOpen(false);
-        }
-    }, [live]);
+/** The engineering account of the design — what it understood, how it built
+ *  it, why, and what was actually proved. */
+function Narrative({ narrative }: { narrative: DesignNarrative }) {
+    return (
+        <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
+            {narrative.sections.map((sec) => (
+                <div key={sec.title}>
+                    <div
+                        style={{
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            letterSpacing: "0.09em",
+                            textTransform: "uppercase",
+                            color: "var(--studio-text-faint)",
+                            marginBottom: "4px",
+                        }}
+                    >
+                        {sec.title}
+                    </div>
+                    <div
+                        style={{
+                            fontSize: "12.5px",
+                            lineHeight: 1.65,
+                            color: "var(--studio-text-dim)",
+                        }}
+                    >
+                        <RichText text={sec.body} />
+                    </div>
+                    {sec.items && sec.items.length > 0 && (
+                        <ul
+                            style={{
+                                margin: "6px 0 0",
+                                paddingLeft: "16px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "3px",
+                            }}
+                        >
+                            {sec.items.map((it, i) => (
+                                <li
+                                    key={i}
+                                    style={{
+                                        fontSize: "12px",
+                                        lineHeight: 1.55,
+                                        color: "var(--studio-text-dim)",
+                                    }}
+                                >
+                                    <RichText text={it} />
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
 
-    useEffect(() => {
-        if (open && live && boxRef.current) {
-            boxRef.current.scrollTop = boxRef.current.scrollHeight;
-        }
-    }, [text, open, live]);
-
+/** A collapsed drawer of machine-readable detail.
+ *
+ *  The Blueprint and the model's raw derivation stay exactly as they are —
+ *  they are the reproducible record and the first thing to reach for when a
+ *  part is wrong. They are just no longer the thing a user is shown first:
+ *  working notes are not an explanation, and raw JSON makes a mechanical
+ *  engineering system read as a code generator.
+ */
+function Drawer({ label, text }: { label: string; text: string }) {
+    const [open, setOpen] = useState(false);
     if (!text.trim()) return null;
 
     return (
@@ -120,32 +242,30 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
                     padding: 0,
                     cursor: "pointer",
                     color: "var(--studio-text-faint)",
-                    fontSize: "11px",
+                    fontSize: "10px",
                     fontWeight: 600,
-                    letterSpacing: "0.04em",
+                    letterSpacing: "0.06em",
                     textTransform: "uppercase",
                 }}
             >
-                {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                Reasoning
+                {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                {label}
             </button>
             {open && (
                 <pre
-                    ref={boxRef}
                     className="studio-scroll"
                     style={{
                         margin: "5px 0 0",
                         padding: "8px 10px",
-                        maxHeight: "220px",
+                        maxHeight: "240px",
                         overflowY: "auto",
                         background: "var(--studio-panel-2)",
                         border: "1px solid var(--studio-border)",
-                        borderLeft: "2px solid var(--studio-accent)",
                         borderRadius: "6px",
                         fontFamily: "var(--font-mono)",
-                        fontSize: "10.5px",
-                        lineHeight: 1.6,
-                        color: "var(--studio-text-dim)",
+                        fontSize: "10px",
+                        lineHeight: 1.55,
+                        color: "var(--studio-text-faint)",
                         whiteSpace: "pre-wrap",
                         wordBreak: "break-word",
                     }}
@@ -266,9 +386,23 @@ function Message({ msg }: { msg: StudioMessage }) {
             </div>
 
             <div style={{ paddingLeft: "29px" }}>
-                {msg.streaming && msg.phase && <PhaseLine phase={msg.phase} />}
+                <Steps steps={msg.steps} />
 
-                <Reasoning text={msg.thinking} live={msg.streaming} />
+                {msg.narrative && (
+                    <>
+                        <div
+                            style={{
+                                fontSize: "13px",
+                                fontWeight: 650,
+                                color: "var(--studio-text)",
+                                marginTop: "8px",
+                            }}
+                        >
+                            {msg.narrative.headline}
+                        </div>
+                        <Narrative narrative={msg.narrative} />
+                    </>
+                )}
 
                 {msg.content && (
                     <p
@@ -309,6 +443,20 @@ function Message({ msg }: { msg: StudioMessage }) {
                         <VerificationCard report={msg.design.verification} />
                         <VariableChips variables={msg.design.variables} />
                         <Exports files={msg.design.files} />
+                        {/* Kept verbatim and reachable: the Blueprint is the
+                            reproducible record, and the raw completion is what
+                            to diff when a part comes out wrong. */}
+                        <div>
+                            <Drawer
+                                label="Blueprint JSON"
+                                text={
+                                    msg.design.blueprint
+                                        ? JSON.stringify(msg.design.blueprint, null, 2)
+                                        : ""
+                                }
+                            />
+                            <Drawer label="Raw model output" text={msg.thinking} />
+                        </div>
                     </div>
                 )}
             </div>

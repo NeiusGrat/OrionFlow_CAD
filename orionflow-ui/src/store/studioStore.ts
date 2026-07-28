@@ -7,6 +7,10 @@ import {
     type StudioFiles,
     type StudioStats,
 } from '../services/studioApi';
+import type {
+    StudioStep,
+    DesignNarrative,
+} from '../services/studioApi';
 import type { VerificationReport } from '../services/agentApi';
 import { useDesignStore } from './designStore';
 import { useOFLStore } from './oflStore';
@@ -27,8 +31,14 @@ export interface StudioMessage {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    /** The model's derivation, streamed. Kept even after the turn ends —
-     *  it is the evidence for the numbers it chose. */
+    /** Stages that actually happened, in order, as they happened. */
+    steps: StudioStep[];
+    /** The engineering account of the design, derived from the Blueprint.
+     *  This is what the user reads; `thinking` and the Blueprint JSON stay
+     *  available underneath for debugging. */
+    narrative: DesignNarrative | null;
+    /** The model's raw derivation. Working notes — kept for inspection, never
+     *  presented as the explanation. */
     thinking: string;
     /** Which model answered. "orionflow" is ours; anything else is a fallback
      *  and the UI must say so. */
@@ -45,6 +55,8 @@ function blank(role: 'user' | 'assistant', content = ''): StudioMessage {
         id: crypto.randomUUID(),
         role,
         content,
+        steps: [],
+        narrative: null,
         thinking: '',
         model: '',
         phase: null,
@@ -119,6 +131,22 @@ export const useStudioStore = create<StudioState>((set, get) => ({
                         case 'phase':
                             patch((m) => ({ ...m, phase: e.phase }));
                             break;
+                        case 'step':
+                            // A step re-reported with a new status replaces the
+                            // earlier one, so "active" becomes "done" in place
+                            // rather than accumulating duplicates.
+                            patch((m) => {
+                                const i = m.steps.findIndex((s) => s.id === e.step.id);
+                                const steps =
+                                    i === -1
+                                        ? [...m.steps, e.step]
+                                        : m.steps.map((s, j) => (j === i ? e.step : s));
+                                return { ...m, steps };
+                            });
+                            break;
+                        case 'narrative':
+                            patch((m) => ({ ...m, narrative: e.narrative }));
+                            break;
                         case 'thinking':
                             patch((m) => ({ ...m, thinking: m.thinking + e.text }));
                             break;
@@ -160,8 +188,15 @@ export const useStudioStore = create<StudioState>((set, get) => ({
                                     phase: null,
                                     model: r.model || m.model,
                                     thinking: r.thinking || m.thinking,
+                                    narrative: r.narrative ?? m.narrative,
                                     design: outcome,
-                                    content: m.content || summarise(outcome),
+                                    // Only fall back to a one-liner when the
+                                    // narrative is absent; otherwise the
+                                    // narrative IS the answer.
+                                    content:
+                                        r.narrative || m.narrative
+                                            ? ''
+                                            : m.content || summarise(outcome),
                                 }));
                                 set({ part: outcome, partPrompt: message });
                                 showInViewer(message, r.files, r.stats);
