@@ -38,6 +38,46 @@ EventSink = Optional[Callable[[str, dict], None]]
 OURS = ("vllm", "openai")
 
 
+#: Which model answers questions. Our LoRA is trained to reply to everything
+#: with a Blueprint, so it is the wrong tool for conversation; the untouched
+#: base is served alongside it on the same endpoint for exactly this.
+CONVERSATION_MODEL = os.environ.get("ORION_CONVERSATION_MODEL", "orionflow-base")
+
+#: How many times to draw a design before giving up. Two by default: one
+#: resample recovers most static-check misses, and a third rarely adds anything
+#: a user is still waiting for.
+DESIGN_ATTEMPTS = max(1, int(os.environ.get("ORION_DESIGN_ATTEMPTS", "2")))
+
+
+def _short(msg: Optional[str], limit: int = 70) -> str:
+    """First line of an error, trimmed — step details are one line of UI."""
+    if not msg:
+        return ""
+    first = str(msg).strip().splitlines()[0].strip()
+    return first if len(first) <= limit else first[: limit - 1] + "…"
+
+
+def _strip_blueprint(text: str) -> str:
+    """Prose only. Returns "" if the reply was really a Blueprint.
+
+    Belt and braces behind CONVERSATION_MODEL: whatever answers, raw JSON must
+    never reach the conversation. Showing it is what made the panel look like a
+    code generator in the first place.
+    """
+    body = text.strip()
+    if "</think>" in body:
+        body = body.rpartition("</think>")[2].strip()
+    if "```" in body:
+        # Drop fenced blocks; keep the prose around them.
+        parts = body.split("```")
+        body = " ".join(p for i, p in enumerate(parts) if i % 2 == 0).strip()
+    # A reply that is mostly a JSON object is a design, not an answer.
+    brace = body.find("{")
+    if brace != -1 and ('"part_class"' in body or '"template"' in body):
+        body = body[:brace].strip()
+    return body
+
+
 def _providers() -> tuple[str, str]:
     """(primary, fallback), resolved at call time.
 
@@ -127,16 +167,28 @@ class StudioAgent:
         }
 
     # ------------------------------------------------------------------ #
-    def _complete(self, messages, on_event: EventSink, channel: str,
-                  max_tokens: Optional[int] = None):
+    def _complete(self, messages, on_event: EventSink,
+                  channel: Optional[str] = None,
+                  max_tokens: Optional[int] = None,
+                  model: Optional[str] = None):
         """Stream a completion, falling back once, reporting which model ran.
+
+        ``channel`` is the event name for answer tokens, or None to emit no
+        tokens at all. The design path passes None deliberately: the adapter
+        decides "is this thinking?" by looking for a ``<think>`` **opening**
+        tag, and the model never emits one (the chat template does not inject
+        it, by design — see fine_tuning/orionflow_chatml.jinja). So every token
+        classifies as an answer, and streaming them puts the raw derivation,
+        the stray ``</think>`` and the entire Blueprint JSON on screen as if it
+        were prose. Progress on that path comes from ``step`` events, which
+        report real stages instead.
 
         Returns ``(response, model_label)``. ``model_label`` is "orionflow" for
         our own model and "fallback:<provider>" otherwise; callers must surface
         it rather than hide it.
         """
         def emit_token(kind: str, text: str) -> None:
-            if on_event and text:
+            if on_event and text and channel:
                 on_event(kind if kind == "thinking" else channel, {"text": text})
 
         for provider in _providers():
@@ -152,8 +204,9 @@ class StudioAgent:
 
             if on_event:
                 on_event("model", {"model": label, "provider": provider})
+            kw = {"model": model} if model else {}
             resp = client.chat_stream(messages, on_token=emit_token,
-                                      max_tokens=max_tokens)
+                                      max_tokens=max_tokens, **kw)
             # Transport failures come back as content, not exceptions, so the
             # loop never wedges on a dead endpoint. Detect and move on.
             failed = (resp.finish_reason == "error"
@@ -187,59 +240,84 @@ class StudioAgent:
 
         messages = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(prompt)]
 
-        step("understand", "Understanding the request")
-        if on_event:
-            on_event("phase", {"phase": "reasoning"})
-        resp, label = self._complete(messages, on_event, "answer",
-                                     max_tokens=4096)
-        if resp is None:
-            step("understand", "Understanding the request", "fail",
-                 "no model is reachable")
-            return {"success": False, "model": "",
-                    "error": "no model is reachable — the inference endpoint "
-                             "is down and the fallback also failed",
-                    "verification": {}, "files": {}}
+        # Sampling is stochastic and a fraction of samples miss for reasons a
+        # second draw fixes — an unused variable the static checker rejects, a
+        # truncated object. Resampling is honest (it is the same model, asked
+        # again) and cheap next to the build, so a recoverable miss does not
+        # become a dead end. It never masks a failure: if every attempt misses,
+        # the last real error is what gets reported.
+        bundle: dict = {}
+        features: list = []
+        for attempt in range(1, DESIGN_ATTEMPTS + 1):
+            again = attempt > 1
+            step("understand", "Understanding the request", "active",
+                 f"attempt {attempt}" if again else "")
+            if on_event:
+                on_event("phase", {"phase": "reasoning"})
+            # channel=None: emit no raw tokens. See _complete for why.
+            resp, label = self._complete(messages, on_event, channel=None,
+                                         max_tokens=4096)
+            if resp is None:
+                step("understand", "Understanding the request", "fail",
+                     "no model is reachable")
+                return {"success": False, "model": "",
+                        "error": "no model is reachable — the inference "
+                                 "endpoint is down and the fallback also "
+                                 "failed",
+                        "verification": {}, "files": {}}
 
-        completion = resp.content
+            completion = resp.content
 
-        # ---- interpretation: real facts, straight off the parsed Blueprint --
-        try:
-            _, payload = blueprint_service.parse_completion(completion)
-        except blueprint_service.BlueprintBuildError as exc:
-            # The model answered, but not with a Blueprint. That is a model
-            # failure and must read as one — not as a kernel error.
-            step("understand", "Understanding the request", "fail",
-                 "the model did not return a Blueprint")
-            return {"success": False, "model": label, "error": str(exc),
-                    "raw_completion": completion[:4000],
-                    "verification": {}, "files": {}}
+            # ---- interpretation: facts straight off the parsed Blueprint ----
+            try:
+                _, payload = blueprint_service.parse_completion(completion)
+            except blueprint_service.BlueprintBuildError as exc:
+                # The model answered, but not with a Blueprint. That is a model
+                # failure and must read as one — not as a kernel error.
+                if attempt < DESIGN_ATTEMPTS:
+                    step("understand", "Understanding the request", "active",
+                         "no Blueprint returned — resampling")
+                    continue
+                step("understand", "Understanding the request", "fail",
+                     "the model did not return a Blueprint")
+                return {"success": False, "model": label, "error": str(exc),
+                        "raw_completion": completion[:4000],
+                        "verification": {}, "files": {}}
 
-        part_class = payload.get("part_class", "")
-        variables = payload.get("variables", {}) or {}
-        template = payload.get("template", {}) or {}
+            part_class = payload.get("part_class", "")
+            variables = payload.get("variables", {}) or {}
+            template = payload.get("template", {}) or {}
 
-        step("understand", "Understanding the request", "done",
-             design_narrative._readable_class(part_class))
-        step("dimensions", "Solving dimensions", "done",
-             f"{len(variables)} parameters",
-             [f"{k} = {v}" for k, v in variables.items()])
+            step("understand", "Understanding the request", "done",
+                 design_narrative._readable_class(part_class))
+            step("dimensions", "Solving dimensions", "done",
+                 f"{len(variables)} parameters",
+                 [f"{k} = {v}" for k, v in variables.items()])
 
-        features = [f for f in (template.get("features") or [])
-                    if f.get("type") not in ("Body", "Sketch")]
-        step("build", "Building the model", "active",
-             f"{len(features)} features",
-             [f.get("rationale") or f.get("id", "") for f in features])
-        if on_event:
-            on_event("phase", {"phase": "building"})
+            features = [f for f in (template.get("features") or [])
+                        if f.get("type") not in ("Body", "Sketch")]
+            step("build", "Building the model", "active",
+                 f"{len(features)} features",
+                 [f.get("rationale") or f.get("id", "") for f in features])
+            if on_event:
+                on_event("phase", {"phase": "building"})
 
-        bundle = blueprint_service.build_from_payload(payload)
-        bundle["model"] = label
-        bundle["thinking"] = resp.thinking or bundle.get("thinking", "")
-        bundle["prompt"] = prompt
+            bundle = blueprint_service.build_from_payload(payload)
+            bundle["model"] = label
+            bundle["thinking"] = resp.thinking or bundle.get("thinking", "")
+            bundle["prompt"] = prompt
+            bundle["attempts"] = attempt
 
-        if not bundle.get("success"):
+            if bundle.get("success"):
+                break
+
+            if attempt < DESIGN_ATTEMPTS:
+                step("build", "Building the model", "active",
+                     _short(bundle.get("error")) + " — resampling")
+                continue
+
             step("build", "Building the model", "fail",
-                 bundle.get("error") or "the build failed")
+                 _short(bundle.get("error")) or "the build failed")
             if on_event:
                 on_event("built", {"success": False, "files": {},
                                    "stats": None, "error": bundle.get("error")})
@@ -294,13 +372,21 @@ class StudioAgent:
         messages.append(LLMMessage.user(prompt))
 
         resp, label = self._complete(messages, on_event, "answer",
-                                     max_tokens=1024)
+                                     max_tokens=1024,
+                                     model=CONVERSATION_MODEL)
         if resp is None:
             return {"success": False, "model": "",
                     "answer": "", "error": "no model is reachable"}
+
+        answer = _strip_blueprint(resp.content)
+        if not answer:
+            # The model answered with a Blueprint instead of prose. Say so
+            # rather than pasting JSON into the conversation.
+            return {"success": False, "model": label, "answer": "",
+                    "error": "the model returned a design instead of an "
+                             "answer — try rephrasing as a question"}
         return {"success": True, "model": label,
-                "answer": resp.content.strip(), "thinking": resp.thinking,
-                "error": None}
+                "answer": answer, "thinking": resp.thinking, "error": None}
 
 
 def _part_context(part: dict) -> str:

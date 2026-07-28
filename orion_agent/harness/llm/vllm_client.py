@@ -54,9 +54,10 @@ class VLLMClient(LLMClient):
         tools: Optional[list[dict]] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
     ) -> LLMResponse:
         payload = self._payload(messages, tools, temperature, max_tokens,
-                                stream=False)
+                                stream=False, model=model)
         try:
             body = self._post(payload)
         except Exception as exc:  # noqa: BLE001
@@ -71,6 +72,7 @@ class VLLMClient(LLMClient):
         on_token: Optional[Callable[[str, str], None]] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         **_kw,
     ) -> LLMResponse:
         """Stream tokens, tagging each as ``"thinking"`` or ``"answer"``.
@@ -80,7 +82,7 @@ class VLLMClient(LLMClient):
         care which path it got.
         """
         payload = self._payload(messages, tools, temperature, max_tokens,
-                                stream=True)
+                                stream=True, model=model)
         pieces: list[str] = []
         in_think = False
         try:
@@ -113,9 +115,13 @@ class VLLMClient(LLMClient):
 
     # ------------------------------------------------------------------ #
     def _payload(self, messages, tools, temperature, max_tokens,
-                 stream: bool) -> dict:
+                 stream: bool, model: Optional[str] = None) -> dict:
+        # A per-call override lets one endpoint serve both roles: the LoRA for
+        # Blueprints, and the untouched base for conversation. The adapter is
+        # trained to answer everything with a Blueprint, so asking it a
+        # question returns JSON.
         return {
-            "model": self.model,
+            "model": model or self.model,
             "messages": self._to_wire(messages, tools),
             "stream": stream,
             "temperature": (self.default_temperature if temperature is None
