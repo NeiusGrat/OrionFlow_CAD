@@ -131,6 +131,19 @@ def score_one(idx: int, completion: str, meta: dict, workdir: str,
     out["build_ok"] = bool(verdict.get("build_ok"))
     out["verified"] = bool(verdict.get("passed"))
     out["part_class"] = bp.part_class
+    # Everything the repair round needs to write a diagnosis with numbers in it.
+    # Underscored so it is stripped before the results file is written — it is
+    # working state, not a score. Without it ``diagnose`` sees no assertions, no
+    # variables and no measurement, and an ``assert`` diagnosis degrades to
+    # "something disagrees", which is not repairable.
+    out["_evidence"] = {
+        "payload": payload,
+        "verdict": {
+            "assertions": verdict.get("assertions", []),
+            "failed_preconditions": verdict.get("failed_preconditions", []),
+        },
+        "measured": verdict.get("measured") or {},
+    }
 
     # A build that produced no measurement is an infrastructure event as often
     # as it is a bad part (OCC wedging, a starved worker hitting the wall
@@ -301,9 +314,12 @@ def main() -> None:
             reqs = []
             for i, r in retryable:
                 meta = pairs[i][1]
+                ev = r.get("_evidence") or {}
                 reqs.append({"repair_messages": build_repair_messages(
                     meta["_messages"], pairs[i][0],
-                    diagnose(None, r["error"] or ""))})
+                    diagnose(ev.get("payload"), r["error"] or "",
+                             verdict=ev.get("verdict"),
+                             measured=ev.get("measured")))})
             fixed = generate(reqs, args.repair_endpoint, args.model,
                              args.max_tokens, args.temperature,
                              args.gen_workers)
@@ -330,12 +346,17 @@ def main() -> None:
     print("=" * 58)
 
     if args.out:
+        # Underscored keys are repair working state (whole blueprints and
+        # measurements); keeping them would multiply the results file by the
+        # size of the corpus for no analytical gain.
+        slim = [{k: v for k, v in r.items() if not k.startswith("_")}
+                for r in results]
         with open(args.out, "w", encoding="utf-8") as fh:
             json.dump({"n": n,
                        "verified_pct": pct("verified"),
                        "build_pct": pct("build_ok"),
                        "parse_pct": pct("parse_ok"),
-                       "results": results}, fh, indent=1)
+                       "results": slim}, fh, indent=1)
         print(f"wrote {args.out}")
 
 
