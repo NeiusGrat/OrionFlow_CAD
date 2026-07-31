@@ -148,12 +148,20 @@ def harvest(pdf_path: str, first: int = 0, last: Optional[int] = None) -> Harves
     # The size code is always the LAST two digits; everything before it is the
     # series. Grouping by the first two collides 16100 with 16056 — different
     # series, and the monotonic check then rejects both as out of order.
-    result.rejected.extend(series_monotonic(
-        result.accepted,
-        series_of=lambda r: r["designation"][:-2],
-        order_of=lambda r: int(r["designation"][-2:])))
-    broken = {id(r.row) for r in result.rejected}
-    result.accepted = [r for r in result.accepted if id(r) not in broken]
+    # Iterate to a fixed point. Removing an out-of-order row can expose the
+    # next one: 32220 was rejected against 32219, which left 32221 — equally
+    # wrong — comparing against a row that was no longer there. One pass is not
+    # enough when the check is relative to a neighbour that may itself go.
+    while True:
+        broken = series_monotonic(
+            result.accepted,
+            series_of=lambda r: r["designation"][:-2],
+            order_of=lambda r: int(r["designation"][-2:]))
+        if not broken:
+            break
+        result.rejected.extend(broken)
+        gone = {id(r.row) for r in broken}
+        result.accepted = [r for r in result.accepted if id(r) not in gone]
     return result
 
 
