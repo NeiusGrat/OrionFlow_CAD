@@ -149,3 +149,52 @@ def test_derived_values_a_bearing_actually_needs():
     assert result.derived["clearance_hole_mm"] == 9.0        # ISO 273 medium
     assert result.derived["hole_pitch_mm"] == pytest.approx(40.0, abs=0.1)
     assert result.derived["min_outer_diameter_mm"] > 80.0
+
+
+# --------------------------------------------------------------------------- #
+# the gated catalogue, wired in
+# --------------------------------------------------------------------------- #
+def test_the_harvested_catalogue_is_the_authority_for_envelopes():
+    """658 rows that passed the invariant gate, against 22 typed by hand."""
+    from orion.skills.bearing_seat import harvested
+
+    gated = harvested()
+    assert len(gated) > 400, "the harvested catalogue is missing or truncated"
+    # the catalogue's own numbers, cross-checked against SKF's mm/inch columns
+    assert gated["6205"]["d"] == 25 and gated["6205"]["D"] == 52
+    assert gated["6205"]["B"] == 15
+    # the value a published web table got wrong
+    assert gated["6208"]["B"] == 18
+
+
+def test_load_ratings_reach_the_life_calculator():
+    """A seat carries C so sizing life needs no second lookup."""
+    from orion import calc
+
+    result = registry.execute("create_bearing_seat",
+                              {"bearing_designation": "6205"})
+    c_dyn = result.derived["dynamic_load_rating_C_N"]
+    assert c_dyn == 14800.0
+    life = calc.bearing_life_l10(c_dyn, 2000.0, 1500.0)
+    assert life["l10_hours"] > 0
+
+
+def test_a_bearing_known_only_to_the_harvest_still_resolves():
+    result = registry.execute("create_bearing_seat",
+                              {"bearing_designation": "6310",
+                               "wall_mm": 8, "floor_mm": 6})
+    assert result.variables["rs"] == 55.0        # 110 mm OD
+    assert result.variables["ds"] == 27.0        # 27 mm wide
+
+
+def test_a_missing_shoulder_is_reported_not_invented():
+    """Both routes to a shoulder need either Da max or r_min. With neither,
+    a plausible number would be a bearing that fails early for an invisible
+    reason."""
+    from orion.skills.bearing_seat import bearing, create_bearing_seat
+
+    spec = bearing("6410")
+    if spec.get("Da_max") is None and spec.get("r_min") is None:
+        result = create_bearing_seat("6410", wall_mm=10, floor_mm=8)
+        assert result.derived["shoulder_diameter_mm"] is None
+        assert any("cannot be sized" in w for w in result.warnings)
