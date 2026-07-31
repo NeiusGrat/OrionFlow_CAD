@@ -207,6 +207,40 @@ def test_unmappable_dimension_becomes_a_question():
     assert any("dim_4" in q for q in questions)
 
 
+@needs_corpus
+def test_numbers_that_reached_no_variable_are_reported():
+    """Defaulting is fine when the user said nothing. It is not fine when they
+    gave dimensions nobody could read: every guard still holds, every variable
+    is in range, and the specification looks perfect while describing a
+    different part."""
+    from app.services.planner import EngineeringPlanner
+
+    result = EngineeringPlanner().plan(
+        "A mount plate with a 47 degree chamfer and an 88 mm keep-out zone")
+    orphans = [q for q in result.questions if "reached no" in q]
+    assert orphans, "unreadable dimensions were silently replaced by medians"
+    assert "88" in orphans[0]
+
+
+@needs_corpus
+def test_a_hole_count_never_becomes_a_hole_radius():
+    from app.services.engineering_spec import specification_from_intent
+
+    class _Intent:
+        part = "mount plate"
+        dimensions = {"thickness": 6.0}
+        counts = {"hole": 4}          # "four M5 clearance holes"
+        material = ""
+        manufacturing = ""
+        constraints: list = []
+        unresolved: list = []
+
+    spec, _ = specification_from_intent(_Intent())
+    assert spec.variables["pt"] == 6.0
+    # hr is a radius; a count of four holes must not become a 4 mm radius
+    assert spec.rationale["hr"].startswith("not stated")
+
+
 def test_vocabulary_is_the_real_one():
     vocab = known_vocabulary()
     assert "mount_plate" in vocab["bases"]

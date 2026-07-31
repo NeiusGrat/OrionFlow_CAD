@@ -195,6 +195,58 @@ def test_attachment_phrases_are_refused_not_mismatched():
 
 
 @needs_corpus
+def test_size_triple_is_read():
+    """"100 x 60 x 5 mm" is how people write a plate and how the corpus never
+    writes one — so a benchmark drawn from the corpus reported 100% fidelity
+    while every dimension here was silently replaced by a median."""
+    from orion.family_schema import extract_for_family
+
+    got = extract_for_family("Rectangular plate 100 x 60 x 5 mm", "mount_plate")
+    assert got == {"pl": 100.0, "pw": 60.0, "pt": 5.0}
+    assert extract_for_family("plate 120 × 80 × 6", "mount_plate")["pl"] == 120.0
+
+
+@needs_corpus
+def test_a_feature_size_does_not_become_the_outline():
+    from orion.family_schema import extract_for_family
+
+    # the slot is 40x8; the plate is 80x40x5
+    got = extract_for_family(
+        "Plate 80 x 40 x 5 mm with a central slot 40 mm long and 8 mm wide",
+        "mount_plate")
+    assert got["pl"] == 80.0 and got["pw"] == 40.0 and got["pt"] == 5.0
+
+    # a bolt pattern is not the part's extents
+    got = extract_for_family(
+        "NEMA 17 motor mount plate, 6 mm thick: M3 holes on a 31 x 31 mm "
+        "square bolt pattern", "mount_plate")
+    assert got.get("pl") != 31.0 and got.get("pw") != 31.0
+    assert got["pt"] == 6.0
+
+    # ...but a grid mentioned AFTER the size must not suppress the size
+    got = extract_for_family(
+        "Plate 100 x 100 x 3 mm with a 3 x 3 grid of 6 mm holes", "mount_plate")
+    assert got["pl"] == 100.0 and got["pt"] == 3.0
+
+
+@needs_corpus
+def test_a_family_that_owns_a_feature_keeps_its_dimensions():
+    """The sub-feature guard must not fire on families whose own variables are
+    named after the feature — it cost 2.6 points of corpus fidelity when it did."""
+    from orion.family_schema import extract_for_family, for_family
+
+    schema = for_family("slotted_rail")
+    assert [n for n in schema.variables if "slot" in n], \
+        "expected slotted_rail to own slot variables"
+    got = extract_for_family(
+        "I need a slotted rail. Dimensions (mm unless noted): slot radius 7, "
+        "rail height 20.", "slotted_rail")
+    assert got.get("slot_r") == 7.0, \
+        "the family's own slot dimension was consumed as a sub-feature"
+    assert got.get("rail_h") == 20.0
+
+
+@needs_corpus
 def test_optional_variables_are_marked_optional():
     # bolted_flange carries an O-ring gland on some variants only.
     schema = for_family("bolted_flange")
