@@ -32,8 +32,14 @@ import re
 import sys
 from typing import Iterator, Optional
 
-from orion.knowledge.contract import Confidence
-from orion.knowledge.ingest import Harvest, gate, ordered, positive, write_catalogue
+from orion.knowledge.contract import (
+    ComponentLoader,
+    Confidence,
+    Interface,
+    Provenance,
+    run,
+)
+from orion.knowledge.ingest import Harvest, ordered, positive, write_catalogue
 from orion.knowledge.source import PARKER_ORING_HANDBOOK, Dataset
 
 #: "1.78 ±0.08 1.45 0.16 - 0.45  9 - 25 2.40 - 2.60 3.50 - 3.70 4.60 - 4.80 ..."
@@ -162,44 +168,120 @@ INVARIANTS = [
 ]
 
 
+class ORingGlandLoader(ComponentLoader):
+    """O-ring glands, against the generic contract. The second family through
+    it, and the one that decides whether the interface generalises.
+
+    Two places it pushed back, both worth recording:
+
+    * an O-ring gland has **no designation**. Its identity is the cord diameter
+      *and* the sealing arrangement together, which is why
+      ``parse_designation`` returns None here and the contract must not assume
+      every family has one. A component identified by its dimensions is
+      ordinary — retaining rings and keys are the same.
+    * the arrangement is established per *page*, not per row, so extraction has
+      to carry page context down into each row. The contract handles this only
+      because ``extract`` is free to yield whatever the family needs; a stricter
+      signature taking one row at a time could not have.
+    """
+
+    family = "o_ring_gland"
+    standard = PARKER_ORING_HANDBOOK.standard
+
+    def __init__(self, pages: Optional[dict[int, str]] = None) -> None:
+        self._pages = pages or {}
+
+    def extract(self, document) -> Iterator[dict]:
+        for index, text in sorted(self._pages.items()):
+            application = resolve_application(text)
+            for row in parse_page(text):
+                row["source_page"] = index
+                row.update(application)
+                row["standard"] = self.standard
+                row["units"] = "mm"
+                yield row
+
+    def invariants(self):
+        return INVARIANTS
+
+    def parse_designation(self, text: str) -> Optional[dict]:
+        """None: a gland has no designation.
+
+        Its identity is (cord diameter, arrangement). Returning a fabricated
+        one would let a caller look glands up by a key that does not exist.
+        """
+        return None
+
+    def properties(self, row: dict) -> dict:
+        return {"compression_mm": [row["compression_min_mm"],
+                                   row["compression_max_mm"]],
+                "compression_pct": [row["compression_min_pct"],
+                                    row["compression_max_pct"]]}
+
+    def interfaces(self, row: dict) -> list[Interface]:
+        """A groove meets the cord, and the counterface it seals against.
+
+        The squeeze band IS the constraint: outside it the seal either leaks or
+        takes a compression set and leaks later, and neither shows in the
+        model.
+        """
+        return [
+            Interface(kind="groove_width", nominal_mm=row["groove_width_b1_min"],
+                      constraint=f"{row['groove_width_b1_min']:g}.."
+                                 f"{row['groove_width_b1_max']:g} mm, no "
+                                 f"anti-extrusion ring"),
+            Interface(kind="groove_depth", nominal_mm=row["gland_depth_mm"],
+                      constraint=f"squeezes a {row['cord_dia_mm']:g} mm cord by "
+                                 f"{row['compression_min_pct']:g}-"
+                                 f"{row['compression_max_pct']:g}%"),
+            Interface(kind="cord", nominal_mm=row["cord_dia_mm"],
+                      constraint=f"applies to: {row['applies_to']}"),
+        ]
+
+    def confidence(self, row: dict) -> str:
+        # An unresolved arrangement means the numbers are right and what they
+        # apply to is not — and that is the part a caller would machine to.
+        return Confidence.READ if row.get("resolved") else Confidence.DERIVED
+
+    def provenance(self, row: dict) -> Provenance:
+        return Provenance(document=PARKER_ORING_HANDBOOK.document,
+                          pages=[row["source_page"]],
+                          standard=self.standard,
+                          table=f"gland dimensions ({row['applies_to']})")
+
+
 def harvest(pdf_path: str) -> Harvest:
+    """Read the document, then hand it to the contract.
+
+    Deduplication happens before the gate because the page is part of a row's
+    identity: the handbook gives different depths for the same cord depending
+    on the arrangement, and collapsing on cord alone mixes a face seal with a
+    piston seal.
+    """
     from pypdf import PdfReader
 
     reader = PdfReader(pdf_path)
-    rows: list[dict] = []
-    pages: list[int] = []
+    pages: dict[int, str] = {}
     for index in range(len(reader.pages)):
         try:
             text = reader.pages[index].extract_text() or ""
         except Exception:  # noqa: BLE001
             continue
-        found = list(parse_page(text))
-        if found:
-            application = resolve_application(text)
-            for row in found:
-                row["source_page"] = index
-                row.update(application)
-                row["standard"] = PARKER_ORING_HANDBOOK.standard
-                row["units"] = "mm"
-                # A row whose arrangement could not be pinned down is READ, not
-                # MEASURED: the numbers are right but what they apply to is not
-                # established, and that is the part a caller would machine to.
-                row["confidence"] = (Confidence.READ if application["resolved"]
-                                     else Confidence.DERIVED)
-            rows.extend(found)
-            pages.append(index)
+        if any(_ROW.match(ln.strip()) for ln in text.splitlines()):
+            pages[index] = text
 
-    # The handbook carries several gland tables — piston, rod, face seal,
-    # static, dynamic — and they give DIFFERENT depths for the same cord. The
-    # page is therefore part of a row's identity, not decoration: deduplicating
-    # on cord diameter alone silently mixes applications, and a face-seal gland
-    # used on a piston is a seal that fails.
+    loader = ORingGlandLoader(pages)
     seen: dict[tuple, dict] = {}
-    for row in rows:
+    for row in loader.extract(None):
         seen.setdefault((row["source_page"], row["cord_dia_mm"]), row)
-    return gate(sorted(seen.values(),
-                       key=lambda r: (r["source_page"], r["cord_dia_mm"])),
-                INVARIANTS, source=os.path.basename(pdf_path), pages=pages)
+
+    class _Prepared(ORingGlandLoader):
+        def extract(self, document):
+            return iter(sorted(seen.values(),
+                               key=lambda r: (r["source_page"],
+                                              r["cord_dia_mm"])))
+
+    return run(_Prepared(pages), None, source=os.path.basename(pdf_path))
 
 
 def main(argv: Optional[list[str]] = None) -> int:
