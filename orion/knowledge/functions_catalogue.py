@@ -30,6 +30,13 @@ from orion.knowledge.functions import (
 BEARING = "rolling_bearing"
 GLAND = "o_ring_gland"
 
+#: Every bearing type performs the same functions; what differs is which duties
+#: it can take, which is decided by the type profile rather than by the
+#: function. Registering each separately is what lets a search say "a taper
+#: roller, because the thrust is too high for a deep groove".
+from orion.knowledge.bearing_types import classify as _classify  # noqa: E402
+from orion.knowledge.bearing_types import profile as _profile  # noqa: E402
+
 
 # --------------------------------------------------------------------------- #
 # deep groove ball bearings
@@ -90,6 +97,8 @@ def bearing_supports_rotation(row: dict, duty: Duty) -> Optional[tuple]:
     """
     from orion import calc
 
+    if _type_allows(row, duty) is not None:
+        return None
     envelope = _envelope_fits(row, duty)
     if envelope is None:
         return None
@@ -113,6 +122,7 @@ def bearing_supports_rotation(row: dict, duty: Duty) -> Optional[tuple]:
     # 170 000 — that one is heavier, needs a bigger housing and costs more to
     # do the same job. Life is a gate; size is the ranking.
     return True, {
+        "bearing_type": _classify(row.get("designation", "")),
         "dynamic_load_rating_N": rating,
         "l10_hours": round(hours),
         "required_hours": wanted,
@@ -128,6 +138,32 @@ def bearing_centers(row: dict, duty: Duty) -> Optional[tuple]:
     if envelope is None:
         return None
     return True, {"bore_mm": row.get("d"), "outside_dia_mm": row.get("D")}, envelope
+
+
+def _type_allows(row: dict, duty: Duty) -> Optional[str]:
+    """Whether this bearing's TYPE can take the duty at all.
+
+    Asked before any arithmetic. A thrust bearing offered for a radial load is
+    not a marginal answer, it is a wrong one, and no amount of life calculation
+    makes it right.
+    """
+    spec = _profile(_classify(row.get("designation", "")) or "")
+    if spec is None:
+        return None                       # unclassified: judged on numbers only
+    if (duty.radial_load_N or 0) > 0 and not spec.carries_radial:
+        return f"{spec.kind} carries no radial load"
+    axial = duty.axial_load_N or 0.0
+    if axial > 0:
+        if spec.axial_ratio <= 0:
+            return f"{spec.kind} carries no thrust"
+        radial = duty.radial_load_N or 0.0
+        if radial > 0 and axial > radial * spec.axial_ratio:
+            return (f"{spec.kind} takes about {spec.axial_ratio:g} of its "
+                    f"radial load as thrust; this duty asks for more")
+    if (duty.misalignment_deg or 0) > spec.misalignment_deg:
+        return (f"{spec.kind} tolerates {spec.misalignment_deg:g} deg of "
+                f"misalignment, the duty has {duty.misalignment_deg:g}")
+    return None
 
 
 def _envelope_fits(row: dict, duty: Duty) -> Optional[float]:

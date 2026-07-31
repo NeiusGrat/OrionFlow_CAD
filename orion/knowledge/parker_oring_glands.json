@@ -55,7 +55,43 @@
    "resolved": false,
    "standard": "manufacturer design recommendation",
    "units": "mm",
-   "confidence": "derived"
+   "family": "o_ring_gland",
+   "confidence": "derived",
+   "provenance": {
+    "document": "O-Ring Handbook",
+    "pages": [
+     19
+    ],
+    "standard": "manufacturer design recommendation",
+    "table": "gland dimensions (AMBIGUOUS)"
+   },
+   "properties": {
+    "compression_mm": [
+     0.26,
+     0.58
+    ],
+    "compression_pct": [
+     15.0,
+     31.0
+    ]
+   },
+   "interfaces": [
+    {
+     "kind": "groove_width",
+     "nominal_mm": 2.4,
+     "constraint": "2.4..2.6 mm, no anti-extrusion ring"
+    },
+    {
+     "kind": "groove_depth",
+     "nominal_mm": 1.4,
+     "constraint": "squeezes a 1.78 mm cord by 15-31%"
+    },
+    {
+     "kind": "cord",
+     "nominal_mm": 1.78,
+     "constraint": "applies to: AMBIGUOUS"
+    }
+   ]
   },
   {
    "cord_dia_mm": 2.62,
@@ -83,7 +119,43 @@
    "resolved": false,
    "standard": "manufacturer design recommendation",
    "units": "mm",
-   "confidence": "derived"
+   "family": "o_ring_gland",
+   "confidence": "derived",
+   "provenance": {
+    "document": "O-Ring Handbook",
+    "pages": [
+     19
+    ],
+    "standard": "manufacturer design recommendation",
+    "table": "gland dimensions (AMBIGUOUS)"
+   },
+   "properties": {
+    "compression_mm": [
+     0.26,
+     0.64
+    ],
+    "compression_pct": [
+     10.0,
+     23.0
+    ]
+   },
+   "interfaces": [
+    {
+     "kind": "groove_width",
+     "nominal_mm": 3.6,
+     "constraint": "3.6..3.8 mm, no anti-extrusion ring"
+    },
+    {
+     "kind": "groove_depth",
+     "nominal_mm": 2.2,
+     "constraint": "squeezes a 2.62 mm cord by 10-23%"
+    },
+    {
+     "kind": "cord",
+     "nominal_mm": 2.62,
+     "constraint": "applies to: AMBIGUOUS"
+    }
+   ]
   },
   {
    "cord_dia_mm": 1.78,
@@ -110,7 +182,43 @@
    "resolved": false,
    "standard": "manufacturer design recommendation",
    "units": "mm",
-   "confidence": "derived"
+   "family": "o_ring_gland",
+   "confidence": "derived",
+   "provenance": {
+    "document": "O-Ring Handbook",
+    "pages": [
+     32
+    ],
+    "standard": "manufacturer design recommendation",
+    "table": "gland dimensions (AMBIGUOUS)"
+   },
+   "properties": {
+    "compression_mm": [
+     0.16,
+     0.45
+    ],
+    "compression_pct": [
+     9.0,
+     25.0
+    ]
+   },
+   "interfaces": [
+    {
+     "kind": "groove_width",
+     "nominal_mm": 2.4,
+     "constraint": "2.4..2.6 mm, no anti-extrusion ring"
+    },
+    {
+     "kind": "groove_depth",
+     "nominal_mm": 1.45,
+     "constraint": "squeezes a 1.78 mm cord by 9-25%"
+    },
+    {
+     "kind": "cord",
+     "nominal_mm": 1.78,
+     "constraint": "applies to: AMBIGUOUS"
+    }
+   ]
   },
   {
    "cord_dia_mm": 2.62,
@@ -137,7 +245,43 @@
    "resolved": false,
    "standard": "manufacturer design recommendation",
    "units": "mm",
-   "confidence": "derived"
+   "family": "o_ring_gland",
+   "confidence": "derived",
+   "provenance": {
+    "document": "O-Ring Handbook",
+    "pages": [
+     32
+    ],
+    "standard": "manufacturer design recommendation",
+    "table": "gland dimensions (AMBIGUOUS)"
+   },
+   "properties": {
+    "compression_mm": [
+     0.26,
+     0.64
+    ],
+    "compression_pct": [
+     10.0,
+     23.0
+    ]
+   },
+   "interfaces": [
+    {
+     "kind": "groove_width",
+     "nominal_mm": 3.6,
+     "constraint": "3.6..3.8 mm, no anti-extrusion ring"
+    },
+    {
+     "kind": "groove_depth",
+     "nominal_mm": 2.2,
+     "constraint": "squeezes a 2.62 mm cord by 10-23%"
+    },
+    {
+     "kind": "cord",
+     "nominal_mm": 2.62,
+     "constraint": "applies to: AMBIGUOUS"
+    }
+   ]
   },
   {
    "cord_dia_mm": 3.53,
@@ -164,7 +308,43 @@
    "resolved": false,
    "standard": "manufacturer design recommendation",
    "units": "mm",
-   "confidence": "derived"
+   "family": "o_ring_gland",
+   "confidence": "derived",
+   "provenance": {
+    "document": "O-Ring Handbook",
+    "pages": [
+     32
+    ],
+    "standard": "manufacturer design recommendation",
+    "table": "gland dimensions (AMBIGUOUS)"
+   },
+   "properties": {
+    "compression_mm": [
+     0.27,
+     0.7
+    ],
+    "compression_pct": [
+     8.0,
+     19.0
+    ]
+   },
+   "interfaces": [
+    {
+     "kind": "groove_width",
+     "nominal_mm": 4.8,
+     "constraint": "4.8..5 mm, no anti-extrusion ring"
+    },
+    {
+     "kind": "groove_depth",
+     "nominal_mm": 3.05,
+     "constraint": "squeezes a 3.53 mm cord by 8-19%"
+    },
+    {
+     "kind": "cord",
+     "nominal_mm": 3.53,
+     "constraint": "applies to: AMBIGUOUS"
+    }
+   ]
   },
   {
    "cord_dia_mm": 5.33,
@@ -191,7 +371,43 @@
    "resolved": false,
    "standard": "manufacturer design recommendation",
    "units": "mm",
-   "confidence": "derived"
+   "family": "o_ring_gland",
+   "confidence": "derived",
+   "provenance": {
+    "document": "O-Ring Handbook",
+    "pages": [
+     32
+    ],
+    "standard": "manufacturer design recommendation",
+    "table": "gland dimensions (AMBIGUOUS)"
+   },
+   "properties": {
+    "compression_mm": [
+     0.37,
+     0.93
+    ],
+    "compression_pct": [
+     7.0,
+     17.0
+    ]
+   },
+   "interfaces": [
+    {
+     "kind": "groove_width",
+     "nominal_mm": 7.2,
+     "constraint": "7.2..7.4 mm, no anti-extrusion ring"
+    },
+    {
+     "kind": "groove_depth",
+     "nominal_mm": 4.65,
+     "constraint": "squeezes a 5.33 mm cord by 7-17%"
+    },
+    {
+     "kind": "cord",
+     "nominal_mm": 5.33,
+     "constraint": "applies to: AMBIGUOUS"
+    }
+   ]
   },
   {
    "cord_dia_mm": 6.99,
@@ -218,7 +434,43 @@
    "resolved": false,
    "standard": "manufacturer design recommendation",
    "units": "mm",
-   "confidence": "derived"
+   "family": "o_ring_gland",
+   "confidence": "derived",
+   "provenance": {
+    "document": "O-Ring Handbook",
+    "pages": [
+     32
+    ],
+    "standard": "manufacturer design recommendation",
+    "table": "gland dimensions (AMBIGUOUS)"
+   },
+   "properties": {
+    "compression_mm": [
+     0.5,
+     1.05
+    ],
+    "compression_pct": [
+     7.0,
+     15.0
+    ]
+   },
+   "interfaces": [
+    {
+     "kind": "groove_width",
+     "nominal_mm": 9.6,
+     "constraint": "9.6..9.8 mm, no anti-extrusion ring"
+    },
+    {
+     "kind": "groove_depth",
+     "nominal_mm": 6.2,
+     "constraint": "squeezes a 6.99 mm cord by 7-15%"
+    },
+    {
+     "kind": "cord",
+     "nominal_mm": 6.99,
+     "constraint": "applies to: AMBIGUOUS"
+    }
+   ]
   }
  ]
 }
