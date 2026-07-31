@@ -153,16 +153,27 @@ class OrionConfig:
 def get_config() -> OrionConfig:
     """Build the config snapshot from the current environment."""
     _load_dotenv()
+    # OrionFlow's own weights are the default everywhere. The desktop copilot
+    # ran on a third-party reasoning API while the studio ran on the fine-tune,
+    # which meant two products with different engineering intelligence and
+    # customer designs leaving for an outside service. One model family, one
+    # endpoint, everywhere.
+    #
+    # "One model" is two adapters on that endpoint, not one set of weights:
+    # ``orionflow`` is trained to answer every input with a Blueprint, so it
+    # cannot hold a conversation or drive a tool loop. ``orionflow-base`` is the
+    # untouched base served alongside it for exactly that. The agent loop needs
+    # tool calling, so it takes the base; geometry generation takes the adapter.
     llm = LLMConfig(
-        provider=_env("ORION_LLM_PROVIDER", "k2think"),
-        model=_env("ORION_LLM_MODEL", "MBZUAI-IFM/K2-Think-v2"),
+        provider=_env("ORION_LLM_PROVIDER", "vllm"),
+        model=_env("ORION_LLM_MODEL", "orionflow-base"),
         # Provider-neutral names win; the K2THINK_* names stay as fallbacks so
         # existing .env files keep working. Pointing the agent at a self-hosted
         # endpoint should not require setting a variable named after the vendor
         # being replaced.
         base_url=_env("ORION_LLM_BASE_URL",
                       _env("K2THINK_BASE_URL",
-                           "https://api.k2think.ai/v1/chat/completions")),
+                           "http://127.0.0.1:8100/v1")),
         api_key=_env("ORION_LLM_API_KEY", _env("K2THINK_API_KEY", "")),
         max_tokens=_env_int("ORION_LLM_MAX_TOKENS", 8192),
         temperature=_env_float("ORION_LLM_TEMPERATURE", 0.2),
