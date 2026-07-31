@@ -140,6 +140,81 @@ class _AbsentBridge:
         return _refuse
 
 
+def register_design_tool(reg: ToolRegistry) -> ToolRegistry:
+    """Expose the Blueprint model as a tool: a request in, a proved part out.
+
+    This is what binds the desktop copilot and any MCP client to the same
+    engineering intelligence the studio uses. The agent loop runs on the base
+    adapter because it needs tool calling; when it needs *geometry* it calls
+    here, and the fine-tuned adapter answers in the only form it was trained to
+    produce — a Blueprint, statically checked, built in FreeCAD, and graded
+    against its own frozen assertions.
+
+    The loop never sees a prompt template and never edits one. The request is
+    passed through untouched, which is the whole reason the adapter stays on
+    the distribution its accuracy was measured on.
+    """
+    def design_part(args):
+        request = str(args.get("request", "")).strip()
+        if not request:
+            return _fail("'request' is required: describe the part in words")
+        try:
+            from app.services.studio_agent import get_studio_agent
+        except Exception as exc:  # noqa: BLE001 — optional in a bare install
+            return _fail(f"the design service is unavailable: {exc}")
+
+        bundle = get_studio_agent().design(request)
+        report = bundle.get("verification") or {}
+        stats = bundle.get("stats") or {}
+        verdict = report.get("verdict") or "not built"
+        if not bundle.get("success"):
+            return ToolResult(False,
+                              f"the part was not built: {bundle.get('error')}",
+                              raw=bundle, error=str(bundle.get("error")))
+
+        lines = [f"verdict: {verdict}",
+                 f"part class: {bundle.get('part_class')}",
+                 f"volume: {stats.get('volume_mm3', 0):.3f} mm^3",
+                 f"extent: {stats.get('bbox_mm')}",
+                 f"watertight: {stats.get('watertight')}"]
+        failed = report.get("failed") or []
+        if failed:
+            lines.append("FAILED CHECKS — this part did not prove itself:")
+            lines += [f"  {c.get('label')}: {c.get('detail')}" for c in failed[:6]]
+        else:
+            lines.append(f"every check passed ({len(report.get('checks') or [])})")
+        files = bundle.get("files") or {}
+        if files:
+            lines.append("artifacts: " + ", ".join(sorted(files)))
+        return _ok("\n".join(lines), raw=bundle,
+                   artifacts=[{"kind": k, "path": v} for k, v in files.items()])
+
+    reg.register(Tool(
+        "design_part",
+        "Generate a NEW parametric part from a description, using OrionFlow's "
+        "own fine-tuned CAD model. Returns a part that has been built in "
+        "FreeCAD and graded against the closed-form volume the model predicted "
+        "for it, so the verdict says whether it proved itself. Use this to "
+        "create geometry; use the editing tools to change geometry that "
+        "already exists.",
+        {
+            "type": "object",
+            "properties": {
+                "request": {
+                    "type": "string",
+                    "description": "The part, in plain words, with any "
+                                   "dimensions the user gave. Pass their "
+                                   "wording through — do not reformat it.",
+                },
+            },
+            "required": ["request"],
+        },
+        design_part,
+        mutating=True,
+    ))
+    return reg
+
+
 def build_knowledge_registry() -> ToolRegistry:
     """The FreeCAD-free half of the tool surface.
 
@@ -149,7 +224,8 @@ def build_knowledge_registry() -> ToolRegistry:
     Studio for no reason at all. Same tools, same schemas, same executors; just
     the ones that never touch geometry.
     """
-    return build_registry(_AbsentBridge(), None).subset(KNOWLEDGE_TOOLS)
+    reg = build_registry(_AbsentBridge(), None).subset(KNOWLEDGE_TOOLS)
+    return register_design_tool(reg)
 
 
 def build_registry(bridge, sandbox) -> ToolRegistry:
