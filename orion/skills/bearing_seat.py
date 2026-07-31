@@ -25,7 +25,13 @@ import json
 import os
 from typing import Optional
 
-from orion.skills.base import Skill, SkillError, SkillResult, registry
+from orion.skills.base import (
+    Skill,
+    SkillError,
+    SkillGraph,
+    SkillResult,
+    registry,
+)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _DATA = os.path.join(_HERE, "bearings.json")
@@ -321,4 +327,14 @@ registry.register(Skill(
         "required": ["bearing_designation"],
     },
     run=create_bearing_seat,
+    graph=SkillGraph(
+        functions=["SupportsRotation", "CentersComponent"],
+        inputs=["bearing_designation", "duty", "wall_mm", "floor_mm"],
+        calculators=["calc_bearing_life_l10"],
+        standards=["ISO 15 boundary dimensions",
+                   "ISO 286 seat tolerances",
+                   "SKF rolling bearing catalogue"],
+        outputs=["bearing_carrier variables", "housing bore limits",
+                 "shoulder diameter", "corner radius"],
+    ),
 ))
