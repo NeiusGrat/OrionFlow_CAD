@@ -36,7 +36,7 @@ from orion.knowledge.ingest import (
 #: precedes each one and the parser cannot drift into the load ratings.
 _INCH = r"\d+\.\d{3,4}"
 _ROW = re.compile(
-    r"^(?P<designation>\d{4,5}(?:\s*/\s*\S+)?)\s+"
+    r"^(?P<designation>\d{3,5}(?:\s*/\s*\S+)?)\s+"
     r"(?P<d>[\d.]+)\s+(?P<d_in>%s)\s+"
     r"(?P<D>[\d.]+)\s+(?P<D_in>%s)\s+"
     r"(?P<B>[\d.]+)\s+(?P<B_in>%s)\s+"
@@ -66,7 +66,7 @@ def parse_page(text: str) -> Iterator[dict]:
             continue
         # "6205 / C78" and "6205" are the same envelope; the suffix is a
         # clearance or seal variant and does not change the boundary.
-        core = re.match(r"^(\d{4,5})", raw["designation"]).group(1)
+        core = re.match(r"^(\d{3,5})", raw["designation"]).group(1)
         try:
             yield {
                 "designation": core,

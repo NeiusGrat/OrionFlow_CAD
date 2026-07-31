@@ -157,15 +157,24 @@ def designation_encodes_bore(designation_key: str = "designation",
     """
     def check(row: dict) -> Optional[str]:
         text = str(row.get(designation_key, ""))
-        if not re.match(r"^\d{4,5}$", text):
+        if not re.match(r"^\d{3,5}$", text):
             return None                      # not a plain numeric designation
-        # The size code is always the LAST two digits, whatever the series
-        # length. Restricting this to 4-digit codes let 32221 — a 322xx whose
-        # code 21 means a 105 mm bore — through with d=17.
-        code = int(text[-2:])
-        if code < 4:
-            return None                      # 00..03 are 10/12/15/17 mm
-        expected = code * 5
+        if len(text) == 3:
+            # Miniature series: the bore code is the LAST SINGLE digit and IS
+            # the bore in millimetres. 623 is 3 mm, 608 is 8 mm. Reading the
+            # last two would make 623 a 115 mm bore and reject every small
+            # bearing in the catalogue.
+            expected = int(text[-1])
+            if expected < 1:
+                return None
+        else:
+            # The size code is the LAST two digits, whatever the series length.
+            # Restricting this to 4-digit codes let 32221 — a 322xx whose code
+            # 21 means a 105 mm bore — through with d=17.
+            code = int(text[-2:])
+            if code < 4:
+                return None                  # 00..03 are 10/12/15/17 mm
+            expected = code * 5
         if abs(float(row.get(bore_key, -1)) - expected) > 1e-9:
             return (f"designation {text} implies a {expected} mm bore but the "
                     f"row says {row.get(bore_key)}")
