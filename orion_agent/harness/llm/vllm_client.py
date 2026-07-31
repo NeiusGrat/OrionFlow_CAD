@@ -41,8 +41,21 @@ class VLLMClient(LLMClient):
 
     @staticmethod
     def _normalise(base_url: str) -> str:
-        """Accept either a bare base ('http://h:8000/v1') or a full endpoint."""
-        url = (base_url or "http://localhost:8000/v1").rstrip("/")
+        """Accept either a bare base ('http://h:8000/v1') or a full endpoint.
+
+        An unset endpoint is an error, not a cue to try localhost. Falling back
+        silently means a misconfigured production service either refuses a
+        connection to its own host — reported as "the model is unreachable",
+        which sends you debugging the model — or, if something else is serving
+        that port, answers from the wrong model with nothing to say so.
+        """
+        if not (base_url or "").strip():
+            raise ValueError(
+                "no model endpoint configured: set ORION_LLM_BASE_URL to the "
+                "served OrionFlow endpoint (in the Modal secret for "
+                "production). For local development: "
+                "ORION_LLM_BASE_URL=http://127.0.0.1:8100/v1")
+        url = base_url.strip().rstrip("/")
         if url.endswith("/chat/completions"):
             return url
         return url + "/chat/completions"
