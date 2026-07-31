@@ -114,6 +114,105 @@ part as if it were fine.
 - Be brief. Two or three short paragraphs unless asked for more."""
 
 
+#: How many tool rounds a conversation turn may take before it must answer.
+#: Three is enough to look something up, follow one cross-reference, and reply;
+#: more usually means the model is circling rather than converging.
+KNOWLEDGE_TOOL_ROUNDS = max(1, int(os.environ.get("ORION_KNOWLEDGE_ROUNDS", "3")))
+
+_KNOWLEDGE_REGISTRY: Any = None
+_KNOWLEDGE_TRIED = False
+
+
+def _knowledge_registry():
+    """The FreeCAD-free tool surface, built once, or None if unavailable.
+
+    Cached because building it parses the knowledge JSON, and returned as None
+    on failure so a missing asset costs the conversation its citations rather
+    than the whole answer.
+    """
+    global _KNOWLEDGE_REGISTRY, _KNOWLEDGE_TRIED
+    if not _KNOWLEDGE_TRIED:
+        _KNOWLEDGE_TRIED = True
+        try:
+            from orion_agent.harness.tools.registry import (
+                build_knowledge_registry,
+            )
+
+            _KNOWLEDGE_REGISTRY = build_knowledge_registry()
+            logger.info("studio_knowledge_tools_ready",
+                        tools=len(_KNOWLEDGE_REGISTRY.names()))
+        except Exception as exc:  # noqa: BLE001 — grounding is optional
+            logger.warning("studio_knowledge_tools_unavailable", error=str(exc))
+            _KNOWLEDGE_REGISTRY = None
+    return _KNOWLEDGE_REGISTRY
+
+
+#: Outcome ranking, worst to best. A repair round can make things worse (a
+#: second attempt that fails to parse), so the loop keeps the best result rather
+#: than whatever came last.
+_NOTHING, _BUILT_UNVERIFIED, _VERIFIED = 1, 2, 3
+
+
+def _rank(bundle: dict) -> int:
+    if not bundle:
+        return 0
+    if (bundle.get("verification") or {}).get("verdict") == "verified":
+        return _VERIFIED
+    if bundle.get("success"):
+        return _BUILT_UNVERIFIED
+    return _NOTHING
+
+
+def _repair_turn(base: list, completion: str, diagnosis: str) -> list:
+    """The repair conversation: the original ask, the failed attempt, the reason.
+
+    Delegates the shape to ``repair_loop.build_repair_messages`` so the studio
+    and the eval harness ask for a fix in exactly the same words — otherwise the
+    VERIFIED @1 repair number measured offline would not describe what a user
+    gets.
+    """
+    from orion.repair_loop import build_repair_messages
+    from orion_agent.harness.llm.base import LLMMessage
+
+    wire = build_repair_messages(
+        [{"role": m.role, "content": m.content} for m in base],
+        completion, diagnosis)
+    return [LLMMessage(m["role"], m["content"]) for m in wire]
+
+
+def _classify_failure(bundle: dict) -> tuple[str, dict]:
+    """``(error, verdict)`` in the vocabulary ``orion.repair_loop`` expects.
+
+    The eval harness classifies failures as ``freeze:``/``build:``/``timeout:``/
+    ``precondition:``/``assert:`` and the diagnosis switches on that prefix, so
+    the studio has to speak the same language to reuse it. Returns the verdict
+    shape ``diagnose`` reads as well, since the studio bundle spells the same
+    facts differently.
+    """
+    error = str(bundle.get("error") or "")
+    rows = bundle.get("assertions") or []
+    failed_pre = [{"id": r.get("id"), "target": r.get("target")}
+                  for r in rows
+                  if r.get("kind") == "precondition" and not r.get("passed")]
+    verdict = {"assertions": rows, "failed_preconditions": failed_pre}
+
+    if error.startswith("blueprint rejected:"):
+        return f"freeze: {error.split(':', 1)[1].strip()}", verdict
+    if error.startswith("blueprint could not be resolved:"):
+        return f"freeze: {error.split(':', 1)[1].strip()}", verdict
+    if "did not converge" in error:
+        return "timeout: kernel exceeded the build budget", verdict
+    if failed_pre:
+        return ("precondition: "
+                + ",".join(str(p["id"]) for p in failed_pre)), verdict
+    bad = [str(r.get("id")) for r in rows if not r.get("passed")]
+    if bad:
+        return "assert: " + ",".join(bad), verdict
+    if error:
+        return f"build: {error}", verdict
+    return "build: the part could not be verified", verdict
+
+
 def _looks_like_a_question(text: str) -> bool:
     """Route a turn to conversation rather than a rebuild.
 
@@ -170,7 +269,8 @@ class StudioAgent:
     def _complete(self, messages, on_event: EventSink,
                   channel: Optional[str] = None,
                   max_tokens: Optional[int] = None,
-                  model: Optional[str] = None):
+                  model: Optional[str] = None,
+                  tools: Optional[list[dict]] = None):
         """Stream a completion, falling back once, reporting which model ran.
 
         ``channel`` is the event name for answer tokens, or None to emit no
@@ -182,6 +282,11 @@ class StudioAgent:
         the stray ``</think>`` and the entire Blueprint JSON on screen as if it
         were prose. Progress on that path comes from ``step`` events, which
         report real stages instead.
+
+        ``tools`` is passed to the backend when supplied. Only the conversation
+        path uses it: the design path must stay byte-identical to training, and
+        a tool schema in that prompt is exactly the drift this module exists to
+        prevent.
 
         Returns ``(response, model_label)``. ``model_label`` is "orionflow" for
         our own model and "fallback:<provider>" otherwise; callers must surface
@@ -205,6 +310,8 @@ class StudioAgent:
             if on_event:
                 on_event("model", {"model": label, "provider": provider})
             kw = {"model": model} if model else {}
+            if tools:
+                kw["tools"] = tools
             resp = client.chat_stream(messages, on_token=emit_token,
                                       max_tokens=max_tokens, **kw)
             # Transport failures come back as content, not exceptions, so the
@@ -228,6 +335,7 @@ class StudioAgent:
         looks stalled instead of animating cheerfully towards a result that
         will not arrive.
         """
+        from orion import calc, repair_loop
         from orion.pack_sft import SYSTEM_PROMPT
         from orion_agent.harness.llm.base import LLMMessage
         from app.services import blueprint_service, design_narrative
@@ -238,20 +346,30 @@ class StudioAgent:
                 on_event("step", {"id": sid, "label": label, "status": status,
                                   "detail": detail, "items": items or []})
 
-        messages = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(prompt)]
+        # Turn 1 is the ONLY turn that must match training byte for byte, so it
+        # is built from these two messages and nothing else, every time. Repair
+        # turns are rebuilt from this same pair plus the failed attempt and its
+        # diagnosis — never by appending to a growing history, which would put a
+        # second user turn in front of the model on attempt 3 and stop looking
+        # like the repair records at all.
+        base_messages = [LLMMessage.system(SYSTEM_PROMPT),
+                         LLMMessage.user(prompt)]
+        messages = list(base_messages)
 
-        # Sampling is stochastic and a fraction of samples miss for reasons a
-        # second draw fixes — an unused variable the static checker rejects, a
-        # truncated object. Resampling is honest (it is the same model, asked
-        # again) and cheap next to the build, so a recoverable miss does not
-        # become a dead end. It never masks a failure: if every attempt misses,
-        # the last real error is what gets reported.
+        # A failed attempt is not resampled blind. The verifier already knows
+        # exactly what went wrong — which assertion missed, by how much, and
+        # which feature's own volume accounts for the gap — so the next turn
+        # gets that as a diagnosis. Blind resampling was the previous behaviour
+        # and it cannot fix a wrong derivation: the same prompt draws the same
+        # reasoning. The measured evidence is what changes the answer.
         bundle: dict = {}
+        best: dict = {}
         features: list = []
+        best_features: list = []
         for attempt in range(1, DESIGN_ATTEMPTS + 1):
             again = attempt > 1
             step("understand", "Understanding the request", "active",
-                 f"attempt {attempt}" if again else "")
+                 f"repair attempt {attempt}" if again else "")
             if on_event:
                 on_event("phase", {"phase": "reasoning"})
             # channel=None: emit no raw tokens. See _complete for why.
@@ -276,8 +394,13 @@ class StudioAgent:
                 # failure and must read as one — not as a kernel error.
                 if attempt < DESIGN_ATTEMPTS:
                     step("understand", "Understanding the request", "active",
-                         "no Blueprint returned — resampling")
+                         "no Blueprint returned — asking again with the reason")
+                    messages = _repair_turn(
+                        base_messages, completion,
+                        repair_loop.diagnose(None, f"parse: {exc}"))
                     continue
+                if best:
+                    break
                 step("understand", "Understanding the request", "fail",
                      "the model did not return a Blueprint")
                 return {"success": False, "model": label, "error": str(exc),
@@ -308,14 +431,43 @@ class StudioAgent:
             bundle["prompt"] = prompt
             bundle["attempts"] = attempt
 
-            if bundle.get("success"):
+            # The model states a number at the end of its derivation and never
+            # evaluates it — measured across the held-out set, that number
+            # disagrees with the model's OWN expression in every single case,
+            # including parts that go on to verify. The expression is the
+            # contract; the prose is decoration. Recompute it here so the raw
+            # derivation is never shown to a user as if it were arithmetic.
+            bundle["volume_claim"] = calc.check_stated_volume(
+                payload, bundle["thinking"])
+
+            # Keep the best result seen, not the last one. A later attempt that
+            # fails to parse must not throw away an earlier part that built —
+            # geometry the user can look at beats nothing, even unverified.
+            if _rank(bundle) > _rank(best):
+                best, best_features = bundle, features
+
+            if _rank(bundle) == _VERIFIED:
                 break
 
             if attempt < DESIGN_ATTEMPTS:
+                error, verdict = _classify_failure(bundle)
+                diagnosis = repair_loop.diagnose(
+                    payload, error, verdict=verdict,
+                    measured=bundle.get("measured"))
                 step("build", "Building the model", "active",
-                     _short(bundle.get("error")) + " — resampling")
+                     f"{_short(error)} — repairing")
+                if on_event:
+                    # Surfaced, not hidden: a part that needed a repair round is
+                    # a different claim from one that verified first time.
+                    on_event("repair", {"attempt": attempt, "error": error,
+                                        "diagnosis": diagnosis})
+                messages = _repair_turn(base_messages, completion, diagnosis)
                 continue
 
+        bundle = best or bundle
+        features = best_features or features
+
+        if not bundle.get("success"):
             step("build", "Building the model", "fail",
                  _short(bundle.get("error")) or "the build failed")
             if on_event:
@@ -371,12 +523,48 @@ class StudioAgent:
 
         messages.append(LLMMessage.user(prompt))
 
-        resp, label = self._complete(messages, on_event, "answer",
-                                     max_tokens=1024,
-                                     model=CONVERSATION_MODEL)
-        if resp is None:
-            return {"success": False, "model": "",
-                    "answer": "", "error": "no model is reachable"}
+        # Knowledge tools, conversation side only. These are the twelve that
+        # touch no geometry — ISO/DIN lookups, the NASA requirement graph,
+        # materials, sheet-metal DFM — so they need no FreeCAD and can run in
+        # the cloud. Quoting a real clause beats paraphrasing one from memory,
+        # and the citation is checkable.
+        registry = _knowledge_registry()
+        schemas = registry.schemas() if registry else None
+
+        used: list[str] = []
+        for _round in range(KNOWLEDGE_TOOL_ROUNDS):
+            resp, label = self._complete(messages, on_event, "answer",
+                                         max_tokens=1024,
+                                         model=CONVERSATION_MODEL,
+                                         tools=schemas)
+            if resp is None:
+                return {"success": False, "model": "",
+                        "answer": "", "error": "no model is reachable"}
+            if not resp.tool_calls:
+                break
+
+            messages.append(LLMMessage.assistant(resp.content,
+                                                 tool_calls=resp.tool_calls))
+            for call in resp.tool_calls:
+                result = registry.execute(call.name, call.arguments)
+                used.append(call.name)
+                if on_event:
+                    # Shown, not hidden: an answer backed by a lookup is a
+                    # different claim from one the model produced unaided.
+                    on_event("tool", {"name": call.name,
+                                      "arguments": call.arguments,
+                                      "ok": result.ok})
+                messages.append(LLMMessage.tool(result.content, call.id,
+                                                call.name))
+        else:
+            # Budget spent and still calling tools — answer with what it has
+            # rather than looping.
+            resp, label = self._complete(messages, on_event, "answer",
+                                         max_tokens=1024,
+                                         model=CONVERSATION_MODEL)
+            if resp is None:
+                return {"success": False, "model": "",
+                        "answer": "", "error": "no model is reachable"}
 
         answer = _strip_blueprint(resp.content)
         if not answer:
@@ -385,8 +573,8 @@ class StudioAgent:
             return {"success": False, "model": label, "answer": "",
                     "error": "the model returned a design instead of an "
                              "answer — try rephrasing as a question"}
-        return {"success": True, "model": label,
-                "answer": answer, "thinking": resp.thinking, "error": None}
+        return {"success": True, "model": label, "answer": answer,
+                "thinking": resp.thinking, "tools_used": used, "error": None}
 
 
 def _part_context(part: dict) -> str:

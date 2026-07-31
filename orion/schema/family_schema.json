@@ -1,0 +1,3889 @@
+{
+ "source": "data\\forge\\sft_v1\\train.jsonl",
+ "n_families": 50,
+ "families": {
+  "aero_rib_bracket": {
+   "family": "aero_rib_bracket",
+   "n_samples": 22,
+   "variables": {
+    "plate_w": {
+     "name": "plate_w",
+     "count": 22,
+     "always": true,
+     "integral": true,
+     "lo": 66.0,
+     "hi": 130.0,
+     "median": 106.0,
+     "role": "length (X)"
+    },
+    "plate_d": {
+     "name": "plate_d",
+     "count": 22,
+     "always": true,
+     "integral": true,
+     "lo": 46.0,
+     "hi": 90.0,
+     "median": 60.0,
+     "role": "width (Y)"
+    },
+    "plate_t": {
+     "name": "plate_t",
+     "count": 22,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 9.0,
+     "median": 6.25,
+     "role": "extrude depth"
+    },
+    "rib_l": {
+     "name": "rib_l",
+     "count": 22,
+     "always": true,
+     "integral": true,
+     "lo": 44.0,
+     "hi": 110.0,
+     "median": 71.0,
+     "role": "length (X)"
+    },
+    "rib_h": {
+     "name": "rib_h",
+     "count": 22,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 23.0,
+     "median": 14.0,
+     "role": "width (Y)"
+    },
+    "rib_t": {
+     "name": "rib_t",
+     "count": 22,
+     "always": true,
+     "integral": false,
+     "lo": 2.75,
+     "hi": 5.0,
+     "median": 3.875,
+     "role": "extrude depth"
+    },
+    "rib_y": {
+     "name": "rib_y",
+     "count": 22,
+     "always": true,
+     "integral": false,
+     "lo": 11.5,
+     "hi": 34.0,
+     "median": 19.0,
+     "role": ""
+    },
+    "hole_bc": {
+     "name": "hole_bc",
+     "count": 22,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 29.0,
+     "median": 12.5,
+     "role": "bolt-circle radius"
+    },
+    "hole_rr": {
+     "name": "hole_rr",
+     "count": 22,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 3.75,
+     "median": 3.0,
+     "role": "hole radius"
+    }
+   },
+   "preconditions": {
+    "straddle_guard": "rib_y - rib_t - 1",
+    "rib_fit": "plate_w - rib_l - 4",
+    "rib_inside": "plate_d/2 - rib_y - rib_t - 1",
+    "holes_inboard": "rib_y - hole_bc*sin(radians(45)) - hole_rr - 1",
+    "holes_fit": "min(plate_w, plate_d)/2 - hole_bc*cos(radians(45)) - hole_rr - 2"
+   },
+   "attachments": []
+  },
+  "bearing_carrier": {
+   "family": "bearing_carrier",
+   "n_samples": 309,
+   "variables": {
+    "R": {
+     "name": "R",
+     "count": 309,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 65.0,
+     "median": 55.0,
+     "role": "outline x"
+    },
+    "rb": {
+     "name": "rb",
+     "count": 309,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 21.5,
+     "median": 10.5,
+     "role": "outline x"
+    },
+    "rs": {
+     "name": "rs",
+     "count": 309,
+     "always": true,
+     "integral": false,
+     "lo": 10.0,
+     "hi": 37.0,
+     "median": 21.0,
+     "role": "outline x"
+    },
+    "T": {
+     "name": "T",
+     "count": 309,
+     "always": true,
+     "integral": false,
+     "lo": 10.0,
+     "hi": 24.0,
+     "median": 16.5,
+     "role": "outline y"
+    },
+    "ds": {
+     "name": "ds",
+     "count": 309,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 10.0,
+     "median": 6.5,
+     "role": ""
+    }
+   },
+   "preconditions": {
+    "seat_step": "rs - rb - 3",
+    "rim_land": "R - rs - 4",
+    "seat_floor": "T - ds - 3"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "bent_lever": {
+   "family": "bent_lever",
+   "n_samples": 223,
+   "variables": {
+    "a": {
+     "name": "a",
+     "count": 223,
+     "always": true,
+     "integral": true,
+     "lo": 42.0,
+     "hi": 90.0,
+     "median": 74.0,
+     "role": "outline x"
+    },
+    "b": {
+     "name": "b",
+     "count": 223,
+     "always": true,
+     "integral": true,
+     "lo": 36.0,
+     "hi": 80.0,
+     "median": 56.0,
+     "role": "outline y"
+    },
+    "w": {
+     "name": "w",
+     "count": 223,
+     "always": true,
+     "integral": true,
+     "lo": 14.0,
+     "hi": 26.0,
+     "median": 21.0,
+     "role": "outline y"
+    },
+    "t": {
+     "name": "t",
+     "count": 223,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.5,
+     "role": "extrude depth"
+    },
+    "pivot_r": {
+     "name": "pivot_r",
+     "count": 223,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 6.0,
+     "median": 5.0,
+     "role": "hole radius"
+    },
+    "end_r": {
+     "name": "end_r",
+     "count": 223,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 5.0,
+     "median": 3.75,
+     "role": "hole radius"
+    }
+   },
+   "preconditions": {
+    "arm_width": "w - 2*pivot_r - 4",
+    "arm1_len": "a - w - 8",
+    "arm2_len": "b - w - 8"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "bolted_flange": {
+   "family": "bolted_flange",
+   "n_samples": 37,
+   "variables": {
+    "flange_r": {
+     "name": "flange_r",
+     "count": 37,
+     "always": true,
+     "integral": true,
+     "lo": 28.0,
+     "hi": 60.0,
+     "median": 46.0,
+     "role": "outline x"
+    },
+    "flange_t": {
+     "name": "flange_t",
+     "count": 37,
+     "always": true,
+     "integral": false,
+     "lo": 6.5,
+     "hi": 14.0,
+     "median": 10.0,
+     "role": "outline y"
+    },
+    "hub_r": {
+     "name": "hub_r",
+     "count": 37,
+     "always": true,
+     "integral": false,
+     "lo": 10.5,
+     "hi": 26.0,
+     "median": 16.5,
+     "role": "outline x"
+    },
+    "hub_h": {
+     "name": "hub_h",
+     "count": 37,
+     "always": true,
+     "integral": true,
+     "lo": 14.0,
+     "hi": 35.0,
+     "median": 23.0,
+     "role": "outline y"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 37,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 12.5,
+     "median": 5.5,
+     "role": "outline x"
+    },
+    "bc_r": {
+     "name": "bc_r",
+     "count": 37,
+     "always": true,
+     "integral": false,
+     "lo": 16.5,
+     "hi": 47.0,
+     "median": 29.0,
+     "role": "centre x"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 37,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 4.0,
+     "median": 3.0,
+     "role": "radius"
+    },
+    "hole_n": {
+     "name": "hole_n",
+     "count": 37,
+     "always": true,
+     "integral": true,
+     "lo": 4.0,
+     "hi": 8.0,
+     "median": 6.0,
+     "role": "instance count"
+    },
+    "groove_r": {
+     "name": "groove_r",
+     "count": 18,
+     "always": false,
+     "integral": false,
+     "lo": 6.25,
+     "hi": 18.5,
+     "median": 11.5,
+     "role": "groove radius"
+    },
+    "groove_w": {
+     "name": "groove_w",
+     "count": 18,
+     "always": false,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 4.0,
+     "median": 3.125,
+     "role": "groove width"
+    },
+    "groove_d": {
+     "name": "groove_d",
+     "count": 18,
+     "always": false,
+     "integral": false,
+     "lo": 1.5,
+     "hi": 3.5,
+     "median": 2.75,
+     "role": "groove diameter"
+    }
+   },
+   "preconditions": {
+    "land_guard": "flange_r - (bc_r + hole_r)",
+    "hub_guard": "(bc_r - hole_r) - hub_r",
+    "spacing_guard": "2*bc_r*sin(pi/hole_n) - 2*hole_r",
+    "gland_guard": "hub_r - (groove_r + groove_w/2)"
+   },
+   "attachments": []
+  },
+  "box_shell": {
+   "family": "box_shell",
+   "n_samples": 675,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 675,
+     "always": true,
+     "integral": true,
+     "lo": 50.0,
+     "hi": 120.0,
+     "median": 86.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 675,
+     "always": true,
+     "integral": true,
+     "lo": 40.0,
+     "hi": 100.0,
+     "median": 54.0,
+     "role": "width (Y)"
+    },
+    "H": {
+     "name": "H",
+     "count": 675,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 50.0,
+     "median": 35.0,
+     "role": "extrude depth"
+    },
+    "wall": {
+     "name": "wall",
+     "count": 675,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 8.0,
+     "median": 5.5,
+     "role": "wall thickness"
+    },
+    "floor_t": {
+     "name": "floor_t",
+     "count": 675,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 10.0,
+     "median": 6.5,
+     "role": "floor thickness"
+    }
+   },
+   "preconditions": {
+    "wall_guard": "W - 2*wall - 16",
+    "floor_guard": "H - floor_t - 8"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "clevis_mount": {
+   "family": "clevis_mount",
+   "n_samples": 341,
+   "variables": {
+    "base_l": {
+     "name": "base_l",
+     "count": 341,
+     "always": true,
+     "integral": true,
+     "lo": 40.0,
+     "hi": 80.0,
+     "median": 60.0,
+     "role": "length (X)"
+    },
+    "base_w": {
+     "name": "base_w",
+     "count": 341,
+     "always": true,
+     "integral": true,
+     "lo": 34.0,
+     "hi": 60.0,
+     "median": 54.0,
+     "role": "width (Y)"
+    },
+    "base_h": {
+     "name": "base_h",
+     "count": 341,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 16.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "prong_t": {
+     "name": "prong_t",
+     "count": 341,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 12.0,
+     "median": 8.5,
+     "role": "width (Y)"
+    },
+    "prong_h": {
+     "name": "prong_h",
+     "count": 341,
+     "always": true,
+     "integral": true,
+     "lo": 24.0,
+     "hi": 44.0,
+     "median": 34.0,
+     "role": "extrude depth"
+    },
+    "gap": {
+     "name": "gap",
+     "count": 341,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 40.0,
+     "median": 22.0,
+     "role": ""
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 341,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 14.5,
+     "median": 7.0,
+     "role": "radius"
+    }
+   },
+   "preconditions": {
+    "gap_guard": "base_w - 2*prong_t - gap - 4",
+    "bore_height": "prong_h - 2*bore_r - 6"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "compressor_casing": {
+   "family": "compressor_casing",
+   "n_samples": 19,
+   "variables": {
+    "out_r": {
+     "name": "out_r",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 32.0,
+     "hi": 55.0,
+     "median": 45.0,
+     "role": "outline x"
+    },
+    "wall": {
+     "name": "wall",
+     "count": 19,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 8.5,
+     "median": 6.0,
+     "role": "wall thickness"
+    },
+    "length": {
+     "name": "length",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 60.0,
+     "hi": 110.0,
+     "median": 76.0,
+     "role": "outline y"
+    },
+    "fl_r": {
+     "name": "fl_r",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 42.0,
+     "hi": 67.0,
+     "median": 55.0,
+     "role": "outline x"
+    },
+    "fl_t": {
+     "name": "fl_t",
+     "count": 19,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 12.0,
+     "median": 9.5,
+     "role": "outline y"
+    }
+   },
+   "preconditions": {
+    "wall_guard": "out_r - wall - 10",
+    "flange_step": "fl_r - out_r - 4",
+    "length_guard": "length - 2*fl_t - 10"
+   },
+   "attachments": []
+  },
+  "control_arm_mount": {
+   "family": "control_arm_mount",
+   "n_samples": 513,
+   "variables": {
+    "base_l": {
+     "name": "base_l",
+     "count": 513,
+     "always": true,
+     "integral": true,
+     "lo": 60.0,
+     "hi": 120.0,
+     "median": 94.0,
+     "role": "length (X)"
+    },
+    "base_w": {
+     "name": "base_w",
+     "count": 513,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 54.0,
+     "median": 44.0,
+     "role": "width (Y)"
+    },
+    "base_t": {
+     "name": "base_t",
+     "count": 513,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 16.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "boss_r": {
+     "name": "boss_r",
+     "count": 513,
+     "always": true,
+     "integral": false,
+     "lo": 7.0,
+     "hi": 12.0,
+     "median": 9.5,
+     "role": "radius"
+    },
+    "boss_h": {
+     "name": "boss_h",
+     "count": 513,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 20.0,
+     "median": 14.0,
+     "role": "extrude depth"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 513,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 8.5,
+     "median": 4.5,
+     "role": "hole radius"
+    },
+    "dx": {
+     "name": "dx",
+     "count": 513,
+     "always": true,
+     "integral": true,
+     "lo": 13.0,
+     "hi": 47.0,
+     "median": 24.0,
+     "role": "centre x"
+    }
+   },
+   "preconditions": {
+    "boss_wall": "boss_r - bore_r - 2.5",
+    "boss_fit": "base_l/2 - dx - boss_r - 2",
+    "boss_on_base": "base_w/2 - boss_r - 3"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "cross_rib_plate": {
+   "family": "cross_rib_plate",
+   "n_samples": 443,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 443,
+     "always": true,
+     "integral": true,
+     "lo": 60.0,
+     "hi": 120.0,
+     "median": 98.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 443,
+     "always": true,
+     "integral": true,
+     "lo": 50.0,
+     "hi": 106.0,
+     "median": 66.0,
+     "role": "width (Y)"
+    },
+    "T": {
+     "name": "T",
+     "count": 443,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 8.0,
+     "median": 6.0,
+     "role": "extrude depth"
+    },
+    "rib_t": {
+     "name": "rib_t",
+     "count": 443,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 8.0,
+     "median": 6.0,
+     "role": "width (Y)"
+    },
+    "rib_h": {
+     "name": "rib_h",
+     "count": 443,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 20.0,
+     "median": 14.0,
+     "role": "extrude depth"
+    }
+   },
+   "preconditions": {
+    "rib_fits": "min(L, W) - rib_t - 20"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "cylindrical_shell": {
+   "family": "cylindrical_shell",
+   "n_samples": 667,
+   "variables": {
+    "R": {
+     "name": "R",
+     "count": 667,
+     "always": true,
+     "integral": true,
+     "lo": 25.0,
+     "hi": 60.0,
+     "median": 44.0,
+     "role": "outline x"
+    },
+    "wall": {
+     "name": "wall",
+     "count": 667,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 6.0,
+     "median": 4.0,
+     "role": "wall thickness"
+    },
+    "H": {
+     "name": "H",
+     "count": 667,
+     "always": true,
+     "integral": true,
+     "lo": 25.0,
+     "hi": 70.0,
+     "median": 47.0,
+     "role": "outline y"
+    },
+    "floor_t": {
+     "name": "floor_t",
+     "count": 667,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 9.0,
+     "median": 6.0,
+     "role": "outline y"
+    }
+   },
+   "preconditions": {
+    "wall_guard": "R - wall - 8",
+    "floor_guard": "H - floor_t - 6"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "drafted_boss": {
+   "family": "drafted_boss",
+   "n_samples": 20,
+   "variables": {
+    "length": {
+     "name": "length",
+     "count": 20,
+     "always": true,
+     "integral": true,
+     "lo": 48.0,
+     "hi": 110.0,
+     "median": 82.0,
+     "role": "length (X)"
+    },
+    "width": {
+     "name": "width",
+     "count": 20,
+     "always": true,
+     "integral": true,
+     "lo": 32.0,
+     "hi": 92.0,
+     "median": 51.0,
+     "role": "width (Y)"
+    },
+    "height": {
+     "name": "height",
+     "count": 20,
+     "always": true,
+     "integral": true,
+     "lo": 13.0,
+     "hi": 29.0,
+     "median": 21.5,
+     "role": "extrude depth"
+    },
+    "draft_deg": {
+     "name": "draft_deg",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 1.0,
+     "hi": 7.5,
+     "median": 5.0,
+     "role": "draft angle"
+    },
+    "hole_n": {
+     "name": "hole_n",
+     "count": 20,
+     "always": true,
+     "integral": true,
+     "lo": 4.0,
+     "hi": 6.0,
+     "median": 5.0,
+     "role": "count"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 1.5,
+     "hi": 3.0,
+     "median": 2.5,
+     "role": "hole radius"
+    },
+    "bc_r": {
+     "name": "bc_r",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 31.5,
+     "median": 15.75,
+     "role": "bolt-circle radius"
+    }
+   },
+   "preconditions": {
+    "apex_guard": "(width - 2*height*tan(radians(draft_deg))) - 0.3*width",
+    "top_fit_guard": "min(length, width)/2 - height*tan(radians(draft_deg)) - bc_r - hole_r"
+   },
+   "attachments": []
+  },
+  "drafted_pedestal": {
+   "family": "drafted_pedestal",
+   "n_samples": 691,
+   "variables": {
+    "ln": {
+     "name": "ln",
+     "count": 691,
+     "always": true,
+     "integral": true,
+     "lo": 60.0,
+     "hi": 120.0,
+     "median": 90.0,
+     "role": "length (X)"
+    },
+    "wd": {
+     "name": "wd",
+     "count": 691,
+     "always": true,
+     "integral": true,
+     "lo": 40.0,
+     "hi": 98.0,
+     "median": 54.0,
+     "role": "width (Y)"
+    },
+    "ht": {
+     "name": "ht",
+     "count": 691,
+     "always": true,
+     "integral": true,
+     "lo": 18.0,
+     "hi": 40.0,
+     "median": 29.0,
+     "role": "extrude depth"
+    },
+    "draft_deg": {
+     "name": "draft_deg",
+     "count": 691,
+     "always": true,
+     "integral": false,
+     "lo": 1.0,
+     "hi": 3.0,
+     "median": 2.0,
+     "role": "draft angle"
+    }
+   },
+   "preconditions": {
+    "taper_guard": "(wd - 2*ht*tan(radians(draft_deg))) - 0.5*wd"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "duct_reducer": {
+   "family": "duct_reducer",
+   "n_samples": 23,
+   "variables": {
+    "bot_r": {
+     "name": "bot_r",
+     "count": 23,
+     "always": true,
+     "integral": false,
+     "lo": 14.0,
+     "hi": 34.5,
+     "median": 21.5,
+     "role": "radius"
+    },
+    "top_r": {
+     "name": "top_r",
+     "count": 23,
+     "always": true,
+     "integral": false,
+     "lo": 5.5,
+     "hi": 23.5,
+     "median": 14.5,
+     "role": "radius"
+    },
+    "height": {
+     "name": "height",
+     "count": 23,
+     "always": true,
+     "integral": true,
+     "lo": 17.0,
+     "hi": 57.0,
+     "median": 39.0,
+     "role": ""
+    }
+   },
+   "preconditions": {
+    "taper_guard": "top_r"
+   },
+   "attachments": []
+  },
+  "finned_rail": {
+   "family": "finned_rail",
+   "n_samples": 705,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 705,
+     "always": true,
+     "integral": true,
+     "lo": 90.0,
+     "hi": 170.0,
+     "median": 130.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 705,
+     "always": true,
+     "integral": true,
+     "lo": 40.0,
+     "hi": 80.0,
+     "median": 60.0,
+     "role": "width (Y)"
+    },
+    "T": {
+     "name": "T",
+     "count": 705,
+     "always": true,
+     "integral": false,
+     "lo": 8.0,
+     "hi": 16.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "ft": {
+     "name": "ft",
+     "count": 705,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 6.0,
+     "median": 4.5,
+     "role": "length (X)"
+    },
+    "fh": {
+     "name": "fh",
+     "count": 705,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 22.0,
+     "median": 15.0,
+     "role": "extrude depth"
+    },
+    "fl": {
+     "name": "fl",
+     "count": 705,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 72.0,
+     "median": 41.0,
+     "role": "width (Y)"
+    },
+    "fn": {
+     "name": "fn",
+     "count": 705,
+     "always": true,
+     "integral": true,
+     "lo": 3.0,
+     "hi": 5.0,
+     "median": 4.0,
+     "role": "instance count"
+    },
+    "span": {
+     "name": "span",
+     "count": 705,
+     "always": true,
+     "integral": true,
+     "lo": 14.0,
+     "hi": 70.0,
+     "median": 38.0,
+     "role": "pattern span"
+    },
+    "seed_cx": {
+     "name": "seed_cx",
+     "count": 705,
+     "always": true,
+     "integral": false,
+     "lo": -77.25,
+     "hi": -36.75,
+     "median": -56.75,
+     "role": "centre x"
+    }
+   },
+   "preconditions": {
+    "pitch_guard": "span/(fn - 1) - ft - 3",
+    "array_fits": "-(seed_cx + span + ft/2) - 3",
+    "fin_width": "W - fl - 4"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "fixture_plate": {
+   "family": "fixture_plate",
+   "n_samples": 84,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 84,
+     "always": true,
+     "integral": true,
+     "lo": 58.0,
+     "hi": 140.0,
+     "median": 84.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 84,
+     "always": true,
+     "integral": true,
+     "lo": 45.0,
+     "hi": 116.0,
+     "median": 70.0,
+     "role": "width (Y)"
+    },
+    "T": {
+     "name": "T",
+     "count": 84,
+     "always": true,
+     "integral": false,
+     "lo": 8.5,
+     "hi": 18.0,
+     "median": 14.0,
+     "role": "extrude depth"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 84,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 4.5,
+     "median": 3.5,
+     "role": "radius"
+    },
+    "pitch": {
+     "name": "pitch",
+     "count": 84,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 24.0,
+     "median": 18.0,
+     "role": "pitch (X)"
+    }
+   },
+   "preconditions": {
+    "pitch_guard": "pitch - 2*hole_r - 2"
+   },
+   "attachments": [
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin"
+   ]
+  },
+  "flanged_disc": {
+   "family": "flanged_disc",
+   "n_samples": 459,
+   "variables": {
+    "fr": {
+     "name": "fr",
+     "count": 459,
+     "always": true,
+     "integral": true,
+     "lo": 35.0,
+     "hi": 70.0,
+     "median": 56.0,
+     "role": "outline x"
+    },
+    "ft": {
+     "name": "ft",
+     "count": 459,
+     "always": true,
+     "integral": false,
+     "lo": 7.0,
+     "hi": 14.0,
+     "median": 10.5,
+     "role": "outline y"
+    },
+    "hubr": {
+     "name": "hubr",
+     "count": 459,
+     "always": true,
+     "integral": false,
+     "lo": 13.5,
+     "hi": 34.0,
+     "median": 24.0,
+     "role": "outline x"
+    },
+    "hubh": {
+     "name": "hubh",
+     "count": 459,
+     "always": true,
+     "integral": true,
+     "lo": 14.0,
+     "hi": 33.0,
+     "median": 23.0,
+     "role": "outline y"
+    },
+    "borer": {
+     "name": "borer",
+     "count": 459,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 16.5,
+     "median": 7.5,
+     "role": "outline x"
+    }
+   },
+   "preconditions": {
+    "hub_wall": "hubr - borer - 2.5"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "gearbox_housing": {
+   "family": "gearbox_housing",
+   "n_samples": 19,
+   "variables": {
+    "lf": {
+     "name": "lf",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 104.0,
+     "hi": 158.0,
+     "median": 130.0,
+     "role": "length (X)"
+    },
+    "wf": {
+     "name": "wf",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 66.0,
+     "hi": 124.0,
+     "median": 90.0,
+     "role": "width (Y)"
+    },
+    "h1": {
+     "name": "h1",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 15.0,
+     "median": 13.0,
+     "role": "extrude depth"
+    },
+    "lb": {
+     "name": "lb",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 44.0,
+     "hi": 90.0,
+     "median": 62.0,
+     "role": "length (X)"
+    },
+    "wb": {
+     "name": "wb",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 34.0,
+     "hi": 66.0,
+     "median": 46.0,
+     "role": "width (Y)"
+    },
+    "h2": {
+     "name": "h2",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 48.0,
+     "median": 37.0,
+     "role": "extrude depth"
+    },
+    "draft_deg": {
+     "name": "draft_deg",
+     "count": 19,
+     "always": true,
+     "integral": false,
+     "lo": 1.0,
+     "hi": 4.0,
+     "median": 3.0,
+     "role": "draft angle"
+    },
+    "cav_l": {
+     "name": "cav_l",
+     "count": 19,
+     "always": true,
+     "integral": false,
+     "lo": 27.8675,
+     "hi": 74.9051,
+     "median": 44.2351,
+     "role": "length (X)"
+    },
+    "cav_w": {
+     "name": "cav_w",
+     "count": 19,
+     "always": true,
+     "integral": false,
+     "lo": 15.9437,
+     "hi": 47.6734,
+     "median": 29.8675,
+     "role": "width (Y)"
+    },
+    "cav_d": {
+     "name": "cav_d",
+     "count": 19,
+     "always": true,
+     "integral": true,
+     "lo": 10.0,
+     "hi": 28.0,
+     "median": 22.0,
+     "role": "cut depth"
+    },
+    "bc_r": {
+     "name": "bc_r",
+     "count": 19,
+     "always": true,
+     "integral": false,
+     "lo": 35.5,
+     "hi": 67.0,
+     "median": 50.0,
+     "role": "bolt-circle radius"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 19,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 4.25,
+     "median": 3.75,
+     "role": "hole radius"
+    }
+   },
+   "preconditions": {
+    "cav_wall_l": "lb - 2*(h1+h2)*tan(radians(draft_deg)) - cav_l - 3",
+    "cav_wall_w": "wb - 2*(h1+h2)*tan(radians(draft_deg)) - cav_w - 3",
+    "cav_floor": "h2 - cav_d - 2",
+    "boss_on_flange": "lf - 2*h1*tan(radians(draft_deg)) - lb - 2",
+    "hole_land": "min(lf, wf)/2 - h1*tan(radians(draft_deg)) - (bc_r*cos(radians(45)) + hole_r) - 2",
+    "hole_boss_clear": "bc_r - hole_r - sqrt((lb/2)**2 + (wb/2)**2) - 1"
+   },
+   "attachments": []
+  },
+  "gusset_plate": {
+   "family": "gusset_plate",
+   "n_samples": 366,
+   "variables": {
+    "a": {
+     "name": "a",
+     "count": 366,
+     "always": true,
+     "integral": true,
+     "lo": 56.0,
+     "hi": 130.0,
+     "median": 100.0,
+     "role": "outline x"
+    },
+    "b": {
+     "name": "b",
+     "count": 366,
+     "always": true,
+     "integral": true,
+     "lo": 46.0,
+     "hi": 110.0,
+     "median": 79.0,
+     "role": "outline y"
+    },
+    "t": {
+     "name": "t",
+     "count": 366,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 12.0,
+     "median": 8.5,
+     "role": "extrude depth"
+    }
+   },
+   "preconditions": {
+    "aspect_guard": "min(a, b) - 40"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "harmonic_cup": {
+   "family": "harmonic_cup",
+   "n_samples": 17,
+   "variables": {
+    "cup_r": {
+     "name": "cup_r",
+     "count": 17,
+     "always": true,
+     "integral": true,
+     "lo": 26.0,
+     "hi": 57.0,
+     "median": 33.0,
+     "role": "outline x"
+    },
+    "cup_h": {
+     "name": "cup_h",
+     "count": 17,
+     "always": true,
+     "integral": true,
+     "lo": 22.0,
+     "hi": 54.0,
+     "median": 39.0,
+     "role": "outline y"
+    },
+    "wall_c": {
+     "name": "wall_c",
+     "count": 17,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 4.25,
+     "median": 2.75,
+     "role": ""
+    },
+    "base_t": {
+     "name": "base_t",
+     "count": 17,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 9.0,
+     "median": 6.5,
+     "role": "outline y"
+    },
+    "g_r": {
+     "name": "g_r",
+     "count": 17,
+     "always": true,
+     "integral": false,
+     "lo": 12.0,
+     "hi": 46.0,
+     "median": 20.0,
+     "role": "g radius"
+    },
+    "g_w": {
+     "name": "g_w",
+     "count": 17,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 3.25,
+     "median": 2.5,
+     "role": "g width"
+    },
+    "g_d": {
+     "name": "g_d",
+     "count": 17,
+     "always": true,
+     "integral": false,
+     "lo": 1.6,
+     "hi": 5.4,
+     "median": 2.4,
+     "role": "g diameter"
+    },
+    "bc_r_c": {
+     "name": "bc_r_c",
+     "count": 17,
+     "always": true,
+     "integral": false,
+     "lo": 6.5,
+     "hi": 20.0,
+     "median": 9.0,
+     "role": "bolt-circle radius"
+    },
+    "hole_r_c": {
+     "name": "hole_r_c",
+     "count": 17,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 3.2,
+     "median": 2.6,
+     "role": "hole radius"
+    },
+    "hole_n_c": {
+     "name": "hole_n_c",
+     "count": 17,
+     "always": true,
+     "integral": true,
+     "lo": 4.0,
+     "hi": 6.0,
+     "median": 6.0,
+     "role": "count"
+    }
+   },
+   "preconditions": {
+    "gland_wall": "cup_r - wall_c - g_r - g_w/2 - 1.5",
+    "gland_floor": "base_t - g_d - 1",
+    "holes_inboard": "g_r - g_w/2 - bc_r_c - hole_r_c - 1",
+    "hole_spacing": "2*bc_r_c*sin(pi/hole_n_c) - 2*hole_r_c"
+   },
+   "attachments": []
+  },
+  "hex_hub": {
+   "family": "hex_hub",
+   "n_samples": 282,
+   "variables": {
+    "R": {
+     "name": "R",
+     "count": 282,
+     "always": true,
+     "integral": true,
+     "lo": 26.0,
+     "hi": 55.0,
+     "median": 46.0,
+     "role": "radius"
+    },
+    "rc": {
+     "name": "rc",
+     "count": 282,
+     "always": true,
+     "integral": false,
+     "lo": 8.0,
+     "hi": 32.0,
+     "median": 14.0,
+     "role": "circumscribed radius"
+    },
+    "T": {
+     "name": "T",
+     "count": 282,
+     "always": true,
+     "integral": false,
+     "lo": 10.0,
+     "hi": 26.0,
+     "median": 18.0,
+     "role": "extrude depth"
+    }
+   },
+   "preconditions": {
+    "rim_guard": "R - rc - 6"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "hole_rail": {
+   "family": "hole_rail",
+   "n_samples": 15,
+   "variables": {
+    "rail_l": {
+     "name": "rail_l",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 78.0,
+     "hi": 158.0,
+     "median": 106.0,
+     "role": "length (X)"
+    },
+    "rail_w": {
+     "name": "rail_w",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 16.0,
+     "hi": 34.0,
+     "median": 23.0,
+     "role": "width (Y)"
+    },
+    "rail_h": {
+     "name": "rail_h",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 16.0,
+     "median": 14.0,
+     "role": "extrude depth"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 4.5,
+     "median": 3.5,
+     "role": "radius"
+    },
+    "hole_n": {
+     "name": "hole_n",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 3.0,
+     "hi": 6.0,
+     "median": 5.0,
+     "role": "instance count"
+    },
+    "span": {
+     "name": "span",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 40.0,
+     "hi": 115.0,
+     "median": 63.0,
+     "role": "pattern span"
+    }
+   },
+   "preconditions": {
+    "overlap_guard": "span/(hole_n-1) - 2*hole_r",
+    "margin_guard": "(rail_l - span)/2 - hole_r"
+   },
+   "attachments": []
+  },
+  "hx_header": {
+   "family": "hx_header",
+   "n_samples": 152,
+   "variables": {
+    "R": {
+     "name": "R",
+     "count": 152,
+     "always": true,
+     "integral": true,
+     "lo": 31.0,
+     "hi": 60.0,
+     "median": 52.0,
+     "role": "outer radius"
+    },
+    "T": {
+     "name": "T",
+     "count": 152,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 26.0,
+     "median": 18.0,
+     "role": "extrude depth"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 152,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 17.5,
+     "median": 9.5,
+     "role": "inner radius"
+    },
+    "bc_r": {
+     "name": "bc_r",
+     "count": 152,
+     "always": true,
+     "integral": false,
+     "lo": 19.5,
+     "hi": 50.5,
+     "median": 36.0,
+     "role": "bolt-circle radius"
+    },
+    "tube_r": {
+     "name": "tube_r",
+     "count": 152,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 4.0,
+     "median": 3.0,
+     "role": "hole radius"
+    },
+    "tube_n": {
+     "name": "tube_n",
+     "count": 152,
+     "always": true,
+     "integral": true,
+     "lo": 6.0,
+     "hi": 12.0,
+     "median": 8.0,
+     "role": "count"
+    }
+   },
+   "preconditions": {
+    "tube_spacing": "2*bc_r*sin(pi/tube_n) - 2*tube_r - 2"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "impeller": {
+   "family": "impeller",
+   "n_samples": 24,
+   "variables": {
+    "disc_r": {
+     "name": "disc_r",
+     "count": 24,
+     "always": true,
+     "integral": true,
+     "lo": 25.0,
+     "hi": 45.0,
+     "median": 33.5,
+     "role": "outer radius"
+    },
+    "disc_t": {
+     "name": "disc_t",
+     "count": 24,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 9.5,
+     "median": 8.5,
+     "role": "extrude depth"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 24,
+     "always": true,
+     "integral": false,
+     "lo": 4.5,
+     "hi": 11.5,
+     "median": 8.25,
+     "role": "inner radius"
+    },
+    "blade_len": {
+     "name": "blade_len",
+     "count": 24,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 31.0,
+     "median": 15.0,
+     "role": "length (X)"
+    },
+    "blade_t": {
+     "name": "blade_t",
+     "count": 24,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 4.5,
+     "median": 3.625,
+     "role": "width (Y)"
+    },
+    "blade_h": {
+     "name": "blade_h",
+     "count": 24,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 24.0,
+     "median": 19.5,
+     "role": "extrude depth"
+    },
+    "arm_n": {
+     "name": "arm_n",
+     "count": 24,
+     "always": true,
+     "integral": true,
+     "lo": 4.0,
+     "hi": 7.0,
+     "median": 5.5,
+     "role": "instance count"
+    }
+   },
+   "preconditions": {
+    "blade_spacing": "2*(bore_r + 3 + blade_len/2)*sin(pi/arm_n) - blade_t - 3",
+    "blade_fits": "disc_r - (bore_r + 3 + blade_len) - 2"
+   },
+   "attachments": []
+  },
+  "l_bracket": {
+   "family": "l_bracket",
+   "n_samples": 711,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 711,
+     "always": true,
+     "integral": true,
+     "lo": 50.0,
+     "hi": 120.0,
+     "median": 84.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 711,
+     "always": true,
+     "integral": true,
+     "lo": 40.0,
+     "hi": 90.0,
+     "median": 66.0,
+     "role": "width (Y)"
+    },
+    "t": {
+     "name": "t",
+     "count": 711,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 12.0,
+     "median": 8.5,
+     "role": "extrude depth"
+    },
+    "tw": {
+     "name": "tw",
+     "count": 711,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 12.0,
+     "median": 8.5,
+     "role": "width (Y)"
+    },
+    "h": {
+     "name": "h",
+     "count": 711,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 55.0,
+     "median": 38.0,
+     "role": "extrude depth"
+    }
+   },
+   "preconditions": {
+    "land_guard": "W - tw - 20"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "manifold_runner": {
+   "family": "manifold_runner",
+   "n_samples": 23,
+   "variables": {
+    "sec_r": {
+     "name": "sec_r",
+     "count": 23,
+     "always": true,
+     "integral": false,
+     "lo": 7.0,
+     "hi": 13.5,
+     "median": 10.5,
+     "role": "radius"
+    },
+    "bend_r": {
+     "name": "bend_r",
+     "count": 23,
+     "always": true,
+     "integral": true,
+     "lo": 28.0,
+     "hi": 126.0,
+     "median": 74.0,
+     "role": "radius"
+    },
+    "bend_deg": {
+     "name": "bend_deg",
+     "count": 23,
+     "always": true,
+     "integral": true,
+     "lo": 45.0,
+     "hi": 140.0,
+     "median": 110.0,
+     "role": "sweep angle"
+    },
+    "fl_w": {
+     "name": "fl_w",
+     "count": 23,
+     "always": true,
+     "integral": true,
+     "lo": 28.0,
+     "hi": 58.0,
+     "median": 43.0,
+     "role": "length (X)"
+    },
+    "fl_h": {
+     "name": "fl_h",
+     "count": 23,
+     "always": true,
+     "integral": true,
+     "lo": 26.0,
+     "hi": 54.0,
+     "median": 42.0,
+     "role": "width (Y)"
+    },
+    "fl_t": {
+     "name": "fl_t",
+     "count": 23,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.0,
+     "role": "extrude depth"
+    }
+   },
+   "preconditions": {
+    "self_intersect_guard": "bend_r - sec_r",
+    "port_guard": "min(fl_w, fl_h)/2 - sec_r - 2"
+   },
+   "attachments": []
+  },
+  "mirror_wing": {
+   "family": "mirror_wing",
+   "n_samples": 25,
+   "variables": {
+    "half_w": {
+     "name": "half_w",
+     "count": 25,
+     "always": true,
+     "integral": true,
+     "lo": 26.0,
+     "hi": 57.0,
+     "median": 33.0,
+     "role": "length (X)"
+    },
+    "depth": {
+     "name": "depth",
+     "count": 25,
+     "always": true,
+     "integral": true,
+     "lo": 26.0,
+     "hi": 69.0,
+     "median": 42.0,
+     "role": "width (Y)"
+    },
+    "thick": {
+     "name": "thick",
+     "count": 25,
+     "always": true,
+     "integral": false,
+     "lo": 4.5,
+     "hi": 11.5,
+     "median": 9.0,
+     "role": "extrude depth"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 25,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 5.0,
+     "median": 3.5,
+     "role": "radius"
+    },
+    "hole_x": {
+     "name": "hole_x",
+     "count": 25,
+     "always": true,
+     "integral": false,
+     "lo": 7.0,
+     "hi": 46.0,
+     "median": 18.0,
+     "role": "centre x"
+    },
+    "hole_y": {
+     "name": "hole_y",
+     "count": 25,
+     "always": true,
+     "integral": false,
+     "lo": -20.5,
+     "hi": 17.0,
+     "median": -1.0,
+     "role": "centre y"
+    }
+   },
+   "preconditions": {
+    "straddle_guard": "hole_x - hole_r"
+   },
+   "attachments": []
+  },
+  "mold_core": {
+   "family": "mold_core",
+   "n_samples": 18,
+   "variables": {
+    "core_l": {
+     "name": "core_l",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 60.0,
+     "hi": 124.0,
+     "median": 106.0,
+     "role": "length (X)"
+    },
+    "core_w": {
+     "name": "core_w",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 40.0,
+     "hi": 84.0,
+     "median": 66.0,
+     "role": "width (Y)"
+    },
+    "core_h": {
+     "name": "core_h",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 21.0,
+     "hi": 45.0,
+     "median": 37.0,
+     "role": "extrude depth"
+    },
+    "draft_deg": {
+     "name": "draft_deg",
+     "count": 18,
+     "always": true,
+     "integral": false,
+     "lo": 1.0,
+     "hi": 3.5,
+     "median": 2.0,
+     "role": "draft angle"
+    },
+    "cav_len": {
+     "name": "cav_len",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 69.0,
+     "median": 16.5,
+     "role": "length"
+    },
+    "cav_r": {
+     "name": "cav_r",
+     "count": 18,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 24.0,
+     "median": 10.0,
+     "role": "radius"
+    },
+    "cav_d": {
+     "name": "cav_d",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 9.0,
+     "hi": 30.0,
+     "median": 20.0,
+     "role": "cut depth"
+    },
+    "cool_bc": {
+     "name": "cool_bc",
+     "count": 18,
+     "always": true,
+     "integral": false,
+     "lo": 16.0,
+     "hi": 40.5,
+     "median": 25.25,
+     "role": "bolt-circle radius"
+    },
+    "cool_r": {
+     "name": "cool_r",
+     "count": 18,
+     "always": true,
+     "integral": false,
+     "lo": 2.25,
+     "hi": 3.5,
+     "median": 3.125,
+     "role": "hole radius"
+    }
+   },
+   "preconditions": {
+    "cav_fit_l": "core_l - 2*core_h*tan(radians(draft_deg)) - cav_len - 2*cav_r - 4",
+    "cav_fit_w": "core_w - 2*core_h*tan(radians(draft_deg)) - 2*cav_r - 4",
+    "cav_floor": "core_h - cav_d - 3",
+    "cool_clear": "cool_bc*sin(radians(45)) - cav_r - cool_r - 2",
+    "cool_fit": "min(core_l, core_w)/2 - core_h*tan(radians(draft_deg)) - cool_bc*cos(radians(45)) - cool_r - 2"
+   },
+   "attachments": []
+  },
+  "mount_plate": {
+   "family": "mount_plate",
+   "n_samples": 676,
+   "variables": {
+    "pl": {
+     "name": "pl",
+     "count": 676,
+     "always": true,
+     "integral": true,
+     "lo": 70.0,
+     "hi": 150.0,
+     "median": 112.0,
+     "role": "length (X)"
+    },
+    "pw": {
+     "name": "pw",
+     "count": 676,
+     "always": true,
+     "integral": true,
+     "lo": 46.0,
+     "hi": 114.0,
+     "median": 66.0,
+     "role": "width (Y)"
+    },
+    "pt": {
+     "name": "pt",
+     "count": 676,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.0,
+     "role": "extrude depth"
+    },
+    "hr": {
+     "name": "hr",
+     "count": 676,
+     "always": true,
+     "integral": false,
+     "lo": 2.2,
+     "hi": 4.0,
+     "median": 3.2,
+     "role": "hole radius"
+    },
+    "mx": {
+     "name": "mx",
+     "count": 676,
+     "always": true,
+     "integral": false,
+     "lo": 26.0,
+     "hi": 67.6,
+     "median": 48.4,
+     "role": "hole centre x"
+    },
+    "my": {
+     "name": "my",
+     "count": 676,
+     "always": true,
+     "integral": false,
+     "lo": 14.0,
+     "hi": 49.4,
+     "median": 24.4,
+     "role": "hole centre y"
+    }
+   },
+   "preconditions": {
+    "corner_margin": "min(pl/2 - mx, pw/2 - my) - hr - 2"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "pillow_block": {
+   "family": "pillow_block",
+   "n_samples": 269,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 269,
+     "always": true,
+     "integral": true,
+     "lo": 56.0,
+     "hi": 100.0,
+     "median": 88.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 269,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 54.0,
+     "median": 46.0,
+     "role": "width (Y)"
+    },
+    "base_t": {
+     "name": "base_t",
+     "count": 269,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 16.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "hous_l": {
+     "name": "hous_l",
+     "count": 269,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 68.0,
+     "median": 48.0,
+     "role": "length (X)"
+    },
+    "hous_w": {
+     "name": "hous_w",
+     "count": 269,
+     "always": true,
+     "integral": true,
+     "lo": 22.0,
+     "hi": 48.0,
+     "median": 28.0,
+     "role": "width (Y)"
+    },
+    "hous_h": {
+     "name": "hous_h",
+     "count": 269,
+     "always": true,
+     "integral": true,
+     "lo": 18.0,
+     "hi": 38.0,
+     "median": 28.0,
+     "role": "extrude depth"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 269,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 13.0,
+     "median": 7.0,
+     "role": "radius"
+    }
+   },
+   "preconditions": {
+    "bore_wall": "hous_h/2 - bore_r - 3",
+    "bore_above_base": "hous_h/2 - bore_r - 2",
+    "hous_fit": "W - hous_w - 4"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "pipe_bend": {
+   "family": "pipe_bend",
+   "n_samples": 23,
+   "variables": {
+    "section_r": {
+     "name": "section_r",
+     "count": 23,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 16.0,
+     "median": 12.0,
+     "role": "radius"
+    },
+    "bend_r": {
+     "name": "bend_r",
+     "count": 23,
+     "always": true,
+     "integral": true,
+     "lo": 32.0,
+     "hi": 167.0,
+     "median": 76.0,
+     "role": "radius"
+    },
+    "bend_deg": {
+     "name": "bend_deg",
+     "count": 23,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 145.0,
+     "median": 70.0,
+     "role": "sweep angle"
+    }
+   },
+   "preconditions": {
+    "self_intersect_guard": "bend_r - section_r"
+   },
+   "attachments": []
+  },
+  "planet_carrier": {
+   "family": "planet_carrier",
+   "n_samples": 15,
+   "variables": {
+    "disc_r": {
+     "name": "disc_r",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 32.0,
+     "hi": 67.0,
+     "median": 53.0,
+     "role": "outer radius"
+    },
+    "disc_t": {
+     "name": "disc_t",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 8.5,
+     "hi": 18.0,
+     "median": 13.0,
+     "role": "extrude depth"
+    },
+    "bore_c": {
+     "name": "bore_c",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 13.5,
+     "median": 7.5,
+     "role": "inner radius"
+    },
+    "pin_bc": {
+     "name": "pin_bc",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 24.0,
+     "hi": 56.0,
+     "median": 39.0,
+     "role": "centre x"
+    },
+    "pin_r": {
+     "name": "pin_r",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 5.0,
+     "median": 4.0,
+     "role": "radius"
+    },
+    "pin_n": {
+     "name": "pin_n",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 3.0,
+     "hi": 5.0,
+     "median": 4.0,
+     "role": "count"
+    },
+    "light_bc": {
+     "name": "light_bc",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 12.5,
+     "hi": 31.0,
+     "median": 19.5,
+     "role": "bolt-circle radius"
+    },
+    "light_r": {
+     "name": "light_r",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 1.8,
+     "hi": 5.5,
+     "median": 3.45,
+     "role": "hole radius"
+    }
+   },
+   "preconditions": {
+    "band_inner": "light_bc - light_r - bore_c - 2",
+    "band_mid": "pin_bc - pin_r - light_bc - light_r - 2",
+    "band_outer": "disc_r - pin_bc - pin_r - 2.5",
+    "pin_spacing": "2*pin_bc*sin(pi/pin_n) - 2*pin_r",
+    "light_spacing": "2*light_bc*sin(pi/pin_n) - 2*light_r"
+   },
+   "attachments": []
+  },
+  "pump_housing": {
+   "family": "pump_housing",
+   "n_samples": 587,
+   "variables": {
+    "R": {
+     "name": "R",
+     "count": 587,
+     "always": true,
+     "integral": true,
+     "lo": 24.0,
+     "hi": 45.0,
+     "median": 35.0,
+     "role": "outline x"
+    },
+    "wall": {
+     "name": "wall",
+     "count": 587,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 8.0,
+     "median": 6.0,
+     "role": "wall thickness"
+    },
+    "H": {
+     "name": "H",
+     "count": 587,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 60.0,
+     "median": 45.0,
+     "role": "height"
+    },
+    "floor_t": {
+     "name": "floor_t",
+     "count": 587,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 9.0,
+     "median": 6.5,
+     "role": "floor thickness"
+    },
+    "slab_l": {
+     "name": "slab_l",
+     "count": 587,
+     "always": true,
+     "integral": true,
+     "lo": 78.0,
+     "hi": 140.0,
+     "median": 110.0,
+     "role": "length (X)"
+    },
+    "slab_w": {
+     "name": "slab_w",
+     "count": 587,
+     "always": true,
+     "integral": true,
+     "lo": 54.0,
+     "hi": 110.0,
+     "median": 82.0,
+     "role": "width (Y)"
+    },
+    "slab_t": {
+     "name": "slab_t",
+     "count": 587,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 12.0,
+     "median": 9.0,
+     "role": "extrude depth"
+    }
+   },
+   "preconditions": {
+    "wall_guard": "R - wall - 8",
+    "slab_clear": "slab_w/2 - R - 2"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "rim_dressup_plate": {
+   "family": "rim_dressup_plate",
+   "n_samples": 35,
+   "variables": {
+    "plate_l": {
+     "name": "plate_l",
+     "count": 35,
+     "always": true,
+     "integral": true,
+     "lo": 50.0,
+     "hi": 114.0,
+     "median": 82.0,
+     "role": "length (X)"
+    },
+    "plate_w": {
+     "name": "plate_w",
+     "count": 35,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 90.0,
+     "median": 48.0,
+     "role": "width (Y)"
+    },
+    "thick": {
+     "name": "thick",
+     "count": 35,
+     "always": true,
+     "integral": false,
+     "lo": 4.5,
+     "hi": 12.0,
+     "median": 7.5,
+     "role": "extrude depth"
+    },
+    "hole_dx": {
+     "name": "hole_dx",
+     "count": 35,
+     "always": true,
+     "integral": false,
+     "lo": 15.5,
+     "hi": 46.0,
+     "median": 29.0,
+     "role": "hole centre x"
+    },
+    "hole_dy": {
+     "name": "hole_dy",
+     "count": 35,
+     "always": true,
+     "integral": false,
+     "lo": 7.5,
+     "hi": 30.5,
+     "median": 16.5,
+     "role": "hole centre y"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 35,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 4.4,
+     "median": 3.0,
+     "role": "hole radius"
+    },
+    "dress": {
+     "name": "dress",
+     "count": 35,
+     "always": true,
+     "integral": false,
+     "lo": 0.3,
+     "hi": 1.5,
+     "median": 0.9,
+     "role": "fillet radius"
+    }
+   },
+   "preconditions": {
+    "rim_guard": "hole_r - dress",
+    "wall_guard": "thick - 2*dress"
+   },
+   "attachments": []
+  },
+  "rocker_link": {
+   "family": "rocker_link",
+   "n_samples": 20,
+   "variables": {
+    "half_len": {
+     "name": "half_len",
+     "count": 20,
+     "always": true,
+     "integral": true,
+     "lo": 26.0,
+     "hi": 55.0,
+     "median": 41.0,
+     "role": "outline x"
+    },
+    "half_wid": {
+     "name": "half_wid",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 8.0,
+     "hi": 17.5,
+     "median": 12.75,
+     "role": "outline y"
+    },
+    "tip_ext": {
+     "name": "tip_ext",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.25,
+     "role": ""
+    },
+    "thick_l": {
+     "name": "thick_l",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.75,
+     "role": "extrude depth"
+    },
+    "bore_r_l": {
+     "name": "bore_r_l",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 4.75,
+     "median": 3.625,
+     "role": "hole radius"
+    },
+    "bore_in": {
+     "name": "bore_in",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 17.5,
+     "median": 9.0,
+     "role": ""
+    },
+    "slot_len": {
+     "name": "slot_len",
+     "count": 20,
+     "always": true,
+     "integral": true,
+     "lo": 5.0,
+     "hi": 51.0,
+     "median": 20.0,
+     "role": "length"
+    },
+    "slot_r": {
+     "name": "slot_r",
+     "count": 20,
+     "always": true,
+     "integral": false,
+     "lo": 1.75,
+     "hi": 3.5,
+     "median": 2.75,
+     "role": "radius"
+    }
+   },
+   "preconditions": {
+    "bore_y_room": "half_wid - bore_r_l - 2",
+    "bore_x_room": "bore_in - bore_r_l - 1.5",
+    "slot_bore_clear": "(half_len - bore_in) - bore_r_l - (slot_len/2 + slot_r) - 2",
+    "slot_y_room": "half_wid - slot_r - 2"
+   },
+   "attachments": []
+  },
+  "slotted_rail": {
+   "family": "slotted_rail",
+   "n_samples": 445,
+   "variables": {
+    "rail_l": {
+     "name": "rail_l",
+     "count": 445,
+     "always": true,
+     "integral": true,
+     "lo": 80.0,
+     "hi": 160.0,
+     "median": 126.0,
+     "role": "length (X)"
+    },
+    "rail_w": {
+     "name": "rail_w",
+     "count": 445,
+     "always": true,
+     "integral": true,
+     "lo": 24.0,
+     "hi": 44.0,
+     "median": 36.0,
+     "role": "width (Y)"
+    },
+    "rail_h": {
+     "name": "rail_h",
+     "count": 445,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 16.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "slot_r": {
+     "name": "slot_r",
+     "count": 445,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 5.0,
+     "median": 3.75,
+     "role": "radius"
+    },
+    "slot_len": {
+     "name": "slot_len",
+     "count": 445,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 76.0,
+     "median": 38.0,
+     "role": "length"
+    }
+   },
+   "preconditions": {
+    "slot_wall": "rail_w/2 - slot_r - 4",
+    "slot_ends": "rail_l/2 - slot_len/2 - slot_r - 6"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "spider_hub": {
+   "family": "spider_hub",
+   "n_samples": 209,
+   "variables": {
+    "hub_r": {
+     "name": "hub_r",
+     "count": 209,
+     "always": true,
+     "integral": true,
+     "lo": 14.0,
+     "hi": 30.0,
+     "median": 27.0,
+     "role": "outer radius"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 209,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 13.0,
+     "median": 6.0,
+     "role": "inner radius"
+    },
+    "disc_t": {
+     "name": "disc_t",
+     "count": 209,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.0,
+     "role": "extrude depth"
+    },
+    "arm_len": {
+     "name": "arm_len",
+     "count": 209,
+     "always": true,
+     "integral": true,
+     "lo": 18.0,
+     "hi": 45.0,
+     "median": 33.0,
+     "role": "length (X)"
+    },
+    "arm_w": {
+     "name": "arm_w",
+     "count": 209,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.0,
+     "role": "width (Y)"
+    },
+    "arm_h": {
+     "name": "arm_h",
+     "count": 209,
+     "always": true,
+     "integral": false,
+     "lo": 6.5,
+     "hi": 25.5,
+     "median": 15.5,
+     "role": "extrude depth"
+    },
+    "arm_n": {
+     "name": "arm_n",
+     "count": 209,
+     "always": true,
+     "integral": true,
+     "lo": 3.0,
+     "hi": 6.0,
+     "median": 4.0,
+     "role": "instance count"
+    }
+   },
+   "preconditions": {
+    "arm_spacing": "2*hub_r*sin(pi/arm_n) - arm_w - 3",
+    "hub_wall": "hub_r - bore_r - 4"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "stepped_block": {
+   "family": "stepped_block",
+   "n_samples": 516,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 516,
+     "always": true,
+     "integral": true,
+     "lo": 50.0,
+     "hi": 110.0,
+     "median": 80.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 516,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 70.0,
+     "median": 54.0,
+     "role": "width (Y)"
+    },
+    "H": {
+     "name": "H",
+     "count": 516,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 45.0,
+     "median": 32.5,
+     "role": "extrude depth"
+    },
+    "step_w": {
+     "name": "step_w",
+     "count": 516,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 41.0,
+     "median": 26.0,
+     "role": "width (Y)"
+    },
+    "step_h": {
+     "name": "step_h",
+     "count": 516,
+     "always": true,
+     "integral": true,
+     "lo": 6.0,
+     "hi": 26.0,
+     "median": 14.0,
+     "role": "cut depth"
+    }
+   },
+   "preconditions": {
+    "step_w_guard": "W - step_w - 8",
+    "step_h_guard": "H - step_h - 8"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "stepped_shaft": {
+   "family": "stepped_shaft",
+   "n_samples": 155,
+   "variables": {
+    "r1": {
+     "name": "r1",
+     "count": 155,
+     "always": true,
+     "integral": false,
+     "lo": 22.5,
+     "hi": 45.0,
+     "median": 38.5,
+     "role": "outline x"
+    },
+    "r2": {
+     "name": "r2",
+     "count": 155,
+     "always": true,
+     "integral": false,
+     "lo": 14.5,
+     "hi": 40.0,
+     "median": 28.5,
+     "role": "outline x"
+    },
+    "rb": {
+     "name": "rb",
+     "count": 155,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 20.5,
+     "median": 6.5,
+     "role": "outline x"
+    },
+    "L1": {
+     "name": "L1",
+     "count": 155,
+     "always": true,
+     "integral": false,
+     "lo": 8.0,
+     "hi": 25.0,
+     "median": 15.5,
+     "role": "outline y"
+    },
+    "L2": {
+     "name": "L2",
+     "count": 155,
+     "always": true,
+     "integral": true,
+     "lo": 10.0,
+     "hi": 40.0,
+     "median": 25.0,
+     "role": ""
+    }
+   },
+   "preconditions": {
+    "shoulder": "r1 - r2 - 3",
+    "nose_wall": "r2 - rb - 3"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "structural_node": {
+   "family": "structural_node",
+   "n_samples": 50,
+   "variables": {
+    "hub_r": {
+     "name": "hub_r",
+     "count": 50,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 22.0,
+     "median": 21.0,
+     "role": "outer radius"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 50,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 13.5,
+     "median": 5.0,
+     "role": "inner radius"
+    },
+    "hub_h": {
+     "name": "hub_h",
+     "count": 50,
+     "always": true,
+     "integral": true,
+     "lo": 10.0,
+     "hi": 20.0,
+     "median": 15.0,
+     "role": "extrude depth"
+    },
+    "arm_len": {
+     "name": "arm_len",
+     "count": 50,
+     "always": true,
+     "integral": true,
+     "lo": 22.0,
+     "hi": 48.0,
+     "median": 30.0,
+     "role": "length (X)"
+    },
+    "arm_w": {
+     "name": "arm_w",
+     "count": 50,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 16.0,
+     "median": 14.0,
+     "role": "width (Y)"
+    },
+    "arm_h": {
+     "name": "arm_h",
+     "count": 50,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 19.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "end_r": {
+     "name": "end_r",
+     "count": 50,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 4.5,
+     "median": 2.75,
+     "role": "radius"
+    }
+   },
+   "preconditions": {
+    "hub_wall": "hub_r - bore_r - 4",
+    "arm_spacing": "2*(hub_r + arm_len/2)*sin(pi/3) - arm_w - 4",
+    "tip_fit": "arm_w/2 - end_r - 3"
+   },
+   "attachments": [
+    "counterbore_set",
+    "lightening_pocket"
+   ]
+  },
+  "suspension_knuckle": {
+   "family": "suspension_knuckle",
+   "n_samples": 146,
+   "variables": {
+    "hub_r": {
+     "name": "hub_r",
+     "count": 146,
+     "always": true,
+     "integral": true,
+     "lo": 16.0,
+     "hi": 28.0,
+     "median": 26.0,
+     "role": "outer radius"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 146,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 20.0,
+     "median": 8.0,
+     "role": "inner radius"
+    },
+    "hub_h": {
+     "name": "hub_h",
+     "count": 146,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 24.0,
+     "median": 18.0,
+     "role": "extrude depth"
+    },
+    "armx_len": {
+     "name": "armx_len",
+     "count": 146,
+     "always": true,
+     "integral": true,
+     "lo": 24.0,
+     "hi": 50.0,
+     "median": 38.0,
+     "role": "length (X)"
+    },
+    "army_len": {
+     "name": "army_len",
+     "count": 146,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 45.0,
+     "median": 32.0,
+     "role": "width (Y)"
+    },
+    "arm_w": {
+     "name": "arm_w",
+     "count": 146,
+     "always": true,
+     "integral": true,
+     "lo": 12.0,
+     "hi": 18.0,
+     "median": 15.0,
+     "role": "width (Y)"
+    },
+    "arm_h": {
+     "name": "arm_h",
+     "count": 146,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 21.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "end_r": {
+     "name": "end_r",
+     "count": 146,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 5.5,
+     "median": 3.0,
+     "role": "radius"
+    }
+   },
+   "preconditions": {
+    "hub_wall": "hub_r - bore_r - 4",
+    "arm_bore_fit": "arm_w/2 - end_r - 3"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "tapered_collar": {
+   "family": "tapered_collar",
+   "n_samples": 155,
+   "variables": {
+    "R1": {
+     "name": "R1",
+     "count": 155,
+     "always": true,
+     "integral": true,
+     "lo": 27.0,
+     "hi": 55.0,
+     "median": 46.0,
+     "role": "outline x"
+    },
+    "R2": {
+     "name": "R2",
+     "count": 155,
+     "always": true,
+     "integral": true,
+     "lo": 16.0,
+     "hi": 49.0,
+     "median": 31.0,
+     "role": "outline x"
+    },
+    "h": {
+     "name": "h",
+     "count": 155,
+     "always": true,
+     "integral": true,
+     "lo": 15.0,
+     "hi": 45.0,
+     "median": 28.0,
+     "role": "outline y"
+    },
+    "rb": {
+     "name": "rb",
+     "count": 155,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 28.0,
+     "median": 7.5,
+     "role": "outline x"
+    }
+   },
+   "preconditions": {
+    "taper_guard": "R1 - R2 - 4",
+    "top_wall": "R2 - rb - 4"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "tee_plate": {
+   "family": "tee_plate",
+   "n_samples": 224,
+   "variables": {
+    "span": {
+     "name": "span",
+     "count": 224,
+     "always": true,
+     "integral": true,
+     "lo": 70.0,
+     "hi": 130.0,
+     "median": 116.0,
+     "role": ""
+    },
+    "stem": {
+     "name": "stem",
+     "count": 224,
+     "always": true,
+     "integral": true,
+     "lo": 34.0,
+     "hi": 94.0,
+     "median": 66.0,
+     "role": ""
+    },
+    "w": {
+     "name": "w",
+     "count": 224,
+     "always": true,
+     "integral": true,
+     "lo": 16.0,
+     "hi": 28.0,
+     "median": 23.0,
+     "role": "outline y"
+    },
+    "t": {
+     "name": "t",
+     "count": 224,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 14.0,
+     "median": 10.0,
+     "role": "extrude depth"
+    },
+    "end_r": {
+     "name": "end_r",
+     "count": 224,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 5.0,
+     "median": 4.0,
+     "role": "hole radius"
+    }
+   },
+   "preconditions": {
+    "limb_width": "w - 2*end_r - 5",
+    "bar_arms": "span - 3*w",
+    "stem_len": "stem - w - 8"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "tray_shell": {
+   "family": "tray_shell",
+   "n_samples": 21,
+   "variables": {
+    "length": {
+     "name": "length",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 52.0,
+     "hi": 134.0,
+     "median": 100.0,
+     "role": "length (X)"
+    },
+    "width": {
+     "name": "width",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 90.0,
+     "median": 48.0,
+     "role": "width (Y)"
+    },
+    "depth": {
+     "name": "depth",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 11.0,
+     "hi": 26.0,
+     "median": 16.0,
+     "role": "extrude depth"
+    },
+    "wall": {
+     "name": "wall",
+     "count": 21,
+     "always": true,
+     "integral": false,
+     "lo": 1.5,
+     "hi": 4.0,
+     "median": 2.5,
+     "role": "wall thickness"
+    }
+   },
+   "preconditions": {
+    "wall_guard": "depth - 2*wall"
+   },
+   "attachments": []
+  },
+  "turbine_disk": {
+   "family": "turbine_disk",
+   "n_samples": 167,
+   "variables": {
+    "rim_r": {
+     "name": "rim_r",
+     "count": 167,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 55.0,
+     "median": 48.0,
+     "role": "outline x"
+    },
+    "web_r": {
+     "name": "web_r",
+     "count": 167,
+     "always": true,
+     "integral": true,
+     "lo": 13.0,
+     "hi": 38.0,
+     "median": 29.0,
+     "role": "outline x"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 167,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 18.5,
+     "median": 7.0,
+     "role": "outline x"
+    },
+    "rim_t": {
+     "name": "rim_t",
+     "count": 167,
+     "always": true,
+     "integral": true,
+     "lo": 10.0,
+     "hi": 20.0,
+     "median": 16.0,
+     "role": "outline y"
+    },
+    "web_t": {
+     "name": "web_t",
+     "count": 167,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 15.0,
+     "median": 8.5,
+     "role": "outline y"
+    },
+    "blade_len": {
+     "name": "blade_len",
+     "count": 167,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 18.0,
+     "median": 12.0,
+     "role": "length (X)"
+    },
+    "blade_t": {
+     "name": "blade_t",
+     "count": 167,
+     "always": true,
+     "integral": false,
+     "lo": 3.0,
+     "hi": 6.0,
+     "median": 4.5,
+     "role": "width (Y)"
+    },
+    "blade_h": {
+     "name": "blade_h",
+     "count": 167,
+     "always": true,
+     "integral": false,
+     "lo": 6.0,
+     "hi": 20.0,
+     "median": 12.0,
+     "role": "extrude depth"
+    },
+    "arm_n": {
+     "name": "arm_n",
+     "count": 167,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 12.0,
+     "median": 10.0,
+     "role": "instance count"
+    }
+   },
+   "preconditions": {
+    "blade_spacing": "2*rim_r*sin(pi/arm_n) - blade_t - 2",
+    "web_step": "rim_r - web_r - 4"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "vent_slot"
+   ]
+  },
+  "twisted_vane": {
+   "family": "twisted_vane",
+   "n_samples": 18,
+   "variables": {
+    "chord": {
+     "name": "chord",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 21.0,
+     "hi": 59.0,
+     "median": 45.0,
+     "role": ""
+    },
+    "thick_v": {
+     "name": "thick_v",
+     "count": 18,
+     "always": true,
+     "integral": false,
+     "lo": 3.5,
+     "hi": 16.5,
+     "median": 8.5,
+     "role": ""
+    },
+    "span": {
+     "name": "span",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 89.0,
+     "median": 66.0,
+     "role": ""
+    },
+    "twist_deg": {
+     "name": "twist_deg",
+     "count": 18,
+     "always": true,
+     "integral": true,
+     "lo": 6.0,
+     "hi": 28.0,
+     "median": 15.5,
+     "role": ""
+    }
+   },
+   "preconditions": {
+    "twist_guard": "45 - twist_deg"
+   },
+   "attachments": []
+  },
+  "u_channel": {
+   "family": "u_channel",
+   "n_samples": 706,
+   "variables": {
+    "L": {
+     "name": "L",
+     "count": 706,
+     "always": true,
+     "integral": true,
+     "lo": 60.0,
+     "hi": 140.0,
+     "median": 98.0,
+     "role": "length (X)"
+    },
+    "W": {
+     "name": "W",
+     "count": 706,
+     "always": true,
+     "integral": true,
+     "lo": 36.0,
+     "hi": 80.0,
+     "median": 58.0,
+     "role": "width (Y)"
+    },
+    "H": {
+     "name": "H",
+     "count": 706,
+     "always": true,
+     "integral": true,
+     "lo": 20.0,
+     "hi": 50.0,
+     "median": 35.0,
+     "role": "extrude depth"
+    },
+    "t": {
+     "name": "t",
+     "count": 706,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 9.0,
+     "median": 5.5,
+     "role": "thickness"
+    }
+   },
+   "preconditions": {
+    "flange_guard": "W - 2*t - 20",
+    "web_guard": "H - t - 8"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "v_pulley": {
+   "family": "v_pulley",
+   "n_samples": 394,
+   "variables": {
+    "R": {
+     "name": "R",
+     "count": 394,
+     "always": true,
+     "integral": true,
+     "lo": 30.0,
+     "hi": 70.0,
+     "median": 58.0,
+     "role": "outline x"
+    },
+    "rb": {
+     "name": "rb",
+     "count": 394,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 17.0,
+     "median": 9.0,
+     "role": "outline x"
+    },
+    "T": {
+     "name": "T",
+     "count": 394,
+     "always": true,
+     "integral": false,
+     "lo": 12.0,
+     "hi": 26.0,
+     "median": 19.5,
+     "role": "outline y"
+    },
+    "gw": {
+     "name": "gw",
+     "count": 394,
+     "always": true,
+     "integral": false,
+     "lo": 5.0,
+     "hi": 14.0,
+     "median": 8.0,
+     "role": ""
+    },
+    "gd": {
+     "name": "gd",
+     "count": 394,
+     "always": true,
+     "integral": false,
+     "lo": 4.0,
+     "hi": 14.0,
+     "median": 8.5,
+     "role": ""
+    }
+   },
+   "preconditions": {
+    "rim_guard": "T - gw - 5",
+    "root_guard": "R - gd - rb - 8"
+   },
+   "attachments": [
+    "alignment_rib",
+    "bolt_boss",
+    "counterbore_set",
+    "lightening_pocket",
+    "locating_pin",
+    "thermal_relief",
+    "vent_slot"
+   ]
+  },
+  "valve_block": {
+   "family": "valve_block",
+   "n_samples": 15,
+   "variables": {
+    "length": {
+     "name": "length",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 52.0,
+     "hi": 120.0,
+     "median": 94.0,
+     "role": "length (X)"
+    },
+    "sect": {
+     "name": "sect",
+     "count": 15,
+     "always": true,
+     "integral": true,
+     "lo": 28.0,
+     "hi": 57.0,
+     "median": 40.0,
+     "role": "width (Y)"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 3.5,
+     "hi": 13.5,
+     "median": 7.0,
+     "role": "radius"
+    },
+    "cb_r": {
+     "name": "cb_r",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 7.75,
+     "hi": 16.25,
+     "median": 11.0,
+     "role": "radius"
+    },
+    "cb_d": {
+     "name": "cb_d",
+     "count": 15,
+     "always": true,
+     "integral": false,
+     "lo": 2.0,
+     "hi": 10.5,
+     "median": 4.0,
+     "role": "cut depth"
+    }
+   },
+   "preconditions": {
+    "wall_guard": "sect/2 - bore_r - 3",
+    "cb_wall_guard": "sect/2 - cb_r - 3",
+    "cb_gallery_guard": "sect - cb_d - (sect/2 + bore_r) - 1"
+   },
+   "attachments": []
+  },
+  "vented_enclosure": {
+   "family": "vented_enclosure",
+   "n_samples": 21,
+   "variables": {
+    "enc_l": {
+     "name": "enc_l",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 92.0,
+     "hi": 170.0,
+     "median": 138.0,
+     "role": "length (X)"
+    },
+    "enc_w": {
+     "name": "enc_w",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 50.0,
+     "hi": 134.0,
+     "median": 76.0,
+     "role": "width (Y)"
+    },
+    "enc_d": {
+     "name": "enc_d",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 15.0,
+     "hi": 40.0,
+     "median": 24.0,
+     "role": "extrude depth"
+    },
+    "wall_e": {
+     "name": "wall_e",
+     "count": 21,
+     "always": true,
+     "integral": false,
+     "lo": 1.5,
+     "hi": 3.0,
+     "median": 2.0,
+     "role": "wall thickness"
+    },
+    "vent_r": {
+     "name": "vent_r",
+     "count": 21,
+     "always": true,
+     "integral": false,
+     "lo": 1.5,
+     "hi": 3.0,
+     "median": 2.25,
+     "role": "radius"
+    },
+    "vent_l": {
+     "name": "vent_l",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 9.0,
+     "hi": 22.0,
+     "median": 15.0,
+     "role": "length"
+    },
+    "vent_n": {
+     "name": "vent_n",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 3.0,
+     "hi": 5.0,
+     "median": 3.0,
+     "role": "instance count"
+    },
+    "vent_span": {
+     "name": "vent_span",
+     "count": 21,
+     "always": true,
+     "integral": true,
+     "lo": 42.0,
+     "hi": 129.0,
+     "median": 68.0,
+     "role": "pattern span"
+    }
+   },
+   "preconditions": {
+    "wall_guard": "enc_d - 2*wall_e",
+    "vent_pitch": "vent_span/(vent_n - 1) - vent_l - 2*vent_r - 2",
+    "vent_floor_x": "enc_l/2 - wall_e - (vent_span/2 + vent_l/2 + vent_r) - 2",
+    "vent_floor_y": "enc_w/2 - wall_e - vent_r - 2"
+   },
+   "attachments": []
+  },
+  "wheel_hub": {
+   "family": "wheel_hub",
+   "n_samples": 77,
+   "variables": {
+    "flange_r": {
+     "name": "flange_r",
+     "count": 77,
+     "always": true,
+     "integral": true,
+     "lo": 36.0,
+     "hi": 60.0,
+     "median": 53.0,
+     "role": "outline x"
+    },
+    "flange_t": {
+     "name": "flange_t",
+     "count": 77,
+     "always": true,
+     "integral": true,
+     "lo": 8.0,
+     "hi": 16.0,
+     "median": 12.0,
+     "role": "outline y"
+    },
+    "barrel_r": {
+     "name": "barrel_r",
+     "count": 77,
+     "always": true,
+     "integral": true,
+     "lo": 17.0,
+     "hi": 35.0,
+     "median": 29.0,
+     "role": "outline x"
+    },
+    "barrel_h": {
+     "name": "barrel_h",
+     "count": 77,
+     "always": true,
+     "integral": true,
+     "lo": 19.0,
+     "hi": 44.0,
+     "median": 32.0,
+     "role": "outline y"
+    },
+    "bore_r": {
+     "name": "bore_r",
+     "count": 77,
+     "always": true,
+     "integral": false,
+     "lo": 6.5,
+     "hi": 16.5,
+     "median": 8.5,
+     "role": "outline x"
+    },
+    "bc_r": {
+     "name": "bc_r",
+     "count": 77,
+     "always": true,
+     "integral": false,
+     "lo": 27.0,
+     "hi": 52.0,
+     "median": 39.0,
+     "role": "bolt-circle radius"
+    },
+    "hole_r": {
+     "name": "hole_r",
+     "count": 77,
+     "always": true,
+     "integral": false,
+     "lo": 2.5,
+     "hi": 4.5,
+     "median": 3.5,
+     "role": "hole radius"
+    },
+    "hole_n": {
+     "name": "hole_n",
+     "count": 77,
+     "always": true,
+     "integral": true,
+     "lo": 4.0,
+     "hi": 6.0,
+     "median": 5.0,
+     "role": "count"
+    }
+   },
+   "preconditions": {
+    "lug_inside": "bc_r - hole_r - barrel_r - 2",
+    "lug_rim": "flange_r - bc_r - hole_r - 3",
+    "lug_spacing": "2*bc_r*sin(pi/hole_n) - 2*hole_r"
+   },
+   "attachments": [
+    "alignment_rib",
+    "locating_pin",
+    "thermal_relief"
+   ]
+  }
+ }
+}
