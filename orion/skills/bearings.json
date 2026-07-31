@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "source_note": "Basic boundary dimensions are ISO 15 for the 62xx and 63xx deep-groove series; these are fixed by standard and identical across manufacturers. Abutment dimensions (da_min, Da_max) are manufacturer recommendations and are only recorded where directly sourced. Entries without them say so rather than carrying a guess.",
+  "sources": [
+    {
+      "id": "skf-6205",
+      "what": "6205 boundary + abutment dimensions",
+      "url": "https://www.skf.com/us/products/rolling-bearings/ball-bearings/deep-groove-ball-bearings/productid-6205"
+    },
+    {
+      "id": "iso-15",
+      "what": "ISO 15 boundary dimensions, 62xx/63xx deep groove ball bearings",
+      "url": "https://www.iso.org/standard/45464.html"
+    }
+  ],
+  "bearings": {
+    "6200": {"d": 10, "D": 30, "B": 9,  "r_min": 0.6},
+    "6201": {"d": 12, "D": 32, "B": 10, "r_min": 0.6},
+    "6202": {"d": 15, "D": 35, "B": 11, "r_min": 0.6},
+    "6203": {"d": 17, "D": 40, "B": 12, "r_min": 0.6},
+    "6204": {"d": 20, "D": 47, "B": 14, "r_min": 1.0},
+    "6205": {"d": 25, "D": 52, "B": 15, "r_min": 1.0,
+             "da_min": 30.6, "Da_max": 46.4, "source": "skf-6205"},
+    "6206": {"d": 30, "D": 62, "B": 16, "r_min": 1.0},
+    "6207": {"d": 35, "D": 72, "B": 17, "r_min": 1.1},
+    "6208": {"d": 40, "D": 80, "B": 18, "r_min": 1.1},
+    "6209": {"d": 45, "D": 85, "B": 19, "r_min": 1.1},
+    "6210": {"d": 50, "D": 90, "B": 20, "r_min": 1.1},
+    "6300": {"d": 10, "D": 35, "B": 11, "r_min": 0.6},
+    "6301": {"d": 12, "D": 37, "B": 12, "r_min": 1.0},
+    "6302": {"d": 15, "D": 42, "B": 13, "r_min": 1.0},
+    "6303": {"d": 17, "D": 47, "B": 14, "r_min": 1.0},
+    "6304": {"d": 20, "D": 52, "B": 15, "r_min": 1.1},
+    "6305": {"d": 25, "D": 62, "B": 17, "r_min": 1.1},
+    "6306": {"d": 30, "D": 72, "B": 19, "r_min": 1.1},
+    "6307": {"d": 35, "D": 80, "B": 21, "r_min": 1.5},
+    "6308": {"d": 40, "D": 90, "B": 23, "r_min": 1.5},
+    "6309": {"d": 45, "D": 100, "B": 25, "r_min": 1.5},
+    "6310": {"d": 50, "D": 110, "B": 27, "r_min": 2.0}
+  },
+  "it7_um": [
+    [3, 6, 12], [6, 10, 15], [10, 18, 18], [18, 30, 21], [30, 50, 25],
+    [50, 80, 30], [80, 120, 35], [120, 180, 40], [180, 250, 46],
+    [250, 315, 52], [315, 400, 57], [400, 500, 63]
+  ],
+  "housing_fits": {
+    "stationary_outer": {
+      "iso_class": "H7",
+      "when": "the load direction is fixed relative to the outer ring, and the ring may be axially displaced in the housing",
+      "note": "The general-purpose case: a shaft supported by two bearings where one must float to take up thermal growth."
+    }
+  },
+  "unsourced": {
+    "note": "J7, K7, M7, N7 and P7 housing classes and the shaft classes (js5/j6/k5/k6/m5/m6/n6) are deliberately absent. Their fundamental deviations were not obtained from a source that could be corroborated, and a fit table that is wrong produces a part that assembles wrongly with nothing to indicate it. Add them from ISO 286-2 directly.",
+    "housing_classes": ["J7", "K7", "M7", "N7", "P7"],
+    "shaft_classes": ["js5", "j6", "k5", "k6", "m5", "m6", "n6"]
+  }
+}

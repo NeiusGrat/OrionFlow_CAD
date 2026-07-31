@@ -215,6 +215,38 @@ def register_design_tool(reg: ToolRegistry) -> ToolRegistry:
     return reg
 
 
+def register_skills(reg: ToolRegistry) -> ToolRegistry:
+    """Engineering skills, as tools.
+
+    A skill answers in engineering terms — "a housing for a 6205" — and resolves
+    the CAD vocabulary itself. That is what removes the invented-builder class of
+    failure: the model cannot misname a profile builder it is never shown.
+
+    Each returns the variables of a real part family, already checked against
+    that family's guards, so nothing here can smuggle geometry past the verifier.
+    """
+    from orion.skills import registry as skills
+    from orion.skills.base import SkillError
+
+    def make(skill_name: str):
+        def call(args):
+            try:
+                result = skills.execute(skill_name, args or {})
+            except SkillError as exc:
+                # A refusal is the useful answer. It names what is missing and
+                # what is known, which is what lets the next turn fix it.
+                return _fail(str(exc))
+            except TypeError as exc:
+                return _fail(f"wrong arguments for {skill_name}: {exc}")
+            return _ok(result.summary(), raw=result.to_dict())
+        return call
+
+    for skill in (skills.get(n) for n in skills.names()):
+        reg.register(Tool(skill.name, skill.description, skill.parameters,
+                          make(skill.name)))
+    return reg
+
+
 def build_knowledge_registry() -> ToolRegistry:
     """The FreeCAD-free half of the tool surface.
 
@@ -225,7 +257,7 @@ def build_knowledge_registry() -> ToolRegistry:
     the ones that never touch geometry.
     """
     reg = build_registry(_AbsentBridge(), None).subset(KNOWLEDGE_TOOLS)
-    return register_design_tool(reg)
+    return register_skills(register_design_tool(reg))
 
 
 def build_registry(bridge, sandbox) -> ToolRegistry:
