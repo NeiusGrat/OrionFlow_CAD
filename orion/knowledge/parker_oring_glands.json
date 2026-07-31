@@ -1,0 +1,133 @@
+{
+ "schema_version": 1,
+ "source": "Catalog_O-Ring-Handbook_PTD5705-EN.pdf",
+ "source_pages": [
+  19,
+  32
+ ],
+ "applies_to": "UNRESOLVED — each row carries source_page; confirm the sealing arrangement against that page of the handbook before use",
+ "gate": {
+  "accepted": 7,
+  "rejected": 0,
+  "invariants": [
+   "gland depth < cord diameter (squeeze exists)",
+   "groove widths increase with anti-extrusion rings",
+   "compression and width ranges ordered",
+   "stated compression % within 4 points of mm/cord"
+  ]
+ },
+ "glands": [
+  {
+   "cord_dia_mm": 1.78,
+   "cord_tol_mm": 0.08,
+   "gland_depth_mm": 1.4,
+   "compression_min_mm": 0.26,
+   "compression_max_mm": 0.58,
+   "compression_min_pct": 15.0,
+   "compression_max_pct": 31.0,
+   "groove_width_b1_min": 2.4,
+   "groove_width_b1_max": 2.6,
+   "groove_width_b2_min": 3.5,
+   "groove_width_b2_max": 3.7,
+   "groove_width_b3_min": 4.6,
+   "groove_width_b3_max": 4.8,
+   "source_page": 19
+  },
+  {
+   "cord_dia_mm": 2.62,
+   "cord_tol_mm": 0.09,
+   "gland_depth_mm": 2.2,
+   "compression_min_mm": 0.26,
+   "compression_max_mm": 0.64,
+   "compression_min_pct": 10.0,
+   "compression_max_pct": 23.0,
+   "groove_width_b1_min": 3.6,
+   "groove_width_b1_max": 3.8,
+   "groove_width_b2_min": 4.7,
+   "groove_width_b2_max": 4.9,
+   "groove_width_b3_min": 5.8,
+   "groove_width_b3_max": 6.0,
+   "source_page": 19
+  },
+  {
+   "cord_dia_mm": 1.78,
+   "cord_tol_mm": 0.08,
+   "gland_depth_mm": 1.45,
+   "compression_min_mm": 0.16,
+   "compression_max_mm": 0.45,
+   "compression_min_pct": 9.0,
+   "compression_max_pct": 25.0,
+   "groove_width_b1_min": 2.4,
+   "groove_width_b1_max": 2.6,
+   "groove_width_b2_min": 3.5,
+   "groove_width_b2_max": 3.7,
+   "groove_width_b3_min": 4.6,
+   "groove_width_b3_max": 4.8,
+   "source_page": 32
+  },
+  {
+   "cord_dia_mm": 2.62,
+   "cord_tol_mm": 0.09,
+   "gland_depth_mm": 2.2,
+   "compression_min_mm": 0.26,
+   "compression_max_mm": 0.64,
+   "compression_min_pct": 10.0,
+   "compression_max_pct": 23.0,
+   "groove_width_b1_min": 3.6,
+   "groove_width_b1_max": 3.8,
+   "groove_width_b2_min": 4.7,
+   "groove_width_b2_max": 4.9,
+   "groove_width_b3_min": 5.8,
+   "groove_width_b3_max": 6.0,
+   "source_page": 32
+  },
+  {
+   "cord_dia_mm": 3.53,
+   "cord_tol_mm": 0.1,
+   "gland_depth_mm": 3.05,
+   "compression_min_mm": 0.27,
+   "compression_max_mm": 0.7,
+   "compression_min_pct": 8.0,
+   "compression_max_pct": 19.0,
+   "groove_width_b1_min": 4.8,
+   "groove_width_b1_max": 5.0,
+   "groove_width_b2_min": 5.8,
+   "groove_width_b2_max": 6.0,
+   "groove_width_b3_min": 6.8,
+   "groove_width_b3_max": 7.0,
+   "source_page": 32
+  },
+  {
+   "cord_dia_mm": 5.33,
+   "cord_tol_mm": 0.13,
+   "gland_depth_mm": 4.65,
+   "compression_min_mm": 0.37,
+   "compression_max_mm": 0.93,
+   "compression_min_pct": 7.0,
+   "compression_max_pct": 17.0,
+   "groove_width_b1_min": 7.2,
+   "groove_width_b1_max": 7.4,
+   "groove_width_b2_min": 8.7,
+   "groove_width_b2_max": 8.9,
+   "groove_width_b3_min": 10.2,
+   "groove_width_b3_max": 10.4,
+   "source_page": 32
+  },
+  {
+   "cord_dia_mm": 6.99,
+   "cord_tol_mm": 0.15,
+   "gland_depth_mm": 6.2,
+   "compression_min_mm": 0.5,
+   "compression_max_mm": 1.05,
+   "compression_min_pct": 7.0,
+   "compression_max_pct": 15.0,
+   "groove_width_b1_min": 9.6,
+   "groove_width_b1_max": 9.8,
+   "groove_width_b2_min": 12.0,
+   "groove_width_b2_max": 12.2,
+   "groove_width_b3_min": 14.4,
+   "groove_width_b3_max": 14.6,
+   "source_page": 32
+  }
+ ]
+}

@@ -157,10 +157,12 @@ def designation_encodes_bore(designation_key: str = "designation",
     """
     def check(row: dict) -> Optional[str]:
         text = str(row.get(designation_key, ""))
-        match = re.match(r"^\d{4}$", text)
-        if not match:
-            return None                      # not a plain 4-digit designation
-        code = int(text[2:])
+        if not re.match(r"^\d{4,5}$", text):
+            return None                      # not a plain numeric designation
+        # The size code is always the LAST two digits, whatever the series
+        # length. Restricting this to 4-digit codes let 32221 — a 322xx whose
+        # code 21 means a 105 mm bore — through with d=17.
+        code = int(text[-2:])
         if code < 4:
             return None                      # 00..03 are 10/12/15/17 mm
         expected = code * 5
