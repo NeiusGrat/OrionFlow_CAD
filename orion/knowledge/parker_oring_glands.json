@@ -1,14 +1,22 @@
 {
- "schema_version": 1,
- "source": "Catalog_O-Ring-Handbook_PTD5705-EN.pdf",
- "source_pages": [
-  19,
-  32
- ],
- "applies_to": "UNRESOLVED — each row carries source_page; confirm the sealing arrangement against that page of the handbook before use",
+ "schema_version": 2,
+ "family": "o_ring_gland",
+ "units": "mm",
+ "source": {
+  "manufacturer": "Parker Hannifin",
+  "document": "O-Ring Handbook",
+  "edition": "PTD5705-EN",
+  "revision_date": "2023",
+  "standard": "manufacturer design recommendation",
+  "loader": "orion.knowledge.parker_orings",
+  "loader_version": "1.1"
+ },
  "gate": {
   "accepted": 7,
   "rejected": 0,
+  "by_application": {
+   "AMBIGUOUS": 7
+  },
   "invariants": [
    "gland depth < cord diameter (squeeze exists)",
    "groove widths increase with anti-extrusion rings",
@@ -16,7 +24,11 @@
    "stated compression % within 4 points of mm/cord"
   ]
  },
- "glands": [
+ "notes": [
+  "Rows are keyed by sealing arrangement, never merged: the handbook gives different gland depths for the same cord depending on the arrangement, and a face-seal gland used on a piston is a seal that fails.",
+  "AMBIGUOUS means the page named more than one arrangement and this parser cannot tell which table belongs to which. Those rows are kept and marked, not guessed at."
+ ],
+ "rows": [
   {
    "cord_dia_mm": 1.78,
    "cord_tol_mm": 0.08,
@@ -31,7 +43,19 @@
    "groove_width_b2_max": 3.7,
    "groove_width_b3_min": 4.6,
    "groove_width_b3_max": 4.8,
-   "source_page": 19
+   "source_page": 19,
+   "motion": "",
+   "arrangements": [
+    "face",
+    "piston",
+    "rod"
+   ],
+   "medium": "",
+   "applies_to": "AMBIGUOUS",
+   "resolved": false,
+   "standard": "manufacturer design recommendation",
+   "units": "mm",
+   "confidence": "derived"
   },
   {
    "cord_dia_mm": 2.62,
@@ -47,7 +71,19 @@
    "groove_width_b2_max": 4.9,
    "groove_width_b3_min": 5.8,
    "groove_width_b3_max": 6.0,
-   "source_page": 19
+   "source_page": 19,
+   "motion": "",
+   "arrangements": [
+    "face",
+    "piston",
+    "rod"
+   ],
+   "medium": "",
+   "applies_to": "AMBIGUOUS",
+   "resolved": false,
+   "standard": "manufacturer design recommendation",
+   "units": "mm",
+   "confidence": "derived"
   },
   {
    "cord_dia_mm": 1.78,
@@ -63,7 +99,18 @@
    "groove_width_b2_max": 3.7,
    "groove_width_b3_min": 4.6,
    "groove_width_b3_max": 4.8,
-   "source_page": 32
+   "source_page": 32,
+   "motion": "dynamic",
+   "arrangements": [
+    "piston",
+    "rod"
+   ],
+   "medium": "hydraulic",
+   "applies_to": "AMBIGUOUS",
+   "resolved": false,
+   "standard": "manufacturer design recommendation",
+   "units": "mm",
+   "confidence": "derived"
   },
   {
    "cord_dia_mm": 2.62,
@@ -79,7 +126,18 @@
    "groove_width_b2_max": 4.9,
    "groove_width_b3_min": 5.8,
    "groove_width_b3_max": 6.0,
-   "source_page": 32
+   "source_page": 32,
+   "motion": "dynamic",
+   "arrangements": [
+    "piston",
+    "rod"
+   ],
+   "medium": "hydraulic",
+   "applies_to": "AMBIGUOUS",
+   "resolved": false,
+   "standard": "manufacturer design recommendation",
+   "units": "mm",
+   "confidence": "derived"
   },
   {
    "cord_dia_mm": 3.53,
@@ -95,7 +153,18 @@
    "groove_width_b2_max": 6.0,
    "groove_width_b3_min": 6.8,
    "groove_width_b3_max": 7.0,
-   "source_page": 32
+   "source_page": 32,
+   "motion": "dynamic",
+   "arrangements": [
+    "piston",
+    "rod"
+   ],
+   "medium": "hydraulic",
+   "applies_to": "AMBIGUOUS",
+   "resolved": false,
+   "standard": "manufacturer design recommendation",
+   "units": "mm",
+   "confidence": "derived"
   },
   {
    "cord_dia_mm": 5.33,
@@ -111,7 +180,18 @@
    "groove_width_b2_max": 8.9,
    "groove_width_b3_min": 10.2,
    "groove_width_b3_max": 10.4,
-   "source_page": 32
+   "source_page": 32,
+   "motion": "dynamic",
+   "arrangements": [
+    "piston",
+    "rod"
+   ],
+   "medium": "hydraulic",
+   "applies_to": "AMBIGUOUS",
+   "resolved": false,
+   "standard": "manufacturer design recommendation",
+   "units": "mm",
+   "confidence": "derived"
   },
   {
    "cord_dia_mm": 6.99,
@@ -127,7 +207,18 @@
    "groove_width_b2_max": 12.2,
    "groove_width_b3_min": 14.4,
    "groove_width_b3_max": 14.6,
-   "source_page": 32
+   "source_page": 32,
+   "motion": "dynamic",
+   "arrangements": [
+    "piston",
+    "rod"
+   ],
+   "medium": "hydraulic",
+   "applies_to": "AMBIGUOUS",
+   "resolved": false,
+   "standard": "manufacturer design recommendation",
+   "units": "mm",
+   "confidence": "derived"
   }
  ]
 }

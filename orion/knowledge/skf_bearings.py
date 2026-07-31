@@ -19,6 +19,12 @@ import re
 import sys
 from typing import Iterator, Optional
 
+from orion.knowledge.contract import (
+    ComponentLoader,
+    Confidence,
+    Interface,
+    Provenance,
+)
 from orion.knowledge.ingest import (
     Harvest,
     designation_encodes_bore,
@@ -30,6 +36,7 @@ from orion.knowledge.ingest import (
     within,
     write_catalogue,
 )
+from orion.knowledge.source import SKF_BEARINGS_2018, Dataset
 
 #: The inch columns are the anchor. They are the only unambiguous tokens on the
 #: line — always ``d.dddd`` — so matching them pins the millimetre value that
@@ -119,6 +126,101 @@ INVARIANTS = [
 SOFT = [(load_rating_units_agree(), ("C_N", "C_lbf", "C0_N", "C0_lbf"))]
 
 
+class DeepGrooveBearingLoader(ComponentLoader):
+    """Deep-groove ball bearings, against the generic contract.
+
+    The first family ported. Everything family-specific lives here; the
+    pipeline, the gate and the provenance model come from the contract, so the
+    next family implements this interface and nothing else.
+    """
+
+    family = "deep_groove_ball_bearing"
+    standard = "ISO 15 boundary dimensions"
+
+    def __init__(self, pages: Optional[dict[int, str]] = None) -> None:
+        self._pages = pages or {}
+
+    # -- what only this family knows ---------------------------------- #
+    def parse_designation(self, text: str) -> Optional[dict]:
+        """What a designation encodes, as a checkable claim.
+
+        ``6205`` is series 62 with a 25 mm bore; ``623`` is series 62 with a
+        3 mm bore. The miniature series puts its bore in the last SINGLE digit
+        and in millimetres directly, which is why reading the last two would
+        call 623 a 115 mm bore.
+        """
+        # LEADING digit run only. Stripping every digit turns "6205-2RS" into
+        # "62052" — a five-digit code implying a 260 mm bore — because the 2 in
+        # the seal suffix gets absorbed into the designation.
+        match = re.match(r"^\s*(\d{3,5})", str(text))
+        if not match:
+            return None
+        core = match.group(1)
+        if len(core) == 3:
+            return {"designation": core, "series": core[:2],
+                    "bore_mm": float(core[-1])}
+        code = int(core[-2:])
+        bore = {0: 10.0, 1: 12.0, 2: 15.0, 3: 17.0}.get(code, code * 5.0)
+        return {"designation": core, "series": core[:-2], "bore_mm": bore}
+
+    def extract(self, document) -> Iterator[dict]:
+        for index, text in sorted(self._pages.items()):
+            for row in parse_page(text):
+                row["source_page"] = index
+                yield row
+
+    def invariants(self):
+        return INVARIANTS
+
+    def soft_invariants(self):
+        return SOFT
+
+    def properties(self, row: dict) -> dict:
+        out = {}
+        if "C_N" in row:
+            out["dynamic_load_rating_N"] = row["C_N"]
+            out["static_load_rating_N"] = row["C0_N"]
+        return out
+
+    def interfaces(self, row: dict) -> list[Interface]:
+        """The three faces a bearing meets a design through.
+
+        These are the graph edges. A shaft seat and a housing seat each carry
+        the fit class the duty implies; the abutment is the shoulder the ring
+        bears against, and it is deliberately absent here rather than derived,
+        because a shoulder that fouls the corner radius fails invisibly.
+        """
+        return [
+            Interface(kind="shaft_seat", nominal_mm=row["d"],
+                      fit_class="k5 (rotating inner ring, normal load)",
+                      constraint="interference; the ring must not creep"),
+            Interface(kind="housing_seat", nominal_mm=row["D"],
+                      fit_class="H7 (stationary outer ring load)",
+                      constraint="clearance so the ring can take up thermal "
+                                 "growth axially"),
+            Interface(kind="width", nominal_mm=row["B"],
+                      constraint="the seat must take the full ring width"),
+        ]
+
+    def confidence(self, row: dict) -> str:
+        """Geometry was cross-checked against the inch columns; ratings only
+        count as measured when they survived their own N/lbf checksum."""
+        return (Confidence.MEASURED if "C_N" in row else Confidence.READ)
+
+    def provenance(self, row: dict) -> Provenance:
+        return Provenance(document=SKF_BEARINGS_2018.document,
+                          pages=[row["source_page"]] if "source_page" in row
+                          else [],
+                          standard=self.standard,
+                          table="single row deep groove ball bearings")
+
+    def cross_row_checks(self, rows: list[dict]):
+        return series_monotonic(
+            rows,
+            series_of=lambda r: r["designation"][:-2],
+            order_of=lambda r: int(r["designation"][-2:]))
+
+
 def harvest(pdf_path: str, first: int = 0, last: Optional[int] = None) -> Harvest:
     from pypdf import PdfReader
 
@@ -187,20 +289,31 @@ def main(argv: Optional[list[str]] = None) -> int:
             entry["C_N"], entry["C0_N"] = r["C_N"], r["C0_N"]
         by_designation[r["designation"]] = entry
     rated = sum(1 for e in by_designation.values() if "C_N" in e)
-    write_catalogue(args.out, {
-        "schema_version": 1,
-        "source": result.source,
-        "source_pages": result.pages[:40],
-        "gate": {"accepted": len(result.accepted),
-                 "rejected": len(result.rejected),
-                 "invariants": [
-                     "mm/inch columns agree to 0.002 in",
-                     "N/lbf load ratings agree to 1%",
-                     "designation code x 5 == bore for codes >= 04",
-                     "bore < outside diameter; all dimensions positive",
-                     "dimensions monotonic within a series"]},
-        "bearings": by_designation,
-    })
+    dataset = Dataset(
+        family="deep_groove_ball_bearing",
+        source=SKF_BEARINGS_2018,
+        rows=[{"designation": k, **v} for k, v in by_designation.items()],
+        gate={"accepted": len(result.accepted),
+              "rejected": len(result.rejected),
+              "with_load_ratings": rated,
+              "invariants": [
+                  "mm/inch columns agree to 0.002 in",
+                  "N/lbf load ratings agree to 1%",
+                  "designation size code encodes the bore",
+                  "bore < outside diameter; all dimensions positive",
+                  "dimensions monotonic within a series"]},
+        notes=["Geometry is MEASURED: every dimension was cross-checked "
+               "against the catalogue's own inch column. Load ratings are "
+               "present only where they survived their N/lbf checksum.",
+               "Abutment dimensions are NOT here. They are a separate "
+               "manufacturer recommendation and could not be attributed to "
+               "designations from this document."])
+    payload = dataset.to_dict()
+    # Kept alongside `rows` so existing consumers keep working while callers
+    # migrate to the versioned shape.
+    payload["bearings"] = by_designation
+    payload["source_pages"] = result.pages[:40]
+    write_catalogue(args.out, payload)
     print(f"wrote {len(by_designation)} bearings to {args.out} "
           f"({rated} with load ratings that passed their N/lbf checksum)")
     return 0
