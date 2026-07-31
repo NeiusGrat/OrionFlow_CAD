@@ -134,7 +134,7 @@ class DeepGrooveBearingLoader(ComponentLoader):
     next family implements this interface and nothing else.
     """
 
-    family = "deep_groove_ball_bearing"
+    family = "rolling_bearing"
     standard = "ISO 15 boundary dimensions"
 
     def __init__(self, pages: Optional[dict[int, str]] = None) -> None:
@@ -290,7 +290,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         by_designation[r["designation"]] = entry
     rated = sum(1 for e in by_designation.values() if "C_N" in e)
     dataset = Dataset(
-        family="deep_groove_ball_bearing",
+        family="rolling_bearing",
         source=SKF_BEARINGS_2018,
         rows=[{"designation": k, **v} for k, v in by_designation.items()],
         gate={"accepted": len(result.accepted),

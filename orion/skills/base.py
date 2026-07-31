@@ -63,6 +63,47 @@ class SkillResult:
 
 
 @dataclass
+class SkillGraph:
+    """What a skill needs and what it produces, declared rather than implied.
+
+    A skill that cannot say which functions it serves, which standards govern
+    it and which calculators it depends on is a black box, and black boxes do
+    not compose. Declaring the graph makes three things possible: a planner can
+    select a skill by the function it needs rather than by name, a reviewer can
+    see what a result rests on, and a missing dependency is a startup error
+    rather than a wrong number at runtime.
+    """
+
+    #: Engineering functions this skill serves. The planner's entry point.
+    functions: list[str] = field(default_factory=list)
+    #: What the caller must supply.
+    inputs: list[str] = field(default_factory=list)
+    #: Deterministic calculators it relies on. Never the model.
+    calculators: list[str] = field(default_factory=list)
+    #: Standards and catalogues the numbers come from.
+    standards: list[str] = field(default_factory=list)
+    #: What it hands back.
+    outputs: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {"functions": self.functions, "inputs": self.inputs,
+                "calculators": self.calculators, "standards": self.standards,
+                "outputs": self.outputs}
+
+    def explain(self) -> str:
+        arrow = "\n    |\n    v\n"
+        stages = [
+            ("inputs", self.inputs),
+            ("functions served", self.functions),
+            ("standards", self.standards),
+            ("calculators", self.calculators),
+            ("outputs", self.outputs),
+        ]
+        return arrow.join(f"  {label}: {', '.join(items)}"
+                          for label, items in stages if items)
+
+
+@dataclass
 class Skill:
     """One engineering capability, exposed as a single tool."""
 
@@ -70,6 +111,7 @@ class Skill:
     description: str
     parameters: dict[str, Any]          # JSON schema
     run: Callable[..., SkillResult]
+    graph: SkillGraph = field(default_factory=SkillGraph)
 
     def schema(self) -> dict:
         return {"type": "function",
@@ -88,6 +130,15 @@ class SkillRegistry:
 
     def get(self, name: str) -> Optional[Skill]:
         return self._skills.get(name)
+
+    def for_function(self, function: str) -> list[Skill]:
+        """Skills that serve an engineering function.
+
+        This is how a planner reaches a skill: by the thing it needs done, not
+        by remembering a name.
+        """
+        return [s for s in self._skills.values()
+                if function in s.graph.functions]
 
     def names(self) -> list[str]:
         return sorted(self._skills)

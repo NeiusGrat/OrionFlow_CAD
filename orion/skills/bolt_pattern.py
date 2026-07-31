@@ -13,7 +13,13 @@ from __future__ import annotations
 
 import math
 
-from orion.skills.base import Skill, SkillError, SkillResult, registry
+from orion.skills.base import (
+    Skill,
+    SkillError,
+    SkillGraph,
+    SkillResult,
+    registry,
+)
 
 #: ISO 273 clearance holes, medium series, in mm. The medium series is the
 #: default for general assembly; fine is for dowelled/located joints and coarse
@@ -114,4 +120,12 @@ registry.register(Skill(
         "required": ["bolt_size_mm", "count", "bolt_circle_dia_mm"],
     },
     run=create_bolt_pattern,
+    graph=SkillGraph(
+        functions=["ProvidesClampForce", "LocatesPart"],
+        inputs=["bolt_size_mm", "count", "bolt_circle_dia_mm"],
+        calculators=["calc_thread_engagement", "calc_bolt_torque_nm"],
+        standards=["ISO 273 clearance holes"],
+        outputs=["hole count, radius and bolt circle",
+                 "minimum outer diameter", "edge distance"],
+    ),
 ))
