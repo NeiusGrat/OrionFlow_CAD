@@ -112,3 +112,92 @@ def test_intent_reaches_a_buildable_part():
     result = skill.run(bearing_designation=chosen.designation, wall_mm=7)
     guards = check_guards(result.part_class, result.variables)
     assert guards and all(g["holds"] for g in guards)
+
+
+# --------------------------------------------------------------------------- #
+# bearing types: the questions asked before a part is chosen
+# --------------------------------------------------------------------------- #
+def test_the_designation_names_the_type():
+    from orion.knowledge.bearing_types import classify
+
+    assert classify("6205") == "deep_groove_ball_bearing"
+    assert classify("30205") == "taper_roller_bearing"
+    assert classify("51405") == "thrust_ball_bearing"
+    assert classify("22205") == "spherical_roller_bearing"
+    assert classify("7205") == "angular_contact_ball_bearing"
+    assert classify("not a bearing") is None
+
+
+def test_the_classification_agrees_with_the_ratings():
+    """A misfiled row shows up as one whose numbers do not behave like its
+    label: a thrust bearing's static rating exceeds its dynamic one, and a
+    radial bearing's does not."""
+    import json
+    import os
+
+    from orion.knowledge.bearing_types import classify, ratings_match_the_type
+
+    path = os.path.join("orion", "knowledge", "skf_deep_groove.json")
+    if not os.path.exists(path):
+        pytest.skip("bearing harvest not generated")
+    data = json.load(open(path, encoding="utf-8"))["bearings"]
+    disagreements = []
+    for designation, spec in data.items():
+        kind = classify(designation)
+        if kind is None:
+            continue
+        problem = ratings_match_the_type({"designation": designation, **spec},
+                                         kind)
+        if problem:
+            disagreements.append(problem)
+    assert not disagreements, disagreements[:3]
+
+
+def test_a_thrust_bearing_is_never_offered_for_a_radial_load():
+    """Not a marginal answer — a wrong one. No amount of life calculation
+    makes a thrust bearing support a shaft."""
+    from orion.knowledge.bearing_types import THRUST_BALL, choose_types
+
+    verdicts = {v.kind: v for v in choose_types(radial_N=3000)}
+    assert verdicts[THRUST_BALL].suitable is False
+    assert "no radial" in verdicts[THRUST_BALL].reason
+
+    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
+                  speed_rpm=1500, life_hours=10000)
+    for candidate in F.search(duty, limit=20):
+        assert candidate.evidence["bearing_type"] != THRUST_BALL
+
+
+def test_misalignment_rules_out_the_rigid_types():
+    from orion.knowledge.bearing_types import (
+        DEEP_GROOVE_BALL,
+        SPHERICAL_ROLLER,
+        choose_types,
+    )
+
+    verdicts = {v.kind: v for v in choose_types(radial_N=2000,
+                                                misalignment_deg=1.0)}
+    assert verdicts[DEEP_GROOVE_BALL].suitable is False
+    assert verdicts[SPHERICAL_ROLLER].suitable is True
+
+
+def test_ties_go_to_the_simpler_bearing():
+    """A 6205 and a 30205 are both 25x52. Reaching for the taper roller on a
+    light radial duty buys a costlier bearing and a costlier assembly."""
+    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=1000,
+                  speed_rpm=1500, life_hours=20000, bore_mm=25)
+    found = F.search(duty, limit=6)
+    by_designation = {c.designation: i for i, c in enumerate(found)}
+    assert "6205" in by_designation and "30205" in by_designation
+    assert by_designation["6205"] < by_designation["30205"]
+
+
+def test_an_empty_search_says_which_requirement_excluded_everything():
+    """A planner that gets nothing back needs to know what to renegotiate."""
+    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
+                  axial_load_N=2000, misalignment_deg=0.1, speed_rpm=1500,
+                  life_hours=20000, bore_mm=25)
+    assert F.search(duty) == []
+    why = F.explain_empty(duty)
+    assert "no bearing TYPE" in why
+    assert "thrust" in why or "misalignment" in why

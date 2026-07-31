@@ -112,6 +112,12 @@ class Duty:
 
     function: str
     radial_load_N: Optional[float] = None
+    #: Thrust, and how far the shaft may be out of line. These are the
+    #: questions that decide the TYPE, and they must be asked before a part is
+    #: chosen: a thrust bearing cannot carry a radial load at all, and a deep
+    #: groove tolerates almost no misalignment.
+    axial_load_N: Optional[float] = None
+    misalignment_deg: Optional[float] = None
     speed_rpm: Optional[float] = None
     life_hours: Optional[float] = None
     bore_mm: Optional[float] = None
@@ -191,8 +197,46 @@ def search(duty: Duty, limit: int = 5) -> list[Candidate]:
                           if impl.function == duty.function
                           for r in impl.requires],
                 confidence=row.get("confidence", "")))
-    found.sort(key=lambda c: -c.margin)
+    # Envelope first, then the simpler part. Two types can share an envelope —
+    # a 6205 and a 30205 are both 25x52 — and reaching for the taper roller on
+    # a light radial duty buys a costlier bearing and a costlier assembly
+    # around it. Ties go to the ordinary answer.
+    found.sort(key=lambda c: (-c.margin, _preference(c)))
     return found[:limit]
+
+
+def _preference(candidate: Candidate) -> int:
+    from orion.knowledge.bearing_types import classify, profile
+
+    spec = profile(classify(candidate.designation) or "")
+    return spec.preference if spec else 50
+
+
+def explain_empty(duty: Duty) -> str:
+    """Why a search found nothing. An empty list is an answer, not a silence.
+
+    A planner that gets back nothing needs to know which requirement did the
+    excluding, because that is the one to renegotiate with whoever set it.
+    """
+    from orion.knowledge.bearing_types import choose_types
+
+    if duty.function != SUPPORTS_ROTATION:
+        return f"no component in the catalogue performs {duty.function}"
+    verdicts = choose_types(radial_N=duty.radial_load_N or 0.0,
+                            axial_N=duty.axial_load_N or 0.0,
+                            misalignment_deg=duty.misalignment_deg or 0.0,
+                            speed_rpm=duty.speed_rpm or 0.0)
+    allowed = [v for v in verdicts if v.suitable]
+    if not allowed:
+        lines = ["no bearing TYPE takes this combination of loads:"]
+        lines += [f"  {v.kind}: {v.reason}" for v in verdicts[:5]]
+        lines.append("Relax the requirement that excludes every type — "
+                     "usually the misalignment or the thrust share.")
+        return "\n".join(lines)
+    kinds = ", ".join(v.kind for v in allowed)
+    return (f"types {kinds} could take this duty, but no catalogued size "
+            f"satisfies the envelope, load and life together. Widen the "
+            f"envelope, shorten the life, or reduce the load.")
 
 
 #: family -> callable(row) -> list[Implements]

@@ -33,9 +33,24 @@ def _load(path: str) -> dict:
 
 
 def rows_for_family(family: str) -> list[dict]:
-    """Every ingested row for a family, or an empty list if absent."""
+    """Every ingested row for a family, or an empty list if absent.
+
+    Bearing types are views over the one harvested catalogue rather than
+    separate files. The designation encodes the type, so splitting on disk
+    would duplicate 600 rows to express something already in each key — and a
+    second copy is a second thing to keep in step.
+    """
     if family in _CACHE:
         return _CACHE[family]
+
+    from orion.knowledge.bearing_types import PROFILES, classify
+
+    if family in PROFILES:
+        rows = [r for r in rows_for_family("rolling_bearing")
+                if classify(r.get("designation", "")) == family]
+        _CACHE[family] = rows
+        return rows
+
     filename = CATALOGUES.get(family)
     if not filename:
         return []
@@ -65,7 +80,10 @@ def dataset_for_family(family: str) -> Optional[dict[str, Any]]:
 
 
 def families() -> list[str]:
-    return sorted(f for f in CATALOGUES if rows_for_family(f))
+    from orion.knowledge.bearing_types import PROFILES
+
+    names = set(CATALOGUES) | set(PROFILES)
+    return sorted(f for f in names if rows_for_family(f))
 
 
 def reset_cache() -> None:
