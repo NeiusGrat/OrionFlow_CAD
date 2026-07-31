@@ -209,3 +209,45 @@ def test_the_bearing_dataset_is_versioned_like_the_gland_one():
         assert data["source"].get(key), f"{key} missing"
     assert data["rows"] and "bearings" in data, \
         "the legacy key must stay while callers migrate"
+
+
+def test_two_families_now_share_the_contract():
+    """One example does not prove an interface generalises. The O-ring loader
+    is the second, and it is the one that pushed back."""
+    from orion.knowledge.contract import ComponentLoader
+    from orion.knowledge.parker_orings import ORingGlandLoader
+    from orion.knowledge.skf_bearings import DeepGrooveBearingLoader
+
+    for loader in (DeepGrooveBearingLoader(), ORingGlandLoader()):
+        assert isinstance(loader, ComponentLoader)
+        assert loader.family and loader.invariants()
+
+
+def test_a_family_without_designations_is_allowed_to_say_so():
+    """A gland's identity is (cord diameter, arrangement) — there is no
+    designation. Fabricating one would let a caller look glands up by a key
+    that does not exist. Retaining rings and keys are the same."""
+    from orion.knowledge.parker_orings import ORingGlandLoader
+
+    assert ORingGlandLoader().parse_designation("1.78") is None
+
+
+def test_the_contract_enriches_every_row_it_accepts():
+    """family, confidence, provenance, properties and interfaces are added by
+    the pipeline, not by each loader repeating itself."""
+    data = json.load(open(GLANDS, encoding="utf-8"))
+    for row in data["rows"]:
+        assert row["family"] == "o_ring_gland"
+        assert row["confidence"] and row["provenance"]["pages"]
+        assert row["properties"]["compression_pct"]
+        kinds = {i["kind"] for i in row["interfaces"]}
+        assert {"groove_width", "groove_depth", "cord"} <= kinds
+
+
+def test_a_gland_interface_carries_the_squeeze_band_as_its_constraint():
+    """Outside the band the seal either leaks or takes a compression set and
+    leaks later, and neither shows in the model."""
+    data = json.load(open(GLANDS, encoding="utf-8"))
+    depth = next(i for i in data["rows"][0]["interfaces"]
+                 if i["kind"] == "groove_depth")
+    assert "%" in depth["constraint"] and "squeezes" in depth["constraint"]
