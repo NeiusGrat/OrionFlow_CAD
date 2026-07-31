@@ -11,6 +11,8 @@ angles (90/180/270/360) carry topology, not design intent, and forcing
 
 from __future__ import annotations
 
+import math
+import re
 from typing import Any
 
 from . import expr as E
@@ -196,3 +198,146 @@ def check_blueprint(bp) -> list[str]:
                 problems.append(f"dependencies: {end} {ref!r} does not exist")
 
     return problems
+
+
+# --------------------------------------------------------------------------- #
+# advisories — suspicions, never rejections
+# --------------------------------------------------------------------------- #
+#: ``att<N>_`` variable prefix, as emitted by :func:`orion.compose.compose`.
+_ATT_PREFIX = re.compile(r"^(att\d+)_c[xy]$")
+
+
+def _attachment_footprint(p: str, variables: dict) -> tuple[str, float] | None:
+    """``(kind, footprint_radius)`` for attachment ``p``, or None if unknown.
+
+    Mirrors the ``footprint_expr`` each fragment in :mod:`orion.compose`
+    declares. The generator uses that radius to keep siblings apart while
+    sampling; recomputing it here is how a *model-authored* placement gets held
+    to the same rule. Each kind is identified by the size variables it emits —
+    ``br`` only exists on a bolt boss, ``cr`` only on a counterbore, and so on.
+    """
+    def g(suffix: str) -> float | None:
+        v = variables.get(f"{p}_{suffix}")
+        return float(v) if isinstance(v, (int, float)) \
+            and not isinstance(v, bool) else None
+
+    br, pr, cr, lr = g("br"), g("pr"), g("cr"), g("lr")
+    if br is not None:
+        return "bolt_boss", br
+    if pr is not None:
+        return "locating_pin", pr
+    if cr is not None:
+        return "counterbore_set", cr
+    if lr is not None:
+        return "lightening_pocket", lr
+    sl, sr = g("sl"), g("sr")
+    if sl is not None and sr is not None:
+        return "vent_slot", sl / 2.0 + sr
+    rl, rw, rt = g("rl"), g("rw"), g("rt")
+    if rl is not None and rw is not None:
+        return "thermal_relief", math.hypot(rl / 2.0, rw / 2.0)
+    if rl is not None and rt is not None:
+        return "alignment_rib", math.hypot(rl / 2.0, rt / 2.0)
+    return None
+
+
+def advisories(variables: dict, template: dict) -> list[str]:
+    """Things that are probably wrong but are not contract violations.
+
+    Deliberately **not** called by :func:`check_blueprint`: every string here is
+    a heuristic, and a heuristic that rejects a Blueprint can only lose ground
+    that the closed form would otherwise have won. These feed the repair
+    diagnosis instead, where a false positive costs nothing — the model also has
+    the real measurements in front of it.
+
+    The one advisory so far is the sibling-overlap case, and it exists because
+    of a specific gap. ``compose.compose`` keeps sampled attachments apart
+    (``hypot(dx, dy) > r_i + r_j + 2``) but emits **no assertion** saying so —
+    the same "invisible constraint" mistake it already fixed for land
+    containment, left unfixed for the pairwise case. So the composed body
+    expression is a plain sum of per-attachment deltas with no intersection
+    term, and every part in the corpus honours that by construction. A model
+    trained on it never sees the constraint, and when it later chooses centres
+    of its own two attachments can overlap — at which point the sum
+    double-counts the shared volume and ``body_volume`` misses by a hair. That
+    is exactly the signature of the composed-part failures: a correct build with
+    a sub-percent volume error.
+    """
+    notes: list[str] = []
+
+    atts: dict[str, dict] = {}
+    for name in variables:
+        m = _ATT_PREFIX.match(name)
+        if not m:
+            continue
+        p = m.group(1)
+        if p in atts:
+            continue
+        cx, cy = variables.get(f"{p}_cx"), variables.get(f"{p}_cy")
+        fp = _attachment_footprint(p, variables)
+        if fp is None or not isinstance(cx, (int, float)) \
+                or not isinstance(cy, (int, float)):
+            continue
+        atts[p] = {"kind": fp[0], "r": fp[1], "cx": float(cx),
+                   "cy": float(cy), "z": None, "dirs": set()}
+
+    if len(atts) < 2:
+        return notes
+
+    # Mount plane and direction, both read off the frozen template. Two
+    # attachments on different planes cannot share volume however close their
+    # centres are, so the plane is what makes the comparison meaningful.
+    for sk in template.get("sketches", []):
+        sid = str(sk.get("id", ""))
+        for p in atts:
+            # FIRST sketch only. A bolt boss emits two — the boss outline on the
+            # mount plane and its through-hole on top of the finished boss — and
+            # taking the last would record the attachment as living one boss
+            # height above where it actually sits, so a real overlap with a
+            # neighbour on the mount plane would look like two different planes
+            # and go unreported.
+            if sid.startswith(f"s_{p}_") and atts[p]["z"] is None:
+                try:
+                    atts[p]["z"] = round(E.evaluate(sk.get("z", 0), variables), 6)
+                except (E.ExprError, TypeError, ValueError):
+                    pass
+                break
+    from .compose import _ADDITIVE, _SUBTRACTIVE
+
+    for f in template.get("features", []):
+        fid = str(f.get("id", ""))
+        for p in atts:
+            if fid.startswith(f"{p}_"):
+                t = f.get("type", "")
+                if t in _ADDITIVE:
+                    atts[p]["dirs"].add("add")
+                elif t in _SUBTRACTIVE:
+                    atts[p]["dirs"].add("sub")
+                break
+
+    order = sorted(atts)
+    for i, a in enumerate(order):
+        for b in order[i + 1:]:
+            u, v = atts[a], atts[b]
+            if u["z"] is None or v["z"] is None or u["z"] != v["z"]:
+                continue
+            # Same reasoning as the guard in ``compose``: a Pad grows away from
+            # the mount plane and a Pocket cuts into it, so an additive and a
+            # subtractive attachment never share volume however close they sit.
+            if not (u["dirs"] & v["dirs"]):
+                continue
+            gap = math.hypot(u["cx"] - v["cx"], u["cy"] - v["cy"])
+            reach = u["r"] + v["r"]
+            if gap >= reach:
+                continue
+            notes.append(
+                f"{a} ({u['kind']}, r={u['r']:.3g} at "
+                f"{u['cx']:.3g},{u['cy']:.3g}) and {b} ({v['kind']}, "
+                f"r={v['r']:.3g} at {v['cx']:.3g},{v['cy']:.3g}) sit on the "
+                f"same plane z={u['z']:.4g} and their footprints overlap "
+                f"(centres {gap:.3g} apart, radii sum to {reach:.3g}). The "
+                f"body volume adds each attachment's delta independently, so "
+                f"the shared volume is counted twice — move one centre until "
+                f"the centres are at least {reach:.3g} apart, or subtract the "
+                f"intersection explicitly.")
+    return notes
