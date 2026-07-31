@@ -32,7 +32,9 @@ import re
 import sys
 from typing import Iterator, Optional
 
+from orion.knowledge.contract import Confidence
 from orion.knowledge.ingest import Harvest, gate, ordered, positive, write_catalogue
+from orion.knowledge.source import PARKER_ORING_HANDBOOK, Dataset
 
 #: "1.78 ±0.08 1.45 0.16 - 0.45  9 - 25 2.40 - 2.60 3.50 - 3.70 4.60 - 4.80 ..."
 _RANGE = r"([\d.]+)\s*-\s*([\d.]+)"
@@ -41,6 +43,39 @@ _ROW = re.compile(
     r"(?P<t>\d+\.\d+)\s+"
     r"%s\s+%s\s+%s\s+%s\s+%s" % (_RANGE, _RANGE, _RANGE, _RANGE, _RANGE)
 )
+
+
+#: What the page says about the sealing arrangement. Section 3.1 is static,
+#: 3.2 dynamic; the figure captions name the arrangement. A gland table inherits
+#: whichever context its page states.
+_MOTION = (("dynamic sealing", "dynamic"), ("static sealing", "static"))
+_ARRANGEMENT = (("piston seal", "piston"), ("rod seal", "rod"),
+                ("flange seal", "face"), ("axial compression", "face"))
+_MEDIUM = (("hydraulic", "hydraulic"), ("pneumatic", "pneumatic"))
+
+
+def resolve_application(text: str) -> dict:
+    """Which sealing arrangement a page's gland table applies to.
+
+    Returns every arrangement the page names rather than picking one. A page
+    that discusses piston, rod and flange seals together may carry a table for
+    all three or for one of them, and this parser cannot tell which — so it says
+    so instead of choosing. A face-seal gland used on a piston is a seal that
+    fails, and the failure is invisible in the model.
+    """
+    low = (text or "").lower()
+    motion = next((v for k, v in _MOTION if k in low), "")
+    arrangements = sorted({v for k, v in _ARRANGEMENT if k in low})
+    medium = next((v for k, v in _MEDIUM if k in low), "")
+    resolved = len(arrangements) == 1 and bool(motion)
+    return {
+        "motion": motion,
+        "arrangements": arrangements,
+        "medium": medium,
+        "applies_to": (f"{motion}_{arrangements[0]}" if resolved
+                       else "AMBIGUOUS"),
+        "resolved": resolved,
+    }
 
 
 def parse_page(text: str) -> Iterator[dict]:
@@ -140,8 +175,17 @@ def harvest(pdf_path: str) -> Harvest:
             continue
         found = list(parse_page(text))
         if found:
+            application = resolve_application(text)
             for row in found:
                 row["source_page"] = index
+                row.update(application)
+                row["standard"] = PARKER_ORING_HANDBOOK.standard
+                row["units"] = "mm"
+                # A row whose arrangement could not be pinned down is READ, not
+                # MEASURED: the numbers are right but what they apply to is not
+                # established, and that is the part a caller would machine to.
+                row["confidence"] = (Confidence.READ if application["resolved"]
+                                     else Confidence.DERIVED)
             rows.extend(found)
             pages.append(index)
 
@@ -171,27 +215,34 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("nothing accepted — not writing")
         return 1
 
-    write_catalogue(args.out, {
-        "schema_version": 1,
-        "source": result.source,
-        "source_pages": result.pages[:20],
-        # NOT claimed as a single application. The handbook has separate gland
-        # tables per sealing arrangement and this parser does not read the
-        # heading above each one, so every row carries the page it came from and
-        # the caller must confirm the application before machining a groove.
-        "applies_to": "UNRESOLVED — each row carries source_page; confirm the "
-                      "sealing arrangement against that page of the handbook "
-                      "before use",
-        "gate": {"accepted": len(result.accepted),
-                 "rejected": len(result.rejected),
-                 "invariants": [
-                     "gland depth < cord diameter (squeeze exists)",
-                     "groove widths increase with anti-extrusion rings",
-                     "compression and width ranges ordered",
-                     "stated compression % within 4 points of mm/cord"]},
-        "glands": result.accepted,
-    })
+    by_application: dict[str, list[dict]] = {}
+    for row in result.accepted:
+        by_application.setdefault(row["applies_to"], []).append(row)
+
+    dataset = Dataset(
+        family="o_ring_gland",
+        source=PARKER_ORING_HANDBOOK,
+        rows=result.accepted,
+        gate={"accepted": len(result.accepted),
+              "rejected": len(result.rejected),
+              "by_application": {k: len(v) for k, v in
+                                 sorted(by_application.items())},
+              "invariants": [
+                  "gland depth < cord diameter (squeeze exists)",
+                  "groove widths increase with anti-extrusion rings",
+                  "compression and width ranges ordered",
+                  "stated compression % within 4 points of mm/cord"]},
+        notes=["Rows are keyed by sealing arrangement, never merged: the "
+               "handbook gives different gland depths for the same cord "
+               "depending on the arrangement, and a face-seal gland used on a "
+               "piston is a seal that fails.",
+               "AMBIGUOUS means the page named more than one arrangement and "
+               "this parser cannot tell which table belongs to which. Those "
+               "rows are kept and marked, not guessed at."])
+    write_catalogue(args.out, dataset.to_dict())
     print(f"wrote {len(result.accepted)} gland rows to {args.out}")
+    for application, group in sorted(by_application.items()):
+        print(f"   {application:22s} {len(group)} rows")
     return 0
 
 

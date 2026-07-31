@@ -104,12 +104,108 @@ def test_the_values_a_published_web_table_got_wrong():
 
 
 @pytest.mark.skipif(not os.path.exists(GLANDS), reason="gland harvest absent")
-def test_gland_rows_carry_their_page_so_the_application_is_traceable():
+def test_gland_rows_carry_their_page_and_arrangement():
     """The handbook has several gland tables and they disagree for the same
-    cord. Deduplicating on cord alone mixes a face seal with a piston seal."""
+    cord. Deduplicating on cord alone mixes a face seal with a piston seal, so
+    every row must say which arrangement it is for — or say that it cannot."""
     data = json.load(open(GLANDS, encoding="utf-8"))
-    for row in data["glands"]:
+    for row in data["rows"]:
         assert "source_page" in row
         assert row["gland_depth_mm"] < row["cord_dia_mm"]   # squeeze exists
-    assert "UNRESOLVED" in data["applies_to"], \
-        "the application must not be claimed while it is unread"
+        assert row["applies_to"], "every row must state its arrangement"
+        assert row["standard"] and row["units"] and row["confidence"]
+
+
+@pytest.mark.skipif(not os.path.exists(GLANDS), reason="gland harvest absent")
+def test_an_unresolved_arrangement_is_marked_not_guessed():
+    """AMBIGUOUS rows carry correct numbers and an unestablished application.
+    That is the part a caller would machine to, so it must not read as known."""
+    from orion.knowledge.contract import Confidence
+
+    data = json.load(open(GLANDS, encoding="utf-8"))
+    for row in data["rows"]:
+        if row["applies_to"] == "AMBIGUOUS":
+            assert row["confidence"] == Confidence.DERIVED
+            assert len(row["arrangements"]) != 1
+
+
+@pytest.mark.skipif(not os.path.exists(GLANDS), reason="gland harvest absent")
+def test_every_dataset_records_the_document_and_loader_version():
+    """A loader bug found later needs a precise blast radius."""
+    data = json.load(open(GLANDS, encoding="utf-8"))
+    source = data["source"]
+    for key in ("manufacturer", "document", "edition", "loader",
+                "loader_version"):
+        assert source.get(key), f"{key} missing from the dataset source"
+
+
+# --------------------------------------------------------------------------- #
+# the contract, exercised by a real loader
+# --------------------------------------------------------------------------- #
+def test_the_bearing_loader_implements_the_contract():
+    from orion.knowledge.contract import ComponentLoader
+    from orion.knowledge.skf_bearings import DeepGrooveBearingLoader
+
+    loader = DeepGrooveBearingLoader()
+    assert isinstance(loader, ComponentLoader)
+    assert loader.family and loader.standard
+    assert loader.invariants()
+
+
+def test_the_designation_grammar_is_a_checkable_claim():
+    """A designation encodes the bore. Two conventions, and getting them
+    confused calls a 3 mm bearing a 115 mm one."""
+    from orion.knowledge.skf_bearings import DeepGrooveBearingLoader
+
+    loader = DeepGrooveBearingLoader()
+    assert loader.parse_designation("6205")["bore_mm"] == 25.0
+    assert loader.parse_designation("6208")["bore_mm"] == 40.0
+    # miniature series: bore is the LAST SINGLE digit, in mm directly
+    assert loader.parse_designation("623")["bore_mm"] == 3.0
+    assert loader.parse_designation("608")["bore_mm"] == 8.0
+    # 00..03 are the exceptions to the times-five rule
+    assert loader.parse_designation("6200")["bore_mm"] == 10.0
+    # a suffix must not be absorbed into the code
+    assert loader.parse_designation("6205-2RS")["designation"] == "6205"
+    assert loader.parse_designation("nonsense") is None
+
+
+def test_a_bearing_exposes_the_interfaces_a_design_meets_it_through():
+    """Interfaces are the graph edges: nodes are components, edges are why
+    they connect."""
+    from orion.knowledge.skf_bearings import DeepGrooveBearingLoader
+
+    edges = DeepGrooveBearingLoader().interfaces(
+        {"d": 25.0, "D": 52.0, "B": 15.0})
+    kinds = {e.kind: e for e in edges}
+    assert {"shaft_seat", "housing_seat"} <= set(kinds)
+    assert kinds["shaft_seat"].nominal_mm == 25.0
+    assert kinds["housing_seat"].nominal_mm == 52.0
+    # a fit is only correct for the duty it was chosen under, so the condition
+    # travels with the class
+    assert kinds["housing_seat"].fit_class and kinds["housing_seat"].constraint
+
+
+def test_confidence_reflects_how_a_row_was_established():
+    from orion.knowledge.contract import Confidence
+    from orion.knowledge.skf_bearings import DeepGrooveBearingLoader
+
+    loader = DeepGrooveBearingLoader()
+    # geometry cross-checked against the inch columns, ratings against N/lbf
+    assert loader.confidence({"d": 25.0, "C_N": 14800.0}) == Confidence.MEASURED
+    # ratings dropped by the soft gate: the geometry is still good
+    assert loader.confidence({"d": 25.0}) == Confidence.READ
+    # a row is only as trustworthy as its weakest ingredient
+    assert Confidence.weakest(Confidence.MEASURED,
+                              Confidence.ATTRIBUTED) == Confidence.ATTRIBUTED
+
+
+@needs_harvest
+def test_the_bearing_dataset_is_versioned_like_the_gland_one():
+    data = json.load(open(HARVEST, encoding="utf-8"))
+    assert data["schema_version"] >= 2
+    assert data["family"] == "deep_groove_ball_bearing"
+    for key in ("manufacturer", "document", "edition", "loader_version"):
+        assert data["source"].get(key), f"{key} missing"
+    assert data["rows"] and "bearings" in data, \
+        "the legacy key must stay while callers migrate"
