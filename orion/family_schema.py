@@ -517,6 +517,30 @@ def resolve(part_class: str, phrase: str) -> Optional[Match]:
 _VALUE_AFTER = r"(?:\s*(?:of|is|at|=|:)?\s*)(-?\d+(?:\.\d+)?)\s*(?:mm|millimet(?:er|re)s?)?\b"
 _VALUE_BEFORE = r"(-?\d+(?:\.\d+)?)\s*(?:mm|millimet(?:er|re)s?)?\s+"
 
+#: "100 x 60 x 5 mm" / "120 × 80 × 6". How people actually write a plate, and
+#: how the corpus never writes one — which is why a benchmark drawn from the
+#: same generator as the training data could report 100% fidelity while this
+#: went unparsed and every dimension silently became a median.
+_TRIPLE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)"
+    r"(?:\s*[x×]\s*(\d+(?:\.\d+)?))?\s*(?:mm|millimet(?:er|re)s?)?")
+
+#: Not the part's own size: "a 3 x 3 grid of 6 mm holes", "a 31 x 31 mm square
+#: bolt pattern". Both describe a feature, and reading either as the outline
+#: writes a hole pattern's spacing into the part's extents. Scanned over the
+#: following words rather than the next character, because the qualifier
+#: usually trails the number ("31 x 31 mm square bolt pattern").
+#: Adjacent only. A wider window swallowed the legitimate outline in "100 x 100
+#: x 3 mm with a 3 x 3 grid of 6 mm holes" — the word "grid" belongs to the
+#: clause after "with", not to the size before it.
+_NOT_A_SIZE = re.compile(
+    r"^\s*(?:mm\s*)?(?:square\s+|round\s+|rectangular\s+)?(?:bolt\s+)?"
+    r"(grid|array|pattern|matrix|circle|pcd|spacing)\b")
+
+#: Which role takes which slot of a size triple, in the order every drawing
+#: writes them: length, then width, then thickness.
+_TRIPLE_ROLES = ("length (x)", "width (y)", "extrude depth")
+
 
 def extract_for_family(message: str, part_class: str) -> dict[str, float]:
     """Find this family's variables in a sentence, by looking for each one.
@@ -582,13 +606,33 @@ def extract_for_family(message: str, part_class: str) -> dict[str, float]:
 
     found: dict[str, float] = {}
 
+    # Sub-feature clauses are consumed up front so nothing else can claim their
+    # numbers. "a central slot 40 mm long and 8 mm wide" describes the slot, but
+    # "long" and "wide" are also how the plate's own outline is named — and the
+    # phrase pass, reading left to right, put the slot's 40 and 8 into the
+    # plate's length and width while the plate's own "80 x 40 x 5" went unread.
+    # ...but only for features this family does not itself own. ``slotted_rail``
+    # has slot variables and ``bearing_carrier`` has a seat; consuming those
+    # clauses threw away the family's own dimensions and cost 2.6 points of
+    # corpus fidelity. The noun is a sub-feature only when it is absent from the
+    # family's vocabulary.
+    own = " ".join(
+        [n.lower() for n in schema.variables]
+        + [(s.role or "").lower() for s in schema.variables.values()]
+        + [prose_name(n).lower() for n in schema.variables])
+    consumed_feature: list[tuple[int, int]] = [
+        m.span() for m in re.finditer(
+            r"\b(slot|keyway|groove|pocket|boss|rib|fillet|chamfer|counterbore|"
+            r"bolt\s+pattern|bolt\s+circle|grid|array)\b[^,;.]*", text)
+        if m.group(1).split()[0] not in own]
+
     # Attachment clauses are consumed up front so nothing else can claim their
     # numbers. "first feature centre x 45.44" is att0_cx, but a base variable
     # whose role is also "centre x" will happily match the same text and take a
     # value belonging to a different feature — measured, that put 45.44 into a
     # seed_cx whose true value was -52.25. The same mistake ``resolve`` refuses
     # by name has to be refused here by position.
-    consumed: list[tuple[int, int]] = [
+    consumed: list[tuple[int, int]] = consumed_feature + [
         m.span() for m in re.finditer(
             r"(?:first|second|third|fourth|fifth|#\d+)\s+feature\b[^,;.]*", text)]
 
@@ -612,6 +656,27 @@ def extract_for_family(message: str, part_class: str) -> dict[str, float]:
                 break
             if name in found:
                 break
+
+    # A size triple fills whatever the named phrases did not. Second, not
+    # first: "slot 40 mm long and 8 mm wide" is explicit and must win over a
+    # positional guess.
+    by_role = {}
+    for name, stat in schema.variables.items():
+        if stat.role and stat.role.lower() in _TRIPLE_ROLES:
+            by_role.setdefault(stat.role.lower(), name)
+    if by_role:
+        for hit in _TRIPLE.finditer(text):
+            if _NOT_A_SIZE.match(text[hit.end():]):
+                continue                      # "3 x 3 grid of ..."
+            if overlaps(hit.start(), hit.end()):
+                continue
+            values = [v for v in hit.groups() if v is not None]
+            for role, value in zip(_TRIPLE_ROLES, values):
+                name = by_role.get(role)
+                if name and name not in found:
+                    found[name] = float(value)
+            consumed.append(hit.span())
+            break                             # the first size is the part's
     return found
 
 

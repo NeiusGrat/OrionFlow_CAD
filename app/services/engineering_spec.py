@@ -295,9 +295,21 @@ def specification_from_intent(intent, part_hint: str = ""
     # Whatever that missed, take from the generic intent parser — it also
     # catches phrasings the schema has no word for.
     stated = dict(getattr(intent, "dimensions", None) or {})
-    stated.update({k: float(v) for k, v
-                   in (getattr(intent, "counts", None) or {}).items()})
     from_intent, unresolved = resolve_dimensions(family, stated)
+
+    # Counts are merged separately and only into variables that ARE counts.
+    # Folding them in with the dimensions let "four M5 clearance holes" resolve
+    # through the "hole" synonym into hole *radius*, so a plate asked for with
+    # four holes got a 4 mm hole radius — a stated-looking number that the user
+    # never gave and that no guard would question.
+    counts = {k: float(v) for k, v
+              in (getattr(intent, "counts", None) or {}).items()}
+    if counts:
+        resolved_counts, count_leftovers = resolve_dimensions(family, counts)
+        for name, value in resolved_counts.items():
+            if "count" in (schema.variables[name].role or ""):
+                from_intent.setdefault(name, value)
+        unresolved.update(count_leftovers)
     claimed = {round(v, 6) for v in canonical.values()}
     for name, value in from_intent.items():
         # The fallback re-reads text the directed pass already consumed, but
@@ -317,6 +329,26 @@ def specification_from_intent(intent, part_hint: str = ""
             rationale[name] = (
                 f"not stated — corpus median for {family} "
                 f"({schema.variables[name].describe()})")
+
+    # Numbers in the request that reached no variable. Defaulting is fine when
+    # the user said nothing; it is NOT fine when they gave dimensions and the
+    # extractor could not read them, because every guard still holds, every
+    # variable is in range, and the specification looks perfect while
+    # describing a different part. Measured on the frozen bench, five of eight
+    # asks extracted nothing at all and silently became medians — a part that
+    # builds, verifies, and is not what was asked for, produced by the layer
+    # meant to prevent exactly that.
+    import re as _re
+
+    seen = {float(m) for m in _re.findall(r"-?\d+(?:\.\d+)?", part_hint or "")}
+    used = {round(float(v), 6) for v in canonical.values()}
+    orphans = sorted(v for v in seen if round(v, 6) not in used and abs(v) > 1.0)
+    if orphans and part_hint:
+        questions.append(
+            "these numbers were given but reached no "
+            f"{family} variable: {', '.join(f'{v:g}' for v in orphans)} — "
+            f"the values used are defaults, so this may not be the part that "
+            f"was asked for")
 
     for phrase, value in unresolved.items():
         questions.append(
