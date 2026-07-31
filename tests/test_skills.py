@@ -70,11 +70,13 @@ def test_an_unknown_bearing_is_refused_with_what_is_known():
         bearing("6999")
 
 
-def test_an_unsourced_fit_class_is_refused():
-    """Only the stationary-outer-ring fit was sourced. A fit table that is
-    subtly wrong assembles wrongly with nothing to indicate it."""
-    with pytest.raises(SkillError, match="no sourced fit"):
-        housing_fit(52.0, duty="rotating_outer")
+def test_an_unknown_duty_is_refused():
+    """Every ISO 286 duty now resolves — the fit deviations were harvested from
+    the catalogue's own tables. An unrecognised duty name still refuses rather
+    than falling back to a default, because the fit is only correct for the load
+    case it was chosen under."""
+    with pytest.raises(SkillError, match="unknown duty"):
+        housing_fit(52.0, duty="whatever_seems_reasonable")
 
 
 def test_an_unbuildable_bolt_pattern_is_refused_with_the_arithmetic():
@@ -198,3 +200,64 @@ def test_a_missing_shoulder_is_reported_not_invented():
         result = create_bearing_seat("6410", wall_mm=10, floor_mm=8)
         assert result.derived["shoulder_diameter_mm"] is None
         assert any("cannot be sized" in w for w in result.warnings)
+
+
+# --------------------------------------------------------------------------- #
+# ISO 286 seat fits, harvested from the catalogue's own tables
+# --------------------------------------------------------------------------- #
+def test_every_bearing_duty_now_resolves():
+    """Only the floating-outer-ring case existed before the fit tables were
+    harvested; a class with no numbers behind it cannot be machined to."""
+    from orion.skills.bearing_seat import DUTIES
+
+    assert len(DUTIES) >= 6
+    for duty in DUTIES:
+        result = registry.execute("create_bearing_seat",
+                                  {"bearing_designation": "6205",
+                                   "duty": duty})
+        assert result.derived["housing_bore_mm"]
+
+
+def test_the_deviations_are_the_iso_286_values():
+    from orion.skills.bearing_seat import deviations
+
+    # spot values, independently known
+    assert deviations("housing", "H7", 25.0) == (0.0, 21.0)
+    assert deviations("housing", "K7", 25.0) == (-15.0, 6.0)
+    assert deviations("housing", "P7", 25.0) == (-35.0, -14.0)
+    assert deviations("shaft", "k5", 25.0) == (2.0, 11.0)
+    assert deviations("shaft", "m6", 25.0) == (8.0, 21.0)
+
+
+def test_clearance_and_interference_go_the_right_way():
+    """H7 never cuts below nominal; the interference classes always do. If a
+    parse flipped a sign this is where it shows."""
+    from orion.skills.bearing_seat import housing_fit
+
+    clearance = housing_fit(52.0, "stationary_outer")
+    assert clearance["min_mm"] >= 52.0
+
+    for duty in ("rotating_outer", "rotating_outer_heavy",
+                 "rotating_outer_thin_wall"):
+        press = housing_fit(52.0, duty)
+        assert press["max_mm"] <= 52.0, duty
+        assert press["min_mm"] < clearance["min_mm"]
+
+
+def test_an_h_class_upper_deviation_equals_its_it_grade():
+    """The definitional check the gate admitted these rows under, re-asserted
+    against the shipped file."""
+    from orion.knowledge.skf_fits import it_value
+    from orion.skills.bearing_seat import seat_fits
+
+    checked = 0
+    for cls, bands in seat_fits().get("housing", {}).items():
+        if not cls.startswith("H"):
+            continue
+        for over, incl, low, high in bands:
+            assert low == 0, f"{cls} lower deviation must be zero"
+            expected = it_value(int(cls[1:]), over, incl)
+            if expected is not None:
+                assert abs(high - expected) < 0.5, (cls, over, incl)
+                checked += 1
+    assert checked > 20, "too few H-class bands to be a meaningful check"

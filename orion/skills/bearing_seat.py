@@ -35,8 +35,14 @@ _DATA = os.path.join(_HERE, "bearings.json")
 #: supplies what the tables do not carry (fits, IT grades, abutment diameters).
 _HARVEST = os.path.join(os.path.dirname(_HERE), "knowledge",
                         "skf_deep_groove.json")
+#: ISO 286 seat deviations harvested from the catalogue's own fit tables, gated
+#: on the definitional property that an H class is zero-to-IT. This is what lets
+#: every duty be resolved instead of only the floating-outer-ring case.
+_FITS = os.path.join(os.path.dirname(_HERE), "knowledge",
+                     "iso286_seat_fits.json")
 _CACHE: Optional[dict] = None
 _HARVEST_CACHE: Optional[dict] = None
+_FITS_CACHE: Optional[dict] = None
 
 
 def catalogue() -> dict:
@@ -57,6 +63,55 @@ def harvested() -> dict:
         except (OSError, ValueError):
             _HARVEST_CACHE = {}
     return _HARVEST_CACHE
+
+
+def seat_fits() -> dict:
+    """The harvested ISO 286 deviations, or empty if not generated."""
+    global _FITS_CACHE
+    if _FITS_CACHE is None:
+        try:
+            with open(_FITS, encoding="utf-8") as fh:
+                _FITS_CACHE = json.load(fh).get("fits", {})
+        except (OSError, ValueError):
+            _FITS_CACHE = {}
+    return _FITS_CACHE
+
+
+def deviations(kind: str, iso_class: str, nominal_mm: float
+               ) -> Optional[tuple[float, float]]:
+    """``(lower_um, upper_um)`` for a class at a diameter, or None."""
+    # Narrowest matching band wins. The gate rejects span rows, but preferring
+    # the tightest match means a stray one could never shadow a real size step
+    # even if one got through.
+    best = None
+    for over, incl, low, high in seat_fits().get(kind, {}).get(iso_class, []):
+        if over < nominal_mm <= incl:
+            if best is None or (incl - over) < (best[1] - best[0]):
+                best = (over, incl, low, high)
+    return (float(best[2]), float(best[3])) if best else None
+
+
+#: What each duty demands of the housing, and the class SKF recommends for it.
+#: The condition is the engineering content: a fit is only correct for the load
+#: case it was chosen under, so the case travels with the number.
+DUTIES = {
+    "stationary_outer": ("H7", "the load direction is fixed relative to the "
+                                "outer ring, and the ring may be displaced "
+                                "axially in the housing"),
+    "indeterminate_light": ("J7", "the load direction is indeterminate under "
+                                   "light to normal load; the ring may still "
+                                   "be displaced"),
+    "indeterminate_normal": ("K7", "the load direction is indeterminate under "
+                                    "normal to heavy load; the ring is not "
+                                    "displaceable"),
+    "rotating_outer": ("M7", "the load rotates with the outer ring, or heavy "
+                              "peak loads apply; the ring is not displaceable"),
+    "rotating_outer_heavy": ("N7", "the load rotates with the outer ring under "
+                                    "normal to heavy load, in a solid housing"),
+    "rotating_outer_thin_wall": ("P7", "a rotating outer ring load in a "
+                                        "thin-walled solid housing; maximum "
+                                        "interference"),
+}
 
 
 def bearing(designation: str) -> dict:
@@ -108,20 +163,21 @@ def housing_fit(nominal_mm: float, duty: str = "stationary_outer") -> dict:
     subtly wrong produces a housing that assembles wrongly with nothing to
     indicate it.
     """
-    fits = catalogue()["housing_fits"]
-    if duty not in fits:
+    if duty not in DUTIES:
         raise SkillError(
-            f"no sourced fit for duty {duty!r}. Available: "
-            f"{', '.join(fits)}. The remaining ISO 286 classes "
-            f"({', '.join(catalogue()['unsourced']['housing_classes'])}) are "
-            f"deliberately absent until their deviations are taken from "
-            f"ISO 286-2 directly.")
-    fit = fits[duty]
-    it = it7_um(nominal_mm)
-    return {"iso_class": fit["iso_class"], "when": fit["when"],
-            "nominal_mm": nominal_mm,
-            "lower_mm": 0.0, "upper_mm": it / 1000.0,
-            "min_mm": nominal_mm, "max_mm": nominal_mm + it / 1000.0}
+            f"unknown duty {duty!r}. Available: {', '.join(DUTIES)}.")
+    iso_class, when = DUTIES[duty]
+    band = deviations("housing", iso_class, nominal_mm)
+    if band is None:
+        raise SkillError(
+            f"no {iso_class} deviations tabulated at {nominal_mm:g} mm. The fit "
+            f"class is known but its numbers at this diameter are not, and a "
+            f"class without numbers is not something anyone can machine to.")
+    lower, upper = band
+    return {"iso_class": iso_class, "when": when, "nominal_mm": nominal_mm,
+            "lower_mm": lower / 1000.0, "upper_mm": upper / 1000.0,
+            "min_mm": nominal_mm + lower / 1000.0,
+            "max_mm": nominal_mm + upper / 1000.0}
 
 
 def create_bearing_seat(bearing_designation: str,
@@ -195,7 +251,7 @@ def create_bearing_seat(bearing_designation: str,
             f"({d:g} x {outer:g} x {width:g} mm)",
             f"ISO 286 {fit['iso_class']} housing bore: "
             f"{fit['min_mm']:.3f}..{fit['max_mm']:.3f} mm "
-            f"(+{fit['upper_mm'] * 1000:.0f} um / 0)",
+            f"({fit['lower_mm'] * 1000:+.0f}/{fit['upper_mm'] * 1000:+.0f} um)",
         ],
         derived={
             "bearing": spec["designation"],
