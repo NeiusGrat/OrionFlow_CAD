@@ -66,6 +66,25 @@ for line in open(ENV_FILE):
     if m and m.group(1) in KEYS:
         env[m.group(1)] = m.group(2)
 
+# One remotely served OrionFlow model backs both the studio and the desktop
+# copilot. Without an endpoint the deployed service has no model at all, so this
+# is a deploy-time failure rather than a runtime surprise.
+REQUIRED = ["ORION_LLM_PROVIDER", "ORION_LLM_MODEL", "ORION_LLM_BASE_URL"]
+
+missing = [k for k in REQUIRED if not env.get(k, "").strip()]
+if missing:
+    sys.exit(f"Set these in {ENV_FILE} before deploying: {', '.join(missing)}\n"
+             "ORION_LLM_BASE_URL is the remotely served OrionFlow endpoint.")
+
+# A localhost endpoint in a Modal secret points the container at itself. It
+# fails as "the model is unreachable", which sends you debugging the model
+# rather than the address.
+endpoint = env["ORION_LLM_BASE_URL"]
+if any(host in endpoint for host in ("127.0.0.1", "localhost", "0.0.0.0")):
+    sys.exit(f"ORION_LLM_BASE_URL is {endpoint!r} — that is a local address and "
+             "resolves to the Modal container itself. Use the remotely served "
+             "endpoint for production; keep localhost in your own .env only.")
+
 todo = sorted(k for k, v in env.items() if "TODO" in v or "YOUR-" in v or v.startswith("<"))
 if todo:
     if "--skip-missing" in sys.argv:

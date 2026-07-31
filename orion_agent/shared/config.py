@@ -85,19 +85,25 @@ def _env_float(name: str, default: float) -> float:
 class LLMConfig:
     """LLM backend selection. The provider is a config value, not architecture."""
 
-    provider: str = "k2think"
-    model: str = "MBZUAI-IFM/K2-Think-v2"
-    # k2v2 think official developer API — OpenAI-compatible chat completions.
-    base_url: str = "https://api.k2think.ai/v1/chat/completions"
+    provider: str = "vllm"
+    #: The BASE adapter. Both adapters are served from one endpoint; the
+    #: fine-tuned ``orionflow`` is selected per-call for geometry, because it
+    #: answers every input with a Blueprint and so cannot carry a conversation
+    #: or a tool loop.
+    model: str = "orionflow-base"
+    #: No default, and deliberately not localhost — see ``get_config``. One
+    #: remotely served endpoint backs the studio and the desktop copilot, and
+    #: an unset value fails loudly rather than pointing a deployed container at
+    #: itself.
+    base_url: str = ""
     api_key: str = ""
-    # K2-Think emits a long inline <think> block before the answer/tool-call, so
-    # it needs generous headroom or the trailing tool call gets truncated.
+    # Blueprints are long; a smaller budget truncates them mid-JSON.
     max_tokens: int = 8192
     temperature: float = 0.2
-    # K2-Think reasoning completions can run long; keep the read timeout generous.
+    # Reasoning completions can run long; keep the read timeout generous.
     request_timeout: float = 300.0
-    # K2-Think is text-only; vision requests degrade to a textual description
-    # channel until a VL model is configured here.
+    # Text-only; vision requests degrade to a textual description channel
+    # until a VL model is configured here.
     supports_vision: bool = False
     supports_tools: bool = True
 
@@ -171,9 +177,20 @@ def get_config() -> OrionConfig:
         # existing .env files keep working. Pointing the agent at a self-hosted
         # endpoint should not require setting a variable named after the vendor
         # being replaced.
-        base_url=_env("ORION_LLM_BASE_URL",
-                      _env("K2THINK_BASE_URL",
-                           "http://127.0.0.1:8100/v1")),
+        # No default endpoint, and deliberately not localhost. One remotely
+        # served model backs both the studio and the desktop copilot, so the
+        # address is deployment configuration and belongs in the environment —
+        # ORION_LLM_BASE_URL, set in the Modal secret for production.
+        #
+        # A localhost default is worse than none. It turns "the endpoint was
+        # never configured" into a connection refused against the operator's own
+        # machine, or on a box that happens to be serving something on that
+        # port, into answers from the wrong model with nothing to indicate it.
+        # Unset now fails loudly and says which variable to set.
+        #
+        # For local development, set it explicitly:
+        #     ORION_LLM_BASE_URL=http://127.0.0.1:8100/v1
+        base_url=_env("ORION_LLM_BASE_URL", _env("K2THINK_BASE_URL", "")),
         api_key=_env("ORION_LLM_API_KEY", _env("K2THINK_API_KEY", "")),
         max_tokens=_env_int("ORION_LLM_MAX_TOKENS", 8192),
         temperature=_env_float("ORION_LLM_TEMPERATURE", 0.2),

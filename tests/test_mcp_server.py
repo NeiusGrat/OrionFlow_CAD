@@ -111,3 +111,41 @@ def test_design_part_requires_a_request(server):
         "params": {"name": "design_part", "arguments": {"request": "  "}}})
     assert reply["result"]["isError"] is True
     assert "required" in reply["result"]["content"][0]["text"]
+
+
+# --------------------------------------------------------------------------- #
+# endpoint policy: one remotely served model, never a silent localhost
+# --------------------------------------------------------------------------- #
+def test_an_unset_endpoint_is_refused_not_defaulted_to_localhost():
+    """A localhost fallback turns "never configured" into "the model is
+    unreachable", which sends you debugging the model instead of the address —
+    or, if something else serves that port, into answers from the wrong model
+    with nothing to say so."""
+    from orion_agent.harness.llm.vllm_client import VLLMClient
+
+    for unset in ("", "   ", None):
+        with pytest.raises(ValueError, match="ORION_LLM_BASE_URL"):
+            VLLMClient._normalise(unset)
+
+
+def test_a_configured_endpoint_is_used_verbatim():
+    from orion_agent.harness.llm.vllm_client import VLLMClient
+
+    assert VLLMClient._normalise("https://gpu.example.com/v1") == \
+        "https://gpu.example.com/v1/chat/completions"
+    # already a full endpoint: not doubled
+    assert VLLMClient._normalise("https://gpu.example.com/v1/chat/completions") == \
+        "https://gpu.example.com/v1/chat/completions"
+    # localhost stays available as an explicit local-development override
+    assert "127.0.0.1" in VLLMClient._normalise("http://127.0.0.1:8100/v1")
+
+
+def test_config_ships_no_default_endpoint_and_no_third_party():
+    """The endpoint is deployment configuration, so there is nothing to
+    default to — and the defaults must not name a vendor we no longer use."""
+    from orion_agent.shared.config import LLMConfig
+
+    cfg = LLMConfig()
+    assert cfg.base_url == "", "an endpoint default hides a misconfiguration"
+    assert cfg.provider == "vllm"
+    assert "k2think" not in cfg.model.lower()
