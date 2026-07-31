@@ -104,12 +104,36 @@ def test_the_values_a_published_web_table_got_wrong():
 
 
 @pytest.mark.skipif(not os.path.exists(GLANDS), reason="gland harvest absent")
-def test_gland_rows_carry_their_page_so_the_application_is_traceable():
+def test_gland_rows_carry_their_page_and_arrangement():
     """The handbook has several gland tables and they disagree for the same
-    cord. Deduplicating on cord alone mixes a face seal with a piston seal."""
+    cord. Deduplicating on cord alone mixes a face seal with a piston seal, so
+    every row must say which arrangement it is for — or say that it cannot."""
     data = json.load(open(GLANDS, encoding="utf-8"))
-    for row in data["glands"]:
+    for row in data["rows"]:
         assert "source_page" in row
         assert row["gland_depth_mm"] < row["cord_dia_mm"]   # squeeze exists
-    assert "UNRESOLVED" in data["applies_to"], \
-        "the application must not be claimed while it is unread"
+        assert row["applies_to"], "every row must state its arrangement"
+        assert row["standard"] and row["units"] and row["confidence"]
+
+
+@pytest.mark.skipif(not os.path.exists(GLANDS), reason="gland harvest absent")
+def test_an_unresolved_arrangement_is_marked_not_guessed():
+    """AMBIGUOUS rows carry correct numbers and an unestablished application.
+    That is the part a caller would machine to, so it must not read as known."""
+    from orion.knowledge.contract import Confidence
+
+    data = json.load(open(GLANDS, encoding="utf-8"))
+    for row in data["rows"]:
+        if row["applies_to"] == "AMBIGUOUS":
+            assert row["confidence"] == Confidence.DERIVED
+            assert len(row["arrangements"]) != 1
+
+
+@pytest.mark.skipif(not os.path.exists(GLANDS), reason="gland harvest absent")
+def test_every_dataset_records_the_document_and_loader_version():
+    """A loader bug found later needs a precise blast radius."""
+    data = json.load(open(GLANDS, encoding="utf-8"))
+    source = data["source"]
+    for key in ("manufacturer", "document", "edition", "loader",
+                "loader_version"):
+        assert source.get(key), f"{key} missing from the dataset source"
