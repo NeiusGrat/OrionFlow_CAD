@@ -1,0 +1,102 @@
+{
+ "schema_version": 1,
+ "source": "0901d196802809de-Rolling-bearings---17000_1-EN_tcm_12-121486 - Copy.pdf",
+ "standard": "manufacturer mounting recommendation",
+ "units": "mm",
+ "confidence": "attributed",
+ "how": "positional join across a product spread, accepted only where the shaft abutment lies between bore and outside diameter, the housing abutment likewise, and the fillet clears the bearing corner radius",
+ "gate": {
+  "attributed": 6,
+  "refused": 157,
+  "ambiguous_left_unresolved": [
+   "000",
+   "1180"
+  ]
+ },
+ "abutments": {
+  "300": {
+   "d": 20.0,
+   "D": 47.0,
+   "B": 14.0,
+   "da_min": 28.8,
+   "Da_max": 41.4,
+   "ra_max": 1.0,
+   "r_min": 25.6,
+   "confidence": "attributed",
+   "source_pages": [
+    309,
+    310
+   ]
+  },
+  "700": {
+   "d": 25.0,
+   "D": 52.0,
+   "B": 15.0,
+   "da_min": 34.3,
+   "Da_max": 46.4,
+   "ra_max": 1.0,
+   "r_min": 30.6,
+   "confidence": "attributed",
+   "source_pages": [
+    309,
+    310
+   ]
+  },
+  "500": {
+   "d": 30.0,
+   "D": 62.0,
+   "B": 16.0,
+   "da_min": 40.3,
+   "Da_max": 56.0,
+   "ra_max": 1.0,
+   "r_min": 35.6,
+   "confidence": "attributed",
+   "source_pages": [
+    309,
+    310
+   ]
+  },
+  "320": {
+   "d": 1.0,
+   "D": 660.0,
+   "B": 475.0,
+   "da_min": 9.5,
+   "Da_max": 200.0,
+   "ra_max": null,
+   "r_min": 12.0,
+   "confidence": "attributed",
+   "source_pages": [
+    823,
+    824
+   ]
+  },
+  "710": {
+   "d": 1.0,
+   "D": 500.0,
+   "B": 1.0,
+   "da_min": null,
+   "Da_max": 7.5,
+   "ra_max": 1.0,
+   "r_min": 719.0,
+   "confidence": "attributed",
+   "source_pages": [
+    823,
+    824
+   ]
+  },
+  "900": {
+   "d": 1.0,
+   "D": 800.0,
+   "B": 2.0,
+   "da_min": null,
+   "Da_max": 9.5,
+   "ra_max": 1.0,
+   "r_min": 60.0,
+   "confidence": "attributed",
+   "source_pages": [
+    823,
+    824
+   ]
+  }
+ }
+}
