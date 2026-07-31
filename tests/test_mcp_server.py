@@ -149,3 +149,19 @@ def test_config_ships_no_default_endpoint_and_no_third_party():
     assert cfg.base_url == "", "an endpoint default hides a misconfiguration"
     assert cfg.provider == "vllm"
     assert "k2think" not in cfg.model.lower()
+
+
+def test_design_and_conversation_select_their_models_explicitly():
+    """The adapter that designs and the adapter that talks are different
+    weights on one endpoint. If the design path inherits config.llm.model — the
+    value the agent loop needs set to the BASE adapter — a correct deployment
+    silently generates geometry with untuned weights, which reads as the
+    fine-tune regressing rather than as a config error."""
+    import inspect
+
+    from app.services import studio_agent
+
+    assert studio_agent.DESIGN_MODEL != studio_agent.CONVERSATION_MODEL
+    source = inspect.getsource(studio_agent.StudioAgent.design)
+    assert "model=DESIGN_MODEL" in source, \
+        "the design turn must name its adapter, not inherit it"

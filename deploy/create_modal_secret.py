@@ -27,6 +27,11 @@ KEYS = [
     # orion_agent/shared/config.py.
     "ORION_LLM_PROVIDER",
     "ORION_LLM_MODEL",
+    # The two adapters served from that one endpoint: the base drives the
+    # agent loop and conversation, the fine-tune designs. Named separately
+    # so a deployment cannot set one and silently get the other.
+    "ORION_DESIGN_MODEL",
+    "ORION_CONVERSATION_MODEL",
     "ORION_LLM_BASE_URL",
     "ORION_LLM_API_KEY",
     "ORION_LLM_FALLBACK_PROVIDER",

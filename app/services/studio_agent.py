@@ -43,6 +43,14 @@ OURS = ("vllm", "openai")
 #: base is served alongside it on the same endpoint for exactly this.
 CONVERSATION_MODEL = os.environ.get("ORION_CONVERSATION_MODEL", "orionflow-base")
 
+#: Which model DESIGNS. Named explicitly rather than inherited from
+#: ``config.llm.model``, because that value is what the agent loop and the
+#: conversation use, and those need the base adapter. Leaving the design path to
+#: inherit it means a deployment that correctly sets the base model for the
+#: copilot silently generates geometry with untuned weights — a failure that
+#: looks like the fine-tune regressing rather than like a config error.
+DESIGN_MODEL = os.environ.get("ORION_DESIGN_MODEL", "orionflow")
+
 #: How many times to draw a design before giving up. Two by default: one
 #: resample recovers most static-check misses, and a third rarely adds anything
 #: a user is still waiting for.
@@ -374,7 +382,7 @@ class StudioAgent:
                 on_event("phase", {"phase": "reasoning"})
             # channel=None: emit no raw tokens. See _complete for why.
             resp, label = self._complete(messages, on_event, channel=None,
-                                         max_tokens=4096)
+                                         max_tokens=4096, model=DESIGN_MODEL)
             if resp is None:
                 # An endpoint that dies on the repair turn must not cost the
                 # user a part that already built on the first one. Same rule as
