@@ -25,11 +25,20 @@ from . import profiles as P
 VALID_BUILDERS = sorted(P.BUILDERS)
 
 
-def diagnose(payload: dict | None, error: str, verdict: dict | None = None) -> str:
+def diagnose(payload: dict | None, error: str, verdict: dict | None = None,
+             measured: dict | None = None) -> str:
     """Turn a failure into an engineering explanation and a concrete instruction.
 
     ``error`` is the eval harness's classification (``parse:``, ``freeze:``,
     ``build:``, ``assert:``, ``precondition:``, ``timeout:``).
+
+    ``measured`` is the raw measurement record from ``orion.measure_fc`` — the
+    per-feature ``addsub_volume`` in it is what makes an ``assert`` failure
+    actually repairable. Told only that a total is wrong, the model re-derives
+    the same total and misses again; told which feature's own volume matches the
+    discrepancy, it has somewhere to look. Passing it is optional so existing
+    callers keep working, but an ``assert`` diagnosis without it is nearly
+    contentless.
     """
     kind = (error or "").split(":", 1)[0].strip()
     detail = (error or "").split(":", 1)[-1].strip()
@@ -90,18 +99,76 @@ def diagnose(payload: dict | None, error: str, verdict: dict | None = None) -> s
 
     if kind == "assert":
         failed = [i for i in detail.split(",") if i]
-        rows = []
+        rows, deficit = [], None
         for a in (verdict or {}).get("assertions", []):
-            if a.get("id") in failed and a.get("measured") is not None:
-                rows.append(f"{a['id']}: predicted {a.get('target')}, "
-                            f"measured {a.get('measured')}")
-        measured = ("  " + "; ".join(rows)) if rows else ""
+            if a.get("id") not in failed or a.get("measured") is None:
+                continue
+            target, got = a.get("target"), a.get("measured")
+            rows.append(f"  {a['id']}: predicted {target}, measured {got}")
+            if a.get("kind") == "body_volume" \
+                    and isinstance(target, (int, float)) \
+                    and isinstance(got, (int, float)):
+                deficit = float(got) - float(target)
+        body = ("\n" + "\n".join(rows)) if rows else ""
+
+        # The per-feature tool volumes. This is the evidence that turns "the
+        # total is wrong" into "this term is wrong": AddSubShape is each
+        # feature's own solid before any boolean, so it is directly comparable
+        # against the term the derivation wrote for it.
+        feats = [f for f in (measured or {}).get("features", [])
+                 if isinstance(f.get("addsub_volume"), (int, float))]
+        table = ""
+        if feats:
+            table = ("\nWhat the kernel built, feature by feature (each "
+                     "feature's own tool volume, before booleans):\n"
+                     + "\n".join(
+                         f"  {f.get('name')} "
+                         f"({str(f.get('type_id', '')).split('::')[-1]}): "
+                         f"{f['addsub_volume']:.4f}" for f in feats))
+
+        # Match the discrepancy against those volumes. A miss that equals one
+        # feature's volume is that feature counted the wrong number of times;
+        # a miss smaller than any of them is usually an unaccounted overlap.
+        hint = ""
+        if deficit is not None and abs(deficit) > 1e-9:
+            direction = "more" if deficit > 0 else "less"
+            hint = (f"\nThe solid holds {abs(deficit):.4f} mm^3 {direction} "
+                    f"material than your closed form predicts.")
+            if feats:
+                best = min(feats,
+                           key=lambda f: abs(abs(deficit) - f["addsub_volume"]))
+                off = abs(abs(deficit) - best["addsub_volume"]) \
+                    / max(abs(deficit), 1e-12)
+                if off < 0.02:
+                    hint += (f" That is within 2% of {best.get('name')}'s own "
+                             f"volume ({best['addsub_volume']:.4f}), so that "
+                             f"feature's term is the one to re-derive — most "
+                             f"likely counted the wrong number of times, or "
+                             f"applied to material that was not there.")
+                else:
+                    hint += (" Compare it against the feature volumes above "
+                             "to find which single term accounts for it.")
+
+        notes = ""
+        if payload:
+            try:
+                from .checker import advisories
+
+                found = advisories(payload.get("variables") or {},
+                                   payload.get("template") or {})
+            except Exception:  # noqa: BLE001 — an advisory must never block repair
+                found = []
+            if found:
+                notes = "\n" + "\n".join(f"Likely cause: {n}" for n in found)
+
         return (f"The part built, but the measured geometry disagrees with the "
-                f"prediction for: {', '.join(failed)}.{measured} The feature "
-                "tree is valid, so the derivation is what is wrong — check "
-                "whether a subtracted feature actually intersects the full "
-                "extent you assumed (on a drafted or tapered body the section "
-                "narrows with height, so a cut does not remove a full prism).")
+                f"prediction for: {', '.join(failed)}.{body}{table}{hint}"
+                f"{notes}\nThe feature tree is valid, so the derivation is "
+                "what is wrong. Check whether a subtracted feature actually "
+                "intersects the full extent you assumed (on a drafted or "
+                "tapered body the section narrows with height, so a cut does "
+                "not remove a full prism), and whether two features share "
+                "volume that your sum counts twice.")
 
     if kind == "timeout":
         return ("The kernel did not converge on this geometry. Simplify the "

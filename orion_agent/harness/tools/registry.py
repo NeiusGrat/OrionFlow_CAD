@@ -104,6 +104,54 @@ def _fail(msg: str) -> ToolResult:
     return ToolResult(False, msg, error=msg)
 
 
+#: The tools that need no FreeCAD document and no sandbox: lookups over the
+#: JSON knowledge assets in ``orion_agent/knowledge/**`` plus closed-form
+#: engineering maths. Everything else reaches a live document.
+KNOWLEDGE_TOOLS = frozenset({
+    "lookup_standard",
+    "lookup_mechanical_knowledge",
+    "lookup_nasa_requirement",
+    "resolve_design_context",
+    "calculate_sheet_metal_bend",
+    "check_sheet_metal_dfm",
+    "lookup_robotics_knowledge",
+    "get_robotics_demo",
+    "validate_assembly_graph",
+    "assess_robotics_assembly",
+    "export_assembly_urdf",
+    "validate_assembly_spec",
+})
+
+
+class _AbsentBridge:
+    """Stands in for a BridgeClient where there is none.
+
+    Every tool body *closes over* ``bridge`` and only touches it when called,
+    so the registry can be constructed without one. The knowledge subset is
+    then filtered out by name. This raises loudly if a geometry tool ever slips
+    into that subset, rather than failing later somewhere subtler.
+    """
+
+    def __getattr__(self, name: str):
+        def _refuse(*_args, **_kwargs):
+            raise RuntimeError(
+                f"tool reached FreeCAD ({name}) but no bridge is attached — "
+                "this registry was built with knowledge tools only")
+        return _refuse
+
+
+def build_knowledge_registry() -> ToolRegistry:
+    """The FreeCAD-free half of the tool surface.
+
+    The knowledge was never FreeCAD-dependent — it is JSON on disk plus
+    closed-form maths. Only ``build_registry``'s signature coupled it to a live
+    document, which put ISO/DIN/NASA/materials lookup out of reach of the cloud
+    Studio for no reason at all. Same tools, same schemas, same executors; just
+    the ones that never touch geometry.
+    """
+    return build_registry(_AbsentBridge(), None).subset(KNOWLEDGE_TOOLS)
+
+
 def build_registry(bridge, sandbox) -> ToolRegistry:
     """Construct the full tool surface bound to a bridge client and sandbox.
 

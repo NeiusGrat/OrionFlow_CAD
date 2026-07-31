@@ -314,6 +314,28 @@ DATUM_STRATEGIES = [
 ]
 
 
+#: Which half-space an attachment's features occupy relative to the mount plane.
+#: A ``Pad`` grows away from it, a ``Pocket`` cuts into it. Two attachments can
+#: only share volume if they act in the same direction — a bolt boss is both
+#: (a boss with its own through-hole) and so can collide with either kind.
+_ADDITIVE = {"Pad", "Revolution", "AdditiveLoft", "AdditivePipe",
+             "AdditiveBox", "AdditiveCylinder", "AdditiveCone",
+             "AdditiveSphere", "AdditiveTorus"}
+_SUBTRACTIVE = {"Pocket", "Groove", "SubtractiveLoft", "SubtractivePipe",
+                "SubtractiveSphere", "Hole"}
+
+
+def _directions(frag: dict) -> frozenset:
+    d = set()
+    for f in frag.get("features", []):
+        t = f.get("type", "")
+        if t in _ADDITIVE:
+            d.add("add")
+        elif t in _SUBTRACTIVE:
+            d.add("sub")
+    return frozenset(d)
+
+
 def compose(base_draft: dict, rng, n_attachments: int | None = None):
     """Sample attachments onto a base draft and freeze the composed blueprint.
 
@@ -436,6 +458,46 @@ def compose(base_draft: dict, rng, n_attachments: int | None = None):
                      "tier": 1,
                      "target": f"{half} - ({fp_expr}) "
                                f"- abs({p}_c{axis} - ({centre}))"})
+            # Sibling disjointness, for the same reason and with the same force.
+            # The placement loop rejects a centre that lands on an existing
+            # attachment, so — exactly like the land guards above — these never
+            # fire during generation, and exactly like them that is why they
+            # must be frozen into the contract rather than left implicit.
+            #
+            # The composed body is a SUM of per-attachment deltas with no
+            # intersection term. Two overlapping footprints therefore make the
+            # closed form describe a solid nobody built: the shared volume is
+            # counted twice. A model trained on a corpus where this can never
+            # happen does not learn that it must not happen, and when it later
+            # chooses its own centres nothing refuses the blueprint —
+            # body_volume just misses by the overlap. That is the signature of
+            # the composed-part failures in the held-out eval: a correct build
+            # with a sub-percent volume error.
+            #
+            # No safety margin here, unlike the sampler's ``+ 2.0``: the guard
+            # must refuse exactly when the sum is wrong, and footprints that
+            # clear each other by a hair still sum correctly. Refusing those
+            # would cost verified parts for no gain.
+            #
+            # And overlapping in plan is not sufficient. A Pad grows upward from
+            # the mount plane while a Pocket cuts downward from it, so a purely
+            # additive attachment and a purely subtractive one occupy disjoint
+            # half-spaces and their deltas stay exactly additive however close
+            # their centres are — measured: a counterbore moved onto a locating
+            # pin still predicts its volume to 4.8e-16. Guarding that pair would
+            # refuse a part whose closed form is right. Only pairs that share a
+            # direction can share volume.
+            for q in placed:
+                if q["mount"] != mount["id"] or not q.get("footprint_expr"):
+                    continue
+                if not (_directions(frag) & q["directions"]):
+                    continue
+                assertions.append(
+                    {"id": f"{p}_clear_{q['id']}", "kind": "precondition",
+                     "tier": 1,
+                     "target": f"sqrt(({p}_cx - {q['id']}_cx)**2 "
+                               f"+ ({p}_cy - {q['id']}_cy)**2) "
+                               f"- ({fp_expr}) - ({q['footprint_expr']})"})
         derivation.append(
             {"step": len(derivation) + 1,
              "eq": f"V += {frag['delta']}",
@@ -444,7 +506,9 @@ def compose(base_draft: dict, rng, n_attachments: int | None = None):
         if frag.get("protrusion"):
             protrusions.append((mount["z"], frag["protrusion"]))
         placed.append({"mount": mount["id"], "cx": cx, "cy": cy,
-                       "footprint": footprint, "idx": i})
+                       "footprint": footprint, "idx": i, "id": p,
+                       "footprint_expr": fp_expr,
+                       "directions": _directions(frag)})
         chosen.append(name)
         seq.extend(frag["seq"])
 
