@@ -376,6 +376,12 @@ class StudioAgent:
             resp, label = self._complete(messages, on_event, channel=None,
                                          max_tokens=4096)
             if resp is None:
+                # An endpoint that dies on the repair turn must not cost the
+                # user a part that already built on the first one. Same rule as
+                # the parse-failure path below: keep the best result, report
+                # only when there is nothing to keep.
+                if best:
+                    break
                 step("understand", "Understanding the request", "fail",
                      "no model is reachable")
                 return {"success": False, "model": "",
@@ -466,6 +472,12 @@ class StudioAgent:
 
         bundle = best or bundle
         features = best_features or features
+        # How many attempts the turn actually cost, not how many the surviving
+        # bundle happened to be produced on. When every attempt fails at the
+        # same rank the first one is kept, and reporting its ``attempts`` of 1
+        # hides the repair round entirely from anything counting them.
+        if bundle:
+            bundle["attempts"] = attempt
 
         if not bundle.get("success"):
             step("build", "Building the model", "fail",
