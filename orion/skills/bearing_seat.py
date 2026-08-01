@@ -44,11 +44,14 @@ _HARVEST = os.path.join(os.path.dirname(_HERE), "knowledge",
 #: ISO 286 seat deviations harvested from the catalogue's own fit tables, gated
 #: on the definitional property that an H class is zero-to-IT. This is what lets
 #: every duty be resolved instead of only the floating-outer-ring case.
+_ABUTMENT = os.path.join(os.path.dirname(_HERE), "knowledge",
+                         "skf_abutment.json")
 _FITS = os.path.join(os.path.dirname(_HERE), "knowledge",
                      "iso286_seat_fits.json")
 _CACHE: Optional[dict] = None
 _HARVEST_CACHE: Optional[dict] = None
 _FITS_CACHE: Optional[dict] = None
+_ABUTMENT_CACHE: Optional[dict] = None
 
 
 def catalogue() -> dict:
@@ -69,6 +72,23 @@ def harvested() -> dict:
         except (OSError, ValueError):
             _HARVEST_CACHE = {}
     return _HARVEST_CACHE
+
+
+def abutments() -> dict:
+    """Shoulder dimensions attributed by constraint satisfaction, or empty.
+
+    A separate file from the envelopes on purpose: these were not read against
+    a designation, they were proved consistent with one, and merging them into
+    the same store would lose that distinction the first time someone looked.
+    """
+    global _ABUTMENT_CACHE
+    if _ABUTMENT_CACHE is None:
+        try:
+            with open(_ABUTMENT, encoding="utf-8") as fh:
+                _ABUTMENT_CACHE = json.load(fh).get("abutments", {})
+        except (OSError, ValueError):
+            _ABUTMENT_CACHE = {}
+    return _ABUTMENT_CACHE
 
 
 def seat_fits() -> dict:
@@ -139,11 +159,20 @@ def bearing(designation: str) -> dict:
     for core in (digits[:5], digits[:4]):
         if core in gated or core in hand:
             entry = {**hand.get(core, {}), **gated.get(core, {})}
-            if "r_min" not in entry:
-                # The chamfer is not in the harvested tables. Without it the
-                # conservative shoulder construction cannot run, so say so
-                # rather than assuming a value.
-                entry["r_min"] = None
+            # Abutments come from a third file because they were established a
+            # different way: by constraint satisfaction against geometry rather
+            # than read off a row carrying the designation. They stay
+            # ATTRIBUTED for that reason, and the marker travels with them so a
+            # consumer machining a shoulder can tell which kind of fact it has.
+            shoulder = abutments().get(core)
+            if shoulder:
+                entry.update({k: shoulder[k] for k in
+                              ("Da_max", "da_min", "r_min", "ra_max")
+                              if shoulder.get(k) is not None})
+                entry["abutment_confidence"] = shoulder.get("confidence")
+                entry["abutment_constraints"] = shoulder.get(
+                    "matching_constraints", [])
+            entry.setdefault("r_min", None)
             return {"designation": core, **entry}
 
     known = len(set(gated) | set(hand))
