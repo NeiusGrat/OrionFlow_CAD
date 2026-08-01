@@ -48,8 +48,15 @@ logger = get_logger(__name__)
 LOAD_FIELDS = ("radial_load_N", "axial_load_N", "torque_Nm", "pressure_bar")
 
 #: Route names, so callers do not compare strings they invented.
-CHAIN = "chain"
+CHAIN = "chain"  # orion.reasoning — sized against a duty
+PRISMATIC = "prismatic"  # orion.prismatic — sized by the dimensions given
 DIRECT = "direct"
+
+#: Branches, in the order they are offered the request. Duty first: a part that
+#: states a load is a duty problem even when it is plate-shaped, and the
+#: prismatic branch would happily size a bracket that needed to survive
+#: something it was never told about.
+_BRANCHES = (CHAIN, PRISMATIC)
 
 
 @dataclass
@@ -60,12 +67,20 @@ class Route:
     why: str
     #: The duty the extractor read, whether or not it was enough to divert.
     duty: dict[str, Any] = field(default_factory=dict)
-    #: Set only on the chain route, once the chain has run.
+    #: The branch's result once it has run — a ``reasoning.Chain`` or a
+    #: ``prismatic.PlateSpec``. Both expose ``complete``, ``asks()``,
+    #: ``variables``, ``citations``, ``warnings``, ``to_dict()`` and
+    #: ``explain()``, so callers never switch on which branch ran.
     chain: Optional[Any] = None
+    #: What the Blueprint model is handed. Empty unless a branch completed.
+    #: Computed here so the studio does not have to know which branch owns
+    #: which ``design_prompt``.
+    design_prompt: str = ""
 
     @property
-    def to_chain(self) -> bool:
-        return self.route == CHAIN
+    def to_branch(self) -> bool:
+        """Whether a reasoning branch owns this request."""
+        return self.route in _BRANCHES
 
     def to_dict(self) -> dict:
         return {"route": self.route, "why": self.why, "duty": self.duty}
@@ -93,20 +108,35 @@ def decide(request: str) -> Route:
         )
 
     loads = _stated_loads(duty)
-    if not loads:
+    if loads:
         return Route(
-            DIRECT,
-            "no load, torque or pressure was stated, so there is no duty to "
-            "size against — the request is read as geometry",
+            CHAIN,
+            "the request states "
+            + " and ".join(_readable(f, duty[f]) for f in loads)
+            + ", so the dimensions are derived before the model is asked for "
+            "anything",
             duty=duty,
         )
 
+    # No duty. A prismatic part that states its own size is still worth routing:
+    # nothing has to be derived from a load, but the standards between the
+    # dimensions — clearance holes, edge distance, pitch — are rules rather than
+    # choices, and are exactly what the model was sampling instead of applying.
+    try:
+        from orion import prismatic as P
+
+        ok, why = P.applies(request)
+    except Exception as exc:  # noqa: BLE001 — never cost a user their part
+        logger.warning("design_router_prismatic_failed", error=repr(exc))
+        ok, why = False, "the prismatic branch could not read the request"
+
+    if ok:
+        return Route(PRISMATIC, why, duty=duty)
+
     return Route(
-        CHAIN,
-        "the request states "
-        + " and ".join(_readable(f, duty[f]) for f in loads)
-        + ", so the dimensions are derived before the model is asked for "
-        "anything",
+        DIRECT,
+        "no load was stated and " + why + ", so the request goes to the model "
+        "as written",
         duty=duty,
     )
 
@@ -132,21 +162,32 @@ def resolve(request: str) -> Route:
     than a part built on a number nobody supplied.
     """
     route = decide(request)
-    if not route.to_chain:
+    if not route.to_branch:
         return route
 
     try:
-        from orion import reasoning as R
+        if route.route == CHAIN:
+            from orion import reasoning as R
 
-        route.chain = R.reason(request)
+            route.chain = R.reason(request)
+            if route.chain.complete:
+                route.design_prompt = R.design_prompt(route.chain)
+        else:
+            from orion import prismatic as P
+
+            route.chain = P.specify(request)
+            if route.chain.complete:
+                route.design_prompt = P.design_prompt(route.chain)
     except Exception as exc:  # noqa: BLE001
-        # The chain failing is not the user's problem: fall back rather than
+        # A branch failing is not the user's problem: fall back rather than
         # refuse, and say so in the reason so it is visible in the record.
-        logger.warning("design_router_chain_failed", error=repr(exc))
+        logger.warning(
+            "design_router_branch_failed", route=route.route, error=repr(exc)
+        )
         return Route(
             DIRECT,
-            "the reasoning chain could not run, so the "
-            "request goes to the model unchanged",
+            f"the {route.route} branch could not run, so the "
+            f"request goes to the model unchanged",
             duty=route.duty,
         )
     return route

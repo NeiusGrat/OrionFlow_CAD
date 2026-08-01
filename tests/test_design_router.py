@@ -25,31 +25,44 @@ PLATE = (
 # --------------------------------------------------------------------------- #
 def test_a_stated_load_routes_to_the_chain():
     route = DR.decide(DUTY)
-    assert route.to_chain
+    assert route.route == DR.CHAIN
     assert route.duty["radial_load_N"] == 3000.0
     # The reason is shown to the user, so it has to read like one.
     assert "3000 N" in route.why
 
 
-def test_geometry_is_not_a_duty_however_it_is_worded():
+def test_geometry_never_reaches_the_duty_chain_however_it_is_worded():
     """The case this gate exists for.
 
     "a 30 mm central bore" is a hole. Read as a duty it sends a plate to
     bearing selection, which is how a 120x80 plate became a housing for a 604.
+    It now goes to the prismatic branch — but the invariant under test is the
+    negative one: never to the duty chain.
     """
     route = DR.decide(PLATE)
-    assert route.route == DR.DIRECT
-    assert "no load" in route.why
-    # The extractor may still read a bore; what matters is that it does not divert.
+    assert route.route != DR.CHAIN
+    assert route.route == DR.PRISMATIC
+    # The extractor may still read a bore; what matters is that no load did.
     assert not any(route.duty.get(f) for f in DR.LOAD_FIELDS)
+
+
+def test_a_sized_prismatic_part_routes_to_the_prismatic_branch():
+    route = DR.decide("A 120 x 80 x 12 mm plate")
+    assert route.route == DR.PRISMATIC
+    assert "names a plate" in route.why
+
+
+def test_a_load_wins_over_plate_shape():
+    """A bracket that must survive something is a duty problem, plate-shaped or
+    not. Ordering the branches the other way sizes it against nothing."""
+    route = DR.decide("A 120 x 80 x 12 mm bracket carrying 2 kN")
+    assert route.route == DR.CHAIN
 
 
 @pytest.mark.parametrize(
     "request_text",
     [
         "A 50 mm cube",
-        "An L-bracket 80 x 60 x 5 mm with two M8 clearance holes",
-        "A 120 x 80 x 12 mm plate",
         "A flange 100 mm diameter with 6 bolt holes",
         "",
     ],
@@ -68,7 +81,7 @@ def test_plain_geometry_reaches_the_model_unchanged(request_text):
 )
 def test_any_load_kind_diverts(request_text, expected_field):
     route = DR.decide(request_text)
-    assert route.to_chain
+    assert route.to_branch
     assert route.duty[expected_field]
 
 
@@ -91,7 +104,7 @@ def test_a_complete_chain_hands_the_model_dimensions_not_prose():
     from orion.reasoning import design_prompt
 
     route = DR.resolve(DUTY)
-    assert route.to_chain and route.chain is not None
+    assert route.to_branch and route.chain is not None
     assert route.chain.complete
 
     handed = design_prompt(route.chain)
@@ -103,11 +116,21 @@ def test_a_complete_chain_hands_the_model_dimensions_not_prose():
     assert "because" not in handed.lower() and "ISO" not in handed
 
 
-def test_the_direct_route_never_runs_the_chain():
-    """Cost as well as correctness: geometry must not pay for catalogue search."""
-    route = DR.resolve(PLATE)
+def test_the_direct_route_runs_no_branch_at_all():
+    """Cost as well as correctness: an unclaimed request pays for neither
+    catalogue search nor plate specification."""
+    route = DR.resolve("A 50 mm cube")
     assert route.route == DR.DIRECT
-    assert route.chain is None
+    assert route.chain is None and route.design_prompt == ""
+
+
+def test_the_prismatic_route_hands_over_placed_dimensions():
+    route = DR.resolve(PLATE)
+    assert route.route == DR.PRISMATIC
+    assert route.chain is not None and route.chain.complete
+    # ISO 273 for M6, and the pattern placed at the stated pitch.
+    assert "hr=3.3" in route.design_prompt
+    assert "mx=50" in route.design_prompt and "my=30" in route.design_prompt
 
 
 def test_a_broken_extractor_falls_back_rather_than_failing(monkeypatch):
