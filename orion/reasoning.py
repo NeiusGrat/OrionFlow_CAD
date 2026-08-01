@@ -164,8 +164,11 @@ _PHRASES: tuple[tuple[str, str], ...] = (
      r"|support\w*\s+a?\s*(?:rotating|turning|spinning)"
      r"|journal|spindle|bearing", F.SUPPORTS_ROTATION),
     (r"seal\w*|o-?ring|gland|leak|watertight|airtight", F.SEALS_FLUID),
-    (r"transmit\w*\s+torque|torque\s+(?:from|to|through)|key\w*|spline"
-     r"|coupl\w*", F.TRANSMITS_TORQUE),
+    # `torque` on its own is decisive — nothing else in mechanical design uses
+    # the word — so requiring it to sit next to a verb only fails on the
+    # ordinary phrasings: "transmit 80 Nm of torque" puts the figure between
+    # them.
+    (r"\btorque\b|keyway|\bkeys?\b|spline|coupl\w*", F.TRANSMITS_TORQUE),
     (r"locat\w*\s+(?:a\s+)?part|dowel|repeatable\s+position|register",
      F.LOCATES_PART),
     (r"clamp\w*|bolt\w*\s+(?:down|together)|preload|fasten",
@@ -302,6 +305,15 @@ def read_intent(request: str) -> Step:
     mis = _number(text, r"(\d*\.?\d+)\s*(?:deg\w*|°)")
     if mis is not None:
         found["misalignment_deg"] = mis
+
+    torque = _number(text, r"(\d[\d\s,]*\.?\d*)\s*(?:Nm|N\.m|N-m|newton[\s-]?"
+                           r"met(?:re|er)s?)\b")
+    if torque is None:
+        kgfm = _number(text, r"(\d[\d\s,]*\.?\d*)\s*(?:kNm|kN\.m)\b")
+        if kgfm is not None:
+            torque = kgfm * 1000.0
+    if torque is not None:
+        found["torque_Nm"] = torque
 
     envelope = _number(text, r"(?:within|under|max\w*|no\s+(?:more|bigger|larger)"
                              r"\s+than)\D{0,20}?(\d[\d\s,]*\.?\d*)\s*mm\s*"
