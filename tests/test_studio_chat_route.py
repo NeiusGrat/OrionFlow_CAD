@@ -246,3 +246,52 @@ def test_health_redacts_the_inference_endpoint_from_anonymous_callers(monkeypatc
         "/api/v1/studio/health", headers={"Authorization": "Bearer x"}
     ).json()
     assert signed_in["endpoint"] == "http://10.0.0.7:8100/v1"
+
+
+def test_a_structured_refusal_survives_the_global_error_handler():
+    """The refusal a client actually receives, not the one we raised.
+
+    ``HTTPException(detail={...})`` is rewritten by the global handler in
+    app/main.py before it reaches the browser. That handler used to call
+    ``str()`` on the detail, so a structured refusal arrived as the literal text
+    ``{'error': 'sign in to design with OrionFlow', 'reason': ...}`` — a Python
+    repr shown to the user, with none of its fields readable by the client.
+    Asserted end to end through the real handler, because testing the raise
+    alone is what let this ship.
+    """
+    from fastapi import HTTPException as _HTTPException
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    from app.main import http_exception_handler
+
+    app = FastAPI()
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+
+    @app.get("/refuse")
+    def _refuse():
+        raise _HTTPException(
+            status_code=429,
+            detail={
+                "error": "You've reached the free tier limit of 10 generations.",
+                "reason": "free_tier_limit_reached",
+                "used": 10,
+                "limit": 10,
+            },
+        )
+
+    @app.get("/plain")
+    def _plain():
+        raise _HTTPException(status_code=404, detail="Design not found")
+
+    tc = TestClient(app, raise_server_exceptions=False)
+
+    body = tc.get("/refuse").json()["error"]
+    assert body["message"] == "You've reached the free tier limit of 10 generations."
+    # The fields beside the message survive, so the UI can act on them.
+    assert body["reason"] == "free_tier_limit_reached"
+    assert body["used"] == 10 and body["limit"] == 10
+    # No Python repr anywhere in what the user is shown.
+    assert "{'" not in body["message"]
+
+    # A plain string detail still behaves exactly as before.
+    assert tc.get("/plain").json()["error"]["message"] == "Design not found"

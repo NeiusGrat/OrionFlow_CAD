@@ -379,17 +379,31 @@ async def orionflow_exception_handler(request: Request, exc: OrionFlowError):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle FastAPI HTTP exceptions."""
-    logger.warning(
-        "http_exception", status_code=exc.status_code, detail=str(exc.detail)
-    )
+    """Handle FastAPI HTTP exceptions.
+
+    A ``detail`` that is already structured is merged rather than stringified.
+    ``str()`` on a dict yields a Python repr — a refusal raised as
+    ``{"error": ..., "reason": ..., "used": ..., "limit": ...}`` reached the
+    browser as the literal text ``{'error': 'sign in to design with OrionFlow',
+    'reason': ...}``, so a quota-limited user was shown a dict instead of the
+    limit they had hit, and no client could read the fields it carried.
+    """
+    detail = exc.detail
+    structured = detail if isinstance(detail, dict) else {}
+    # The human-readable line lives under `error` when the raiser supplied one;
+    # everything else it carried (reason, used, limit) travels alongside, so a
+    # client can both show the message and act on the fields.
+    message = structured.get("error", "") if structured else str(detail)
+    extra = {k: v for k, v in structured.items() if k != "error"}
+    logger.warning("http_exception", status_code=exc.status_code, detail=str(detail))
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": {
                 "code": "HTTP_ERROR",
-                "message": str(exc.detail),
+                "message": message,
                 "retryable": exc.status_code >= 500,
+                **extra,
             }
         },
     )
