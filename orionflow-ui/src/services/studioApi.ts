@@ -153,13 +153,17 @@ export async function streamStudioChat(
         let detail = res.statusText;
         try {
             const j = await res.json();
-            if (typeof j.detail === 'string') {
+            // The API's own envelope, produced by the global HTTPException
+            // handler: {error: {code, message, retryable, ...extra}}. Structured
+            // refusals from the quota gate arrive here with `reason`, `used` and
+            // `limit` beside the message, so the panel can name the limit that
+            // was reached rather than saying "Too Many Requests".
+            if (typeof j?.error?.message === 'string' && j.error.message) {
+                detail = j.error.message;
+            } else if (typeof j?.detail === 'string') {
+                // FastAPI's default shape, for anything not routed through the
+                // handler above (422 validation, for instance).
                 detail = j.detail;
-            } else if (j.detail && typeof j.detail.error === 'string') {
-                // Structured refusals — the quota gate sends {error, reason,
-                // used, limit} so the panel can say which limit was reached
-                // rather than "Too Many Requests".
-                detail = j.detail.error;
             }
         } catch {
             /* the body was not JSON; the status text stands */
