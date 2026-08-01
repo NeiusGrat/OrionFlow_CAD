@@ -8,7 +8,62 @@ Secrets:  expects a Modal secret named "orionflow-secrets" holding the
 The served URL is https://<workspace>--orionflow-api-api.modal.run
 """
 
+import subprocess
+
 import modal
+
+
+def _build_stamp() -> str:
+    """A string that changes whenever the checked-out code does.
+
+    Exposed on ``GET /health`` as ``build`` so "did my deploy actually take?"
+    is one request rather than an inspection of the OpenAPI schema. A dirty
+    tree is marked, because the commit alone would then be a lie about what is
+    running.
+    """
+    try:
+        sha = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+        return f"{sha}{'-dirty' if dirty else ''}" if sha else "unknown"
+    except Exception:  # noqa: BLE001 - a deploy from a tarball has no git
+        return "unknown"
+
+
+#: Source directories baked into the image.
+#:
+#: ``copy=True`` is load-bearing, not a preference. With the default
+#: ``copy=False`` these are *runtime mounts*: their contents never enter the
+#: image definition, so editing ``app/`` leaves the image ID unchanged. That is
+#: normally just a speed optimisation — but combined with
+#: ``enable_memory_snapshot=True`` below it silently serves stale code, because
+#: the snapshot is keyed on the image and restores a process that already
+#: imported the *old* modules. A deploy then reports success while the new
+#: routes do not exist. That happened on 2026-08-01: ``/studio/rebuild``
+#: 404'd through two consecutive "successful" deploys and only appeared after
+#: `modal app stop` forced fresh containers.
+#:
+#: With ``copy=True`` the file contents are hashed into an image layer, so any
+#: source change produces a new image, which invalidates the snapshot. Deploys
+#: that change code are slower by one small layer rebuild. That is the price of
+#: a deploy meaning what it says.
+_SOURCE_DIRS = [
+    "app",
+    "orionflow_ofl",
+    "orion_physical_ai",
+    # The studio path needs both: `orion` for the Blueprint contract and its
+    # assertion checker, `orion_agent` for the LLM client and config. Neither
+    # pulls FreeCAD in at import time — the build itself goes to the separate
+    # builder app — so this stays cheap.
+    "orion",
+    "orion_agent",
+    "alembic",
+]
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -16,19 +71,26 @@ image = (
     # wheel that build123d links against; absent on slim images.
     .apt_install("libgl1", "libglu1-mesa", "libxrender1", "libxext6", "libpq5")
     .pip_install_from_requirements("requirements.txt")
-    .env({"PYTHONPATH": "/root", "ENVIRONMENT": "production", "DEBUG": "false"})
-    .add_local_dir("app", "/root/app")
-    .add_local_dir("orionflow_ofl", "/root/orionflow_ofl")
-    .add_local_dir("orion_physical_ai", "/root/orion_physical_ai")
-    # The studio path needs both: `orion` for the Blueprint contract and its
-    # assertion checker, `orion_agent` for the LLM client and config. Neither
-    # pulls FreeCAD in at import time — the build itself goes to the separate
-    # builder app — so this stays cheap.
-    .add_local_dir("orion", "/root/orion")
-    .add_local_dir("orion_agent", "/root/orion_agent")
-    .add_local_dir("alembic", "/root/alembic")
-    .add_local_file("alembic.ini", "/root/alembic.ini")
+    .env(
+        {
+            "PYTHONPATH": "/root",
+            "ENVIRONMENT": "production",
+            "DEBUG": "false",
+            # Belt and braces behind copy=True: pins the image to the commit, so
+            # even a change this file forgot to copy still gets a fresh snapshot.
+            "ORIONFLOW_BUILD": _build_stamp(),
+        }
+    )
 )
+
+for _d in _SOURCE_DIRS:
+    # Bytecode caches carry no information and would churn the layer hash on
+    # every deploy, forcing a rebuild when nothing actually changed.
+    image = image.add_local_dir(
+        _d, f"/root/{_d}", copy=True, ignore=["**/__pycache__", "**/*.pyc"]
+    )
+
+image = image.add_local_file("alembic.ini", "/root/alembic.ini", copy=True)
 
 app = modal.App("orionflow-api")
 

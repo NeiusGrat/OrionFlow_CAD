@@ -23,6 +23,7 @@ API Endpoints:
 """
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from typing import Dict, Optional
 
@@ -235,6 +236,12 @@ class HealthResponse(BaseModel):
 
     status: str = Field(..., description="Service status")
     version: str = Field(..., description="API version")
+    #: Which commit is actually running. Set at deploy time (see
+    #: deploy/modal_app.py); "unknown" when deployed from a tarball or run from
+    #: a checkout without git. Reported because a platform can restore a stale
+    #: process image and report a successful deploy over it — this is how you
+    #: tell what is really serving without diffing the OpenAPI schema.
+    build: str = Field("unknown", description="Deployed commit")
     environment: str = Field(..., description="Environment name")
     llm_configured: bool = Field(..., description="Whether LLM API is configured")
     database_connected: bool = Field(..., description="Whether database is connected")
@@ -498,6 +505,7 @@ async def health_check():
     return HealthResponse(
         status="healthy",
         version=settings.app_version,
+        build=os.environ.get("ORIONFLOW_BUILD", "unknown"),
         environment=settings.environment,
         llm_configured=settings.has_llm_api_key,
         database_connected=db_connected,
