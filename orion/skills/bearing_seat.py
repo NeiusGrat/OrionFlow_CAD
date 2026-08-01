@@ -330,7 +330,7 @@ registry.register(Skill(
     graph=SkillGraph(
         functions=["SupportsRotation", "CentersComponent"],
         inputs=["bearing_designation", "duty", "wall_mm", "floor_mm"],
-        calculators=["calc_bearing_life_l10"],
+        calculators=["bearing_life_l10"],
         standards=["ISO 15 boundary dimensions",
                    "ISO 286 seat tolerances",
                    "SKF rolling bearing catalogue"],

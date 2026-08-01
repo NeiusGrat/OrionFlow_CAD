@@ -123,7 +123,7 @@ registry.register(Skill(
     graph=SkillGraph(
         functions=["ProvidesClampForce", "LocatesPart"],
         inputs=["bolt_size_mm", "count", "bolt_circle_dia_mm"],
-        calculators=["calc_thread_engagement", "calc_bolt_torque_nm"],
+        calculators=["thread_engagement", "bolt_torque_nm"],
         standards=["ISO 273 clearance holes"],
         outputs=["hole count, radius and bolt circle",
                  "minimum outer diameter", "edge distance"],
