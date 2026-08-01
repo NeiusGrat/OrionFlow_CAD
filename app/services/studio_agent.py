@@ -405,7 +405,7 @@ class StudioAgent:
         model_prompt = prompt
         chain = route.chain
 
-        if route.to_chain:
+        if route.to_branch:
             step("understand", "Understanding the request", "active", route.why)
             if chain is not None and not chain.complete:
                 # The chain stopped because the request did not say enough. Its
@@ -433,19 +433,18 @@ class StudioAgent:
             if chain is not None:
                 # Every dimension now comes from a standard or a calculation, and
                 # the model's only remaining job is to render it as a coherent
-                # Blueprint. `design_prompt` states those dimensions in the
-                # register the model was fine-tuned on and withholds the
-                # reasoning — the derivation is for the user, and feeding it back
-                # invites the model to re-litigate settled arithmetic.
-                from orion.reasoning import design_prompt
-
-                model_prompt = design_prompt(chain)
+                # Blueprint. The branch states those dimensions in the register
+                # the model was fine-tuned on and withholds the reasoning — the
+                # derivation is for the user, and feeding it back invites the
+                # model to re-litigate settled arithmetic.
+                model_prompt = route.design_prompt
                 step(
                     "specify",
                     "Specifying the design",
                     "done",
                     f"{len(chain.variables)} dimensions derived",
-                    [f"{k} = {v:g}" for k, v in sorted(chain.variables.items())],
+                    [f"{k} = {v:g}" for k, v in sorted(chain.variables.items())]
+                    + list(chain.citations),
                 )
 
         # Turn 1 is the ONLY turn that must match training byte for byte, so it
