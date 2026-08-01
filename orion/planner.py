@@ -25,7 +25,7 @@ taking one is how a drawing acquires a 25 mm bearing on a 30 mm shaft.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from orion.knowledge import functions as F
 
@@ -119,6 +119,12 @@ class Resolution:
     #: generously sized.
     requires_at_least: dict[str, float] = field(default_factory=dict)
     asks: list[str] = field(default_factory=list)
+    #: Whether a resolver actually ran. A function nobody has implemented yet
+    #: and one whose resolver looked and found nothing are both unresolved, and
+    #: they mean opposite things: the first is missing capability, the second is
+    #: a duty no component satisfies. The constraint solver has to tell them
+    #: apart or it reports an impossible design as finished.
+    attempted: bool = True
 
     def to_dict(self) -> dict:
         return {"function": self.function, "resolved": self.resolved,
@@ -126,7 +132,7 @@ class Resolution:
                 "variables": self.variables, "citations": self.citations,
                 "provides": self.provides,
                 "requires_at_least": self.requires_at_least,
-                "asks": self.asks}
+                "asks": self.asks, "attempted": self.attempted}
 
 
 @dataclass
@@ -261,6 +267,13 @@ def _resolve_rotation(duty: Any, context: dict) -> Resolution:
     stated = dict(duty)
     if "bore_mm" not in stated and "shaft_dia_mm" in context:
         stated["bore_mm"] = context["shaft_dia_mm"]
+    # A floor from the resolver outranks a bore the first pass settled on: the
+    # whole point of raising it is that the earlier choice was too small.
+    floor = context.get("shaft_dia_mm__min")
+    if floor is not None:
+        if stated.get("bore_mm") is not None and stated["bore_mm"] < floor:
+            stated.pop("bore_mm")
+        stated["min_bore_mm"] = floor
     d = F.Duty(function=F.SUPPORTS_ROTATION, **{
         k: v for k, v in stated.items()
         if k in F.Duty.__dataclass_fields__ and k != "function"})
@@ -436,7 +449,7 @@ def _context_from(resolutions: list[Resolution]) -> tuple[dict, list[Conflict]]:
     return context, conflicts
 
 
-def plan(request: str) -> Plan:
+def plan(request: str, floors: Optional[dict] = None) -> Plan:
     """Decompose, resolve in dependency order, and reconcile.
 
     Order is not cosmetic. A bearing fixes the shaft, and a key sized before
@@ -456,7 +469,10 @@ def plan(request: str) -> Plan:
     ordered = sorted(decomposition.functions(),
                      key=lambda f: (order.get(f, 5), f))
 
-    context: dict[str, float] = {}
+    # Floors seed the context under a __min suffix so a resolver can tell a
+    # lower bound it must respect from a value already settled.
+    context: dict[str, float] = {f"{k}__min": v
+                                 for k, v in (floors or {}).items()}
     resolutions: list[Resolution] = []
     for function in ordered:
         resolver = _RESOLVERS.get(function)
@@ -465,7 +481,8 @@ def plan(request: str) -> Plan:
                 function, False,
                 "no resolver — the design needs this and nothing here "
                 "provides it",
-                asks=[f"{function}: {F.INTENT.get(function, '')}"]))
+                asks=[f"{function}: {F.INTENT.get(function, '')}"],
+                attempted=False))
             continue
         resolution = resolver(duty, context)
         resolutions.append(resolution)

@@ -195,6 +195,8 @@ def _envelope_fits(row: dict, duty: Duty) -> Optional[float]:
         return None
     if duty.bore_mm is not None and abs(d - duty.bore_mm) > 0.01:
         return None
+    if duty.min_bore_mm is not None and d < duty.min_bore_mm - 1e-9:
+        return None
     if duty.max_outside_dia_mm is not None and D > duty.max_outside_dia_mm:
         return None
     # Prefer the smallest envelope that works: an oversized bearing is wasted
