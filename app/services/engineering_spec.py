@@ -95,8 +95,10 @@ class EngineeringSpecification:
         if not self.part_class or not self.part_class.strip():
             problems.append("part_class is empty")
         if not self.variables:
-            problems.append("no variables — the model would have nothing to "
-                            "express dimensions over")
+            problems.append(
+                "no variables — the model would have nothing to "
+                "express dimensions over"
+            )
 
         for name, value in self.variables.items():
             if not isinstance(name, str) or not name.isidentifier():
@@ -107,7 +109,8 @@ class EngineeringSpecification:
                 problems.append(
                     f"variable {name!r} shadows the built-in {kind} {name!r} — "
                     f"every reference to it would resolve to the {kind}; "
-                    f"rename it")
+                    f"rename it"
+                )
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 problems.append(f"variable {name!r} is {value!r}, not a number")
             elif not math.isfinite(float(value)):
@@ -152,11 +155,15 @@ class EngineeringSpecification:
         if self.manufacturing:
             plan["manufacturing"] = self.manufacturing
 
-        return spec_prompt({"blueprint": {
-            "part_class": self.part_class,
-            "variables": dict(self.variables),
-            "design_plan": plan,
-        }})
+        return spec_prompt(
+            {
+                "blueprint": {
+                    "part_class": self.part_class,
+                    "variables": dict(self.variables),
+                    "design_plan": plan,
+                }
+            }
+        )
 
     # ------------------------------------------------------------------ #
     def grounding(self) -> dict:
@@ -176,11 +183,13 @@ class EngineeringSpecification:
         }
 
     def to_dict(self) -> dict:
-        return {"part_class": self.part_class,
-                "variables": dict(self.variables),
-                "function": self.function,
-                "manufacturing": self.manufacturing,
-                **self.grounding()}
+        return {
+            "part_class": self.part_class,
+            "variables": dict(self.variables),
+            "function": self.function,
+            "manufacturing": self.manufacturing,
+            **self.grounding(),
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> "EngineeringSpecification":
@@ -191,18 +200,31 @@ class EngineeringSpecification:
 #: Words users reach for that are not the family's own name. Deliberately short:
 #: a wrong family is a wrong part, and an unmatched one is a question we can ask.
 _FAMILY_ALIASES = {
-    "mounting plate": "mount_plate", "motor mount": "mount_plate",
-    "base plate": "mount_plate", "plate": "mount_plate",
-    "angle bracket": "l_bracket", "bracket": "l_bracket",
-    "gusset": "gusset_plate", "rib bracket": "aero_rib_bracket",
-    "flange": "bolted_flange", "housing": "gearbox_housing",
-    "enclosure": "vented_enclosure", "box": "box_shell",
-    "shaft": "stepped_shaft", "pulley": "v_pulley",
-    "hub": "wheel_hub", "bearing housing": "bearing_carrier",
-    "pillow block": "pillow_block", "manifold": "manifold_runner",
-    "heat sink": "finned_rail", "heatsink": "finned_rail",
-    "impeller": "impeller", "knuckle": "suspension_knuckle",
-    "clevis": "clevis_mount", "lever": "bent_lever", "link": "rocker_link",
+    "mounting plate": "mount_plate",
+    "motor mount": "mount_plate",
+    "base plate": "mount_plate",
+    "plate": "mount_plate",
+    "angle bracket": "l_bracket",
+    "bracket": "l_bracket",
+    "gusset": "gusset_plate",
+    "rib bracket": "aero_rib_bracket",
+    "flange": "bolted_flange",
+    "housing": "gearbox_housing",
+    "enclosure": "vented_enclosure",
+    "box": "box_shell",
+    "shaft": "stepped_shaft",
+    "pulley": "v_pulley",
+    "hub": "wheel_hub",
+    "bearing housing": "bearing_carrier",
+    "pillow block": "pillow_block",
+    "manifold": "manifold_runner",
+    "heat sink": "finned_rail",
+    "heatsink": "finned_rail",
+    "impeller": "impeller",
+    "knuckle": "suspension_knuckle",
+    "clevis": "clevis_mount",
+    "lever": "bent_lever",
+    "link": "rocker_link",
 }
 
 
@@ -233,8 +255,7 @@ def choose_family(part: str) -> tuple[Optional[str], list[str]]:
     if not hits:
         hits = [f for f in families if text in f.replace("_", " ")]
     if not hits:
-        hits = sorted({fam for word, fam in _FAMILY_ALIASES.items()
-                       if word in text})
+        hits = sorted({fam for word, fam in _FAMILY_ALIASES.items() if word in text})
     if len(hits) == 1:
         return hits[0], []
     # Prefer the most specific match when one name contains another
@@ -247,9 +268,9 @@ def choose_family(part: str) -> tuple[Optional[str], list[str]]:
     return None, sorted(hits)
 
 
-def specification_from_intent(intent, part_hint: str = ""
-                              ) -> tuple[Optional["EngineeringSpecification"],
-                                         list[str]]:
+def specification_from_intent(
+    intent, part_hint: str = ""
+) -> tuple[Optional["EngineeringSpecification"], list[str]]:
     """``(specification, open_questions)`` from a parsed engineering intent.
 
     ``intent`` is an ``orion_agent.harness.spec.EngineeringSpec`` — what the
@@ -280,8 +301,8 @@ def specification_from_intent(intent, part_hint: str = ""
     if family is None:
         questions.append(
             "could not tell which part family this is"
-            + (f" — did you mean {' or '.join(alternatives)}?"
-               if alternatives else ""))
+            + (f" — did you mean {' or '.join(alternatives)}?" if alternatives else "")
+        )
         return None, questions
 
     schema = for_family(family)
@@ -302,8 +323,7 @@ def specification_from_intent(intent, part_hint: str = ""
     # through the "hole" synonym into hole *radius*, so a plate asked for with
     # four holes got a 4 mm hole radius — a stated-looking number that the user
     # never gave and that no guard would question.
-    counts = {k: float(v) for k, v
-              in (getattr(intent, "counts", None) or {}).items()}
+    counts = {k: float(v) for k, v in (getattr(intent, "counts", None) or {}).items()}
     if counts:
         resolved_counts, count_leftovers = resolve_dimensions(family, counts)
         for name, value in resolved_counts.items():
@@ -328,7 +348,8 @@ def specification_from_intent(intent, part_hint: str = ""
             canonical[name] = schema.variables[name].median
             rationale[name] = (
                 f"not stated — corpus median for {family} "
-                f"({schema.variables[name].describe()})")
+                f"({schema.variables[name].describe()})"
+            )
 
     # Numbers in the request that reached no variable. Defaulting is fine when
     # the user said nothing; it is NOT fine when they gave dimensions and the
@@ -348,12 +369,14 @@ def specification_from_intent(intent, part_hint: str = ""
             "these numbers were given but reached no "
             f"{family} variable: {', '.join(f'{v:g}' for v in orphans)} — "
             f"the values used are defaults, so this may not be the part that "
-            f"was asked for")
+            f"was asked for"
+        )
 
     for phrase, value in unresolved.items():
         questions.append(
             f"{phrase!r} = {value:g} does not map to any {family} variable "
-            f"({', '.join(sorted(schema.variables))})")
+            f"({', '.join(sorted(schema.variables))})"
+        )
 
     # Defaults alone always satisfy the family's guards — they come from
     # verified parts. Mixing them with values the user pinned does not: measured
@@ -364,19 +387,22 @@ def specification_from_intent(intent, part_hint: str = ""
     from orion.constraint_repair import repair
 
     stated_names = set(canonical) - {
-        n for n in canonical if rationale.get(n, "").startswith("not stated")}
+        n for n in canonical if rationale.get(n, "").startswith("not stated")
+    }
     fix = repair(family, canonical, pinned=stated_names)
     canonical = fix["variables"]
     for change in fix["changes"]:
         rationale[change["variable"]] = (
             f"moved from {change['from']:g} to satisfy {change['guard']} "
             f"(the stated dimensions made it {change['why'].split('it was ')[-1]})"
-            if "it was " in change["why"] else
-            f"moved to satisfy {change['guard']}")
+            if "it was " in change["why"]
+            else f"moved to satisfy {change['guard']}"
+        )
         if change["outside_observed_range"]:
             questions.append(
                 f"{change['variable']} had to leave the range seen in verified "
-                f"{family} parts to satisfy {change['guard']}")
+                f"{family} parts to satisfy {change['guard']}"
+            )
     if not fix["ok"]:
         questions.append(fix["why"])
 
@@ -412,6 +438,8 @@ def looks_unfamiliar(part_class: str) -> Optional[str]:
     base = part_class.split("_plus_")[0]
     if base in vocab["bases"]:
         return None
-    return (f"{base!r} is not one of the {len(vocab['bases'])} base families "
-            f"the model was trained on; the Blueprint may still build, but the "
-            f"verified-rate evidence does not cover it")
+    return (
+        f"{base!r} is not one of the {len(vocab['bases'])} base families "
+        f"the model was trained on; the Blueprint may still build, but the "
+        f"verified-rate evidence does not cover it"
+    )

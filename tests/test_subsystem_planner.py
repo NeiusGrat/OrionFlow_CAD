@@ -10,10 +10,14 @@ from __future__ import annotations
 from orion import planner as P
 from orion.knowledge import functions as F
 
-JOINT = ("Design a robotic shoulder joint: support a rotating shaft carrying "
-         "1.2 kN at 600 rpm for 20000 hours and transmit 80 Nm of torque")
-SIZED = ("Support a rotating 30 mm shaft carrying 1.2 kN at 600 rpm and "
-         "transmit 80 Nm of torque")
+JOINT = (
+    "Design a robotic shoulder joint: support a rotating shaft carrying "
+    "1.2 kN at 600 rpm for 20000 hours and transmit 80 Nm of torque"
+)
+SIZED = (
+    "Support a rotating 30 mm shaft carrying 1.2 kN at 600 rpm and "
+    "transmit 80 Nm of torque"
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -99,14 +103,16 @@ def test_a_disputed_dimension_is_not_reported_as_agreed():
     as settled."""
     plan = P.plan(JOINT)
     assert "shaft_dia_mm" not in plan.context
-    assert "housing_bore_mm" in plan.context      # that one is not disputed
+    assert "housing_bore_mm" in plan.context  # that one is not disputed
 
 
 def test_a_lower_bound_comfortably_met_is_agreement_not_conflict():
     """Treating 'at least' as an equality would report a conflict every time a
     shaft was generously sized."""
-    plan = P.plan("Support a rotating 60 mm shaft carrying 1.2 kN at 600 rpm "
-                  "and transmit 80 Nm of torque")
+    plan = P.plan(
+        "Support a rotating 60 mm shaft carrying 1.2 kN at 600 rpm "
+        "and transmit 80 Nm of torque"
+    )
     assert not plan.conflicts
     assert plan.context["shaft_dia_mm"] == 60.0
 

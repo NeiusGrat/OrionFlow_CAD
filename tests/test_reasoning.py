@@ -30,16 +30,19 @@ def test_a_load_and_a_thrust_are_told_apart_by_the_nearest_word():
     assert duty["axial_load_N"] == 2000.0
 
 
-@pytest.mark.parametrize("request_, field_, value", [
-    ("shaft at 1500 rpm", "speed_rpm", 1500.0),
-    ("25 Hz spindle", "speed_rpm", 1500.0),
-    ("for 20,000 hours", "life_hours", 20000.0),
-    ("2 kN radial", "radial_load_N", 2000.0),
-    ("450 lbf radial", "radial_load_N", pytest.approx(2001.7, abs=0.5)),
-    ("a 25 mm shaft", "bore_mm", 25.0),
-    ("shaft of 30 mm", "bore_mm", 30.0),
-    ("0.5 deg out of line", "misalignment_deg", 0.5),
-])
+@pytest.mark.parametrize(
+    "request_, field_, value",
+    [
+        ("shaft at 1500 rpm", "speed_rpm", 1500.0),
+        ("25 Hz spindle", "speed_rpm", 1500.0),
+        ("for 20,000 hours", "life_hours", 20000.0),
+        ("2 kN radial", "radial_load_N", 2000.0),
+        ("450 lbf radial", "radial_load_N", pytest.approx(2001.7, abs=0.5)),
+        ("a 25 mm shaft", "bore_mm", 25.0),
+        ("shaft of 30 mm", "bore_mm", 30.0),
+        ("0.5 deg out of line", "misalignment_deg", 0.5),
+    ],
+)
 def test_figures_are_read_with_their_units(request_, field_, value):
     assert R.read_intent(request_).detail["duty"].get(field_) == value
 
@@ -72,8 +75,9 @@ def test_a_request_without_a_load_cannot_reach_a_specification():
 
 
 def test_a_full_request_reaches_buildable_variables():
-    chain = R.reason("Support a rotating 25 mm shaft carrying 1.5 kN "
-                     "at 900 rpm for 10000 hours")
+    chain = R.reason(
+        "Support a rotating 25 mm shaft carrying 1.5 kN " "at 900 rpm for 10000 hours"
+    )
     assert chain.complete
     assert chain.part_class == "bearing_carrier"
     assert set(chain.variables) == {"R", "rs", "rb", "ds", "T"}
@@ -83,15 +87,17 @@ def test_a_full_request_reaches_buildable_variables():
 
 
 def test_every_stage_is_on_the_record_in_order():
-    chain = R.reason("Support a rotating 25 mm shaft carrying 1.5 kN "
-                     "at 900 rpm for 10000 hours")
+    chain = R.reason(
+        "Support a rotating 25 mm shaft carrying 1.5 kN " "at 900 rpm for 10000 hours"
+    )
     assert [s.stage for s in chain.steps] == list(R.STAGES)
 
 
 def test_each_variable_names_the_reason_it_has_that_value():
     """A number with no stage behind it cannot appear in the output."""
-    chain = R.reason("Support a rotating 25 mm shaft carrying 1.5 kN "
-                     "at 900 rpm for 10000 hours")
+    chain = R.reason(
+        "Support a rotating 25 mm shaft carrying 1.5 kN " "at 900 rpm for 10000 hours"
+    )
     for name in chain.variables:
         assert chain.rationale.get(name), f"{name} has no rationale"
     assert any("ISO 286" in c for c in chain.citations)
@@ -109,15 +115,18 @@ def test_an_assumption_is_made_loudly_or_not_at_all():
 def test_the_selected_type_carries_its_cost_forward():
     """A taper roller sized on life alone is a correct bearing and an
     incomplete decision: it needs an opposed partner nobody asked for."""
-    chain = R.reason("Support a rotating shaft, 3 kN radial and 2 kN axial, "
-                     "1500 rpm")
+    chain = R.reason(
+        "Support a rotating shaft, 3 kN radial and 2 kN axial, " "1500 rpm"
+    )
     assert chain.complete
     assert any("opposed" in w for w in chain.warnings)
 
 
 def test_an_impossible_duty_names_the_requirement_to_renegotiate():
-    chain = R.reason("Support a rotating shaft carrying 3 kN with 2 kN thrust "
-                     "at 0.1 deg, 1500 rpm, 20000 hours")
+    chain = R.reason(
+        "Support a rotating shaft carrying 3 kN with 2 kN thrust "
+        "at 0.1 deg, 1500 rpm, 20000 hours"
+    )
     assert not chain.complete
     assert chain.stopped_at == R.SELECTION
     # The type that missed by the least, and only on one count.
@@ -128,8 +137,9 @@ def test_an_impossible_duty_names_the_requirement_to_renegotiate():
 def test_the_model_is_given_dimensions_not_prose():
     """The register the model was fine-tuned on is a resolved parametric part.
     Feeding the reasoning back invites it to re-litigate settled arithmetic."""
-    chain = R.reason("Support a rotating 25 mm shaft carrying 1.5 kN "
-                     "at 900 rpm for 10000 hours")
+    chain = R.reason(
+        "Support a rotating 25 mm shaft carrying 1.5 kN " "at 900 rpm for 10000 hours"
+    )
     prompt = R.design_prompt(chain)
     assert prompt.startswith("Build a bearing_carrier with ")
     assert "rs=" in prompt and "ISO" not in prompt and "because" not in prompt

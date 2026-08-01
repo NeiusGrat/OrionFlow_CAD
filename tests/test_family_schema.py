@@ -14,7 +14,8 @@ import pytest
 from orion.family_schema import DEFAULT_DATA, check, describe, for_family, load
 
 needs_corpus = pytest.mark.skipif(
-    not os.path.exists(DEFAULT_DATA), reason="training corpus not present")
+    not os.path.exists(DEFAULT_DATA), reason="training corpus not present"
+)
 
 
 @needs_corpus
@@ -40,7 +41,8 @@ def test_real_corpus_parts_validate_clean_against_their_own_schema():
                 continue
             try:
                 blueprint = json.loads(
-                    rec["messages"][2]["content"].split("</think>")[1].strip())
+                    rec["messages"][2]["content"].split("</think>")[1].strip()
+                )
             except (IndexError, ValueError):
                 continue
             notes = check(meta["base_family"], blueprint["variables"])
@@ -74,8 +76,7 @@ def test_composed_class_resolves_to_its_base_family():
     # violations on the base family
     schema = for_family("wheel_hub")
     variables = {n: schema.variables[n].median for n in schema.required()}
-    variables.update({"att0_cx": 10.0, "att0_cy": 0.0, "att0_pr": 3.0,
-                      "att0_ph": 6.0})
+    variables.update({"att0_cx": 10.0, "att0_cy": 0.0, "att0_pr": 3.0, "att0_ph": 6.0})
     assert check("wheel_hub_plus_locating_pin", variables) == []
 
 
@@ -129,8 +130,9 @@ def test_diameter_is_halved_into_a_radius_variable():
     assert match.apply(6.4) == 3.2
 
     canonical, unresolved = resolve_dimensions(
-        "mount_plate", {"length": 112.0, "width": 66.0,
-                        "thickness": 10.0, "hole diameter": 6.4})
+        "mount_plate",
+        {"length": 112.0, "width": 66.0, "thickness": 10.0, "hole diameter": 6.4},
+    )
     assert canonical == {"pl": 112.0, "pw": 66.0, "pt": 10.0, "hr": 3.2}
     assert unresolved == {}
 
@@ -149,7 +151,8 @@ def test_unresolved_dimensions_are_returned_not_dropped():
     from orion.family_schema import resolve_dimensions
 
     canonical, unresolved = resolve_dimensions(
-        "mount_plate", {"thickness": 8.0, "fillet radius": 2.0})
+        "mount_plate", {"thickness": 8.0, "fillet radius": 2.0}
+    )
     assert canonical == {"pt": 8.0}
     assert unresolved == {"fillet radius": 2.0}
 
@@ -160,8 +163,10 @@ def test_directed_extraction_keeps_the_qualifier():
     keeps the last. Searching per variable cannot make that mistake."""
     from orion.family_schema import extract_for_family
 
-    ask = ("I need a wheel hub. Dimensions (mm unless noted): barrel height 40, "
-           "barrel radius 29, bc radius 48, bore radius 7, flange thickness 12.")
+    ask = (
+        "I need a wheel hub. Dimensions (mm unless noted): barrel height 40, "
+        "barrel radius 29, bc radius 48, bore radius 7, flange thickness 12."
+    )
     found = extract_for_family(ask, "wheel_hub")
     assert found["barrel_h"] == 40.0
     assert found["barrel_r"] == 29.0
@@ -174,10 +179,14 @@ def test_directed_extraction_keeps_the_qualifier():
 def test_extraction_handles_value_before_and_after():
     from orion.family_schema import extract_for_family
 
-    assert extract_for_family("a mount plate 112 mm length", "mount_plate")["pl"] == 112.0
+    assert (
+        extract_for_family("a mount plate 112 mm length", "mount_plate")["pl"] == 112.0
+    )
     assert extract_for_family("mount plate, length = 112", "mount_plate")["pl"] == 112.0
-    assert extract_for_family("mount plate with length of 112 mm",
-                              "mount_plate")["pl"] == 112.0
+    assert (
+        extract_for_family("mount plate with length of 112 mm", "mount_plate")["pl"]
+        == 112.0
+    )
 
 
 @needs_corpus
@@ -196,7 +205,7 @@ def test_attachment_phrases_are_refused_not_mismatched():
 
 @needs_corpus
 def test_size_triple_is_read():
-    """"100 x 60 x 5 mm" is how people write a plate and how the corpus never
+    """ "100 x 60 x 5 mm" is how people write a plate and how the corpus never
     writes one — so a benchmark drawn from the corpus reported 100% fidelity
     while every dimension here was silently replaced by a median."""
     from orion.family_schema import extract_for_family
@@ -213,19 +222,23 @@ def test_a_feature_size_does_not_become_the_outline():
     # the slot is 40x8; the plate is 80x40x5
     got = extract_for_family(
         "Plate 80 x 40 x 5 mm with a central slot 40 mm long and 8 mm wide",
-        "mount_plate")
+        "mount_plate",
+    )
     assert got["pl"] == 80.0 and got["pw"] == 40.0 and got["pt"] == 5.0
 
     # a bolt pattern is not the part's extents
     got = extract_for_family(
         "NEMA 17 motor mount plate, 6 mm thick: M3 holes on a 31 x 31 mm "
-        "square bolt pattern", "mount_plate")
+        "square bolt pattern",
+        "mount_plate",
+    )
     assert got.get("pl") != 31.0 and got.get("pw") != 31.0
     assert got["pt"] == 6.0
 
     # ...but a grid mentioned AFTER the size must not suppress the size
     got = extract_for_family(
-        "Plate 100 x 100 x 3 mm with a 3 x 3 grid of 6 mm holes", "mount_plate")
+        "Plate 100 x 100 x 3 mm with a 3 x 3 grid of 6 mm holes", "mount_plate"
+    )
     assert got["pl"] == 100.0 and got["pt"] == 3.0
 
 
@@ -236,13 +249,17 @@ def test_a_family_that_owns_a_feature_keeps_its_dimensions():
     from orion.family_schema import extract_for_family, for_family
 
     schema = for_family("slotted_rail")
-    assert [n for n in schema.variables if "slot" in n], \
-        "expected slotted_rail to own slot variables"
+    assert [
+        n for n in schema.variables if "slot" in n
+    ], "expected slotted_rail to own slot variables"
     got = extract_for_family(
         "I need a slotted rail. Dimensions (mm unless noted): slot radius 7, "
-        "rail height 20.", "slotted_rail")
-    assert got.get("slot_r") == 7.0, \
-        "the family's own slot dimension was consumed as a sub-feature"
+        "rail height 20.",
+        "slotted_rail",
+    )
+    assert (
+        got.get("slot_r") == 7.0
+    ), "the family's own slot dimension was consumed as a sub-feature"
     assert got.get("rail_h") == 20.0
 
 

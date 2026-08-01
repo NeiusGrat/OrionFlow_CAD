@@ -33,7 +33,8 @@ def test_bearing_series_dimensions_increase_monotonically():
                 assert cur[dim] >= prev[dim], (
                     f"{k} {dim}={cur[dim]} is smaller than {prev_k} "
                     f"{dim}={prev[dim]}; the series is not monotonic, which "
-                    f"means a transcription error")
+                    f"means a transcription error"
+                )
 
 
 def test_the_bearing_bore_is_the_designation():
@@ -81,16 +82,18 @@ def test_an_unknown_duty_is_refused():
 
 def test_an_unbuildable_bolt_pattern_is_refused_with_the_arithmetic():
     with pytest.raises(SkillError, match="apart"):
-        registry.execute("create_bolt_pattern",
-                         {"bolt_size_mm": 8, "count": 12,
-                          "bolt_circle_dia_mm": 60})
+        registry.execute(
+            "create_bolt_pattern",
+            {"bolt_size_mm": 8, "count": 12, "bolt_circle_dia_mm": 60},
+        )
 
 
 def test_an_untabulated_bolt_size_is_refused():
     with pytest.raises(SkillError, match="ISO 273"):
-        registry.execute("create_bolt_pattern",
-                         {"bolt_size_mm": 7, "count": 4,
-                          "bolt_circle_dia_mm": 60})
+        registry.execute(
+            "create_bolt_pattern",
+            {"bolt_size_mm": 7, "count": 4, "bolt_circle_dia_mm": 60},
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -101,28 +104,25 @@ def test_a_bearing_seat_satisfies_its_family_guards():
     failure, not removed it."""
     from orion.family_schema import check_guards
 
-    result = registry.execute("create_bearing_seat",
-                              {"bearing_designation": "6205"})
+    result = registry.execute("create_bearing_seat", {"bearing_designation": "6205"})
     assert result.part_class == "bearing_carrier"
     guards = check_guards("bearing_carrier", result.variables)
     assert guards and all(g["holds"] for g in guards), guards
 
 
 def test_the_seat_matches_the_bearing_it_names():
-    result = registry.execute("create_bearing_seat",
-                              {"bearing_designation": "6205"})
+    result = registry.execute("create_bearing_seat", {"bearing_designation": "6205"})
     spec = bearing("6205")
-    assert result.variables["rs"] == spec["D"] / 2.0      # housing bore
-    assert result.variables["ds"] == spec["B"]            # full ring width
-    assert result.variables["rb"] > spec["d"] / 2.0       # shaft clears
+    assert result.variables["rs"] == spec["D"] / 2.0  # housing bore
+    assert result.variables["ds"] == spec["B"]  # full ring width
+    assert result.variables["rb"] > spec["d"] / 2.0  # shaft clears
     # the shoulder must be the manufacturer's abutment, not the ring OD
     assert result.derived["shoulder_diameter_mm"] == spec["Da_max"]
     assert result.derived["shoulder_diameter_mm"] < spec["D"]
 
 
 def test_every_number_carries_a_reason_and_a_standard():
-    result = registry.execute("create_bearing_seat",
-                              {"bearing_designation": "6205"})
+    result = registry.execute("create_bearing_seat", {"bearing_designation": "6205"})
     for name in result.variables:
         assert result.rationale.get(name), f"{name} has no stated reason"
     assert any("ISO 15" in c for c in result.citations)
@@ -131,24 +131,24 @@ def test_every_number_carries_a_reason_and_a_standard():
 
 def test_a_seat_that_cannot_fit_is_refused_not_shrunk():
     with pytest.raises(SkillError, match="does not fit"):
-        registry.execute("create_bearing_seat",
-                         {"bearing_designation": "6210", "wall_mm": 0.5,
-                          "floor_mm": 0.5})
+        registry.execute(
+            "create_bearing_seat",
+            {"bearing_designation": "6210", "wall_mm": 0.5, "floor_mm": 0.5},
+        )
 
 
 def test_out_of_corpus_values_warn_without_failing():
     """A 15 mm-wide seat is legal and has no precedent in the corpus. Saying so
     is different from refusing it."""
-    result = registry.execute("create_bearing_seat",
-                              {"bearing_designation": "6205"})
+    result = registry.execute("create_bearing_seat", {"bearing_designation": "6205"})
     assert any("outside the range" in w for w in result.warnings)
 
 
 def test_derived_values_a_bearing_actually_needs():
-    result = registry.execute("create_bolt_pattern",
-                              {"bolt_size_mm": 8, "count": 6,
-                               "bolt_circle_dia_mm": 80})
-    assert result.derived["clearance_hole_mm"] == 9.0        # ISO 273 medium
+    result = registry.execute(
+        "create_bolt_pattern", {"bolt_size_mm": 8, "count": 6, "bolt_circle_dia_mm": 80}
+    )
+    assert result.derived["clearance_hole_mm"] == 9.0  # ISO 273 medium
     assert result.derived["hole_pitch_mm"] == pytest.approx(40.0, abs=0.1)
     assert result.derived["min_outer_diameter_mm"] > 80.0
 
@@ -173,8 +173,7 @@ def test_load_ratings_reach_the_life_calculator():
     """A seat carries C so sizing life needs no second lookup."""
     from orion import calc
 
-    result = registry.execute("create_bearing_seat",
-                              {"bearing_designation": "6205"})
+    result = registry.execute("create_bearing_seat", {"bearing_designation": "6205"})
     c_dyn = result.derived["dynamic_load_rating_C_N"]
     assert c_dyn == 14800.0
     life = calc.bearing_life_l10(c_dyn, 2000.0, 1500.0)
@@ -182,11 +181,12 @@ def test_load_ratings_reach_the_life_calculator():
 
 
 def test_a_bearing_known_only_to_the_harvest_still_resolves():
-    result = registry.execute("create_bearing_seat",
-                              {"bearing_designation": "6310",
-                               "wall_mm": 8, "floor_mm": 6})
-    assert result.variables["rs"] == 55.0        # 110 mm OD
-    assert result.variables["ds"] == 27.0        # 27 mm wide
+    result = registry.execute(
+        "create_bearing_seat",
+        {"bearing_designation": "6310", "wall_mm": 8, "floor_mm": 6},
+    )
+    assert result.variables["rs"] == 55.0  # 110 mm OD
+    assert result.variables["ds"] == 27.0  # 27 mm wide
 
 
 def test_a_missing_shoulder_is_reported_not_invented():
@@ -212,9 +212,9 @@ def test_every_bearing_duty_now_resolves():
 
     assert len(DUTIES) >= 6
     for duty in DUTIES:
-        result = registry.execute("create_bearing_seat",
-                                  {"bearing_designation": "6205",
-                                   "duty": duty})
+        result = registry.execute(
+            "create_bearing_seat", {"bearing_designation": "6205", "duty": duty}
+        )
         assert result.derived["housing_bore_mm"]
 
 
@@ -237,8 +237,7 @@ def test_clearance_and_interference_go_the_right_way():
     clearance = housing_fit(52.0, "stationary_outer")
     assert clearance["min_mm"] >= 52.0
 
-    for duty in ("rotating_outer", "rotating_outer_heavy",
-                 "rotating_outer_thin_wall"):
+    for duty in ("rotating_outer", "rotating_outer_heavy", "rotating_outer_thin_wall"):
         press = housing_fit(52.0, duty)
         assert press["max_mm"] <= 52.0, duty
         assert press["min_mm"] < clearance["min_mm"]

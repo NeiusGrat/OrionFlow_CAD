@@ -30,7 +30,7 @@ GLANDS = os.path.join("orion", "knowledge", "parker_oring_glands.json")
 def test_a_misaligned_column_is_caught_by_its_own_checksum():
     """A dual-unit table carries its own proof that the parser did not drift."""
     good = {"d": 25.0, "d_in": 0.9843}
-    bad = {"d": 25.0, "d_in": 2.0472}          # actually the D column
+    bad = {"d": 25.0, "d_in": 2.0472}  # actually the D column
     result = gate([good, bad], [mm_inch_agree("d", "d_in")])
     assert len(result.accepted) == 1 and len(result.rejected) == 1
     assert "misaligned" in result.rejected[0].reason
@@ -48,23 +48,30 @@ def test_a_soft_failure_drops_the_field_not_the_row():
     """Facts in a table are independent: a row whose geometry checks out has
     good geometry whether or not an unrelated column extracted cleanly."""
     row = {"d": 25.0, "d_in": 0.9843, "C_N": 999.0, "C_lbf": 1.0}
-    result = gate([row], [mm_inch_agree("d", "d_in")],
-                  soft=[(positive("nonexistent"), ("C_N", "C_lbf"))])
+    result = gate(
+        [row],
+        [mm_inch_agree("d", "d_in")],
+        soft=[(positive("nonexistent"), ("C_N", "C_lbf"))],
+    )
     assert len(result.accepted) == 1
     kept = result.accepted[0]
-    assert kept["d"] == 25.0                    # geometry survived
+    assert kept["d"] == 25.0  # geometry survived
     assert "C_N" not in kept and "C_lbf" not in kept
     assert kept["dropped"], "the drop must be recorded, not silent"
 
 
 def test_the_cross_row_check_catches_a_broken_series():
     """No per-row invariant can see this: every row is individually plausible."""
-    rows = [{"designation": "6207", "d": 35.0, "D": 72.0, "B": 17.0},
-            {"designation": "6208", "d": 40.0, "D": 80.0, "B": 15.0},
-            {"designation": "6209", "d": 45.0, "D": 85.0, "B": 19.0}]
-    broken = series_monotonic(rows,
-                              series_of=lambda r: r["designation"][:-2],
-                              order_of=lambda r: int(r["designation"][-2:]))
+    rows = [
+        {"designation": "6207", "d": 35.0, "D": 72.0, "B": 17.0},
+        {"designation": "6208", "d": 40.0, "D": 80.0, "B": 15.0},
+        {"designation": "6209", "d": 45.0, "D": 85.0, "B": 19.0},
+    ]
+    broken = series_monotonic(
+        rows,
+        series_of=lambda r: r["designation"][:-2],
+        order_of=lambda r: int(r["designation"][-2:]),
+    )
     assert any("6208" in str(r.row["designation"]) for r in broken)
     assert any("not monotonic" in r.reason for r in broken)
 
@@ -79,7 +86,8 @@ def test_ordering_and_positivity():
 # the harvested catalogues
 # --------------------------------------------------------------------------- #
 needs_harvest = pytest.mark.skipif(
-    not os.path.exists(HARVEST), reason="bearing harvest not generated")
+    not os.path.exists(HARVEST), reason="bearing harvest not generated"
+)
 
 
 @needs_harvest
@@ -91,16 +99,18 @@ def test_harvested_bearings_still_satisfy_their_invariants():
         assert row["d"] < row["D"], row
         assert row["B"] > 0, row
         assert designation_encodes_bore()(row) is None, row
-    assert not series_monotonic(rows,
-                                series_of=lambda r: r["designation"][:-2],
-                                order_of=lambda r: int(r["designation"][-2:]))
+    assert not series_monotonic(
+        rows,
+        series_of=lambda r: r["designation"][:-2],
+        order_of=lambda r: int(r["designation"][-2:]),
+    )
 
 
 @needs_harvest
 def test_the_values_a_published_web_table_got_wrong():
     data = json.load(open(HARVEST, encoding="utf-8"))["bearings"]
-    assert data["6208"]["B"] == 18          # a web table said 15
-    assert data["6205"]["C_N"] == 14800.0   # a web table said 3147 (kgf)
+    assert data["6208"]["B"] == 18  # a web table said 15
+    assert data["6205"]["C_N"] == 14800.0  # a web table said 3147 (kgf)
 
 
 @pytest.mark.skipif(not os.path.exists(GLANDS), reason="gland harvest absent")
@@ -111,7 +121,7 @@ def test_gland_rows_carry_their_page_and_arrangement():
     data = json.load(open(GLANDS, encoding="utf-8"))
     for row in data["rows"]:
         assert "source_page" in row
-        assert row["gland_depth_mm"] < row["cord_dia_mm"]   # squeeze exists
+        assert row["gland_depth_mm"] < row["cord_dia_mm"]  # squeeze exists
         assert row["applies_to"], "every row must state its arrangement"
         assert row["standard"] and row["units"] and row["confidence"]
 
@@ -134,8 +144,7 @@ def test_every_dataset_records_the_document_and_loader_version():
     """A loader bug found later needs a precise blast radius."""
     data = json.load(open(GLANDS, encoding="utf-8"))
     source = data["source"]
-    for key in ("manufacturer", "document", "edition", "loader",
-                "loader_version"):
+    for key in ("manufacturer", "document", "edition", "loader", "loader_version"):
         assert source.get(key), f"{key} missing from the dataset source"
 
 
@@ -175,8 +184,7 @@ def test_a_bearing_exposes_the_interfaces_a_design_meets_it_through():
     they connect."""
     from orion.knowledge.skf_bearings import DeepGrooveBearingLoader
 
-    edges = DeepGrooveBearingLoader().interfaces(
-        {"d": 25.0, "D": 52.0, "B": 15.0})
+    edges = DeepGrooveBearingLoader().interfaces({"d": 25.0, "D": 52.0, "B": 15.0})
     kinds = {e.kind: e for e in edges}
     assert {"shaft_seat", "housing_seat"} <= set(kinds)
     assert kinds["shaft_seat"].nominal_mm == 25.0
@@ -196,8 +204,10 @@ def test_confidence_reflects_how_a_row_was_established():
     # ratings dropped by the soft gate: the geometry is still good
     assert loader.confidence({"d": 25.0}) == Confidence.READ
     # a row is only as trustworthy as its weakest ingredient
-    assert Confidence.weakest(Confidence.MEASURED,
-                              Confidence.ATTRIBUTED) == Confidence.ATTRIBUTED
+    assert (
+        Confidence.weakest(Confidence.MEASURED, Confidence.ATTRIBUTED)
+        == Confidence.ATTRIBUTED
+    )
 
 
 @needs_harvest
@@ -207,8 +217,9 @@ def test_the_bearing_dataset_is_versioned_like_the_gland_one():
     assert data["family"] == "deep_groove_ball_bearing"
     for key in ("manufacturer", "document", "edition", "loader_version"):
         assert data["source"].get(key), f"{key} missing"
-    assert data["rows"] and "bearings" in data, \
-        "the legacy key must stay while callers migrate"
+    assert (
+        data["rows"] and "bearings" in data
+    ), "the legacy key must stay while callers migrate"
 
 
 def test_two_families_now_share_the_contract():
@@ -248,6 +259,7 @@ def test_a_gland_interface_carries_the_squeeze_band_as_its_constraint():
     """Outside the band the seal either leaks or takes a compression set and
     leaks later, and neither shows in the model."""
     data = json.load(open(GLANDS, encoding="utf-8"))
-    depth = next(i for i in data["rows"][0]["interfaces"]
-                 if i["kind"] == "groove_depth")
+    depth = next(
+        i for i in data["rows"][0]["interfaces"] if i["kind"] == "groove_depth"
+    )
     assert "%" in depth["constraint"] and "squeezes" in depth["constraint"]

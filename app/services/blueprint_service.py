@@ -76,9 +76,7 @@ def _freecad_python() -> str:
         if found:
             return found
 
-    raise BlueprintBuildError(
-        "no FreeCAD interpreter found; set ORION_FREECAD_PYTHON"
-    )
+    raise BlueprintBuildError("no FreeCAD interpreter found; set ORION_FREECAD_PYTHON")
 
 
 def freecad_available() -> bool:
@@ -147,8 +145,9 @@ def needs_mesh_body(bp) -> bool:
     return any(a.get("kind") == "body_mesh_converged" for a in bp.assertions)
 
 
-def run_builder(graph: dict, workdir: str,
-                mesh_body: bool = False) -> tuple[dict, Optional[dict]]:
+def run_builder(
+    graph: dict, workdir: str, mesh_body: bool = False
+) -> tuple[dict, Optional[dict]]:
     """Compile ``graph`` into ``workdir``, wherever FreeCAD happens to live.
 
     Postcondition on success: ``part.step`` and ``part.stl`` exist in
@@ -160,8 +159,9 @@ def run_builder(graph: dict, workdir: str,
     return _build_locally(graph, workdir, mesh_body)
 
 
-def _build_locally(graph: dict, workdir: str,
-                   mesh_body: bool = False) -> tuple[dict, Optional[dict]]:
+def _build_locally(
+    graph: dict, workdir: str, mesh_body: bool = False
+) -> tuple[dict, Optional[dict]]:
     gpath = os.path.join(workdir, "graph.json")
     with open(gpath, "w", encoding="utf-8") as fh:
         json.dump(graph, fh)
@@ -170,14 +170,25 @@ def _build_locally(graph: dict, workdir: str,
     mpath = os.path.join(workdir, "measured.json")
     runner = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-        "orion", "build_export_fc.py",
+        "orion",
+        "build_export_fc.py",
     )
-    fc_python = _freecad_python()   # raises BlueprintBuildError if absent
+    fc_python = _freecad_python()  # raises BlueprintBuildError if absent
 
-    cmd = [fc_python, runner, "--graph", gpath, "--fcstd", fcstd,
-           "--out", mpath,
-           "--step", os.path.join(workdir, "part.step"),
-           "--stl", os.path.join(workdir, "part.stl")]
+    cmd = [
+        fc_python,
+        runner,
+        "--graph",
+        gpath,
+        "--fcstd",
+        fcstd,
+        "--out",
+        mpath,
+        "--step",
+        os.path.join(workdir, "part.step"),
+        "--stl",
+        os.path.join(workdir, "part.stl"),
+    ]
     if mesh_body:
         cmd.append("--mesh-body")
 
@@ -190,8 +201,9 @@ def _build_locally(graph: dict, workdir: str,
     # bigger budget than a plain build or it reports as a kernel hang.
     budget = BUILD_TIMEOUT_S * 3 if mesh_body else BUILD_TIMEOUT_S
     try:
-        with open(opath, "w", encoding="utf-8") as _o, \
-                open(epath, "w", encoding="utf-8") as _e:
+        with open(opath, "w", encoding="utf-8") as _o, open(
+            epath, "w", encoding="utf-8"
+        ) as _e:
             proc = subprocess.run(cmd, stdout=_o, stderr=_e, timeout=budget)
         returncode, timed_out = proc.returncode, False
     except subprocess.TimeoutExpired:
@@ -204,16 +216,22 @@ def _build_locally(graph: dict, workdir: str,
         except OSError:
             return ""
 
-    log = {"returncode": returncode, "stdout": _read(opath),
-           "stderr": _read(epath), "timeout": timed_out, "where": "local"}
+    log = {
+        "returncode": returncode,
+        "stdout": _read(opath),
+        "stderr": _read(epath),
+        "timeout": timed_out,
+        "where": "local",
+    }
     if timed_out or returncode != 0 or not os.path.exists(mpath):
         return log, None
     with open(mpath, encoding="utf-8") as fh:
         return log, json.load(fh)
 
 
-def _build_on_modal(graph: dict, workdir: str,
-                    mesh_body: bool = False) -> tuple[dict, Optional[dict]]:
+def _build_on_modal(
+    graph: dict, workdir: str, mesh_body: bool = False
+) -> tuple[dict, Optional[dict]]:
     """Run the compile in the FreeCAD container and land its artifacts here."""
     try:
         import modal
@@ -310,8 +328,9 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
     stl = os.path.join(workdir, "part.stl")
 
     try:
-        build_log, measured_raw = run_builder(graph, workdir,
-                                              mesh_body=needs_mesh_body(bp))
+        build_log, measured_raw = run_builder(
+            graph, workdir, mesh_body=needs_mesh_body(bp)
+        )
     except BlueprintBuildError as exc:
         bundle["error"] = str(exc)
         bundle["generation_time_ms"] = (time.time() - t0) * 1000
@@ -329,14 +348,13 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
             return ""
 
     if timed_out:
-        bundle["error"] = (f"the kernel did not converge within "
-                           f"{BUILD_TIMEOUT_S}s")
+        bundle["error"] = f"the kernel did not converge within " f"{BUILD_TIMEOUT_S}s"
         bundle["generation_time_ms"] = (time.time() - t0) * 1000
         return bundle
     if returncode != 0 or measured_raw is None:
-        bundle["error"] = (
-            (build_log.get("stderr") or "")[-600:].strip()
-            or f"the build failed (rc={returncode})")
+        bundle["error"] = (build_log.get("stderr") or "")[
+            -600:
+        ].strip() or f"the build failed (rc={returncode})"
         bundle["generation_time_ms"] = (time.time() - t0) * 1000
         return bundle
 
@@ -357,8 +375,9 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
     files: dict[str, str] = {}
     for kind, path in (("step", step), ("stl", stl), ("glb", glb)):
         if path and os.path.exists(path):
-            files[kind] = (f"/api/v1/ofl/download/{request_id}/"
-                           f"{os.path.basename(path)}")
+            files[kind] = (
+                f"/api/v1/ofl/download/{request_id}/" f"{os.path.basename(path)}"
+            )
     bundle["files"] = files
 
     # Per-request dirs are ephemeral on scale-to-zero hosts; the existing
@@ -409,13 +428,14 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
         logger.warning("blueprint_grading_failed", error=str(exc))
         rows = []
         bundle["verification"] = {
-            "verdict": "unproven", "checks": [], "failed": [],
+            "verdict": "unproven",
+            "checks": [],
+            "failed": [],
             "measured": observed,
             "error": f"assertions could not be checked: {exc}",
         }
     else:
-        bundle["verification"] = verify.from_assertion_rows(
-            rows, measured=observed)
+        bundle["verification"] = verify.from_assertion_rows(rows, measured=observed)
 
     bundle["assertions"] = rows
     bundle["success"] = bool(files) and bool(volume)
