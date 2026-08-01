@@ -55,8 +55,15 @@ SPECIFICATION = "specification"
 #: The stages this module runs. Blueprint, compile and verify follow, and are
 #: deliberately outside: they are the existing pipeline, and the point of the
 #: chain is to hand them a specification rather than a sentence.
-STAGES = (INTENT, FUNCTIONS, REQUIREMENTS, KNOWLEDGE, CALCULATORS, SELECTION,
-          SPECIFICATION)
+STAGES = (
+    INTENT,
+    FUNCTIONS,
+    REQUIREMENTS,
+    KNOWLEDGE,
+    CALCULATORS,
+    SELECTION,
+    SPECIFICATION,
+)
 
 
 @dataclass
@@ -64,9 +71,9 @@ class Step:
     """One stage's conclusion, and what it rests on."""
 
     stage: str
-    finding: str                                  # one line, for a human
+    finding: str  # one line, for a human
     detail: dict[str, Any] = field(default_factory=dict)
-    basis: str = ""                               # the rule, standard or sum
+    basis: str = ""  # the rule, standard or sum
     #: What this stage could not decide. A non-empty list stops the chain, and
     #: is the thing to put to the user.
     asks: list[str] = field(default_factory=list)
@@ -116,13 +123,17 @@ class Chain:
         return None
 
     def to_dict(self) -> dict:
-        return {"request": self.request,
-                "steps": [s.to_dict() for s in self.steps],
-                "complete": self.complete,
-                "stopped_at": self.stopped_at,
-                "part_class": self.part_class, "variables": self.variables,
-                "rationale": self.rationale, "citations": self.citations,
-                "warnings": self.warnings}
+        return {
+            "request": self.request,
+            "steps": [s.to_dict() for s in self.steps],
+            "complete": self.complete,
+            "stopped_at": self.stopped_at,
+            "part_class": self.part_class,
+            "variables": self.variables,
+            "rationale": self.rationale,
+            "citations": self.citations,
+            "warnings": self.warnings,
+        }
 
     def explain(self) -> str:
         """The trace, top to bottom. What a reviewer reads instead of guessing."""
@@ -138,8 +149,7 @@ class Chain:
         if self.complete:
             lines.append(f"SPECIFICATION ({self.part_class})")
             for k, v in sorted(self.variables.items()):
-                lines.append(f"  {k} = {v:g}   {self.rationale.get(k, '')}"
-                             .rstrip())
+                lines.append(f"  {k} = {v:g}   {self.rationale.get(k, '')}".rstrip())
             if self.citations:
                 lines.append("  per: " + "; ".join(self.citations))
         else:
@@ -160,27 +170,25 @@ class Chain:
 #: than one that admits it does not know, because a misread function sends every
 #: later stage confidently in the wrong direction.
 _PHRASES: tuple[tuple[str, str], ...] = (
-    (r"rotat\w*\s+shaft|shaft\s+(?:that\s+)?(?:must\s+)?(?:rotate|turn|spin)"
-     r"|support\w*\s+a?\s*(?:rotating|turning|spinning)"
-     r"|journal|spindle|bearing", F.SUPPORTS_ROTATION),
+    (
+        r"rotat\w*\s+shaft|shaft\s+(?:that\s+)?(?:must\s+)?(?:rotate|turn|spin)"
+        r"|support\w*\s+a?\s*(?:rotating|turning|spinning)"
+        r"|journal|spindle|bearing",
+        F.SUPPORTS_ROTATION,
+    ),
     (r"seal\w*|o-?ring|gland|leak|watertight|airtight", F.SEALS_FLUID),
     # `torque` on its own is decisive — nothing else in mechanical design uses
     # the word — so requiring it to sit next to a verb only fails on the
     # ordinary phrasings: "transmit 80 Nm of torque" puts the figure between
     # them.
     (r"\btorque\b|keyway|\bkeys?\b|spline|coupl\w*", F.TRANSMITS_TORQUE),
-    (r"locat\w*\s+(?:a\s+)?part|dowel|repeatable\s+position|register",
-     F.LOCATES_PART),
-    (r"clamp\w*|bolt\w*\s+(?:down|together)|preload|fasten",
-     F.PROVIDES_CLAMP_FORCE),
-    (r"retain\w*\s+axially|circlip|snap\s+ring|axial\s+retention",
-     F.RETAINS_AXIALLY),
-    (r"slid\w*|linear\s+(?:motion|bearing|rail)|travers\w*",
-     F.SUPPORTS_LINEAR_MOTION),
+    (r"locat\w*\s+(?:a\s+)?part|dowel|repeatable\s+position|register", F.LOCATES_PART),
+    (r"clamp\w*|bolt\w*\s+(?:down|together)|preload|fasten", F.PROVIDES_CLAMP_FORCE),
+    (r"retain\w*\s+axially|circlip|snap\s+ring|axial\s+retention", F.RETAINS_AXIALLY),
+    (r"slid\w*|linear\s+(?:motion|bearing|rail)|travers\w*", F.SUPPORTS_LINEAR_MOTION),
     (r"gear\w*|belt|pulley|chain\s+drive|reduc\w*\s+ratio", F.TRANSFERS_POWER),
     (r"conc?entric|share\s+an?\s+axis|centr\w*|align\s+two", F.CENTERS_COMPONENT),
-    (r"guid\w*\s+(?:the\s+)?motion|follow\s+a\s+path|cam\s+track",
-     F.GUIDES_MOTION),
+    (r"guid\w*\s+(?:the\s+)?motion|follow\s+a\s+path|cam\s+track", F.GUIDES_MOTION),
 )
 
 _UNITS = {"n": 1.0, "kn": 1000.0, "lbf": 4.4482216, "kgf": 9.80665}
@@ -193,8 +201,7 @@ def _forces(text: str) -> list[tuple[float, int, int]]:
     is which is decided by the word next to the number rather than by order.
     """
     out = []
-    for m in re.finditer(r"(\d[\d\s,]*\.?\d*)\s*(kN|N|lbf|kgf)\b", text,
-                         re.IGNORECASE):
+    for m in re.finditer(r"(\d[\d\s,]*\.?\d*)\s*(kN|N|lbf|kgf)\b", text, re.IGNORECASE):
         try:
             value = float(m.group(1).replace(",", "").replace(" ", ""))
         except ValueError:
@@ -234,9 +241,12 @@ def _directed_forces(text: str) -> list[tuple[float, str, str]]:
 
     claimed: dict[int, set[str]] = {i: set() for i in range(len(forces))}
     for position, kind in words:
-        nearest = min(range(len(forces)),
-                      key=lambda i: min(abs(position - forces[i][1]),
-                                        abs(position - forces[i][2])))
+        nearest = min(
+            range(len(forces)),
+            key=lambda i: min(
+                abs(position - forces[i][1]), abs(position - forces[i][2])
+            ),
+        )
         claimed[nearest].add(kind)
 
     out: list[tuple[float, str, str]] = []
@@ -244,18 +254,27 @@ def _directed_forces(text: str) -> list[tuple[float, str, str]]:
         kinds = claimed[i]
         if len(kinds) == 1:
             out.append((value, kinds.pop(), ""))
-        elif not any(k == "radial_load_N" for k, *_ in
-                     [(o[1],) for o in out]):
+        elif not any(k == "radial_load_N" for k, *_ in [(o[1],) for o in out]):
             # Unqualified, and no radial load read yet: a load on a shaft is
             # radial unless it says otherwise, but say so rather than assume it
             # silently.
-            out.append((value, "radial_load_N",
-                        f"{value:g} N read as radial — the request does not "
-                        f"say which direction it acts in"))
+            out.append(
+                (
+                    value,
+                    "radial_load_N",
+                    f"{value:g} N read as radial — the request does not "
+                    f"say which direction it acts in",
+                )
+            )
         else:
-            out.append((value, "axial_load_N",
-                        f"{value:g} N read as axial — the request states two "
-                        f"loads and qualifies neither"))
+            out.append(
+                (
+                    value,
+                    "axial_load_N",
+                    f"{value:g} N read as axial — the request states two "
+                    f"loads and qualifies neither",
+                )
+            )
     return out
 
 
@@ -290,15 +309,20 @@ def read_intent(request: str) -> Step:
         years = _number(text, r"(\d[\d\s,]*\.?\d*)\s*years?\b")
         if years is not None:
             found["life_hours"] = years * 8760.0
-            notes.append(f"{years:g} years read as {years * 8760:g} hours of "
-                         f"continuous running — derate if the duty cycle is "
-                         f"intermittent")
+            notes.append(
+                f"{years:g} years read as {years * 8760:g} hours of "
+                f"continuous running — derate if the duty cycle is "
+                f"intermittent"
+            )
 
-    bore = _number(text, r"(\d[\d\s,]*\.?\d*)\s*mm\s*(?:dia\w*\s*)?"
-                         r"(?:shaft|bore|journal|spindle)")
+    bore = _number(
+        text,
+        r"(\d[\d\s,]*\.?\d*)\s*mm\s*(?:dia\w*\s*)?" r"(?:shaft|bore|journal|spindle)",
+    )
     if bore is None:
-        bore = _number(text, r"(?:shaft|bore|journal|spindle)\D{0,12}?"
-                             r"(\d[\d\s,]*\.?\d*)\s*mm")
+        bore = _number(
+            text, r"(?:shaft|bore|journal|spindle)\D{0,12}?" r"(\d[\d\s,]*\.?\d*)\s*mm"
+        )
     if bore is not None:
         found["bore_mm"] = bore
 
@@ -306,8 +330,9 @@ def read_intent(request: str) -> Step:
     if mis is not None:
         found["misalignment_deg"] = mis
 
-    torque = _number(text, r"(\d[\d\s,]*\.?\d*)\s*(?:Nm|N\.m|N-m|newton[\s-]?"
-                           r"met(?:re|er)s?)\b")
+    torque = _number(
+        text, r"(\d[\d\s,]*\.?\d*)\s*(?:Nm|N\.m|N-m|newton[\s-]?" r"met(?:re|er)s?)\b"
+    )
     if torque is None:
         kgfm = _number(text, r"(\d[\d\s,]*\.?\d*)\s*(?:kNm|kN\.m)\b")
         if kgfm is not None:
@@ -315,9 +340,12 @@ def read_intent(request: str) -> Step:
     if torque is not None:
         found["torque_Nm"] = torque
 
-    envelope = _number(text, r"(?:within|under|max\w*|no\s+(?:more|bigger|larger)"
-                             r"\s+than)\D{0,20}?(\d[\d\s,]*\.?\d*)\s*mm\s*"
-                             r"(?:outside|od|diameter|envelope|housing)")
+    envelope = _number(
+        text,
+        r"(?:within|under|max\w*|no\s+(?:more|bigger|larger)"
+        r"\s+than)\D{0,20}?(\d[\d\s,]*\.?\d*)\s*mm\s*"
+        r"(?:outside|od|diameter|envelope|housing)",
+    )
     if envelope is not None:
         found["max_outside_dia_mm"] = envelope
 
@@ -328,18 +356,32 @@ def read_intent(request: str) -> Step:
 
     detail = {"duty": found, "functions": matched}
     if not matched:
-        return Step(INTENT, "the request does not name a function this system "
-                            "knows", detail,
-                    basis="phrase table over the ten engineering functions",
-                    asks=["What must the part do? " + "; ".join(
-                        f"{k} ({v})" for k, v in list(F.INTENT.items())[:4])
-                        + "; ..."])
+        return Step(
+            INTENT,
+            "the request does not name a function this system " "knows",
+            detail,
+            basis="phrase table over the ten engineering functions",
+            asks=[
+                "What must the part do? "
+                + "; ".join(f"{k} ({v})" for k, v in list(F.INTENT.items())[:4])
+                + "; ..."
+            ],
+        )
 
-    read = ", ".join(f"{k}={v:g}" if isinstance(v, float) else f"{k}={v}"
-                     for k, v in found.items()) or "no numbers stated"
-    return Step(INTENT, f"read {read}", detail,
-                basis="units in the request; nothing defaulted",
-                asks=[])
+    read = (
+        ", ".join(
+            f"{k}={v:g}" if isinstance(v, float) else f"{k}={v}"
+            for k, v in found.items()
+        )
+        or "no numbers stated"
+    )
+    return Step(
+        INTENT,
+        f"read {read}",
+        detail,
+        basis="units in the request; nothing defaulted",
+        asks=[],
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -349,10 +391,15 @@ def read_intent(request: str) -> Step:
 #: are the figures a later stage genuinely divides by.
 _NEEDED: dict[str, tuple[tuple[str, str], ...]] = {
     F.SUPPORTS_ROTATION: (
-        ("radial_load_N", "What radial load does the shaft carry? "
-                          "The bearing is sized from it."),
-        ("speed_rpm", "How fast does it turn? Life is in revolutions, so hours "
-                      "cannot be computed without it."),
+        (
+            "radial_load_N",
+            "What radial load does the shaft carry? " "The bearing is sized from it.",
+        ),
+        (
+            "speed_rpm",
+            "How fast does it turn? Life is in revolutions, so hours "
+            "cannot be computed without it.",
+        ),
     ),
     F.SEALS_FLUID: (
         ("cord_dia_mm", "What cord diameter, or what bore is being sealed?"),
@@ -363,14 +410,23 @@ _NEEDED: dict[str, tuple[tuple[str, str], ...]] = {
 #: Assumed loudly, never silently — each appears in the chain's warnings.
 _ASSUMED: dict[str, tuple[tuple[str, float, str], ...]] = {
     F.SUPPORTS_ROTATION: (
-        ("life_hours", 10000.0,
-         "10 000 h assumed — ISO 281 rating life for general machinery; state "
-         "the required life if this duty is continuous"),
-        ("axial_load_N", 0.0,
-         "no thrust assumed; if the shaft is loaded along its axis the bearing "
-         "type may be wrong"),
-        ("misalignment_deg", 0.0,
-         "shaft assumed true; a deflecting shaft needs a self-aligning type"),
+        (
+            "life_hours",
+            10000.0,
+            "10 000 h assumed — ISO 281 rating life for general machinery; state "
+            "the required life if this duty is continuous",
+        ),
+        (
+            "axial_load_N",
+            0.0,
+            "no thrust assumed; if the shaft is loaded along its axis the bearing "
+            "type may be wrong",
+        ),
+        (
+            "misalignment_deg",
+            0.0,
+            "shaft assumed true; a deflecting shaft needs a self-aligning type",
+        ),
     ),
 }
 
@@ -379,12 +435,14 @@ def name_functions(intent: Step) -> Step:
     functions = intent.detail.get("functions") or []
     lines = [f"{fn} — {F.INTENT[fn]}" for fn in functions if fn in F.INTENT]
     primary = functions[0]
-    return Step(FUNCTIONS,
-                f"{primary}" + (f" (also: {', '.join(functions[1:])})"
-                                if len(functions) > 1 else ""),
-                {"primary": primary, "all": functions, "reads": lines},
-                basis="the function vocabulary, not a part category — the "
-                      "request is answered by what it must do")
+    return Step(
+        FUNCTIONS,
+        f"{primary}"
+        + (f" (also: {', '.join(functions[1:])})" if len(functions) > 1 else ""),
+        {"primary": primary, "all": functions, "reads": lines},
+        basis="the function vocabulary, not a part category — the "
+        "request is answered by what it must do",
+    )
 
 
 def state_requirements(intent: Step, functions: Step) -> Step:
@@ -400,13 +458,19 @@ def state_requirements(intent: Step, functions: Step) -> Step:
     primary = functions.detail["primary"]
     duty_kwargs = dict(intent.detail.get("duty") or {})
 
-    missing = [question for field_, question in _NEEDED.get(primary, ())
-               if duty_kwargs.get(field_) is None]
+    missing = [
+        question
+        for field_, question in _NEEDED.get(primary, ())
+        if duty_kwargs.get(field_) is None
+    ]
     if missing:
-        return Step(REQUIREMENTS,
-                    f"{primary} cannot be sized from what was stated",
-                    {"have": duty_kwargs}, asks=missing,
-                    basis="these are divided by, not decorative")
+        return Step(
+            REQUIREMENTS,
+            f"{primary} cannot be sized from what was stated",
+            {"have": duty_kwargs},
+            asks=missing,
+            basis="these are divided by, not decorative",
+        )
 
     assumptions = []
     for field_, value, why in _ASSUMED.get(primary, ()):
@@ -414,15 +478,25 @@ def state_requirements(intent: Step, functions: Step) -> Step:
             duty_kwargs[field_] = value
             assumptions.append(why)
 
-    duty = F.Duty(function=primary, **{
-        k: v for k, v in duty_kwargs.items()
-        if k in F.Duty.__dataclass_fields__ and k != "function"})
-    stated = ", ".join(f"{k}={v:g}" for k, v in sorted(duty_kwargs.items())
-                       if isinstance(v, (int, float)))
-    return Step(REQUIREMENTS, f"duty: {stated}",
-                {"duty": duty_kwargs, "assumptions": assumptions,
-                 "_duty": duty},
-                basis="stated figures, plus standing assumptions named above")
+    duty = F.Duty(
+        function=primary,
+        **{
+            k: v
+            for k, v in duty_kwargs.items()
+            if k in F.Duty.__dataclass_fields__ and k != "function"
+        },
+    )
+    stated = ", ".join(
+        f"{k}={v:g}"
+        for k, v in sorted(duty_kwargs.items())
+        if isinstance(v, (int, float))
+    )
+    return Step(
+        REQUIREMENTS,
+        f"duty: {stated}",
+        {"duty": duty_kwargs, "assumptions": assumptions, "_duty": duty},
+        basis="stated figures, plus standing assumptions named above",
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -441,6 +515,7 @@ def retrieve_knowledge(requirements: Step) -> Step:
     sources, counts = [], {}
     for family in candidates:
         from orion.knowledge.registry import rows_for_family
+
         counts[family] = len(rows_for_family(family))
         data = dataset_for_family(family) or {}
         src = data.get("source") or {}
@@ -452,16 +527,23 @@ def retrieve_knowledge(requirements: Step) -> Step:
                 sources.append(label)
     if not candidates:
         known = ", ".join(families()) or "nothing"
-        return Step(KNOWLEDGE, f"no ingested family performs {duty.function}",
-                    {"ingested": families()},
-                    asks=[f"Nothing in the catalogue performs "
-                          f"{duty.function}. Ingested families: {known}."])
+        return Step(
+            KNOWLEDGE,
+            f"no ingested family performs {duty.function}",
+            {"ingested": families()},
+            asks=[
+                f"Nothing in the catalogue performs "
+                f"{duty.function}. Ingested families: {known}."
+            ],
+        )
     total = sum(counts.values())
-    return Step(KNOWLEDGE,
-                f"{total} rows across {len(candidates)} "
-                f"famil{'y' if len(candidates) == 1 else 'ies'}",
-                {"families": counts, "sources": sources},
-                basis="; ".join(sources) or "ingested datasets")
+    return Step(
+        KNOWLEDGE,
+        f"{total} rows across {len(candidates)} "
+        f"famil{'y' if len(candidates) == 1 else 'ies'}",
+        {"families": counts, "sources": sources},
+        basis="; ".join(sources) or "ingested datasets",
+    )
 
 
 def name_calculators(requirements: Step) -> Step:
@@ -469,45 +551,91 @@ def name_calculators(requirements: Step) -> Step:
     duty: F.Duty = requirements.detail["_duty"]
     used = {
         F.SUPPORTS_ROTATION: [
-            ("bearing_life_l10", "ISO 281 basic rating life: "
-                                 "L10h = (C/P)^p x 10^6 / (60n)"),
-            ("type profile", "which bearing types take this combination of "
-                             "radial load, thrust and misalignment at all"),
-            ("ISO 286 seat fits", "the shaft and housing tolerance classes for "
-                                  "the load case"),
+            (
+                "bearing_life_l10",
+                "ISO 281 basic rating life: " "L10h = (C/P)^p x 10^6 / (60n)",
+            ),
+            (
+                "type profile",
+                "which bearing types take this combination of "
+                "radial load, thrust and misalignment at all",
+            ),
+            (
+                "ISO 286 seat fits",
+                "the shaft and housing tolerance classes for " "the load case",
+            ),
         ],
     }.get(duty.function, [])
     if not used:
-        return Step(CALCULATORS, "no calculator registered for "
-                                 f"{duty.function}; selection is by envelope "
-                                 f"and stated limits only", {})
-    return Step(CALCULATORS, "; ".join(name for name, _ in used),
-                {"calculators": [{"name": n, "does": d} for n, d in used]},
-                basis="deterministic — the model does not compute these")
+        return Step(
+            CALCULATORS,
+            "no calculator registered for "
+            f"{duty.function}; selection is by envelope "
+            f"and stated limits only",
+            {},
+        )
+    return Step(
+        CALCULATORS,
+        "; ".join(name for name, _ in used),
+        {"calculators": [{"name": n, "does": d} for n, d in used]},
+        basis="deterministic — the model does not compute these",
+    )
 
 
 # --------------------------------------------------------------------------- #
 # 6-7. selection and specification
 # --------------------------------------------------------------------------- #
+#: A duty needs at least one of these before anything can be chosen on merit.
+#: Geometry does not qualify: a stated bore says where a part must fit, not what
+#: it must survive, and a catalogue ordered by size will happily answer a
+#: question about size that nobody asked.
+_LOAD_FIELDS = ("radial_load_N", "axial_load_N", "torque_Nm", "pressure_bar")
+
+
 def select_component(requirements: Step) -> Step:
     """The part, chosen by the duty rather than proposed and then justified."""
     duty: F.Duty = requirements.detail["_duty"]
+
+    # An unconstrained search is not a selection. `F.search` with an empty duty
+    # matches the entire catalogue and returns its first row, so a request that
+    # stated no load at all came back with a 604 — the smallest deep-groove
+    # bearing — presented with the same confidence as a sized one. Nothing in
+    # the evidence would have shown it was arbitrary.
+    if not any(getattr(duty, f, None) for f in _LOAD_FIELDS):
+        return Step(
+            SELECTION,
+            "no load was stated, so no part can be chosen on merit",
+            {"duty": duty.__dict__},
+            basis="A catalogue search with no load matches every row and "
+            "returns the smallest. That is an ordering, not a selection.",
+            asks=[
+                "What load does this carry? Without a force or a torque there "
+                "is nothing to size the part against."
+            ],
+        )
+
     found = F.search(duty, limit=5)
     if not found:
         why = F.explain_empty(duty)
         # The question, not the whole explanation. The reasoning belongs in
         # `basis`, where `explain()` prints it intact rather than flattened into
         # an unreadable line.
-        ask = next((line.strip() for line in why.splitlines()
-                    if line.startswith("closest")),
-                   "Relax one of the stated requirements, or widen the "
-                   "catalogue.")
-        return Step(SELECTION, "nothing in the catalogue satisfies this duty",
-                    {"duty": duty.__dict__}, basis=why,
-                    asks=[f"No catalogued part takes this duty — {ask}"])
+        ask = next(
+            (line.strip() for line in why.splitlines() if line.startswith("closest")),
+            "Relax one of the stated requirements, or widen the " "catalogue.",
+        )
+        return Step(
+            SELECTION,
+            "nothing in the catalogue satisfies this duty",
+            {"duty": duty.__dict__},
+            basis=why,
+            asks=[f"No catalogued part takes this duty — {ask}"],
+        )
     best = found[0]
-    alternatives = [{"designation": c.designation, "family": c.family,
-                     "evidence": c.evidence} for c in found[1:]]
+    alternatives = [
+        {"designation": c.designation, "family": c.family, "evidence": c.evidence}
+        for c in found[1:]
+    ]
 
     # What choosing this type costs the rest of the design. A taper roller sized
     # purely on life is a correct bearing and an incomplete decision: it takes
@@ -524,9 +652,11 @@ def select_component(requirements: Step) -> Step:
         rows = {r.get("designation"): r for r in rows_for_family(best.family)}
         bore = (rows.get(best.designation) or {}).get("d")
         if bore is not None:
-            notes.append(f"shaft diameter was not stated, so it is an output "
-                         f"rather than a constraint: this selection sets it to "
-                         f"{bore:g} mm")
+            notes.append(
+                f"shaft diameter was not stated, so it is an output "
+                f"rather than a constraint: this selection sets it to "
+                f"{bore:g} mm"
+            )
 
     # What this part can still fail by, assessed at this duty. Selection gates
     # on rating life, so fatigue passes by construction — the value is in the
@@ -539,15 +669,25 @@ def select_component(requirements: Step) -> Step:
     rows = {r.get("designation"): r for r in rows_for_family(best.family)}
     row = rows.get(best.designation) or {}
     risks = FM.assess(best.family, row, duty) if row else []
-    notes += [f"{a.mode}: {a.finding}" for a in risks
-              if a.verdict in (FM.AT_RISK, FM.MARGINAL)]
+    notes += [
+        f"{a.mode}: {a.finding}"
+        for a in risks
+        if a.verdict in (FM.AT_RISK, FM.MARGINAL)
+    ]
 
-    return Step(SELECTION, f"{best.designation} ({best.family})",
-                {"chosen": best.to_dict(), "alternatives": alternatives,
-                 "notes": notes, "risks": [a.to_dict() for a in risks],
-                 "_candidate": best, "_risks": risks},
-                basis="; ".join(f"{k}={v}" for k, v in best.evidence.items()
-                                if k != "basis"))
+    return Step(
+        SELECTION,
+        f"{best.designation} ({best.family})",
+        {
+            "chosen": best.to_dict(),
+            "alternatives": alternatives,
+            "notes": notes,
+            "risks": [a.to_dict() for a in risks],
+            "_candidate": best,
+            "_risks": risks,
+        },
+        basis="; ".join(f"{k}={v}" for k, v in best.evidence.items() if k != "basis"),
+    )
 
 
 def write_specification(selection: Step) -> Step:
@@ -563,23 +703,36 @@ def write_specification(selection: Step) -> Step:
     candidate: F.Candidate = selection.detail["_candidate"]
     skills = registry.for_function(candidate.function)
     if not skills:
-        return Step(SPECIFICATION,
-                    f"no skill builds geometry for {candidate.function}",
-                    {"selected": candidate.designation},
-                    asks=[f"{candidate.designation} satisfies the duty, but no "
-                          f"skill turns {candidate.function} into geometry yet."])
+        return Step(
+            SPECIFICATION,
+            f"no skill builds geometry for {candidate.function}",
+            {"selected": candidate.designation},
+            asks=[
+                f"{candidate.designation} satisfies the duty, but no "
+                f"skill turns {candidate.function} into geometry yet."
+            ],
+        )
     skill = skills[0]
     try:
         result = skill.run(candidate.designation)
     except SkillError as exc:
-        return Step(SPECIFICATION, f"{skill.name} refused: {exc}",
-                    {"selected": candidate.designation},
-                    asks=[str(exc)])
-    return Step(SPECIFICATION, f"{result.part_class} from {skill.name}",
-                {"part_class": result.part_class,
-                 "variables": result.variables,
-                 "derived": result.derived, "_result": result},
-                basis="; ".join(result.citations))
+        return Step(
+            SPECIFICATION,
+            f"{skill.name} refused: {exc}",
+            {"selected": candidate.designation},
+            asks=[str(exc)],
+        )
+    return Step(
+        SPECIFICATION,
+        f"{result.part_class} from {skill.name}",
+        {
+            "part_class": result.part_class,
+            "variables": result.variables,
+            "derived": result.derived,
+            "_result": result,
+        },
+        basis="; ".join(result.citations),
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -638,7 +791,6 @@ def design_prompt(chain: Chain) -> str:
     feeding it back to the model invites it to re-litigate settled arithmetic.
     """
     if not chain.complete:
-        raise ValueError(f"chain stopped at {chain.stopped_at}; "
-                         f"nothing to build")
+        raise ValueError(f"chain stopped at {chain.stopped_at}; " f"nothing to build")
     dims = ", ".join(f"{k}={v:g}" for k, v in sorted(chain.variables.items()))
     return f"Build a {chain.part_class} with {dims}."

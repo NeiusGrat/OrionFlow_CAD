@@ -373,7 +373,7 @@ class StudioAgent:
         from orion import calc, repair_loop
         from orion.pack_sft import SYSTEM_PROMPT
         from orion_agent.harness.llm.base import LLMMessage
-        from app.services import blueprint_service, design_narrative
+        from app.services import blueprint_service, design_narrative, design_router
 
         def step(
             sid: str,
@@ -394,13 +394,70 @@ class StudioAgent:
                     },
                 )
 
+        # ---- deterministic stages, before the model is asked anything ------ #
+        # A request that states a duty is not a description of a part, it is a
+        # question about one, and the answer is arithmetic over catalogues and
+        # standards rather than anything a model should be sampling. The router
+        # decides which it is from what the extractor actually read; see
+        # app/services/design_router.py for why a load is the only signal that
+        # diverts.
+        route = design_router.resolve(prompt)
+        model_prompt = prompt
+        chain = route.chain
+
+        if route.to_chain:
+            step("understand", "Understanding the request", "active", route.why)
+            if chain is not None and not chain.complete:
+                # The chain stopped because the request did not say enough. Its
+                # questions are the useful answer — inventing the missing number
+                # is exactly the failure the chain exists to prevent — so the
+                # turn ends here rather than handing the model a gap to fill.
+                step(
+                    "understand",
+                    "Understanding the request",
+                    "fail",
+                    f"stopped at {chain.stopped_at}",
+                    chain.asks(),
+                )
+                return {
+                    "success": False,
+                    "model": "",
+                    "error": "; ".join(chain.asks())
+                    or f"the request could not be specified "
+                    f"(stopped at {chain.stopped_at})",
+                    "needs": chain.asks(),
+                    "reasoning": chain.to_dict(),
+                    "verification": {},
+                    "files": {},
+                }
+            if chain is not None:
+                # Every dimension now comes from a standard or a calculation, and
+                # the model's only remaining job is to render it as a coherent
+                # Blueprint. `design_prompt` states those dimensions in the
+                # register the model was fine-tuned on and withholds the
+                # reasoning — the derivation is for the user, and feeding it back
+                # invites the model to re-litigate settled arithmetic.
+                from orion.reasoning import design_prompt
+
+                model_prompt = design_prompt(chain)
+                step(
+                    "specify",
+                    "Specifying the design",
+                    "done",
+                    f"{len(chain.variables)} dimensions derived",
+                    [f"{k} = {v:g}" for k, v in sorted(chain.variables.items())],
+                )
+
         # Turn 1 is the ONLY turn that must match training byte for byte, so it
         # is built from these two messages and nothing else, every time. Repair
         # turns are rebuilt from this same pair plus the failed attempt and its
         # diagnosis — never by appending to a growing history, which would put a
         # second user turn in front of the model on attempt 3 and stop looking
         # like the repair records at all.
-        base_messages = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(prompt)]
+        base_messages = [
+            LLMMessage.system(SYSTEM_PROMPT),
+            LLMMessage.user(model_prompt),
+        ]
         messages = list(base_messages)
 
         # A failed attempt is not resampled blind. The verifier already knows
@@ -618,6 +675,28 @@ class StudioAgent:
         )
         if on_event:
             on_event("verification", report)
+
+        # How the request was routed, and — when the chain ran — the derivation
+        # behind every dimension. This is the half of the answer the model did
+        # not produce, and the half an engineer can check: each number traceable
+        # to the stage, standard or calculation that decided it.
+        bundle["route"] = route.to_dict()
+        if chain is not None:
+            bundle["reasoning"] = chain.to_dict()
+            bundle["citations"] = list(chain.citations)
+            if chain.warnings:
+                bundle.setdefault("warnings", []).extend(chain.warnings)
+            if on_event:
+                on_event(
+                    "reasoning",
+                    {
+                        "explain": chain.explain(),
+                        "citations": list(chain.citations),
+                        "warnings": list(chain.warnings),
+                        "part_class": chain.part_class,
+                        "variables": dict(chain.variables),
+                    },
+                )
 
         # The readable account of the design. Derived, never authored — see
         # design_narrative for why a second model pass is the wrong tool.
