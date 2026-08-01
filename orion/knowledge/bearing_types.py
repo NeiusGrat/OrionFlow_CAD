@@ -44,15 +44,22 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("511", THRUST_BALL), ("512", THRUST_BALL), ("513", THRUST_BALL),
     ("514", THRUST_BALL), ("522", THRUST_BALL), ("532", THRUST_BALL),
     ("542", THRUST_BALL),
+    # Thrust ball with a sphered housing washer. Confirmed by the ratings
+    # rather than by the prefix alone: 53307 rates C 49.4 kN against C0
+    # 96.5 kN, and only a bearing built to be loaded standing still along its
+    # axis is stronger at rest than turning.
+    ("533", THRUST_BALL), ("534", THRUST_BALL),
     ("292", THRUST_ROLLER), ("293", THRUST_ROLLER), ("294", THRUST_ROLLER),
     ("213", SPHERICAL_ROLLER), ("222", SPHERICAL_ROLLER),
     ("223", SPHERICAL_ROLLER), ("230", SPHERICAL_ROLLER),
     ("231", SPHERICAL_ROLLER), ("232", SPHERICAL_ROLLER),
     ("240", SPHERICAL_ROLLER), ("241", SPHERICAL_ROLLER),
+    ("161", DEEP_GROOVE_BALL),
     ("60", DEEP_GROOVE_BALL), ("62", DEEP_GROOVE_BALL),
     ("63", DEEP_GROOVE_BALL), ("64", DEEP_GROOVE_BALL),
     ("72", ANGULAR_CONTACT_BALL), ("73", ANGULAR_CONTACT_BALL),
     ("70", ANGULAR_CONTACT_BALL), ("71", ANGULAR_CONTACT_BALL),
+    ("74", ANGULAR_CONTACT_BALL),
     ("12", SELF_ALIGNING_BALL), ("13", SELF_ALIGNING_BALL),
     ("22", SPHERICAL_ROLLER), ("23", SPHERICAL_ROLLER),
     ("10", SELF_ALIGNING_BALL),
@@ -194,6 +201,13 @@ class TypeChoice:
     reason: str
     profile: Optional[TypeProfile] = None
     concerns: list[str] = field(default_factory=list)
+    #: Every requirement this type failed, not just the first. A type excluded
+    #: by one requirement is a negotiation; one excluded by three is not.
+    failures: list[str] = field(default_factory=list)
+    #: How far short, as a ratio of what was asked to what the type takes. 1.0
+    #: is exactly at the limit, 2.0 is twice past it. The smallest number among
+    #: the single-failure types is the requirement worth questioning.
+    shortfall: float = 0.0
 
 
 def choose_types(radial_N: float = 0.0, axial_N: float = 0.0,
@@ -208,32 +222,44 @@ def choose_types(radial_N: float = 0.0, axial_N: float = 0.0,
     out: list[TypeChoice] = []
     for kind, spec in PROFILES.items():
         concerns: list[str] = []
+        failures: list[str] = []
+        shortfalls: list[float] = []
+
+        # Every requirement is tested, not just up to the first failure. A type
+        # excluded by one requirement is a negotiation worth having; one
+        # excluded by three is not, and stopping at the first cannot tell them
+        # apart.
         if radial_N > 0 and not spec.carries_radial:
-            out.append(TypeChoice(kind, False,
-                                  f"carries no radial load, and the duty has "
-                                  f"{radial_N:g} N of it", spec))
-            continue
+            failures.append(f"carries no radial load, and the duty has "
+                            f"{radial_N:g} N of it")
+            shortfalls.append(float("inf"))
         if axial_N > 0:
             if spec.axial_ratio <= 0.0:
-                out.append(TypeChoice(kind, False,
-                                      f"carries no thrust, and the duty has "
-                                      f"{axial_N:g} N of it", spec))
-                continue
-            if radial_N > 0 and axial_N > radial_N * spec.axial_ratio:
-                out.append(TypeChoice(
-                    kind, False,
+                failures.append(f"carries no thrust, and the duty has "
+                                f"{axial_N:g} N of it")
+                shortfalls.append(float("inf"))
+            elif radial_N > 0 and axial_N > radial_N * spec.axial_ratio:
+                allowed = radial_N * spec.axial_ratio
+                failures.append(
                     f"thrust {axial_N:g} N exceeds about {spec.axial_ratio:g} "
                     f"of the radial {radial_N:g} N, which is past what this "
-                    f"type takes alongside a radial load", spec))
-                continue
-            if not spec.axial_both_directions:
+                    f"type takes alongside a radial load")
+                shortfalls.append(axial_N / allowed if allowed else
+                                  float("inf"))
+            elif not spec.axial_both_directions:
                 concerns.append("takes thrust in one direction only — it needs "
                                 "an opposed bearing")
         if misalignment_deg > spec.misalignment_deg:
-            out.append(TypeChoice(
-                kind, False,
+            failures.append(
                 f"tolerates {spec.misalignment_deg:g} deg of misalignment and "
-                f"the duty has {misalignment_deg:g}", spec))
+                f"the duty has {misalignment_deg:g}")
+            shortfalls.append(misalignment_deg / spec.misalignment_deg
+                              if spec.misalignment_deg else float("inf"))
+
+        if failures:
+            out.append(TypeChoice(kind, False, failures[0], spec,
+                                  failures=failures,
+                                  shortfall=max(shortfalls)))
             continue
         if spec.caution:
             concerns.append(spec.caution)

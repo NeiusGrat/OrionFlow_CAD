@@ -162,10 +162,18 @@ def test_a_thrust_bearing_is_never_offered_for_a_radial_load():
     assert verdicts[THRUST_BALL].suitable is False
     assert "no radial" in verdicts[THRUST_BALL].reason
 
+    # Asserting "not a thrust bearing" is too weak: an unrecognised prefix
+    # reports None and slides past it. 53307 did exactly that — a thrust
+    # bearing offered as the best answer to a 3 kN radial duty. Every candidate
+    # must be a KNOWN type that carries radial load.
+    from orion.knowledge.bearing_types import profile
+
     duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
                   speed_rpm=1500, life_hours=10000)
     for candidate in F.search(duty, limit=20):
-        assert candidate.evidence["bearing_type"] != THRUST_BALL
+        kind = candidate.evidence["bearing_type"]
+        assert kind is not None, f"{candidate.designation} was never classified"
+        assert profile(kind).carries_radial
 
 
 def test_misalignment_rules_out_the_rigid_types():

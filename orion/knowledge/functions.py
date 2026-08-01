@@ -229,7 +229,18 @@ def explain_empty(duty: Duty) -> str:
     allowed = [v for v in verdicts if v.suitable]
     if not allowed:
         lines = ["no bearing TYPE takes this combination of loads:"]
-        lines += [f"  {v.kind}: {v.reason}" for v in verdicts[:5]]
+        lines += [f"  {v.kind}: {v.reason}" for v in verdicts]
+        # The type that missed by the least, and only on one count, is the one
+        # worth taking back to whoever set the requirement. Listing the first
+        # five by preference buries it: here the taper roller takes the loads
+        # comfortably and fails only on 0.1 deg against 0.05, which is a
+        # question about the shaft rather than about the bearing.
+        near = sorted((v for v in verdicts if len(v.failures) == 1),
+                      key=lambda v: v.shortfall)
+        if near and near[0].shortfall < float("inf"):
+            closest = near[0]
+            lines.append(f"closest is {closest.kind}, excluded only because it "
+                         f"{closest.failures[0]}")
         lines.append("Relax the requirement that excludes every type — "
                      "usually the misalignment or the thrust share.")
         return "\n".join(lines)
