@@ -61,6 +61,19 @@ export async function apiGoogleLogin(credential: string): Promise<TokenResponse>
   return res.json();
 }
 
+/** Trade a refresh token for a new pair. The backend rotates both, so the
+ *  caller must persist what comes back — reusing the old refresh token after
+ *  this succeeds will fail. */
+export async function apiRefresh(refreshToken: string): Promise<TokenResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!res.ok) throw new Error(await errorDetail(res));
+  return res.json();
+}
+
 export async function apiMe(accessToken: string): Promise<UserResponse> {
   const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },

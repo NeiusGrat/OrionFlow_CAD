@@ -123,6 +123,93 @@ part as if it were fine.
 - Be brief. Two or three short paragraphs unless asked for more."""
 
 
+#: What the assistant is being asked to look at.
+#:
+#: A lens is appended to the *conversation* system prompt only. The design role
+#: is left exactly as the fine-tune was trained and graded — see the module
+#: docstring — so switching to sheet-metal review changes what gets discussed,
+#: never how geometry is authored.
+#:
+#: Each brief names the specific failures that process actually has. "Consider
+#: manufacturability" produces a paragraph of generalities; "say which face has
+#: no tool access" produces an answer an engineer can act on.
+LENS_BRIEFS = {
+    "modeling": "",
+    "dfm": """
+Review this part for manufacturability. Name the process you are assuming and \
+why it suits the geometry, then work through the features that would give that \
+process trouble. If a different process would be markedly cheaper or more \
+robust at this geometry, say so and say at roughly what quantity the crossover \
+sits.""",
+    "dfm_3d_printing": """
+Review this part for fused-deposition and resin printing. Work through: build \
+orientation and what it costs in surface finish; overhangs past roughly 45° \
+and which faces they land on; where supports would have to touch a functional \
+surface; minimum wall and pin thickness against a typical 0.4 mm nozzle; holes \
+printed vertically coming out undersize and needing reaming; and layer \
+adhesion where the load path crosses the layer lines. Anisotropy is the part \
+engineers most often miss — if a feature is loaded across the layers, lead \
+with that.""",
+    "dfm_sheet_metal": """
+Review this part as sheet metal. Work through: whether the geometry can be \
+made from one flat blank at a constant thickness, and say plainly if it cannot; \
+bend radii against material thickness (a rule of thumb of one thickness for \
+soft aluminium, more for tempered); K-factor and how the flat pattern length \
+follows from it; relief cuts at the ends of bends to stop tearing; hole and \
+feature distance from a bend line, roughly 2.5× thickness plus the radius; and \
+where a forming tool or a weld would be needed instead of a bend.""",
+    "dfm_machining": """
+Review this part for 3-axis milling and turning. Work through: how many setups \
+it needs and what has to be re-fixtured between them; internal corner radii, \
+which cannot be smaller than the cutter — call out any modelled sharp internal \
+corner; pocket depth-to-width ratio against tool deflection and chatter; tool \
+access to every surface you are asked to hold a tolerance on; thin walls that \
+will chatter or spring; and drilled holes that are not a stock drill size. Say \
+which dimensions are cheap to hold and which ones drive the price.""",
+}
+
+
+#: Refining an idea before there is anything to refine.
+#:
+#: The ordinary conversation prompt assumes a part exists and tells the model
+#: to ground every claim in its report. With nothing open that instruction has
+#: nothing to bind to, and the model either invents a part to describe or
+#: refuses to engage. This replaces it for that case: the job is to turn a
+#: sentence into a set of numbers somebody could actually build.
+SCOPING_SYSTEM = """You are OrionFlow, a mechanical design engineer helping \
+another engineer pin down a part before any geometry exists.
+
+Nothing has been modelled yet. Your job is to get from a description to a \
+specification: the dimensions that matter, the ones that follow from them, the \
+material, the loads, and how it is going to be made and fixtured.
+
+How to work:
+- Lead with the specification you would commit to, as concrete numbers with the \
+reasoning that produced them. A proposal an engineer can correct beats a list \
+of questions.
+- Where a number genuinely depends on something only they know — a mating part, \
+a load, a bolt size — state the assumption you are making and flag it, rather \
+than stopping.
+- Name standards where a standard settles it: bearing series, thread pitch, \
+sheet gauge, fits and tolerances.
+- Ask at most one question, and only when the answer would change the geometry.
+- Be brief. This is a working conversation, not a report.
+
+When the specification is firm enough to build, say so plainly in one short \
+sentence at the end."""
+
+
+def lens_system(lens: Optional[str], has_part: bool = True) -> str:
+    """The conversation system prompt for a lens.
+
+    ``has_part`` picks the base: an open part is discussed against its own
+    verification report, an empty studio is scoped from nothing.
+    """
+    base = CONVERSATION_SYSTEM if has_part else SCOPING_SYSTEM
+    brief = LENS_BRIEFS.get((lens or "modeling").strip().lower(), "")
+    return base + ("\n" + brief.strip() if brief.strip() else "")
+
+
 #: How many tool rounds a conversation turn may take before it must answer.
 #: Three is enough to look something up, follow one cross-reference, and reply;
 #: more usually means the model is circling rather than converging.
@@ -710,12 +797,13 @@ class StudioAgent:
         prompt: str,
         part: Optional[dict] = None,
         history: Optional[list[dict]] = None,
+        lens: Optional[str] = None,
         on_event: EventSink = None,
     ) -> dict:
         """Answer a question about the current part, grounded in its report."""
         from orion_agent.harness.llm.base import LLMMessage
 
-        messages = [LLMMessage.system(CONVERSATION_SYSTEM)]
+        messages = [LLMMessage.system(lens_system(lens, has_part=bool(part)))]
 
         if part:
             messages.append(LLMMessage.user(_part_context(part)))

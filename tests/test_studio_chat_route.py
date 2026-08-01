@@ -167,8 +167,9 @@ def test_an_over_quota_user_can_still_ask_about_the_open_part(client):
 
     explained: dict = {}
 
-    def _explain(prompt, part=None, history=None, on_event=None):
+    def _explain(prompt, part=None, history=None, lens=None, on_event=None):
         explained["prompt"] = prompt
+        explained["lens"] = lens
         return {
             "success": True,
             "answer": "because it is 10 mm thick",

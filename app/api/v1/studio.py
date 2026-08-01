@@ -55,6 +55,9 @@ class StudioChatRequest(BaseModel):
     history: list[dict[str, Any]] = Field(default_factory=list)
     #: Force a route instead of inferring one: "design" | "explain".
     intent: Optional[str] = None
+    #: What the assistant is being asked to look at — geometry, or one of the
+    #: manufacturing lenses. Conversation only; see ``LENS_BRIEFS``.
+    lens: Optional[str] = None
 
 
 @router.get("/health")
@@ -184,6 +187,7 @@ def studio_chat(
                     request.message,
                     part=request.part,
                     history=request.history,
+                    lens=request.lens,
                     on_event=on_event,
                 )
                 events.put(
@@ -283,3 +287,119 @@ def studio_chat(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class AddFeatureRequest(BaseModel):
+    """One operation appended by hand from the workbench."""
+
+    type: str = Field(..., max_length=40)
+    label: str = Field("", max_length=120)
+    #: Dimensions this feature introduces, declared so ``parameters`` can name
+    #: them. Keeping them named is what leaves a hand edit tunable afterwards.
+    variables: dict[str, float] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    #: Profile for the operations that consume one (Pad, Pocket, Revolution,
+    #: Groove): ``{"builder": "rect", "plane": "XY", "args": {...}}``.
+    sketch: Optional[dict[str, Any]] = None
+
+
+class RebuildRequest(BaseModel):
+    """Rebuild an existing Blueprint, optionally edited by hand."""
+
+    blueprint: dict[str, Any]
+    #: New values for variables the Blueprint already declares.
+    variables: dict[str, float] = Field(default_factory=dict)
+    add_feature: Optional[AddFeatureRequest] = None
+
+
+@router.post("/rebuild")
+def studio_rebuild(
+    request: RebuildRequest,
+    background: BackgroundTasks,
+    gate: StudioGate = Depends(studio_gate),
+):
+    """Rebuild a part from its Blueprint — no model call, no new design.
+
+    This is the deterministic half of the studio: the parameter sliders and the
+    workbench tools both land here. Nothing is generated, so nothing can drift;
+    the same Blueprint and the same variables always produce the same solid.
+
+    It is still metered. A rebuild is a FreeCAD container either way, and the
+    kernel is the expensive part of a build, not the LLM.
+    """
+    from app.services import blueprint_edit, blueprint_service
+
+    if not gate.known:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "sign in to rebuild this part",
+                "reason": "authentication_required",
+            },
+        )
+    if not gate.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": gate.message or "monthly generation limit reached",
+                "reason": gate.reason,
+                "used": gate.used,
+                "limit": gate.limit,
+            },
+        )
+
+    original = request.blueprint
+    if not original.get("template"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "this part has no Blueprint to rebuild from"},
+        )
+
+    try:
+        edited = blueprint_edit.retune(original, request.variables)
+        if request.add_feature:
+            edited = blueprint_edit.append_feature(
+                edited,
+                request.add_feature.type,
+                parameters=request.add_feature.parameters,
+                variables=request.add_feature.variables,
+                label=request.add_feature.label,
+                sketch=request.add_feature.sketch,
+            )
+    except blueprint_edit.EditError as exc:
+        # The edit never reached the kernel, so this is a 400 and not a failed
+        # build — the distinction matters to the panel showing it.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail={"error": str(exc)}
+        ) from exc
+
+    bundle = blueprint_service.build_from_payload(edited)
+    contract_broken = blueprint_edit.template_changed(original, edited)
+
+    # Recorded on the same terms as a generated turn: geometry is what costs,
+    # so a rebuild that produced a solid is charged and one that failed is not.
+    background.add_task(
+        _record_when_finished,
+        {"bundle": bundle},
+        f"rebuild: {bundle.get('part_class') or 'part'}",
+        gate.user_id,
+    )
+
+    return {
+        "success": bool(bundle.get("success")),
+        "part_class": bundle.get("part_class", ""),
+        "variables": bundle.get("variables", {}),
+        "blueprint": bundle.get("blueprint"),
+        "feature_tree": _feature_tree_for(bundle),
+        "files": bundle.get("files", {}),
+        "stats": bundle.get("stats"),
+        # A hand-added feature puts the geometry outside what the model's
+        # assertions describe. The verdict still travels, because the checks
+        # that ran are worth seeing, but `contract_broken` tells the UI to stop
+        # presenting it as a grade of *this* part.
+        "verification": bundle.get("verification") or {},
+        "contract_broken": contract_broken,
+        "generation_time_ms": bundle.get("generation_time_ms", 0),
+        "request_id": bundle.get("request_id", ""),
+        "error": bundle.get("error"),
+    }

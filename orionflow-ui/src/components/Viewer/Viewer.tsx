@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ViewCube from "./ViewCube";
 import PreviewMesh from "./PreviewMesh";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
@@ -10,9 +10,22 @@ import {
 } from "@react-three/drei";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { useDesignStore } from "../../store/designStore";
+import { useUIStore } from "../../store/uiStore";
 import { useManifoldPreview } from "../../hooks/useManifoldPreview";
 import * as THREE from "three";
 import { Box as BoxIcon } from "lucide-react";
+
+/** Read a design token at call time.
+ *
+ *  The grid and the overlay are painted by three.js, which cannot resolve a
+ *  CSS custom property — so the values are pulled from the document and
+ *  recomputed when the theme changes. Hard-coding them is what would leave the
+ *  light theme with a dark grid drawn on pale vellum. */
+function token(name: string, fallback: string): string {
+    if (typeof window === "undefined") return fallback;
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+}
 
 /** Machined-aluminum PBR set — the "real CAD" read. */
 const MAT_BASE = new THREE.MeshStandardMaterial({
@@ -273,6 +286,17 @@ function StudioEnvironment() {
 export default function Viewer({ url }: { url: string }) {
     const isGenerating = useDesignStore((state) => state.isGenerating);
     const current = useDesignStore((state) => state.current);
+    const theme = useUIStore((state) => state.theme);
+
+    // Recomputed on a theme change; the dependency is the whole point.
+    const palette = useMemo(
+        () => ({
+            cell: token("--st-grid-cell", "#2c3037"),
+            section: token("--st-grid-section", "#3a3f47"),
+            scrim: theme === "light" ? "rgba(242,236,224,0.78)" : "rgba(19,20,23,0.72)",
+        }),
+        [theme],
+    );
 
     const featureGraph = current?.featureGraph;
     const { mesh: previewMesh, isLoading: isPreviewLoading } = useManifoldPreview(featureGraph);
@@ -298,7 +322,7 @@ export default function Viewer({ url }: { url: string }) {
                         position: "absolute",
                         zIndex: 100,
                         inset: 0,
-                        background: "rgba(19, 20, 23, 0.72)",
+                        background: palette.scrim,
                         backdropFilter: "blur(3px)",
                         display: "flex",
                         flexDirection: "column",
@@ -361,8 +385,8 @@ export default function Viewer({ url }: { url: string }) {
                             sectionSize={25}
                             cellThickness={0.6}
                             sectionThickness={1.1}
-                            cellColor="#2c3037"
-                            sectionColor="#3a3f47"
+                            cellColor={palette.cell}
+                            sectionColor={palette.section}
                             fadeDistance={extent * 10}
                             fadeStrength={1.4}
                             followCamera={false}

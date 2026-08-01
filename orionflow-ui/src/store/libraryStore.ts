@@ -7,25 +7,70 @@ import {
     fetchFeatureTree,
     type SavedDesign,
 } from '../services/designsApi';
-import { fullUrl } from '../services/studioApi';
-import { useDesignStore } from './designStore';
-import { useStudioStore } from './studioStore';
+import { fullUrl } from '../services/http';
+import { useStudioStore, type StudioMessage } from './studioStore';
 import { useOFLStore } from './oflStore';
 
-/** A saved part carries its Blueprint plus the report it earned, so reopening
- *  it restores the evidence and not just the mesh. */
+/** A saved part carries its Blueprint, the report it earned, and the
+ *  conversation that produced it — so reopening a project restores the
+ *  reasoning and not just the mesh.
+ *
+ *  The transcript is trimmed on the way in: `thinking` is the model's raw
+ *  working notes and `steps` are live progress rows, neither of which means
+ *  anything once the turn is over, and both of which are large. */
 interface StoredPayload {
     blueprint?: Record<string, unknown> | null;
     variables?: Record<string, number>;
     part_class?: string;
     stats?: Record<string, unknown> | null;
     verification?: Record<string, unknown> | null;
+    chat?: Partial<StudioMessage>[];
+}
+
+/** Enough of a turn to read it back. Capped so a long session cannot grow the
+ *  saved row without bound. */
+const CHAT_KEEP = 40;
+
+function packChat(messages: StudioMessage[]): Partial<StudioMessage>[] {
+    return messages.slice(-CHAT_KEEP).map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        narrative: m.narrative,
+        model: m.model,
+        error: m.error,
+        timestamp: m.timestamp,
+        mode: m.mode,
+        lens: m.lens,
+    }));
+}
+
+function unpackChat(stored: Partial<StudioMessage>[] | undefined): StudioMessage[] {
+    if (!Array.isArray(stored)) return [];
+    return stored.map((m) => ({
+        id: m.id || crypto.randomUUID(),
+        role: m.role === 'user' ? 'user' : 'assistant',
+        content: m.content ?? '',
+        steps: [],
+        narrative: m.narrative ?? null,
+        thinking: '',
+        model: m.model ?? '',
+        phase: null,
+        streaming: false,
+        design: null,
+        error: m.error ?? null,
+        timestamp: m.timestamp ?? Date.now(),
+        mode: m.mode ?? 'build',
+        lens: m.lens ?? 'modeling',
+    }));
 }
 
 interface LibraryState {
     designs: SavedDesign[];
     loading: boolean;
     saving: boolean;
+    /** Set when the last save succeeded, so the button can say so briefly. */
+    savedAt: number | null;
     error: string | null;
     /** id of the saved design the studio is currently working on, if any */
     activeId: string | null;
@@ -35,6 +80,8 @@ interface LibraryState {
     rename: (id: string, name: string) => Promise<void>;
     remove: (id: string) => Promise<void>;
     open: (id: string) => void;
+    /** Forget which project is open, so the next save creates a new one. */
+    detach: () => void;
     clearError: () => void;
 }
 
@@ -49,10 +96,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     designs: [],
     loading: false,
     saving: false,
+    savedAt: null,
     error: null,
     activeId: null,
 
     clearError: () => set({ error: null }),
+    detach: () => set({ activeId: null }),
 
     hydrate: async () => {
         set({ loading: true, error: null });
@@ -61,7 +110,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             set({ designs: res.items, loading: false });
         } catch (e: any) {
             // A library that will not load must not block designing.
-            set({ loading: false, error: e?.message ?? 'could not load your designs' });
+            set({ loading: false, error: e?.message ?? 'Loading your projects failed' });
         }
     },
 
@@ -80,6 +129,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             part_class: part.partClass,
             stats: part.stats as unknown as Record<string, unknown>,
             verification: part.verification as unknown as Record<string, unknown>,
+            chat: packChat(studio.messages),
         };
 
         try {
@@ -87,10 +137,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             if (activeId) {
                 const updated = await updateDesign(activeId, {
                     ...(name ? { name } : {}),
-                    feature_graph: payload as Record<string, unknown>,
+                    feature_graph: payload as unknown as Record<string, unknown>,
                 });
                 set((s) => ({
                     saving: false,
+                    savedAt: Date.now(),
                     designs: s.designs.map((d) => (d.id === updated.id ? updated : d)),
                 }));
                 return updated;
@@ -98,8 +149,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
             const created = await createDesign({
                 name: name || nameFrom(studio.partPrompt, part.partClass),
-                prompt: studio.partPrompt || part.partClass || 'Untitled part',
-                feature_graph: payload as Record<string, unknown>,
+                // The API requires at least three characters, and a part class
+                // alone can be shorter than that — which used to come back as a
+                // validation error with no readable reason attached.
+                prompt:
+                    (studio.partPrompt || part.partClass || 'Untitled part').padEnd(3, ' '),
+                feature_graph: payload as unknown as Record<string, unknown>,
                 glb_path: part.files.glb,
                 step_path: part.files.step,
                 stl_path: part.files.stl,
@@ -107,12 +162,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             });
             set((s) => ({
                 saving: false,
+                savedAt: Date.now(),
                 designs: [created, ...s.designs],
                 activeId: created.id,
             }));
             return created;
         } catch (e: any) {
-            set({ saving: false, error: e?.message ?? 'could not save the design' });
+            set({ saving: false, error: e?.message ?? 'Saving the project failed' });
             return null;
         }
     },
@@ -128,7 +184,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         try {
             await updateDesign(id, { name: trimmed });
         } catch (e: any) {
-            set({ designs: previous, error: e?.message ?? 'rename failed' });
+            set({ designs: previous, error: e?.message ?? 'Renaming failed' });
         }
     },
 
@@ -141,7 +197,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         try {
             await deleteDesign(id);
         } catch (e: any) {
-            set({ designs: previous, error: e?.message ?? 'delete failed' });
+            set({ designs: previous, error: e?.message ?? 'Deleting failed' });
         }
     },
 
@@ -151,56 +207,45 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
         const stored = (design.feature_graph ?? {}) as StoredPayload;
         const files = {
-            glb: fullUrl(design.glb_path),
-            step: fullUrl(design.step_path),
-            stl: fullUrl(design.stl_path),
+            glb: design.glb_path ?? undefined,
+            step: design.step_path ?? undefined,
+            stl: design.stl_path ?? undefined,
         };
 
         set({ activeId: id });
 
-        const ds = useDesignStore.getState();
-        const existing = ds.creations.find((c) => c.id === id);
-        if (existing) {
-            ds.setCurrent(id);
-        } else {
-            ds.addCreation({
-                id,
-                prompt: design.original_prompt,
-                parameters: (stored.variables ?? {}) as Record<string, number>,
-                material: { roughness: 0.5, metalness: 0.1 },
-                files,
-            });
-        }
+        const outcome = {
+            partClass: stored.part_class ?? '',
+            variables: stored.variables ?? {},
+            blueprint: stored.blueprint ?? null,
+            files,
+            stats: (stored.stats ?? null) as any,
+            verification: (stored.verification ?? null) as any,
+            generationTimeMs: 0,
+            requestId: '',
+            // Fetched below. Null until then, which the history panel renders
+            // as "no history on record" rather than as an error.
+            featureTree: null,
+        };
+
+        // Reopening starts a fresh undo stack: the states this part passed
+        // through in an earlier session were never saved, so offering to step
+        // back into them would be offering something that does not exist.
+        useStudioStore.setState({
+            messages: unpackChat(stored.chat),
+            history: [],
+            cursor: -1,
+            part: null,
+            partPrompt: '',
+        });
+        useStudioStore.getState().adopt(outcome, design.original_prompt, design.name);
 
         useOFLStore.setState({
-            glbUrl: files.glb,
-            stepUrl: files.step,
-            stlUrl: files.stl,
+            glbUrl: fullUrl(design.glb_path),
+            stepUrl: fullUrl(design.step_path),
+            stlUrl: fullUrl(design.stl_path),
             error: null,
             isGenerating: false,
-        });
-
-        // Restore the assistant's context so follow-up questions are about
-        // THIS part rather than whatever was open before.
-        useStudioStore.setState({
-            part: {
-                partClass: stored.part_class ?? '',
-                variables: stored.variables ?? {},
-                blueprint: stored.blueprint ?? null,
-                files: {
-                    glb: design.glb_path ?? undefined,
-                    step: design.step_path ?? undefined,
-                    stl: design.stl_path ?? undefined,
-                },
-                stats: (stored.stats ?? null) as any,
-                verification: (stored.verification ?? null) as any,
-                generationTimeMs: 0,
-                requestId: '',
-                // Fetched below. Null until then, which the history panel
-                // renders as "no history on record" rather than as an error.
-                featureTree: null,
-            },
-            partPrompt: design.original_prompt,
         });
 
         // The history lives with the build, not with the saved Blueprint, so it
