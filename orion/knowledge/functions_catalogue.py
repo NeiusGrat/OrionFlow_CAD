@@ -45,12 +45,12 @@ from orion.knowledge.bearing_types import profile as _profile  # noqa: E402
 def bearing_functions(row: dict) -> list[Implements]:
     """A bearing supports rotation and centres what it carries.
 
-    The family covers every rolling bearing in the catalogue — deep groove,
-    taper roller, thrust — because that is what was ingested. The type is
-    encoded in the designation and is NOT yet separated, so a search can return
-    a taper roller where a deep-groove was meant. Stated here rather than
-    hidden: the functional claim is true of all of them, and narrowing by type
-    is a filter the caller must apply until the loader splits them.
+    The functional claim is true of every rolling bearing — deep groove, taper
+    roller, thrust — which is exactly why it does not distinguish between them.
+    What differs is the *duty* each type can take, and that is decided in
+    ``_type_allows`` against the type profile, before any arithmetic. Keeping
+    the two apart is the point: a thrust bearing genuinely supports rotation,
+    and genuinely cannot support a shaft.
 
     The ``requires`` list is the debt: choosing a 6205 obliges a 25 mm shaft
     seat, a 52 mm housing bore and a shoulder that clears the outer ring's
@@ -146,10 +146,24 @@ def _type_allows(row: dict, duty: Duty) -> Optional[str]:
     Asked before any arithmetic. A thrust bearing offered for a radial load is
     not a marginal answer, it is a wrong one, and no amount of life calculation
     makes it right.
+
+    An unrecognised designation is excluded rather than waved through. This is
+    the same rule the ingest gate runs on — a missing fact is not a passing one
+    — and it is not hypothetical: 53307 is a thrust bearing whose prefix the
+    table did not know, and while "unclassified means judge it on the numbers"
+    it was offered as the best answer to a 3 kN radial duty. Life arithmetic
+    cannot catch that, because the arithmetic was never the thing in doubt.
     """
-    spec = _profile(_classify(row.get("designation", "")) or "")
+    designation = row.get("designation", "")
+    spec = _profile(_classify(designation) or "")
     if spec is None:
-        return None                       # unclassified: judged on numbers only
+        needs_type = ((duty.radial_load_N or 0) > 0
+                      or (duty.axial_load_N or 0) > 0
+                      or (duty.misalignment_deg or 0) > 0)
+        if needs_type:
+            return (f"{designation} is not a recognised bearing type, so "
+                    f"whether it carries this load cannot be established")
+        return None                       # no load stated: type does not decide
     if (duty.radial_load_N or 0) > 0 and not spec.carries_radial:
         return f"{spec.kind} carries no radial load"
     axial = duty.axial_load_N or 0.0
