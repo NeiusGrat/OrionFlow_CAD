@@ -1,7 +1,13 @@
-/** Shared access to the showcase example library (public/examples/manifest.json). */
+/** Shared access to the showcase example library (public/examples/manifest.json).
+ *
+ *  Reached only through the marketing gallery's `/?example=<id>` deep link. The
+ *  browse list that used to sit in a studio panel is gone — a list of somebody
+ *  else's parts is the least useful thing that can hold a permanent panel in a
+ *  tool you have your own work open in.
+ */
 import { useDesignStore } from "../store/designStore";
-import { useChatStore } from "../store/chatStore";
 import { useOFLStore } from "../store/oflStore";
+import { useStudioStore } from "../store/studioStore";
 import type { OFLParameter } from "../services/oflApi";
 
 export interface ExampleEntry {
@@ -29,7 +35,6 @@ export async function fetchExamples(): Promise<ExampleEntry[]> {
 export function loadExampleIntoStudio(ex: ExampleEntry) {
     const designId = `example-${ex.id}`;
     const store = useDesignStore.getState();
-    const existing = store.creations.find((c) => c.id === designId);
 
     useOFLStore.setState({
         oflCode: ex.ofl_code,
@@ -42,39 +47,45 @@ export function loadExampleIntoStudio(ex: ExampleEntry) {
         generationTimeMs: 0,
     });
 
-    if (existing) {
+    if (!store.creations.find((c) => c.id === designId)) {
+        store.addCreation({
+            id: designId,
+            prompt: ex.prompt,
+            parameters: Object.fromEntries(ex.parameters.map((p) => [p.name, p.value])),
+            material: { roughness: 0.5, metalness: 0.1 },
+            files: { ...ex.files },
+        });
+    } else {
         store.setCurrent(designId);
-        return;
     }
 
-    store.addCreation({
-        id: designId,
-        prompt: ex.prompt,
-        parameters: Object.fromEntries(ex.parameters.map((p) => [p.name, p.value])),
-        material: { roughness: 0.5, metalness: 0.1 },
-        files: { ...ex.files },
-    });
-    store.addVersion(designId, {
-        label: ex.title,
-        timestamp: Date.now(),
-        files: { ...ex.files },
-        oflCode: ex.ofl_code,
-        parameters: Object.fromEntries(ex.parameters.map((p) => [p.name, p.value])),
-    });
-
-    const chat = useChatStore.getState();
-    chat.addMessage(designId, {
-        id: crypto.randomUUID(),
-        role: "user",
-        content: ex.prompt,
-        timestamp: Date.now(),
-    });
-    chat.addMessage(designId, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `Loaded example "${ex.title}". Edit the code, drag a parameter, or describe a change to make it yours.`,
-        timestamp: Date.now(),
-        partVersion: 1,
-        files: { ...ex.files },
-    });
+    // The studio panels read from the studio store, so an example that only
+    // filled the viewer would arrive with an empty tree, empty parameters and a
+    // blank title block beside a part that is plainly there.
+    //
+    // `blueprint` is null on purpose: an example ships as geometry and a
+    // parameter list, not as a frozen contract, so there is nothing to rebuild
+    // from and the parameters panel says so rather than offering a slider that
+    // cannot move anything.
+    useStudioStore.getState().adopt(
+        {
+            partClass: ex.title,
+            variables: Object.fromEntries(ex.parameters.map((p) => [p.name, p.value])),
+            blueprint: null,
+            files: { ...ex.files },
+            stats: ex.stats
+                ? {
+                      volume_mm3: ex.stats.volume_mm3,
+                      bbox_mm: ex.stats.bbox_mm,
+                      watertight: true,
+                  }
+                : null,
+            verification: null,
+            generationTimeMs: 0,
+            requestId: "",
+            featureTree: null,
+        },
+        ex.prompt,
+        ex.title,
+    );
 }

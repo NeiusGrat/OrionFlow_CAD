@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { apiLogin, apiSignup, apiGoogleLogin, apiMe } from '../services/authApi';
+import { apiLogin, apiSignup, apiGoogleLogin, apiMe, apiRefresh } from '../services/authApi';
 
 interface User {
     id: string;
@@ -16,12 +16,15 @@ interface AuthState {
     login: (email: string, password: string) => Promise<boolean>;
     signup: (name: string, email: string, password: string) => Promise<boolean>;
     googleLogin: (credential: string) => Promise<boolean>;
+    /** New access token, or null when the session cannot be revived. Called
+     *  by the HTTP layer on a 401; never call it directly from a component. */
+    refresh: () => Promise<string | null>;
     logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             isAuthenticated: false,
             user: null,
             accessToken: null,
@@ -61,6 +64,28 @@ export const useAuthStore = create<AuthState>()(
                     refreshToken: tokens.refresh_token,
                 });
                 return true;
+            },
+
+            refresh: async () => {
+                const token = get().refreshToken;
+                if (!token) return null;
+                try {
+                    const tokens = await apiRefresh(token);
+                    // Both tokens rotate on the server, so both are stored.
+                    // Keeping the old refresh token here would work exactly
+                    // once more and then lock the user out.
+                    set({
+                        accessToken: tokens.access_token,
+                        refreshToken: tokens.refresh_token,
+                        isAuthenticated: true,
+                    });
+                    return tokens.access_token;
+                } catch {
+                    // The refresh token is spent or revoked. Say nothing here;
+                    // the caller signs the user out, which is the only honest
+                    // outcome.
+                    return null;
+                }
             },
 
             logout: () => {

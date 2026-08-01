@@ -8,18 +8,9 @@
  */
 
 import type { VerificationReport } from './agentApi';
+import { API_BASE, authedFetch, readError, requestJson, fullUrl } from './http';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-function authHeaders(): Record<string, string> {
-    try {
-        const token = JSON.parse(localStorage.getItem('orionflow-auth') || '{}')
-            ?.state?.accessToken;
-        return token ? { Authorization: `Bearer ${token}` } : {};
-    } catch {
-        return {};
-    }
-}
+export { fullUrl };
 
 export interface StudioStats {
     volume_mm3: number;
@@ -126,11 +117,34 @@ export type StudioEvent =
     | { type: 'done'; result: StudioDesignResult | StudioExplainResult }
     | { type: 'error'; error: string; raw_completion?: string; model?: string };
 
+/** What the assistant is being asked to look at.
+ *
+ *  A lens only ever changes the conversation role. The design role is left
+ *  exactly as the model was fine-tuned and graded — 94% VERIFIED was measured
+ *  on that prompt distribution, and appending a manufacturing preamble to it
+ *  would move the model off the distribution it was scored on.
+ */
+export type Lens =
+    | 'modeling'
+    | 'dfm'
+    | 'dfm_3d_printing'
+    | 'dfm_sheet_metal'
+    | 'dfm_machining';
+
+export const LENSES: { id: Lens; label: string; hint: string }[] = [
+    { id: 'modeling', label: 'Modeling', hint: 'Geometry, features and dimensions' },
+    { id: 'dfm', label: 'DFM', hint: 'Manufacturability, whatever the process' },
+    { id: 'dfm_3d_printing', label: 'DFM · 3D printing', hint: 'Overhangs, supports, layer adhesion' },
+    { id: 'dfm_sheet_metal', label: 'DFM · Sheet metal', hint: 'Bend radii, relief cuts, flat pattern' },
+    { id: 'dfm_machining', label: 'DFM · Machining', hint: 'Tool access, internal radii, setups' },
+];
+
 export interface StudioChatRequest {
     message: string;
     part?: Record<string, unknown> | null;
     history?: { role: string; content: string }[];
     intent?: 'design' | 'explain';
+    lens?: Lens;
 }
 
 /**
@@ -142,33 +156,26 @@ export async function streamStudioChat(
     onEvent: (e: StudioEvent) => void,
     signal?: AbortSignal
 ): Promise<void> {
-    const res = await fetch(`${API_BASE}/api/v1/studio/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify(body),
-        signal,
-    });
+    let res: Response;
+    try {
+        res = await authedFetch('/api/v1/studio/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal,
+        });
+    } catch (e: any) {
+        // A dead session throws rather than returning a response; the panel
+        // still has to say something, so it becomes an error event.
+        onEvent({ type: 'error', error: e?.message || 'the studio request failed' });
+        return;
+    }
 
     if (!res.ok || !res.body) {
-        let detail = res.statusText;
-        try {
-            const j = await res.json();
-            // The API's own envelope, produced by the global HTTPException
-            // handler: {error: {code, message, retryable, ...extra}}. Structured
-            // refusals from the quota gate arrive here with `reason`, `used` and
-            // `limit` beside the message, so the panel can name the limit that
-            // was reached rather than saying "Too Many Requests".
-            if (typeof j?.error?.message === 'string' && j.error.message) {
-                detail = j.error.message;
-            } else if (typeof j?.detail === 'string') {
-                // FastAPI's default shape, for anything not routed through the
-                // handler above (422 validation, for instance).
-                detail = j.detail;
-            }
-        } catch {
-            /* the body was not JSON; the status text stands */
-        }
-        onEvent({ type: 'error', error: detail || 'the studio request failed' });
+        // Structured refusals from the quota gate arrive with `reason`, `used`
+        // and `limit` beside the message, so the panel names the limit that was
+        // reached rather than saying "Too Many Requests".
+        onEvent({ type: 'error', error: await readError(res, 'The studio request') });
         return;
     }
 
@@ -260,15 +267,57 @@ export interface StudioHealth {
 
 export async function fetchStudioHealth(): Promise<StudioHealth | null> {
     try {
-        const res = await fetch(`${API_BASE}/api/v1/studio/health`, { headers: authHeaders() });
+        // Deliberately a plain fetch: health is reachable signed out, and a
+        // 401 here must not trigger a refresh-and-retry cycle at page load.
+        const res = await fetch(`${API_BASE}/api/v1/studio/health`);
         return res.ok ? await res.json() : null;
     } catch {
         return null;
     }
 }
 
-/** Absolute URL for a server-relative artifact path. */
-export function fullUrl(path?: string | null): string {
-    if (!path) return '';
-    return path.startsWith('http') ? path : `${API_BASE}${path}`;
+/* ────────────────────────── rebuild ────────────────────────── */
+
+/** A hand edit to apply before rebuilding.
+ *
+ *  `variables` retunes numbers the Blueprint already declares — the assertions
+ *  are expressions over those variables, so they still hold and the part is
+ *  still graded. `add_feature` appends a new operation, which changes the
+ *  template and therefore the contract: the server re-checks and re-hashes it,
+ *  and the result is honestly a new Blueprint rather than the graded one.
+ */
+export interface RebuildRequest {
+    blueprint: Record<string, unknown>;
+    variables?: Record<string, number>;
+    add_feature?: {
+        type: string;
+        label?: string;
+        /** Named so they can be tuned later like any other dimension. */
+        variables?: Record<string, number>;
+        parameters?: Record<string, unknown>;
+    };
+}
+
+export interface RebuildResult {
+    success: boolean;
+    part_class: string;
+    variables: Record<string, number>;
+    blueprint: Record<string, unknown> | null;
+    feature_tree: FeatureTree | null;
+    files: StudioFiles;
+    stats: StudioStats | null;
+    verification: VerificationReport | null;
+    /** True when the template changed, so the model's original assertions no
+     *  longer describe this geometry and the UI must stop implying they do. */
+    contract_broken: boolean;
+    generation_time_ms: number;
+    request_id: string;
+    error: string | null;
+}
+
+export async function rebuildPart(body: RebuildRequest): Promise<RebuildResult> {
+    return requestJson<RebuildResult>('/api/v1/studio/rebuild', 'The rebuild', {
+        method: 'POST',
+        body: JSON.stringify(body),
+    });
 }

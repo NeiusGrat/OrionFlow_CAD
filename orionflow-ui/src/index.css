@@ -464,31 +464,270 @@ a:hover {
   animation-delay: -2s;
 }
 
-/* ── Studio (app.orionflow.in) design tokens ─────────────────────────── */
+/* ══ Studio (app.orionflow.in) ════════════════════════════════════════════
+   A drawing office, not a dashboard.
+
+   The dark theme is a drawing sheet after dark: warm near-black, drafting-ink
+   blue for anything selected, redline for anything revised or wrong. The light
+   theme is the same sheet under a lamp — vellum on a desk. Both are real; the
+   viewport needs the dark one, engineers reading dimensions all day often want
+   the other, so neither is a gimmick.
+
+   Numbers are set in mono with tabular figures everywhere they appear. In CAD
+   the numbers are the content, and a dimension that shifts by a pixel when it
+   ticks from 9 to 10 is a dimension you cannot scan down a column.
+   ═════════════════════════════════════════════════════════════════════════ */
 :root {
-  --studio-bg: #17140F;          /* app chrome */
-  --studio-panel: #1B1712;       /* dock surfaces */
-  --studio-panel-2: #221D16;     /* raised elements */
-  --studio-border: #332C22;
-  --studio-border-soft: #262019;
-  --studio-text: #EFE7D8;
-  --studio-text-dim: #A79D8B;
-  --studio-text-faint: #7C7364;
-  --studio-accent: #8AA5E6;      /* drafting ink — selection / primary */
-  --studio-accent-dim: rgba(138, 165, 230, 0.14);
-  --studio-ok: #7FB894;
-  --studio-warn: #D9A441;
-  --studio-err: #DE8871;         /* redline */
-  --studio-viewport-hi: #25201A; /* viewport radial center */
-  --studio-viewport-lo: #16130F; /* viewport radial edge */
+  --st-void: #141109;         /* app chrome, behind everything */
+  --st-sheet: #1A1611;        /* dock surfaces */
+  --st-raise: #221D16;        /* raised: buttons, wells, ribbon keys */
+  --st-raise-hi: #2C251C;     /* hover */
+  --st-rule: #372F24;         /* hairlines that divide */
+  --st-rule-soft: #262019;    /* hairlines that group */
+  --st-ink: #EFE7D8;          /* primary text */
+  --st-graphite: #A79D8B;     /* secondary text */
+  --st-pencil: #7C7364;       /* labels, units, disabled */
+  --st-blue: #8AA5E6;         /* drafting ink: selection, primary action */
+  --st-blue-hi: #A8BDEE;
+  --st-blue-wash: rgba(138, 165, 230, 0.14);
+  --st-blue-edge: rgba(138, 165, 230, 0.34);
+  --st-redline: #DE8871;      /* revision mark: errors, destructive */
+  --st-verify: #7FB894;       /* a check that actually passed */
+  --st-caution: #D9A441;
+  --st-viewport-hi: #25201A;
+  --st-viewport-lo: #16130F;
+  --st-shadow: 0 14px 38px rgba(0, 0, 0, 0.55);
+  --st-grid-cell: #2c3037;
+  --st-grid-section: #3a3f47;
+
+  /* Legacy aliases. Components written against the old names inherit the new
+     palette — and the theme switch — without being touched. */
+  --studio-bg: var(--st-void);
+  --studio-panel: var(--st-sheet);
+  --studio-panel-2: var(--st-raise);
+  --studio-border: var(--st-rule);
+  --studio-border-soft: var(--st-rule-soft);
+  --studio-text: var(--st-ink);
+  --studio-text-dim: var(--st-graphite);
+  --studio-text-faint: var(--st-pencil);
+  --studio-accent: var(--st-blue);
+  --studio-accent-dim: var(--st-blue-wash);
+  --studio-ok: var(--st-verify);
+  --studio-warn: var(--st-caution);
+  --studio-err: var(--st-redline);
+  --studio-viewport-hi: var(--st-viewport-hi);
+  --studio-viewport-lo: var(--st-viewport-lo);
 }
-.studio-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.studio-scroll::-webkit-scrollbar-thumb { background: #3A3227; border-radius: 4px; }
+
+/* Vellum on a desk. Same drawing, lamp on. */
+:root[data-theme="light"] {
+  --st-void: #CFC7B6;
+  --st-sheet: #F2ECE0;
+  --st-raise: #E7DFD0;
+  --st-raise-hi: #DCD2C0;
+  --st-rule: #BFB4A0;
+  --st-rule-soft: #DED5C5;
+  --st-ink: #241E15;
+  --st-graphite: #5C5344;
+  --st-pencil: #857B6B;
+  --st-blue: #3D5CA4;
+  --st-blue-hi: #2C4785;
+  --st-blue-wash: rgba(61, 92, 164, 0.12);
+  --st-blue-edge: rgba(61, 92, 164, 0.38);
+  --st-redline: #B0442A;
+  --st-verify: #3B7350;
+  --st-caution: #8A6110;
+  --st-viewport-hi: #E9E4DA;
+  --st-viewport-lo: #C8C1B4;
+  --st-shadow: 0 14px 38px rgba(80, 66, 44, 0.22);
+  --st-grid-cell: #b9b2a4;
+  --st-grid-section: #9c9486;
+  color-scheme: light;
+}
+
+:root[data-theme="light"] body { background-color: var(--st-void); }
+
+/* ── Type roles ─────────────────────────────────────────────────────────
+   Instrument Sans runs the chrome. IBM Plex Mono carries every number.
+   Newsreader appears exactly once — on the assistant's narrative headline —
+   to mark the difference between the interface talking and an engineer
+   writing. One serif, one job. */
+.of-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.of-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--st-pencil);
+}
+.of-report-head {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* ── The title block ────────────────────────────────────────────────────
+   The status bar is a real drawing title block: fielded cells, a micro-label
+   over a mono value, hairline verticals between them. It is the one piece of
+   chrome the studio is meant to be remembered by, so everything around it is
+   kept quiet. */
+.of-titleblock {
+  display: flex;
+  align-items: stretch;
+  height: 30px;
+  flex-shrink: 0;
+  background: var(--st-sheet);
+  border-top: 1px solid var(--st-rule);
+  overflow: hidden;
+}
+.of-tb-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 11px;
+  border-right: 1px solid var(--st-rule-soft);
+  white-space: nowrap;
+  min-width: 0;
+}
+.of-tb-cell:last-child { border-right: none; }
+.of-tb-key {
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--st-pencil);
+  line-height: 1;
+}
+.of-tb-val {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--st-graphite);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Workbench ribbon ──────────────────────────────────────────────────── */
+.of-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--st-graphite);
+  cursor: pointer;
+  transition: background 0.1s linear, color 0.1s linear, border-color 0.1s linear;
+}
+.of-tool span {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.of-tool:hover:not(:disabled) {
+  background: var(--st-raise);
+  border-color: var(--st-rule);
+  color: var(--st-ink);
+}
+.of-tool:active:not(:disabled) { transform: translateY(1px); }
+.of-tool:disabled { opacity: 0.32; cursor: not-allowed; }
+.of-tool-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 9px;
+  border-right: 1px solid var(--st-rule-soft);
+}
+.of-tool-group:last-child { border-right: none; }
+
+/* ── Rows that behave like a tree ──────────────────────────────────────── */
+.of-row { transition: background 0.1s linear; }
+.of-row:hover { background: var(--st-raise); }
+
+/* ── Focus. Visible, always, and it must not be the last thing added. ─── */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--st-blue);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────────────── */
+.studio-scroll { scrollbar-width: thin; scrollbar-color: var(--st-rule) transparent; }
+.studio-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
+.studio-scroll::-webkit-scrollbar-thumb {
+  background: var(--st-rule);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.studio-scroll::-webkit-scrollbar-thumb:hover { background: var(--st-pencil); background-clip: padding-box; }
 .studio-scroll::-webkit-scrollbar-track { background: transparent; }
 
-/* Spinner for live agent phases. Reuses the existing spin keyframes. */
+/* ── Motion. Two effects, both short. ──────────────────────────────────── */
 .of-spin { animation: spin 0.9s linear infinite; }
+.of-enter { animation: ofEnter 0.16s var(--ease-out-quad) both; }
+@keyframes ofEnter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .of-spin { animation-duration: 2.4s; }
+  .of-enter { animation: none; }
+  * { scroll-behavior: auto !important; }
 }
+
+/* ── Range input: a machinist's dial, not a browser slider ─────────────── */
+.of-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  background: transparent;
+  cursor: ew-resize;
+  padding: 0;
+  border: none;
+}
+.of-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--st-rule);
+  border-radius: 1px;
+}
+.of-range::-moz-range-track {
+  height: 2px;
+  background: var(--st-rule);
+  border-radius: 1px;
+}
+.of-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4.5px;
+  border-radius: 2px;
+  background: var(--st-blue);
+  border: none;
+}
+.of-range::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--st-blue);
+  border: none;
+}
+.of-range:disabled { cursor: default; }
+.of-range:disabled::-webkit-slider-thumb { background: var(--st-pencil); }
+.of-range:disabled::-moz-range-thumb { background: var(--st-pencil); }

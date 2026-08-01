@@ -8,6 +8,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
+import AccountPage from "./pages/AccountPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -61,6 +62,14 @@ export default function App() {
                 element={
                     <ProtectedRoute>
                         <CADApp />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/account"
+                element={
+                    <ProtectedRoute>
+                        <AccountPage />
                     </ProtectedRoute>
                 }
             />

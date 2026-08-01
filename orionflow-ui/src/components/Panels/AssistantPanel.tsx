@@ -5,18 +5,21 @@ import {
     ChevronRight,
     Download,
     Loader2,
-    Sparkles,
     AlertCircle,
+    Hammer,
+    Check,
 } from "lucide-react";
 import OrionFlowLogo from "../OrionFlowLogo";
 import VerificationCard from "./VerificationCard";
-import { useStudioStore, type StudioMessage, type DesignOutcome } from "../../store/studioStore";
+import { useStudioStore, type StudioMessage, type DesignOutcome, type StudioMode } from "../../store/studioStore";
 import {
     fetchStudioHealth,
     fullUrl,
+    LENSES,
     type StudioHealth,
     type StudioStep,
     type DesignNarrative,
+    type Lens,
 } from "../../services/studioApi";
 
 /* ────────────────────────── bits ────────────────────────── */
@@ -28,7 +31,7 @@ function AgentAvatar({ size = 22 }: { size?: number }) {
                 width: size,
                 height: size,
                 borderRadius: Math.round(size / 4),
-                background: "var(--studio-accent)",
+                background: "var(--st-blue)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -50,15 +53,15 @@ function ModelBadge({ model }: { model: string }) {
         <span
             title={ours ? "OrionFlow fine-tuned model" : `Fallback model: ${model}`}
             style={{
-                fontSize: "9.5px",
+                fontSize: "9px",
                 fontWeight: 700,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                padding: "2px 6px",
-                borderRadius: "4px",
-                color: ours ? "var(--studio-accent)" : "var(--studio-warn)",
-                background: ours ? "var(--studio-accent-dim)" : "rgba(217,164,65,0.14)",
-                border: `1px solid ${ours ? "rgba(138,165,230,0.3)" : "rgba(217,164,65,0.3)"}`,
+                padding: "2px 5px",
+                borderRadius: "3px",
+                color: ours ? "var(--st-blue)" : "var(--st-caution)",
+                background: ours ? "var(--st-blue-wash)" : "rgba(217,164,65,0.14)",
+                border: `1px solid ${ours ? "var(--st-blue-edge)" : "rgba(217,164,65,0.3)"}`,
             }}
         >
             {ours ? "OrionFlow" : "Fallback"}
@@ -66,13 +69,31 @@ function ModelBadge({ model }: { model: string }) {
     );
 }
 
-/** The live progress list.
- *
- *  Every row is a stage the server actually reported reaching, with the real
- *  thing it found — the part class it recognised, the features it is building,
- *  the checks it ran. Nothing here is on a timer, so a stage that stalls looks
- *  stalled instead of animating towards a result that is not coming.
- */
+/** The lens a turn was answered under, kept beside the turn so a DFM review
+ *  stays labelled as one after the selector has moved on. */
+function LensTag({ lens }: { lens: Lens }) {
+    if (lens === "modeling") return null;
+    const label = LENSES.find((l) => l.id === lens)?.label ?? lens;
+    return (
+        <span
+            style={{
+                fontSize: "9px",
+                fontWeight: 600,
+                letterSpacing: "0.05em",
+                padding: "2px 5px",
+                borderRadius: "3px",
+                color: "var(--st-graphite)",
+                border: "1px solid var(--st-rule)",
+            }}
+        >
+            {label}
+        </span>
+    );
+}
+
+/** The live progress list — every row a stage the server actually reported
+ *  reaching. Nothing here is on a timer, so a stage that stalls looks stalled
+ *  instead of animating towards a result that is not coming. */
 function Steps({ steps }: { steps: StudioStep[] }) {
     if (!steps.length) return null;
     return (
@@ -80,10 +101,10 @@ function Steps({ steps }: { steps: StudioStep[] }) {
             {steps.map((s) => {
                 const color =
                     s.status === "done"
-                        ? "var(--studio-ok)"
+                        ? "var(--st-verify)"
                         : s.status === "fail"
-                          ? "var(--studio-err)"
-                          : "var(--studio-accent)";
+                          ? "var(--st-redline)"
+                          : "var(--st-blue)";
                 return (
                     <div key={s.id}>
                         <div style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "12px" }}>
@@ -94,16 +115,16 @@ function Steps({ steps }: { steps: StudioStep[] }) {
                                     {s.status === "done" ? "✓" : "✕"}
                                 </span>
                             )}
-                            <span style={{ color: s.status === "active" ? "var(--studio-text)" : "var(--studio-text-dim)" }}>
+                            <span style={{ color: s.status === "active" ? "var(--st-ink)" : "var(--st-graphite)" }}>
                                 {s.label}
                             </span>
                             {s.detail && (
                                 <span
+                                    className="of-num"
                                     style={{
                                         marginLeft: "auto",
-                                        fontFamily: "var(--font-mono)",
                                         fontSize: "10px",
-                                        color: "var(--studio-text-faint)",
+                                        color: "var(--st-pencil)",
                                         textAlign: "right",
                                         maxWidth: "55%",
                                     }}
@@ -117,10 +138,10 @@ function Steps({ steps }: { steps: StudioStep[] }) {
                                 {s.items.slice(0, 8).map((it, i) => (
                                     <div
                                         key={i}
+                                        className="of-num"
                                         style={{
                                             fontSize: "10.5px",
-                                            fontFamily: "var(--font-mono)",
-                                            color: "var(--studio-text-faint)",
+                                            color: "var(--st-pencil)",
                                             lineHeight: 1.5,
                                             whiteSpace: "nowrap",
                                             overflow: "hidden",
@@ -148,12 +169,12 @@ function RichText({ text }: { text: string }) {
         <>
             {parts.map((p, i) =>
                 p.startsWith("**") && p.endsWith("**") ? (
-                    <strong key={i} style={{ color: "var(--studio-text)", fontWeight: 650 }}>
+                    <strong key={i} style={{ color: "var(--st-ink)", fontWeight: 650 }}>
                         {p.slice(2, -2)}
                     </strong>
                 ) : (
                     <span key={i}>{p}</span>
-                )
+                ),
             )}
         </>
     );
@@ -166,46 +187,16 @@ function Narrative({ narrative }: { narrative: DesignNarrative }) {
         <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
             {narrative.sections.map((sec) => (
                 <div key={sec.title}>
-                    <div
-                        style={{
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            letterSpacing: "0.09em",
-                            textTransform: "uppercase",
-                            color: "var(--studio-text-faint)",
-                            marginBottom: "4px",
-                        }}
-                    >
+                    <div className="of-label" style={{ marginBottom: "4px" }}>
                         {sec.title}
                     </div>
-                    <div
-                        style={{
-                            fontSize: "12.5px",
-                            lineHeight: 1.65,
-                            color: "var(--studio-text-dim)",
-                        }}
-                    >
+                    <div style={{ fontSize: "12.5px", lineHeight: 1.65, color: "var(--st-graphite)" }}>
                         <RichText text={sec.body} />
                     </div>
                     {sec.items && sec.items.length > 0 && (
-                        <ul
-                            style={{
-                                margin: "6px 0 0",
-                                paddingLeft: "16px",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "3px",
-                            }}
-                        >
+                        <ul style={{ margin: "6px 0 0", paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "3px" }}>
                             {sec.items.map((it, i) => (
-                                <li
-                                    key={i}
-                                    style={{
-                                        fontSize: "12px",
-                                        lineHeight: 1.55,
-                                        color: "var(--studio-text-dim)",
-                                    }}
-                                >
+                                <li key={i} style={{ fontSize: "12px", lineHeight: 1.55, color: "var(--st-graphite)" }}>
                                     <RichText text={it} />
                                 </li>
                             ))}
@@ -217,14 +208,10 @@ function Narrative({ narrative }: { narrative: DesignNarrative }) {
     );
 }
 
-/** A collapsed drawer of machine-readable detail.
- *
- *  The Blueprint and the model's raw derivation stay exactly as they are —
- *  they are the reproducible record and the first thing to reach for when a
- *  part is wrong. They are just no longer the thing a user is shown first:
- *  working notes are not an explanation, and raw JSON makes a mechanical
- *  engineering system read as a code generator.
- */
+/** A collapsed drawer of machine-readable detail. The Blueprint and the raw
+ *  derivation stay reachable — they are the reproducible record and the first
+ *  thing to reach for when a part is wrong — but working notes are not an
+ *  explanation, so they are not what a user is shown first. */
 function Drawer({ label, text }: { label: string; text: string }) {
     const [open, setOpen] = useState(false);
     if (!text.trim()) return null;
@@ -233,6 +220,7 @@ function Drawer({ label, text }: { label: string; text: string }) {
         <div style={{ marginTop: "6px" }}>
             <button
                 onClick={() => setOpen(!open)}
+                className="of-label"
                 style={{
                     display: "flex",
                     alignItems: "center",
@@ -241,11 +229,6 @@ function Drawer({ label, text }: { label: string; text: string }) {
                     border: "none",
                     padding: 0,
                     cursor: "pointer",
-                    color: "var(--studio-text-faint)",
-                    fontSize: "10px",
-                    fontWeight: 600,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
                 }}
             >
                 {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
@@ -253,19 +236,18 @@ function Drawer({ label, text }: { label: string; text: string }) {
             </button>
             {open && (
                 <pre
-                    className="studio-scroll"
+                    className="studio-scroll of-num"
                     style={{
                         margin: "5px 0 0",
                         padding: "8px 10px",
                         maxHeight: "240px",
                         overflowY: "auto",
-                        background: "var(--studio-panel-2)",
-                        border: "1px solid var(--studio-border)",
-                        borderRadius: "6px",
-                        fontFamily: "var(--font-mono)",
+                        background: "var(--st-raise)",
+                        border: "1px solid var(--st-rule)",
+                        borderRadius: "5px",
                         fontSize: "10px",
                         lineHeight: 1.55,
-                        color: "var(--studio-text-faint)",
+                        color: "var(--st-pencil)",
                         whiteSpace: "pre-wrap",
                         wordBreak: "break-word",
                     }}
@@ -285,17 +267,17 @@ function VariableChips({ variables }: { variables: Record<string, number> }) {
             {entries.map(([k, v]) => (
                 <span
                     key={k}
+                    className="of-num"
                     style={{
-                        fontFamily: "var(--font-mono)",
                         fontSize: "10px",
                         padding: "2.5px 7px",
-                        borderRadius: "4px",
-                        background: "var(--studio-panel-2)",
-                        border: "1px solid var(--studio-border)",
-                        color: "var(--studio-text-dim)",
+                        borderRadius: "3px",
+                        background: "var(--st-raise)",
+                        border: "1px solid var(--st-rule)",
+                        color: "var(--st-graphite)",
                     }}
                 >
-                    {k}&nbsp;<span style={{ color: "var(--studio-text)" }}>{v}</span>
+                    {k}&nbsp;<span style={{ color: "var(--st-ink)" }}>{v}</span>
                 </span>
             ))}
         </div>
@@ -303,13 +285,9 @@ function VariableChips({ variables }: { variables: Record<string, number> }) {
 }
 
 function Exports({ files }: { files: DesignOutcome["files"] }) {
-    const entries = (
-        [
-            ["STEP", files.step],
-            ["STL", files.stl],
-            ["GLB", files.glb],
-        ] as const
-    ).filter(([, u]) => u);
+    const entries = ([["STEP", files.step], ["STL", files.stl], ["GLB", files.glb]] as const).filter(
+        ([, u]) => u,
+    );
     if (!entries.length) return null;
     return (
         <div style={{ display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" }}>
@@ -323,12 +301,12 @@ function Exports({ files }: { files: DesignOutcome["files"] }) {
                         alignItems: "center",
                         gap: "5px",
                         padding: "5px 10px",
-                        borderRadius: "6px",
+                        borderRadius: "5px",
                         fontSize: "11px",
                         fontWeight: 600,
-                        background: "var(--studio-panel-2)",
-                        border: "1px solid var(--studio-border)",
-                        color: "var(--studio-text)",
+                        background: "var(--st-raise)",
+                        border: "1px solid var(--st-rule)",
+                        color: "var(--st-ink)",
                         textDecoration: "none",
                     }}
                 >
@@ -340,7 +318,42 @@ function Exports({ files }: { files: DesignOutcome["files"] }) {
     );
 }
 
-function Message({ msg }: { msg: StudioMessage }) {
+/** Turns a refine answer into a build without retyping the brief.
+ *
+ *  What it sends is the user's own request plus the assistant's specification,
+ *  because that is what was agreed — sending only the last question would drop
+ *  every number the conversation just settled. */
+function BuildThis({ brief }: { brief: string }) {
+    const buildThis = useStudioStore((s) => s.buildThis);
+    const busy = useStudioStore((s) => s.busy);
+    return (
+        <button
+            onClick={() => void buildThis(brief)}
+            disabled={busy}
+            style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                marginTop: "10px",
+                padding: "6px 11px",
+                borderRadius: "6px",
+                border: "1px solid var(--st-blue-edge)",
+                background: "var(--st-blue-wash)",
+                color: "var(--st-blue)",
+                fontSize: "11.5px",
+                fontWeight: 700,
+                cursor: busy ? "default" : "pointer",
+                opacity: busy ? 0.5 : 1,
+            }}
+            title="Build the part this conversation has specified"
+        >
+            <Hammer size={12} />
+            Build this
+        </button>
+    );
+}
+
+function Message({ msg, priorUser }: { msg: StudioMessage; priorUser: string }) {
     if (msg.role === "user") {
         return (
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -348,10 +361,10 @@ function Message({ msg }: { msg: StudioMessage }) {
                     style={{
                         maxWidth: "88%",
                         padding: "8px 11px",
-                        borderRadius: "10px 10px 2px 10px",
-                        background: "var(--studio-accent-dim)",
-                        border: "1px solid rgba(138,165,230,0.25)",
-                        color: "var(--studio-text)",
+                        borderRadius: "9px 9px 2px 9px",
+                        background: "var(--st-blue-wash)",
+                        border: "1px solid var(--st-blue-edge)",
+                        color: "var(--st-ink)",
                         fontSize: "13px",
                         lineHeight: 1.5,
                         whiteSpace: "pre-wrap",
@@ -363,23 +376,18 @@ function Message({ msg }: { msg: StudioMessage }) {
         );
     }
 
+    // Refine answers get the build action; build answers already are one.
+    const offersBuild = msg.mode === "refine" && !msg.streaming && !!msg.content && !msg.error;
+
     return (
         <div>
             <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "7px" }}>
                 <AgentAvatar />
-                <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--studio-text)" }}>
-                    Orion
-                </span>
+                <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--st-ink)" }}>Orion</span>
                 <ModelBadge model={msg.model} />
+                <LensTag lens={msg.lens} />
                 {msg.design && (
-                    <span
-                        style={{
-                            marginLeft: "auto",
-                            fontSize: "10px",
-                            color: "var(--studio-text-faint)",
-                            fontFamily: "var(--font-mono)",
-                        }}
-                    >
+                    <span className="of-num" style={{ marginLeft: "auto", fontSize: "10px", color: "var(--st-pencil)" }}>
                         {(msg.design.generationTimeMs / 1000).toFixed(1)}s
                     </span>
                 )}
@@ -391,12 +399,8 @@ function Message({ msg }: { msg: StudioMessage }) {
                 {msg.narrative && (
                     <>
                         <div
-                            style={{
-                                fontSize: "13px",
-                                fontWeight: 650,
-                                color: "var(--studio-text)",
-                                marginTop: "8px",
-                            }}
+                            className="of-report-head"
+                            style={{ fontSize: "16px", color: "var(--st-ink)", marginTop: "8px", lineHeight: 1.3 }}
                         >
                             {msg.narrative.headline}
                         </div>
@@ -405,15 +409,7 @@ function Message({ msg }: { msg: StudioMessage }) {
                 )}
 
                 {msg.content && (
-                    <p
-                        style={{
-                            margin: "8px 0 0",
-                            fontSize: "13px",
-                            lineHeight: 1.6,
-                            color: "var(--studio-text)",
-                            whiteSpace: "pre-wrap",
-                        }}
-                    >
+                    <p style={{ margin: "8px 0 0", fontSize: "13px", lineHeight: 1.65, color: "var(--st-ink)", whiteSpace: "pre-wrap" }}>
                         {msg.content}
                     </p>
                 )}
@@ -423,10 +419,10 @@ function Message({ msg }: { msg: StudioMessage }) {
                         style={{
                             marginTop: "8px",
                             padding: "9px 11px",
-                            borderRadius: "8px",
-                            background: "var(--studio-panel-2)",
-                            border: "1px solid var(--studio-err)",
-                            color: "var(--studio-err)",
+                            borderRadius: "6px",
+                            background: "var(--st-raise)",
+                            border: "1px solid var(--st-redline)",
+                            color: "var(--st-redline)",
                             fontSize: "12px",
                             lineHeight: 1.5,
                             display: "flex",
@@ -438,28 +434,191 @@ function Message({ msg }: { msg: StudioMessage }) {
                     </div>
                 )}
 
+                {offersBuild && <BuildThis brief={`${priorUser}\n\n${msg.content}`.trim()} />}
+
                 {msg.design && (
                     <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
                         <VerificationCard report={msg.design.verification} />
                         <VariableChips variables={msg.design.variables} />
                         <Exports files={msg.design.files} />
-                        {/* Kept verbatim and reachable: the Blueprint is the
-                            reproducible record, and the raw completion is what
-                            to diff when a part comes out wrong. */}
                         <div>
                             <Drawer
                                 label="Blueprint JSON"
-                                text={
-                                    msg.design.blueprint
-                                        ? JSON.stringify(msg.design.blueprint, null, 2)
-                                        : ""
-                                }
+                                text={msg.design.blueprint ? JSON.stringify(msg.design.blueprint, null, 2) : ""}
                             />
                             <Drawer label="Raw model output" text={msg.thinking} />
                         </div>
                     </div>
                 )}
             </div>
+        </div>
+    );
+}
+
+/* ────────────────────────── composer controls ────────────────────────── */
+
+function ModeSwitch() {
+    const mode = useStudioStore((s) => s.mode);
+    const setMode = useStudioStore((s) => s.setMode);
+
+    const options: { id: StudioMode; label: string; hint: string }[] = [
+        { id: "refine", label: "Refine", hint: "Talk the specification through — no geometry is built" },
+        { id: "build", label: "Build", hint: "Design and build the part now" },
+    ];
+
+    return (
+        <div
+            role="radiogroup"
+            aria-label="Assistant mode"
+            style={{
+                display: "flex",
+                padding: "2px",
+                background: "var(--st-raise)",
+                border: "1px solid var(--st-rule)",
+                borderRadius: "6px",
+            }}
+        >
+            {options.map((o) => (
+                <button
+                    key={o.id}
+                    role="radio"
+                    aria-checked={mode === o.id}
+                    onClick={() => setMode(o.id)}
+                    title={o.hint}
+                    style={{
+                        padding: "3px 11px",
+                        borderRadius: "4px",
+                        border: "none",
+                        background: mode === o.id ? "var(--st-blue)" : "transparent",
+                        color: mode === o.id ? "#12100B" : "var(--st-graphite)",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                    }}
+                >
+                    {o.label}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function LensPicker() {
+    const lens = useStudioStore((s) => s.lens);
+    const setLens = useStudioStore((s) => s.setLens);
+    const mode = useStudioStore((s) => s.mode);
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const close = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        if (open) document.addEventListener("mousedown", close);
+        return () => document.removeEventListener("mousedown", close);
+    }, [open]);
+
+    const current = LENSES.find((l) => l.id === lens) ?? LENSES[0];
+
+    return (
+        <div ref={ref} style={{ position: "relative" }}>
+            <button
+                onClick={() => setOpen(!open)}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                // Stated rather than hidden: a lens shapes the conversation, and
+                // the design path is deliberately left alone, so switching it in
+                // Build mode would promise something that does not happen.
+                title={
+                    mode === "build"
+                        ? "Lenses shape the review, not the build — switch to Refine to use one"
+                        : current.hint
+                }
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    border: `1px solid ${lens !== "modeling" ? "var(--st-blue-edge)" : "var(--st-rule)"}`,
+                    background: lens !== "modeling" ? "var(--st-blue-wash)" : "var(--st-raise)",
+                    color: lens !== "modeling" ? "var(--st-blue)" : "var(--st-graphite)",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    opacity: mode === "build" ? 0.55 : 1,
+                }}
+            >
+                {current.label}
+                <ChevronDown size={11} />
+            </button>
+            {open && (
+                <div
+                    role="listbox"
+                    className="of-enter"
+                    style={{
+                        position: "absolute",
+                        bottom: "30px",
+                        left: 0,
+                        width: "232px",
+                        background: "var(--st-sheet)",
+                        border: "1px solid var(--st-rule)",
+                        borderRadius: "8px",
+                        padding: "5px",
+                        zIndex: 300,
+                        boxShadow: "var(--st-shadow)",
+                    }}
+                >
+                    {LENSES.map((l) => (
+                        <button
+                            key={l.id}
+                            role="option"
+                            aria-selected={l.id === lens}
+                            onClick={() => {
+                                setLens(l.id);
+                                setOpen(false);
+                            }}
+                            className="of-row"
+                            style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: "7px",
+                                width: "100%",
+                                padding: "6px 8px",
+                                borderRadius: "5px",
+                                border: "none",
+                                background: "transparent",
+                                cursor: "pointer",
+                                textAlign: "left",
+                            }}
+                        >
+                            <Check
+                                size={11}
+                                style={{
+                                    marginTop: "2px",
+                                    flexShrink: 0,
+                                    color: l.id === lens ? "var(--st-blue)" : "transparent",
+                                }}
+                            />
+                            <span style={{ minWidth: 0 }}>
+                                <span
+                                    style={{
+                                        display: "block",
+                                        fontSize: "12px",
+                                        fontWeight: 600,
+                                        color: l.id === lens ? "var(--st-ink)" : "var(--st-graphite)",
+                                    }}
+                                >
+                                    {l.label}
+                                </span>
+                                <span style={{ display: "block", fontSize: "10.5px", color: "var(--st-pencil)", lineHeight: 1.35 }}>
+                                    {l.hint}
+                                </span>
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
@@ -476,6 +635,7 @@ export default function AssistantPanel() {
     const messages = useStudioStore((s) => s.messages);
     const busy = useStudioStore((s) => s.busy);
     const send = useStudioStore((s) => s.send);
+    const mode = useStudioStore((s) => s.mode);
     const hasPart = useStudioStore((s) => !!s.part);
 
     const [value, setValue] = useState("");
@@ -505,59 +665,51 @@ export default function AssistantPanel() {
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+        <div
+            style={{
+                width: "392px",
+                flexShrink: 0,
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                minHeight: 0,
+                background: "var(--st-sheet)",
+                borderLeft: "1px solid var(--st-rule)",
+            }}
+        >
             {/* header */}
             <div
                 style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
-                    padding: "10px 12px",
-                    borderBottom: "1px solid var(--studio-border)",
+                    gap: "9px",
+                    padding: "8px 11px",
+                    borderBottom: "1px solid var(--st-rule)",
                     flexShrink: 0,
                 }}
             >
-                <Sparkles size={13} color="var(--studio-accent)" />
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--studio-text)" }}>
-                    Design assistant
+                <span className="of-label" style={{ color: "var(--st-graphite)" }}>
+                    AI engineer
                 </span>
+                <div style={{ marginLeft: "auto" }}>
+                    <ModeSwitch />
+                </div>
                 {health && (
                     <span
                         title={
                             `model: ${health.model} (${health.provider})` +
-                            // Redacted by the server for anonymous callers.
                             (health.endpoint ? ` @ ${health.endpoint}` : "") +
                             `\nbuilder: ${health.builder} (${health.builder_mode})`
                         }
-                        style={{
-                            marginLeft: "auto",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            fontSize: "10px",
-                            fontFamily: "var(--font-mono)",
-                            color: "var(--studio-text-faint)",
-                        }}
+                        className="of-num"
+                        style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "9.5px" }}
                     >
                         {/* Which model is actually live. Stated up front so a
                             demo can never imply our model when it is not. */}
-                        <span
-                            style={{
-                                color: health.serving_our_model
-                                    ? "var(--studio-ok)"
-                                    : "var(--studio-warn)",
-                            }}
-                        >
+                        <span style={{ color: health.serving_our_model ? "var(--st-verify)" : "var(--st-caution)" }}>
                             {health.serving_our_model ? "orionflow" : "fallback"}
                         </span>
-                        <span
-                            style={{
-                                color:
-                                    health.builder === "freecad"
-                                        ? "var(--studio-text-faint)"
-                                        : "var(--studio-err)",
-                            }}
-                        >
+                        <span style={{ color: health.builder === "freecad" ? "var(--st-pencil)" : "var(--st-redline)" }}>
                             {health.builder === "freecad" ? "kernel ✓" : "no kernel"}
                         </span>
                     </span>
@@ -571,29 +723,16 @@ export default function AssistantPanel() {
                 style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 14px" }}
             >
                 {messages.length === 0 ? (
-                    <div style={{ paddingTop: "18px" }}>
-                        <AgentAvatar size={40} />
-                        <p
-                            style={{
-                                margin: "14px 0 6px",
-                                fontSize: "15px",
-                                fontWeight: 600,
-                                color: "var(--studio-text)",
-                            }}
-                        >
-                            Describe the part you need
+                    <div style={{ paddingTop: "14px" }}>
+                        <AgentAvatar size={38} />
+                        <p className="of-report-head" style={{ margin: "14px 0 8px", fontSize: "20px", color: "var(--st-ink)", lineHeight: 1.25 }}>
+                            Describe your design in plain English.
                         </p>
-                        <p
-                            style={{
-                                margin: 0,
-                                fontSize: "12.5px",
-                                lineHeight: 1.6,
-                                color: "var(--studio-text-dim)",
-                            }}
-                        >
-                            I derive the geometry, predict what it should measure, then build
-                            it and check the kernel agrees. You will see the derivation and
-                            every check that ran — including the ones that fail.
+                        <p style={{ margin: 0, fontSize: "12.5px", lineHeight: 1.65, color: "var(--st-graphite)" }}>
+                            The AI engineer helps you plan dimensions, materials and
+                            manufacturability before you build. Start in <strong style={{ color: "var(--st-ink)" }}>Refine</strong> to
+                            settle the numbers, then press <strong style={{ color: "var(--st-ink)" }}>Build this</strong> — or
+                            switch to <strong style={{ color: "var(--st-ink)" }}>Build</strong> and go straight to a model.
                         </p>
                         <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                             {STARTERS.map((s) => (
@@ -603,21 +742,21 @@ export default function AssistantPanel() {
                                     style={{
                                         textAlign: "left",
                                         padding: "8px 10px",
-                                        borderRadius: "7px",
-                                        background: "var(--studio-panel-2)",
-                                        border: "1px solid var(--studio-border)",
-                                        color: "var(--studio-text-dim)",
+                                        borderRadius: "6px",
+                                        background: "var(--st-raise)",
+                                        border: "1px solid var(--st-rule)",
+                                        color: "var(--st-graphite)",
                                         fontSize: "12px",
                                         lineHeight: 1.45,
                                         cursor: "pointer",
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.color = "var(--studio-text)";
-                                        e.currentTarget.style.borderColor = "var(--studio-accent)";
+                                        e.currentTarget.style.color = "var(--st-ink)";
+                                        e.currentTarget.style.borderColor = "var(--st-blue)";
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.color = "var(--studio-text-dim)";
-                                        e.currentTarget.style.borderColor = "var(--studio-border)";
+                                        e.currentTarget.style.color = "var(--st-graphite)";
+                                        e.currentTarget.style.borderColor = "var(--st-rule)";
                                     }}
                                 >
                                     {s}
@@ -627,89 +766,97 @@ export default function AssistantPanel() {
                     </div>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                        {messages.map((m) => (
-                            <Message key={m.id} msg={m} />
+                        {messages.map((m, i) => (
+                            <Message
+                                key={m.id}
+                                msg={m}
+                                priorUser={messages[i - 1]?.role === "user" ? messages[i - 1].content : ""}
+                            />
                         ))}
                     </div>
                 )}
             </div>
 
             {/* composer */}
-            <div style={{ padding: "12px", borderTop: "1px solid var(--studio-border)", flexShrink: 0 }}>
+            <div style={{ padding: "10px 11px 11px", borderTop: "1px solid var(--st-rule)", flexShrink: 0 }}>
                 <div
                     style={{
-                        background: "var(--studio-panel-2)",
-                        border: "1px solid var(--studio-border)",
-                        borderRadius: "10px",
-                        padding: "10px 10px 10px 12px",
+                        background: "var(--st-raise)",
+                        border: "1px solid var(--st-rule)",
+                        borderRadius: "9px",
+                        padding: "9px 9px 8px 11px",
                         display: "flex",
-                        alignItems: "flex-end",
+                        flexDirection: "column",
                         gap: "8px",
                     }}
                 >
-                    <textarea
-                        ref={areaRef}
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                submit();
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: "8px" }}>
+                        <textarea
+                            ref={areaRef}
+                            value={value}
+                            onChange={(e) => setValue(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    submit();
+                                }
+                            }}
+                            rows={1}
+                            placeholder={
+                                mode === "refine"
+                                    ? hasPart
+                                        ? "Ask about this part, or refine it…"
+                                        : "Describe what you need and we'll pin down the numbers…"
+                                    : "Describe the part to build…"
                             }
-                        }}
-                        rows={1}
-                        placeholder={
-                            hasPart
-                                ? "Ask about this part, or describe the next one…"
-                                : "Describe a part…"
-                        }
-                        style={{
-                            flex: 1,
-                            background: "transparent",
-                            border: "none",
-                            outline: "none",
-                            resize: "none",
-                            color: "var(--studio-text)",
-                            fontSize: "13px",
-                            lineHeight: "22px",
-                            minHeight: "22px",
-                            maxHeight: "130px",
-                            fontFamily: "inherit",
-                        }}
-                    />
-                    <button
-                        onClick={submit}
-                        disabled={!value.trim() || busy}
-                        style={{
-                            width: "30px",
-                            height: "30px",
-                            borderRadius: "7px",
-                            border: "none",
-                            flexShrink: 0,
-                            background: value.trim() && !busy ? "var(--studio-accent)" : "var(--studio-border)",
-                            color: value.trim() && !busy ? "#fff" : "var(--studio-text-faint)",
-                            cursor: value.trim() && !busy ? "pointer" : "default",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        {busy ? <Loader2 size={14} className="of-spin" /> : <ArrowUp size={15} />}
-                    </button>
-                </div>
-                {hasPart && (
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            fontSize: "10.5px",
-                            color: "var(--studio-text-faint)",
-                            lineHeight: 1.4,
-                        }}
-                    >
-                        Questions are answered from this part's Blueprint and its verification
-                        report — a new description builds a new part.
+                            style={{
+                                flex: 1,
+                                background: "transparent",
+                                border: "none",
+                                outline: "none",
+                                resize: "none",
+                                padding: 0,
+                                color: "var(--st-ink)",
+                                fontSize: "13px",
+                                lineHeight: "22px",
+                                minHeight: "22px",
+                                maxHeight: "130px",
+                                fontFamily: "inherit",
+                            }}
+                        />
                     </div>
-                )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                        <LensPicker />
+                        <button
+                            onClick={submit}
+                            disabled={!value.trim() || busy}
+                            title={mode === "refine" ? "Ask (Enter)" : "Build (Enter)"}
+                            style={{
+                                marginLeft: "auto",
+                                width: "28px",
+                                height: "28px",
+                                borderRadius: "6px",
+                                border: "none",
+                                flexShrink: 0,
+                                background: value.trim() && !busy ? "var(--st-blue)" : "var(--st-rule)",
+                                color: value.trim() && !busy ? "#12100B" : "var(--st-pencil)",
+                                cursor: value.trim() && !busy ? "pointer" : "default",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            {busy ? <Loader2 size={13} className="of-spin" /> : <ArrowUp size={14} />}
+                        </button>
+                    </div>
+                </div>
+                <div style={{ marginTop: "6px", fontSize: "10.5px", color: "var(--st-pencil)", lineHeight: 1.45 }}>
+                    {mode === "refine"
+                        ? "Refine settles dimensions and manufacturability. Nothing is built until you say so."
+                        : hasPart
+                          ? "A new description builds a new part. Questions are answered from this part's Blueprint and its verification report."
+                          : "Build derives the geometry, predicts what it should measure, then checks the kernel agrees."}
+                </div>
             </div>
         </div>
     );
