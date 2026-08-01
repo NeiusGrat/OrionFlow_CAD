@@ -94,6 +94,8 @@ class Chain:
     rationale: dict[str, str] = field(default_factory=dict)
     citations: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    #: Failure modes of the selected component, assessed at this duty.
+    risks: list[Any] = field(default_factory=list)
 
     @property
     def complete(self) -> bool:
@@ -144,6 +146,10 @@ class Chain:
             lines.append(f"INCOMPLETE — stopped at {self.stopped_at}")
         for w in self.warnings:
             lines.append(f"NOTE: {w}")
+        if self.risks:
+            from orion.knowledge.failure_modes import summarise
+
+            lines += ["", summarise(self.risks)]
         return "\n".join(lines)
 
 
@@ -510,9 +516,24 @@ def select_component(requirements: Step) -> Step:
                          f"rather than a constraint: this selection sets it to "
                          f"{bore:g} mm")
 
+    # What this part can still fail by, assessed at this duty. Selection gates
+    # on rating life, so fatigue passes by construction — the value is in the
+    # modes it does *not* gate on: a static safety factor below 1, a load under
+    # the minimum at which the elements skid, a required lubricant viscosity
+    # nobody has checked against the grade they intend to use. An engineer who
+    # reads L10 and stops has been told very little.
+    from orion.knowledge import failure_modes as FM
+
+    rows = {r.get("designation"): r for r in rows_for_family(best.family)}
+    row = rows.get(best.designation) or {}
+    risks = FM.assess(best.family, row, duty) if row else []
+    notes += [f"{a.mode}: {a.finding}" for a in risks
+              if a.verdict in (FM.AT_RISK, FM.MARGINAL)]
+
     return Step(SELECTION, f"{best.designation} ({best.family})",
                 {"chosen": best.to_dict(), "alternatives": alternatives,
-                 "notes": notes, "_candidate": best},
+                 "notes": notes, "risks": [a.to_dict() for a in risks],
+                 "_candidate": best, "_risks": risks},
                 basis="; ".join(f"{k}={v}" for k, v in best.evidence.items()
                                 if k != "basis"))
 
@@ -581,6 +602,7 @@ def reason(request: str) -> Chain:
         return chain
     selection = chain.steps[-1]
     chain.warnings.extend(selection.detail.get("notes", []))
+    chain.risks = selection.detail.get("_risks", [])
 
     if not add(write_specification(selection)):
         return chain

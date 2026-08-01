@@ -120,11 +120,48 @@ class Skill:
                              "parameters": self.parameters}}
 
 
+#: Resolved lazily and cached: importing the function vocabulary at module
+#: scope would make `orion.skills` depend on `orion.knowledge` at import time,
+#: and the two are deliberately independent.
+def _function_names() -> frozenset[str]:
+    global _FUNCTION_NAMES
+    if not _FUNCTION_NAMES:
+        from orion.knowledge.functions import FUNCTIONS
+        _FUNCTION_NAMES = frozenset(FUNCTIONS)
+    return _FUNCTION_NAMES
+
+
+_FUNCTION_NAMES: frozenset[str] = frozenset()
+
+
 class SkillRegistry:
     def __init__(self) -> None:
         self._skills: dict[str, Skill] = {}
 
     def register(self, skill: Skill) -> Skill:
+        """Register, having checked that the declared dependencies exist.
+
+        ``SkillGraph`` promised that a missing dependency is a startup error
+        rather than a wrong number at runtime, and for a while it was only a
+        promise: all three declared calculators named the MCP tool spelling
+        (``calc_bearing_life_l10``) rather than the registry's
+        (``bearing_life_l10``), so every one was unresolvable and nothing said
+        so. A declaration nobody checks is a comment.
+        """
+        from orion import calc
+
+        unknown = [c for c in skill.graph.calculators
+                   if c not in calc.CALCULATORS]
+        if unknown:
+            raise SkillError(
+                f"skill {skill.name!r} declares calculators that do not exist: "
+                f"{', '.join(unknown)}. Known: {', '.join(sorted(calc.CALCULATORS))}")
+        unknown_fns = [f for f in skill.graph.functions
+                       if f not in _function_names()]
+        if unknown_fns:
+            raise SkillError(
+                f"skill {skill.name!r} serves functions that are not in the "
+                f"vocabulary: {', '.join(unknown_fns)}")
         self._skills[skill.name] = skill
         return skill
 

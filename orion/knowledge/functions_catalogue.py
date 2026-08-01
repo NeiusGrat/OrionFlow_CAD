@@ -75,6 +75,10 @@ def bearing_functions(row: dict) -> list[Implements]:
             ],
             limits={"bore_mm": d, "outside_dia_mm": D, "width_mm": B,
                     "dynamic_load_rating_N": row.get("C_N")},
+            note="rolling elements between hardened raceways carry the load "
+                 "through rolling rather than sliding contact, so friction is "
+                 "nearly independent of speed and the shaft can turn under "
+                 "load indefinitely",
         ),
         Implements(
             function=CENTERS_COMPONENT,
