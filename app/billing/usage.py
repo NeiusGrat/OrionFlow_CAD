@@ -21,6 +21,15 @@ from app.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+#: The action name a billable build is recorded under.
+#:
+#: Every quota query below filters on it, so a producer that writes anything
+#: else is invisible to the counter — the usage row lands, the limit never
+#: trips, and the only symptom is a quota that silently never fires. Exported
+#: rather than repeated as a literal so producers can import the one true value
+#: instead of matching it by convention.
+BILLABLE_ACTION = "generation"
+
 
 async def track_usage(
     db: AsyncSession,
@@ -111,7 +120,7 @@ async def get_usage_stats(
         result = await db.execute(
             select(func.sum(UsageRecord.quantity)).where(
                 UsageRecord.user_id == user_id,
-                UsageRecord.action == "generation",
+                UsageRecord.action == BILLABLE_ACTION,
                 UsageRecord.created_at >= start_date,
                 UsageRecord.created_at <= end_date,
             )
@@ -126,7 +135,7 @@ async def get_usage_stats(
         )
         .where(
             UsageRecord.user_id == user_id,
-            UsageRecord.action == "generation",
+            UsageRecord.action == BILLABLE_ACTION,
             UsageRecord.created_at >= start_date,
             UsageRecord.created_at <= end_date,
         )
@@ -210,7 +219,7 @@ async def check_usage_limit(
     result = await db.execute(
         select(func.sum(UsageRecord.quantity)).where(
             UsageRecord.user_id == user_id,
-            UsageRecord.action == "generation",
+            UsageRecord.action == BILLABLE_ACTION,
             UsageRecord.created_at >= start_of_month,
         )
     )

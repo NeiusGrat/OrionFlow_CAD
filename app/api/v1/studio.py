@@ -23,11 +23,19 @@ import queue
 import threading
 from typing import Any, Optional
 
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Header,
+    HTTPException,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.logging_config import get_logger
+from app.services.studio_persistence import StudioGate, studio_gate
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["Studio"])
@@ -50,21 +58,86 @@ class StudioChatRequest(BaseModel):
 
 
 @router.get("/health")
-def studio_health():
-    """Which model and which builder this instance would actually use."""
+def studio_health(authorization: Optional[str] = Header(None)):
+    """Which model and which builder this instance would actually use.
+
+    Deliberately reachable without a token so an uptime monitor can use it —
+    but the inference endpoint is redacted for anonymous callers. It is the
+    address of our own GPU host, and publishing it on an open route invites
+    traffic that bypasses this API entirely. Signed-in callers still get it;
+    the studio's diagnostics panel shows it.
+
+    Resolves the caller from the header directly rather than through
+    ``studio_gate``: a health check should not run a quota query.
+    """
+    from app.services.ofl_telemetry import user_id_from_auth_header
     from app.services.studio_agent import get_studio_agent
 
-    return get_studio_agent().health()
+    report = get_studio_agent().health()
+    if user_id_from_auth_header(authorization) is None:
+        report.pop("endpoint", None)
+    return report
 
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
 
+def _feature_tree_for(bundle: dict) -> dict:
+    """The build's feature history, or an empty tree if it cannot be assembled.
+
+    Never allowed to fail the turn: the user has a part, and losing it because
+    a history could not be derived from it would be a poor trade.
+    """
+    from app.services import feature_tree
+    from app.services.studio_persistence import build_evidence
+
+    try:
+        return feature_tree.build(bundle.get("blueprint"), build_evidence(bundle))
+    except Exception:  # noqa: BLE001
+        logger.warning("studio_feature_tree_failed", exc_info=True)
+        return feature_tree.empty()
+
+
+async def _record_when_finished(
+    produced: dict, prompt: str, user_id: Optional[Any]
+) -> None:
+    """Write the build record once the stream has closed.
+
+    Reads the bundle at call time rather than taking it as an argument, because
+    the task is registered while the worker is still running. A worker that died
+    before producing anything leaves nothing to record, which is correct: there
+    is no build to describe and nothing to charge for.
+    """
+    from app.services.studio_persistence import record_studio_build
+
+    bundle = produced.get("bundle")
+    if bundle:
+        await record_studio_build(bundle, prompt, user_id)
+
+
 @router.post("/chat")
-def studio_chat(request: StudioChatRequest):
+def studio_chat(
+    request: StudioChatRequest,
+    background: BackgroundTasks,
+    gate: StudioGate = Depends(studio_gate),
+):
     """One studio turn: either design a part, or talk about the open one."""
     from app.services.studio_agent import get_studio_agent, _looks_like_a_question
+
+    # Both roles call a model we pay for by the second, so neither is given
+    # away unattributed: an unmetered anonymous route is a way to spend our own
+    # inference budget without limit, and signing out would otherwise be a way
+    # around the quota. Safe to require — the studio sits behind the frontend's
+    # protected route and nothing else calls this endpoint.
+    if not gate.known:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "sign in to design with OrionFlow",
+                "reason": "authentication_required",
+            },
+        )
 
     agent = get_studio_agent()
 
@@ -78,7 +151,28 @@ def studio_chat(request: StudioChatRequest):
             else "design"
         )
 
+    # Only designing costs anything — a build is an LLM call plus a FreeCAD
+    # container. Talking about a part the user already has is free, and metering
+    # it would make the honest thing (asking whether the part is right) the
+    # expensive one. Refused before the stream opens, so the client gets a
+    # status code it can act on rather than an error event inside a 200.
+    if intent == "design" and not gate.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "error": gate.message or "monthly generation limit reached",
+                "reason": gate.reason,
+                "used": gate.used,
+                "limit": gate.limit,
+            },
+        )
+
     events: queue.Queue = queue.Queue()
+    #: The worker owns the bundle; the background record needs it after the
+    #: stream has closed. The terminal event is not enough — it deliberately
+    #: omits `measured` and `build_log`, which is exactly the evidence worth
+    #: keeping.
+    produced: dict[str, Any] = {}
 
     def on_event(kind: str, data: dict) -> None:
         events.put((kind, data))
@@ -107,6 +201,7 @@ def studio_chat(request: StudioChatRequest):
                 return
 
             bundle = agent.design(request.message, on_event=on_event)
+            produced["bundle"] = bundle
             if not bundle.get("success"):
                 events.put(
                     (
@@ -132,6 +227,13 @@ def studio_chat(request: StudioChatRequest):
                         "part_class": bundle.get("part_class", ""),
                         "variables": bundle.get("variables", {}),
                         "blueprint": bundle.get("blueprint"),
+                        # Assembled here rather than left to the client, so the
+                        # part on screen has a history immediately — before it is
+                        # saved, and without a second request. The same function
+                        # serves GET /designs/{id}/feature-tree, so a live part
+                        # and a reopened one cannot show different trees for the
+                        # same geometry.
+                        "feature_tree": _feature_tree_for(bundle),
                         # The readable account. `thinking` and `blueprint` stay in the
                         # payload untouched — they are the debugging record — but the
                         # UI leads with this.
@@ -153,6 +255,11 @@ def studio_chat(request: StudioChatRequest):
             events.put(("error", {"error": str(exc)[:500]}))
 
     threading.Thread(target=work, daemon=True, name="studio-turn").start()
+
+    if intent == "design":
+        background.add_task(
+            _record_when_finished, produced, request.message, gate.user_id
+        )
 
     def stream():
         while True:

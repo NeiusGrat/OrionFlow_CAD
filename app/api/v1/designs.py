@@ -42,6 +42,10 @@ class CreateDesignRequest(BaseModel):
     glb_path: Optional[str] = None
     step_path: Optional[str] = None
     stl_path: Optional[str] = None
+    #: The build this design came from. Optional because a design can be saved
+    #: from a session older than the build record, and a missing link costs the
+    #: feature tree its per-feature evidence, not the save.
+    request_id: Optional[str] = Field(None, max_length=32)
 
 
 class UpdateDesignRequest(BaseModel):
@@ -194,6 +198,14 @@ async def create_design(
     await db.commit()
     await db.refresh(design)
 
+    # Attach the build that produced it, so the design carries the kernel's own
+    # per-feature record and not just the Blueprint the model authored.
+    if request.request_id:
+        from app.services.studio_persistence import link_design_to_build
+
+        await link_design_to_build(db, design.id, request.request_id, current_user.id)
+        await db.commit()
+
     logger.info(
         "design_created",
         user_id=str(current_user.id),
@@ -214,6 +226,63 @@ async def create_design(
         created_at=design.created_at.isoformat(),
         updated_at=design.updated_at.isoformat(),
     )
+
+
+@router.get(
+    "/{design_id}/feature-tree",
+    summary="Feature history for a design",
+)
+async def get_feature_tree(
+    design_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """How this part was built, feature by feature.
+
+    Joins the Blueprint the model authored to what the kernel measured. Designs
+    saved before build records existed, or saved without their ``request_id``,
+    still return their authored tree — with volumes reported as unknown rather
+    than as zero.
+    """
+    from app.db.models import GenerationHistory
+    from app.services import feature_tree
+
+    try:
+        design_uuid = uuid.UUID(design_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid design ID"
+        )
+
+    result = await db.execute(
+        select(Design).where(
+            Design.id == design_uuid,
+            Design.user_id == current_user.id,
+        )
+    )
+    design = result.scalar_one_or_none()
+    if not design:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Design not found"
+        )
+
+    # Most recent build linked to this design. A design re-saved after an edit
+    # has more than one, and the latest is the one whose geometry is on screen.
+    result = await db.execute(
+        select(GenerationHistory)
+        .where(GenerationHistory.design_id == design_uuid)
+        .order_by(GenerationHistory.created_at.desc())
+        .limit(1)
+    )
+    history = result.scalar_one_or_none()
+
+    tree = feature_tree.build(
+        design.feature_graph,
+        evidence=(history.execution_trace if history else None),
+    )
+    tree["design_id"] = str(design.id)
+    tree["name"] = design.name
+    return tree
 
 
 @router.get(

@@ -8,6 +8,24 @@ from .internal.errors import GeometryError
 from .internal.selectors import get_axis_extent
 
 
+def _shrink(solid, wall_thickness: float):
+    """Offset ``solid`` inwards by ``wall_thickness``, or None if it vanishes.
+
+    A wall thick enough to consume the part collapses the offset to an empty
+    shape, and OCC reports that by raising out of ``Shape.cast`` ("Null
+    TopoDS_Shape object") rather than returning nothing. Caught here so the
+    caller's own thickness check is what the user sees — an OCC internal is not
+    a usable diagnosis, and on the OFL path it reaches the model as the reason
+    to repair.
+    """
+    from build123d import offset as _offset
+
+    try:
+        return _offset(solid, amount=-wall_thickness)
+    except Exception:  # noqa: BLE001 — any kernel failure means "no interior"
+        return None
+
+
 class Part:
     """Wraps a build123d solid.
 
@@ -133,7 +151,7 @@ class Part:
         if open_face is None:
             # build123d's offset with no openings returns the SHRUNKEN interior
             # solid, not a hollow shell — subtract it to get the closed shell.
-            inner = _offset(self._solid, amount=-wall_thickness)
+            inner = _shrink(self._solid, wall_thickness)
             if inner is None or inner.volume <= 0:
                 raise GeometryError(
                     f"shell({wall_thickness}) leaves no interior cavity — the "
@@ -153,7 +171,16 @@ class Part:
             raise ValueError(f"Unknown face selector: {open_face}")
 
         # build123d offset: negative amount = hollow inwards
-        self._solid = _offset(self._solid, amount=-wall_thickness, openings=openings)
+        try:
+            hollow = _offset(self._solid, amount=-wall_thickness, openings=openings)
+        except Exception:  # noqa: BLE001 — same collapse as the closed case
+            hollow = None
+        if hollow is None or hollow.volume <= 0:
+            raise GeometryError(
+                f"shell({wall_thickness}) leaves no interior cavity — the "
+                "walls consume the whole part; reduce the wall thickness"
+            )
+        self._solid = hollow
         return self
     def __isub__(self, other):
         from .hole import Hole

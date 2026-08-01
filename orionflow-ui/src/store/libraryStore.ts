@@ -4,6 +4,7 @@ import {
     createDesign,
     updateDesign,
     deleteDesign,
+    fetchFeatureTree,
     type SavedDesign,
 } from '../services/designsApi';
 import { fullUrl } from '../services/studioApi';
@@ -102,6 +103,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
                 glb_path: part.files.glb,
                 step_path: part.files.step,
                 stl_path: part.files.stl,
+                request_id: part.requestId || undefined,
             });
             set((s) => ({
                 saving: false,
@@ -194,8 +196,27 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
                 verification: (stored.verification ?? null) as any,
                 generationTimeMs: 0,
                 requestId: '',
+                // Fetched below. Null until then, which the history panel
+                // renders as "no history on record" rather than as an error.
+                featureTree: null,
             },
             partPrompt: design.original_prompt,
+        });
+
+        // The history lives with the build, not with the saved Blueprint, so it
+        // comes from the server. Deliberately not awaited: the part is already
+        // on screen and a side panel must not hold it up.
+        fetchFeatureTree(id).then((tree) => {
+            if (!tree) return;
+            // Identity, not similarity: the user may have opened something else
+            // while this was in flight, and two different designs can easily
+            // share a part class — matching on that would attach one part's
+            // history to another's geometry.
+            if (get().activeId !== id) return;
+            const current = useStudioStore.getState().part;
+            if (current) {
+                useStudioStore.setState({ part: { ...current, featureTree: tree } });
+            }
         });
     },
 }));

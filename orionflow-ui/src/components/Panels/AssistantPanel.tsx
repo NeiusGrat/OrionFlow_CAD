@@ -524,8 +524,10 @@ export default function AssistantPanel() {
                 {health && (
                     <span
                         title={
-                            `model: ${health.model} (${health.provider}) @ ${health.endpoint}\n` +
-                            `builder: ${health.builder} (${health.builder_mode})`
+                            `model: ${health.model} (${health.provider})` +
+                            // Redacted by the server for anonymous callers.
+                            (health.endpoint ? ` @ ${health.endpoint}` : "") +
+                            `\nbuilder: ${health.builder} (${health.builder_mode})`
                         }
                         style={{
                             marginLeft: "auto",

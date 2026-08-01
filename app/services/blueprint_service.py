@@ -319,10 +319,9 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
 
     analysis = graph.pop("_analysis", None)
 
-    from app.services.ofl_sandbox import OUTPUT_BASE
+    from app.services import artifacts
 
-    workdir = os.path.join(OUTPUT_BASE, request_id)
-    os.makedirs(workdir, exist_ok=True)
+    workdir = artifacts.workdir(request_id)
 
     step = os.path.join(workdir, "part.step")
     stl = os.path.join(workdir, "part.stl")
@@ -375,9 +374,7 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
     files: dict[str, str] = {}
     for kind, path in (("step", step), ("stl", stl), ("glb", glb)):
         if path and os.path.exists(path):
-            files[kind] = (
-                f"/api/v1/ofl/download/{request_id}/" f"{os.path.basename(path)}"
-            )
+            files[kind] = artifacts.artifact_url(request_id, path)
     bundle["files"] = files
 
     # Per-request dirs are ephemeral on scale-to-zero hosts; the existing
@@ -395,7 +392,7 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
                 try:
                     storage.publish(
                         Path(path),
-                        key=f"ofl/{request_id}/{os.path.basename(path)}",
+                        key=artifacts.storage_key(request_id, path),
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("blueprint_upload_failed", error=str(exc))

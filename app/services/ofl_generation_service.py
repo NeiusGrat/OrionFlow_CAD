@@ -141,16 +141,16 @@ class OFLGenerationService:
             glb_path = stl_to_glb(result["stl_file"])
 
         # Build download links
+        from app.services.artifacts import artifact_url
+
         request_id = os.path.basename(result["output_dir"])
         files = OFLFileLinks()
         if result["step_file"]:
-            files.step = f"/api/v1/ofl/download/{request_id}/{os.path.basename(result['step_file'])}"
+            files.step = artifact_url(request_id, result["step_file"])
         if result["stl_file"]:
-            files.stl = f"/api/v1/ofl/download/{request_id}/{os.path.basename(result['stl_file'])}"
+            files.stl = artifact_url(request_id, result["stl_file"])
         if glb_path:
-            files.glb = (
-                f"/api/v1/ofl/download/{request_id}/{os.path.basename(glb_path)}"
-            )
+            files.glb = artifact_url(request_id, glb_path)
 
         # Durable copies: per-request output dirs are ephemeral on
         # scale-to-zero hosts; the download route redirects to storage

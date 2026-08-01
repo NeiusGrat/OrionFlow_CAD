@@ -1,15 +1,13 @@
+/**
+ * Artifact link helpers and the shapes the agent endpoint still returns.
+ *
+ * The three generation calls that lived here — generate / rebuild / edit —
+ * were removed with the routes behind them; the studio designs through
+ * `studioApi`. What is left is `getFullUrl`, which every panel uses to turn a
+ * server-relative artifact path into something the browser can fetch, and the
+ * response types `agentApi` shares.
+ */
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-/** Attach the session JWT when present — attributes telemetry to the user. */
-function authHeaders(): Record<string, string> {
-  try {
-    const token = JSON.parse(localStorage.getItem('orionflow-auth') || '{}')
-      ?.state?.accessToken;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
-}
 
 export interface OFLParameter {
   name: string;
@@ -39,45 +37,6 @@ export interface OFLResponse {
   generation_time_ms: number;
   repair_attempts?: number;
   stats?: OFLGeometryStats | null;
-}
-
-export async function generateOFL(prompt: string): Promise<OFLResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/ofl/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ prompt }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Generation failed');
-  }
-  return res.json();
-}
-
-export async function rebuildOFL(oflCode: string): Promise<OFLResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/ofl/rebuild`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ ofl_code: oflCode }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Rebuild failed');
-  }
-  return res.json();
-}
-
-export async function editOFL(oflCode: string, instruction: string): Promise<OFLResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/ofl/edit`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ ofl_code: oflCode, edit_instruction: instruction }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Edit failed');
-  }
-  return res.json();
 }
 
 export function getFullUrl(path: string | null): string | null {
