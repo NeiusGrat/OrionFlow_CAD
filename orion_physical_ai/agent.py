@@ -188,10 +188,17 @@ class PhysicalAIAgent:
 
     @staticmethod
     def _local_artifact_path(stl_url: Optional[str]) -> Optional[str]:
-        """Map /api/v1/ofl/download/<request_id>/<name> back to the sandbox dir."""
+        """Map an artifact URL back to the sandbox directory it was built in.
+
+        Both link shapes are accepted: ``/api/v1/artifacts/<id>/<name>`` is what
+        builds hand out now, ``/api/v1/ofl/download/<id>/<name>`` is what older
+        ones did. Matching only one of them fails silently — the mesh is not
+        found, so no mass properties and no URDF/SDF, and the response still
+        looks successful.
+        """
         if not stl_url:
             return None
-        m = re.search(r"/download/([^/]+)/([^/?]+)", stl_url)
+        m = re.search(r"/(?:download|artifacts)/([^/]+)/([^/?]+)", stl_url)
         if not m:
             return None
         from app.services.ofl_sandbox import OUTPUT_BASE

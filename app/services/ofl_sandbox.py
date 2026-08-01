@@ -15,10 +15,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
-OUTPUT_BASE = os.path.join(PROJECT_ROOT, "data", "ofl_outputs")
+# Both now live in app.services.artifacts: the Blueprint path writes into the
+# same tree and must not have to import an OFL module to find it. Re-exported
+# here because callers (this sandbox, orion_physical_ai) already import them
+# from this name.
+from app.services.artifacts import OUTPUT_BASE, PROJECT_ROOT  # noqa: E402,F401
 
 
 class OFLSandbox:

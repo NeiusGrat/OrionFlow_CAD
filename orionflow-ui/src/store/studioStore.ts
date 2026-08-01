@@ -10,6 +10,7 @@ import {
 import type {
     StudioStep,
     DesignNarrative,
+    FeatureTree,
 } from '../services/studioApi';
 import type { VerificationReport } from '../services/agentApi';
 import { useDesignStore } from './designStore';
@@ -25,6 +26,10 @@ export interface DesignOutcome {
     verification: VerificationReport | null;
     generationTimeMs: number;
     requestId: string;
+    /** How the part was built, feature by feature. Null when the server could
+     *  not assemble one — the part is still valid, its history just is not
+     *  known. */
+    featureTree: FeatureTree | null;
 }
 
 export interface StudioMessage {
@@ -181,6 +186,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
                                     verification: r.verification,
                                     generationTimeMs: r.generation_time_ms,
                                     requestId: r.request_id,
+                                    featureTree: r.feature_tree ?? null,
                                 };
                                 patch((m) => ({
                                     ...m,

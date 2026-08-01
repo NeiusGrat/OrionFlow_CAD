@@ -10,6 +10,8 @@
  * whereas the STEP/STL are only a snapshot of one resolution of it.
  */
 
+import type { FeatureTree } from './studioApi';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function authHeaders(): Record<string, string> {
@@ -79,6 +81,8 @@ export interface CreateDesignInput {
     glb_path?: string;
     step_path?: string;
     stl_path?: string;
+    /** The build this was designed in, so the server can attach its evidence. */
+    request_id?: string;
 }
 
 export async function createDesign(input: CreateDesignInput): Promise<SavedDesign> {
@@ -110,4 +114,21 @@ export async function deleteDesign(id: string): Promise<void> {
         headers: authHeaders(),
     });
     await handle<{ message: string }>(res, 'Deleting the design');
+}
+
+/** How a saved part was built, joined server-side to its build record.
+ *
+ * Returns null rather than throwing: a part whose history cannot be loaded is
+ * still a part the user can open and look at, and failing the whole open for a
+ * side panel would be the wrong trade.
+ */
+export async function fetchFeatureTree(id: string): Promise<FeatureTree | null> {
+    try {
+        const res = await fetch(`${API_BASE}/api/v1/designs/${id}/feature-tree`, {
+            headers: authHeaders(),
+        });
+        return res.ok ? ((await res.json()) as FeatureTree) : null;
+    } catch {
+        return null;
+    }
 }

@@ -14,9 +14,9 @@ import {
     User,
 } from "lucide-react";
 import Viewer from "../Viewer/Viewer";
-import OFLCodePanel from "../Panels/OFLCodePanel";
 import AssistantPanel from "../Panels/AssistantPanel";
 import ProjectTree from "../Panels/ProjectTree";
+import FeatureHistoryTree from "../Panels/FeatureHistoryTree";
 import VerificationCard from "../Panels/VerificationCard";
 import OrionFlowLogo, { OrionFlowWordmark } from "../OrionFlowLogo";
 import { useDesignStore } from "../../store/designStore";
@@ -665,9 +665,24 @@ const sectionLabel: React.CSSProperties = {
     margin: "14px 0 6px",
 };
 
+/** Properties, and how the part was built.
+ *
+ * The second tab used to show the OFL Python behind the part, from when a
+ * general model wrote that code and the user could edit and rebuild it. The
+ * studio does not work that way any more — the part comes from a Blueprint the
+ * model is graded against — so a code panel that could not rebuild anything was
+ * replaced by the feature history, which describes the same part in the terms
+ * it was actually built in.
+ *
+ * It lives here rather than in the left dock deliberately: the assistant owns
+ * that column, and squeezing it to make room for a third section would take
+ * space from the derivation and the checks, which are the point.
+ */
 function RightDock() {
-    const [tab, setTab] = useState<"properties" | "code">("properties");
-    const oflCode = useOFLStore((s) => s.oflCode);
+    const [tab, setTab] = useState<"properties" | "history">("properties");
+    const featureCount = useStudioStore(
+        (s) => s.part?.featureTree?.features.length ?? 0,
+    );
 
     return (
         <div
@@ -685,7 +700,10 @@ function RightDock() {
                 {(
                     [
                         { id: "properties", label: "Properties" },
-                        { id: "code", label: `Code${oflCode ? "" : " ·"}` },
+                        {
+                            id: "history",
+                            label: featureCount ? `History (${featureCount})` : "History",
+                        },
                     ] as const
                 ).map((t) => (
                     <button
@@ -707,8 +725,11 @@ function RightDock() {
                     </button>
                 ))}
             </div>
-            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                {tab === "properties" ? <PropertiesPanel /> : <OFLCodePanel />}
+            <div
+                className="studio-scroll"
+                style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
+            >
+                {tab === "properties" ? <PropertiesPanel /> : <FeatureHistoryTree />}
             </div>
         </div>
     );
@@ -719,7 +740,11 @@ function RightDock() {
 function BottomBar() {
     const isGenerating = useDesignStore((s) => s.isGenerating);
     const error = useOFLStore((s) => s.error);
-    const ms = useOFLStore((s) => s.generationTimeMs);
+    // Read from the part itself. This used to come from the OFL store, which
+    // only the OFL generation path ever wrote to — so the timing vanished from
+    // the status bar the moment the studio became the way parts are made, and
+    // stayed blank for every build. The studio records the same number.
+    const ms = useStudioStore((s) => s.part?.generationTimeMs ?? 0);
 
     const dotColor = isGenerating
         ? "var(--studio-warn)"

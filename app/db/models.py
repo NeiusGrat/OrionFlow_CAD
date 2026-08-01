@@ -279,6 +279,12 @@ class GenerationHistory(Base):
     prompt: Mapped[str] = mapped_column(Text, nullable=False)
     feature_graph: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
 
+    #: The build's own id, handed to the client with the artifacts. A design is
+    #: saved (if at all) some time after the build that produced it, so this is
+    #: what lets the two be joined afterwards — design_id above is set at that
+    #: point, not at build time.
+    request_id: Mapped[Optional[str]] = mapped_column(String(32), index=True)
+
     # Response data
     status: Mapped[GenerationStatus] = mapped_column(
         ValueEnum(GenerationStatus), default=GenerationStatus.PENDING

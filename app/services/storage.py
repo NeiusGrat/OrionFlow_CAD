@@ -127,15 +127,21 @@ def get_storage():
 def storage_key_for(path: str | None) -> str | None:
     """Storage key behind a client-facing artifact path.
 
-    Download links are served as ``/api/v1/ofl/download/<request_id>/<file>``
-    while the object is stored under ``ofl/<request_id>/<file>``; deleting the
-    design has to reach the object, not the link.
+    Objects live under ``ofl/<request_id>/<file>``; deleting the design has to
+    reach the object, not the link. Two link shapes reach the same object —
+    ``/api/v1/artifacts/<id>/<file>`` is what new builds hand out, and
+    ``/api/v1/ofl/download/<id>/<file>`` is what is already stored in the
+    ``designs`` rows of every part saved before the split. A design saved last
+    month must still delete cleanly, so both are understood.
     """
     if not path:
         return None
-    marker = "/ofl/download/"
-    if marker in path:
-        return "ofl/" + path.split(marker, 1)[1].lstrip("/")
+    from app.services.artifacts import STORAGE_PREFIX
+
+    for marker in ("/ofl/download/", "/artifacts/"):
+        if marker in path:
+            tail = path.split(marker, 1)[1].lstrip("/")
+            return f"{STORAGE_PREFIX}/{tail}"
     return path.rsplit("/", 1)[-1] or None
 
 

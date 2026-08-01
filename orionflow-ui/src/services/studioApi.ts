@@ -44,6 +44,36 @@ export interface StudioStep {
     items: string[];
 }
 
+/** One feature in the build history, as the kernel actually executed it. */
+export interface FeatureNode {
+    id: string;
+    type: string;
+    label: string;
+    rationale: string;
+    /** Dimensions as built. Empty when the Blueprint could not be resolved. */
+    parameters: Record<string, number>;
+    /** The expressions behind those numbers — why the feature is that size. */
+    expressions: Record<string, string | number>;
+    /** What this feature added (+) or removed (−). `null` means unmeasured,
+     *  which is not the same as zero and must not be rendered as one. */
+    volume_delta_mm3: number | null;
+    cumulative_volume_mm3: number | null;
+    status: 'success' | 'error' | 'unsupported' | 'unknown';
+    error: string | null;
+}
+
+export interface FeatureTree {
+    part_class: string;
+    blueprint_hash: string;
+    variables: Record<string, number>;
+    features: FeatureNode[];
+    /** False when no build record was found — every volume will be null. */
+    evidence_available: boolean;
+    parameters_resolved: boolean;
+    verdict: string;
+    built_where: string;
+}
+
 /** The readable account of a design, derived from the frozen Blueprint. */
 export interface NarrativeSection {
     title: string;
@@ -66,6 +96,8 @@ export interface StudioDesignResult {
     variables: Record<string, number>;
     blueprint: Record<string, unknown> | null;
     narrative: DesignNarrative | null;
+    /** Assembled server-side so a live part and a reopened one agree. */
+    feature_tree: FeatureTree | null;
     thinking: string;
     files: StudioFiles;
     stats: StudioStats | null;
@@ -121,7 +153,14 @@ export async function streamStudioChat(
         let detail = res.statusText;
         try {
             const j = await res.json();
-            if (typeof j.detail === 'string') detail = j.detail;
+            if (typeof j.detail === 'string') {
+                detail = j.detail;
+            } else if (j.detail && typeof j.detail.error === 'string') {
+                // Structured refusals — the quota gate sends {error, reason,
+                // used, limit} so the panel can say which limit was reached
+                // rather than "Too Many Requests".
+                detail = j.detail.error;
+            }
         } catch {
             /* the body was not JSON; the status text stands */
         }
@@ -208,7 +247,9 @@ export interface StudioHealth {
     /** True only when the configured provider serves OUR fine-tuned weights. */
     serving_our_model: boolean;
     model: string;
-    endpoint: string;
+    /** Absent for anonymous callers — the server redacts our own GPU host on
+     *  the open health route. */
+    endpoint?: string;
     builder: string;
     builder_mode: string;
 }
