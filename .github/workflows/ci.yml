@@ -64,8 +64,15 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run linting
+        # Pinned deliberately. Unpinned, every run installs whatever released
+        # that day, and ruff.toml selects no explicit rule set — so it inherits
+        # ruff's defaults, which grow between versions. A release adding a rule
+        # turns the whole repository red with nobody having changed a line: that
+        # is how this gate came to report 1280 errors against code that lints
+        # clean locally. Raise these on purpose, with the fixes in the same
+        # commit, rather than discovering a new rule set mid-review.
         run: |
-          pip install ruff black
+          pip install ruff==0.15.15 black==26.5.1
           ruff check app/ tests/
           black --check app/ tests/
 
