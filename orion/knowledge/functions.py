@@ -121,6 +121,11 @@ class Duty:
     speed_rpm: Optional[float] = None
     life_hours: Optional[float] = None
     bore_mm: Optional[float] = None
+    #: A floor rather than a fixture. The constraint resolver needs to ask for
+    #: "a bearing that takes at least a 22 mm shaft" — an exact bore would make
+    #: every raise a fresh guess at which size exists, and there is no reason
+    #: for the caller to know the catalogue's steps.
+    min_bore_mm: Optional[float] = None
     max_outside_dia_mm: Optional[float] = None
     torque_Nm: Optional[float] = None
     pressure_bar: Optional[float] = None
