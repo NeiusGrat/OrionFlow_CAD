@@ -95,7 +95,7 @@ def _providers() -> tuple[str, str]:
     """
     from orion_agent.shared.config import get_config
 
-    primary = get_config().llm.provider          # loads .env as a side effect
+    primary = get_config().llm.provider  # loads .env as a side effect
     fallback = os.environ.get("ORION_LLM_FALLBACK_PROVIDER", "k2think")
     if fallback == primary:
         fallback = ""
@@ -105,6 +105,7 @@ def _providers() -> tuple[str, str]:
 def model_label(provider: str) -> str:
     """What to call this model in the UI. Never flatters a fallback."""
     return "orionflow" if provider in OURS else f"fallback:{provider}"
+
 
 CONVERSATION_SYSTEM = """You are OrionFlow, a mechanical design engineer talking \
 an engineer through a part you just designed.
@@ -147,8 +148,9 @@ def _knowledge_registry():
             )
 
             _KNOWLEDGE_REGISTRY = build_knowledge_registry()
-            logger.info("studio_knowledge_tools_ready",
-                        tools=len(_KNOWLEDGE_REGISTRY.names()))
+            logger.info(
+                "studio_knowledge_tools_ready", tools=len(_KNOWLEDGE_REGISTRY.names())
+            )
         except Exception as exc:  # noqa: BLE001 — grounding is optional
             logger.warning("studio_knowledge_tools_unavailable", error=str(exc))
             _KNOWLEDGE_REGISTRY = None
@@ -183,8 +185,8 @@ def _repair_turn(base: list, completion: str, diagnosis: str) -> list:
     from orion_agent.harness.llm.base import LLMMessage
 
     wire = build_repair_messages(
-        [{"role": m.role, "content": m.content} for m in base],
-        completion, diagnosis)
+        [{"role": m.role, "content": m.content} for m in base], completion, diagnosis
+    )
     return [LLMMessage(m["role"], m["content"]) for m in wire]
 
 
@@ -199,9 +201,11 @@ def _classify_failure(bundle: dict) -> tuple[str, dict]:
     """
     error = str(bundle.get("error") or "")
     rows = bundle.get("assertions") or []
-    failed_pre = [{"id": r.get("id"), "target": r.get("target")}
-                  for r in rows
-                  if r.get("kind") == "precondition" and not r.get("passed")]
+    failed_pre = [
+        {"id": r.get("id"), "target": r.get("target")}
+        for r in rows
+        if r.get("kind") == "precondition" and not r.get("passed")
+    ]
     verdict = {"assertions": rows, "failed_preconditions": failed_pre}
 
     if error.startswith("blueprint rejected:"):
@@ -211,8 +215,7 @@ def _classify_failure(bundle: dict) -> tuple[str, dict]:
     if "did not converge" in error:
         return "timeout: kernel exceeded the build budget", verdict
     if failed_pre:
-        return ("precondition: "
-                + ",".join(str(p["id"]) for p in failed_pre)), verdict
+        return ("precondition: " + ",".join(str(p["id"]) for p in failed_pre)), verdict
     bad = [str(r.get("id")) for r in rows if not r.get("passed")]
     if bad:
         return "assert: " + ",".join(bad), verdict
@@ -232,9 +235,24 @@ def _looks_like_a_question(text: str) -> bool:
     t = text.strip().lower()
     if t.endswith("?"):
         return True
-    openers = ("why", "what", "how", "explain", "is it", "are the", "does it",
-               "can it", "should i", "tell me", "which", "who", "when",
-               "would it", "will it", "do i")
+    openers = (
+        "why",
+        "what",
+        "how",
+        "explain",
+        "is it",
+        "are the",
+        "does it",
+        "can it",
+        "should i",
+        "tell me",
+        "which",
+        "who",
+        "when",
+        "would it",
+        "will it",
+        "do i",
+    )
     return t.startswith(openers)
 
 
@@ -274,11 +292,15 @@ class StudioAgent:
         }
 
     # ------------------------------------------------------------------ #
-    def _complete(self, messages, on_event: EventSink,
-                  channel: Optional[str] = None,
-                  max_tokens: Optional[int] = None,
-                  model: Optional[str] = None,
-                  tools: Optional[list[dict]] = None):
+    def _complete(
+        self,
+        messages,
+        on_event: EventSink,
+        channel: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
+        tools: Optional[list[dict]] = None,
+    ):
         """Stream a completion, falling back once, reporting which model ran.
 
         ``channel`` is the event name for answer tokens, or None to emit no
@@ -300,6 +322,7 @@ class StudioAgent:
         our own model and "fallback:<provider>" otherwise; callers must surface
         it rather than hide it.
         """
+
         def emit_token(kind: str, text: str) -> None:
             if on_event and text and channel:
                 on_event(kind if kind == "thinking" else channel, {"text": text})
@@ -311,8 +334,9 @@ class StudioAgent:
             try:
                 client = self._client(provider)
             except Exception as exc:  # noqa: BLE001 — unknown/misconfigured provider
-                logger.warning("studio_provider_init_failed",
-                               provider=provider, error=str(exc))
+                logger.warning(
+                    "studio_provider_init_failed", provider=provider, error=str(exc)
+                )
                 continue
 
             if on_event:
@@ -320,16 +344,19 @@ class StudioAgent:
             kw = {"model": model} if model else {}
             if tools:
                 kw["tools"] = tools
-            resp = client.chat_stream(messages, on_token=emit_token,
-                                      max_tokens=max_tokens, **kw)
+            resp = client.chat_stream(
+                messages, on_token=emit_token, max_tokens=max_tokens, **kw
+            )
             # Transport failures come back as content, not exceptions, so the
             # loop never wedges on a dead endpoint. Detect and move on.
-            failed = (resp.finish_reason == "error"
-                      or resp.content.startswith("[vllm transport error"))
+            failed = resp.finish_reason == "error" or resp.content.startswith(
+                "[vllm transport error"
+            )
             if not failed:
                 return resp, label
-            logger.warning("studio_provider_failed",
-                           provider=provider, detail=resp.content[:200])
+            logger.warning(
+                "studio_provider_failed", provider=provider, detail=resp.content[:200]
+            )
 
         return None, ""
 
@@ -348,11 +375,24 @@ class StudioAgent:
         from orion_agent.harness.llm.base import LLMMessage
         from app.services import blueprint_service, design_narrative
 
-        def step(sid: str, label: str, status: str = "active",
-                 detail: str = "", items: Optional[list] = None) -> None:
+        def step(
+            sid: str,
+            label: str,
+            status: str = "active",
+            detail: str = "",
+            items: Optional[list] = None,
+        ) -> None:
             if on_event:
-                on_event("step", {"id": sid, "label": label, "status": status,
-                                  "detail": detail, "items": items or []})
+                on_event(
+                    "step",
+                    {
+                        "id": sid,
+                        "label": label,
+                        "status": status,
+                        "detail": detail,
+                        "items": items or [],
+                    },
+                )
 
         # Turn 1 is the ONLY turn that must match training byte for byte, so it
         # is built from these two messages and nothing else, every time. Repair
@@ -360,8 +400,7 @@ class StudioAgent:
         # diagnosis — never by appending to a growing history, which would put a
         # second user turn in front of the model on attempt 3 and stop looking
         # like the repair records at all.
-        base_messages = [LLMMessage.system(SYSTEM_PROMPT),
-                         LLMMessage.user(prompt)]
+        base_messages = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(prompt)]
         messages = list(base_messages)
 
         # A failed attempt is not resampled blind. The verifier already knows
@@ -376,13 +415,18 @@ class StudioAgent:
         best_features: list = []
         for attempt in range(1, DESIGN_ATTEMPTS + 1):
             again = attempt > 1
-            step("understand", "Understanding the request", "active",
-                 f"repair attempt {attempt}" if again else "")
+            step(
+                "understand",
+                "Understanding the request",
+                "active",
+                f"repair attempt {attempt}" if again else "",
+            )
             if on_event:
                 on_event("phase", {"phase": "reasoning"})
             # channel=None: emit no raw tokens. See _complete for why.
-            resp, label = self._complete(messages, on_event, channel=None,
-                                         max_tokens=4096, model=DESIGN_MODEL)
+            resp, label = self._complete(
+                messages, on_event, channel=None, max_tokens=4096, model=DESIGN_MODEL
+            )
             if resp is None:
                 # An endpoint that dies on the repair turn must not cost the
                 # user a part that already built on the first one. Same rule as
@@ -390,13 +434,21 @@ class StudioAgent:
                 # only when there is nothing to keep.
                 if best:
                     break
-                step("understand", "Understanding the request", "fail",
-                     "no model is reachable")
-                return {"success": False, "model": "",
-                        "error": "no model is reachable — the inference "
-                                 "endpoint is down and the fallback also "
-                                 "failed",
-                        "verification": {}, "files": {}}
+                step(
+                    "understand",
+                    "Understanding the request",
+                    "fail",
+                    "no model is reachable",
+                )
+                return {
+                    "success": False,
+                    "model": "",
+                    "error": "no model is reachable — the inference "
+                    "endpoint is down and the fallback also "
+                    "failed",
+                    "verification": {},
+                    "files": {},
+                }
 
             completion = resp.content
 
@@ -407,35 +459,65 @@ class StudioAgent:
                 # The model answered, but not with a Blueprint. That is a model
                 # failure and must read as one — not as a kernel error.
                 if attempt < DESIGN_ATTEMPTS:
-                    step("understand", "Understanding the request", "active",
-                         "no Blueprint returned — asking again with the reason")
+                    step(
+                        "understand",
+                        "Understanding the request",
+                        "active",
+                        "no Blueprint returned — asking again with the reason",
+                    )
                     messages = _repair_turn(
-                        base_messages, completion,
-                        repair_loop.diagnose(None, f"parse: {exc}"))
+                        base_messages,
+                        completion,
+                        repair_loop.diagnose(None, f"parse: {exc}"),
+                    )
                     continue
                 if best:
                     break
-                step("understand", "Understanding the request", "fail",
-                     "the model did not return a Blueprint")
-                return {"success": False, "model": label, "error": str(exc),
-                        "raw_completion": completion[:4000],
-                        "verification": {}, "files": {}}
+                step(
+                    "understand",
+                    "Understanding the request",
+                    "fail",
+                    "the model did not return a Blueprint",
+                )
+                return {
+                    "success": False,
+                    "model": label,
+                    "error": str(exc),
+                    "raw_completion": completion[:4000],
+                    "verification": {},
+                    "files": {},
+                }
 
             part_class = payload.get("part_class", "")
             variables = payload.get("variables", {}) or {}
             template = payload.get("template", {}) or {}
 
-            step("understand", "Understanding the request", "done",
-                 design_narrative._readable_class(part_class))
-            step("dimensions", "Solving dimensions", "done",
-                 f"{len(variables)} parameters",
-                 [f"{k} = {v}" for k, v in variables.items()])
+            step(
+                "understand",
+                "Understanding the request",
+                "done",
+                design_narrative._readable_class(part_class),
+            )
+            step(
+                "dimensions",
+                "Solving dimensions",
+                "done",
+                f"{len(variables)} parameters",
+                [f"{k} = {v}" for k, v in variables.items()],
+            )
 
-            features = [f for f in (template.get("features") or [])
-                        if f.get("type") not in ("Body", "Sketch")]
-            step("build", "Building the model", "active",
-                 f"{len(features)} features",
-                 [f.get("rationale") or f.get("id", "") for f in features])
+            features = [
+                f
+                for f in (template.get("features") or [])
+                if f.get("type") not in ("Body", "Sketch")
+            ]
+            step(
+                "build",
+                "Building the model",
+                "active",
+                f"{len(features)} features",
+                [f.get("rationale") or f.get("id", "") for f in features],
+            )
             if on_event:
                 on_event("phase", {"phase": "building"})
 
@@ -452,7 +534,8 @@ class StudioAgent:
             # contract; the prose is decoration. Recompute it here so the raw
             # derivation is never shown to a user as if it were arithmetic.
             bundle["volume_claim"] = calc.check_stated_volume(
-                payload, bundle["thinking"])
+                payload, bundle["thinking"]
+            )
 
             # Keep the best result seen, not the last one. A later attempt that
             # fails to parse must not throw away an earlier part that built —
@@ -466,15 +549,21 @@ class StudioAgent:
             if attempt < DESIGN_ATTEMPTS:
                 error, verdict = _classify_failure(bundle)
                 diagnosis = repair_loop.diagnose(
-                    payload, error, verdict=verdict,
-                    measured=bundle.get("measured"))
-                step("build", "Building the model", "active",
-                     f"{_short(error)} — repairing")
+                    payload, error, verdict=verdict, measured=bundle.get("measured")
+                )
+                step(
+                    "build",
+                    "Building the model",
+                    "active",
+                    f"{_short(error)} — repairing",
+                )
                 if on_event:
                     # Surfaced, not hidden: a part that needed a repair round is
                     # a different claim from one that verified first time.
-                    on_event("repair", {"attempt": attempt, "error": error,
-                                        "diagnosis": diagnosis})
+                    on_event(
+                        "repair",
+                        {"attempt": attempt, "error": error, "diagnosis": diagnosis},
+                    )
                 messages = _repair_turn(base_messages, completion, diagnosis)
                 continue
 
@@ -488,28 +577,45 @@ class StudioAgent:
             bundle["attempts"] = attempt
 
         if not bundle.get("success"):
-            step("build", "Building the model", "fail",
-                 _short(bundle.get("error")) or "the build failed")
+            step(
+                "build",
+                "Building the model",
+                "fail",
+                _short(bundle.get("error")) or "the build failed",
+            )
             if on_event:
-                on_event("built", {"success": False, "files": {},
-                                   "stats": None, "error": bundle.get("error")})
+                on_event(
+                    "built",
+                    {
+                        "success": False,
+                        "files": {},
+                        "stats": None,
+                        "error": bundle.get("error"),
+                    },
+                )
             return bundle
 
         step("build", "Building the model", "done", f"{len(features)} features")
         if on_event:
-            on_event("built", {
-                "success": True,
-                "files": bundle["files"],
-                "stats": bundle["stats"],
-                "error": None,
-            })
+            on_event(
+                "built",
+                {
+                    "success": True,
+                    "files": bundle["files"],
+                    "stats": bundle["stats"],
+                    "error": None,
+                },
+            )
 
         report = bundle.get("verification") or {}
         checks = report.get("checks") or []
-        step("verify", "Running verification",
-             "done" if report.get("verdict") == "verified" else "fail",
-             f"{len(checks)} checks",
-             [c.get("label", "") for c in checks])
+        step(
+            "verify",
+            "Running verification",
+            "done" if report.get("verdict") == "verified" else "fail",
+            f"{len(checks)} checks",
+            [c.get("label", "") for c in checks],
+        )
         if on_event:
             on_event("verification", report)
 
@@ -521,9 +627,13 @@ class StudioAgent:
         return bundle
 
     # ------------------------------------------------------------------ #
-    def explain(self, prompt: str, part: Optional[dict] = None,
-                history: Optional[list[dict]] = None,
-                on_event: EventSink = None) -> dict:
+    def explain(
+        self,
+        prompt: str,
+        part: Optional[dict] = None,
+        history: Optional[list[dict]] = None,
+        on_event: EventSink = None,
+    ) -> dict:
         """Answer a question about the current part, grounded in its report."""
         from orion_agent.harness.llm.base import LLMMessage
 
@@ -531,9 +641,12 @@ class StudioAgent:
 
         if part:
             messages.append(LLMMessage.user(_part_context(part)))
-            messages.append(LLMMessage.assistant(
-                "Understood — I have the Blueprint and the verification report "
-                "for this part in front of me."))
+            messages.append(
+                LLMMessage.assistant(
+                    "Understood — I have the Blueprint and the verification report "
+                    "for this part in front of me."
+                )
+            )
 
         for turn in (history or [])[-6:]:
             role = turn.get("role")
@@ -553,48 +666,75 @@ class StudioAgent:
 
         used: list[str] = []
         for _round in range(KNOWLEDGE_TOOL_ROUNDS):
-            resp, label = self._complete(messages, on_event, "answer",
-                                         max_tokens=1024,
-                                         model=CONVERSATION_MODEL,
-                                         tools=schemas)
+            resp, label = self._complete(
+                messages,
+                on_event,
+                "answer",
+                max_tokens=1024,
+                model=CONVERSATION_MODEL,
+                tools=schemas,
+            )
             if resp is None:
-                return {"success": False, "model": "",
-                        "answer": "", "error": "no model is reachable"}
+                return {
+                    "success": False,
+                    "model": "",
+                    "answer": "",
+                    "error": "no model is reachable",
+                }
             if not resp.tool_calls:
                 break
 
-            messages.append(LLMMessage.assistant(resp.content,
-                                                 tool_calls=resp.tool_calls))
+            messages.append(
+                LLMMessage.assistant(resp.content, tool_calls=resp.tool_calls)
+            )
             for call in resp.tool_calls:
                 result = registry.execute(call.name, call.arguments)
                 used.append(call.name)
                 if on_event:
                     # Shown, not hidden: an answer backed by a lookup is a
                     # different claim from one the model produced unaided.
-                    on_event("tool", {"name": call.name,
-                                      "arguments": call.arguments,
-                                      "ok": result.ok})
-                messages.append(LLMMessage.tool(result.content, call.id,
-                                                call.name))
+                    on_event(
+                        "tool",
+                        {
+                            "name": call.name,
+                            "arguments": call.arguments,
+                            "ok": result.ok,
+                        },
+                    )
+                messages.append(LLMMessage.tool(result.content, call.id, call.name))
         else:
             # Budget spent and still calling tools — answer with what it has
             # rather than looping.
-            resp, label = self._complete(messages, on_event, "answer",
-                                         max_tokens=1024,
-                                         model=CONVERSATION_MODEL)
+            resp, label = self._complete(
+                messages, on_event, "answer", max_tokens=1024, model=CONVERSATION_MODEL
+            )
             if resp is None:
-                return {"success": False, "model": "",
-                        "answer": "", "error": "no model is reachable"}
+                return {
+                    "success": False,
+                    "model": "",
+                    "answer": "",
+                    "error": "no model is reachable",
+                }
 
         answer = _strip_blueprint(resp.content)
         if not answer:
             # The model answered with a Blueprint instead of prose. Say so
             # rather than pasting JSON into the conversation.
-            return {"success": False, "model": label, "answer": "",
-                    "error": "the model returned a design instead of an "
-                             "answer — try rephrasing as a question"}
-        return {"success": True, "model": label, "answer": answer,
-                "thinking": resp.thinking, "tools_used": used, "error": None}
+            return {
+                "success": False,
+                "model": label,
+                "answer": "",
+                "error": "the model returned a design instead of an "
+                "answer — try rephrasing as a question",
+            }
+        return {
+            "success": True,
+            "model": label,
+            "answer": answer,
+            "thinking": resp.thinking,
+            "tools_used": used,
+            "error": None,
+        }
 
 
 def _part_context(part: dict) -> str:
@@ -614,7 +754,8 @@ def _part_context(part: dict) -> str:
         lines.append(
             f"Measured: volume {stats.get('volume_mm3')} mm^3, "
             f"bounding box {stats.get('bbox_mm')} mm, "
-            f"watertight={stats.get('watertight')}")
+            f"watertight={stats.get('watertight')}"
+        )
 
     report = part.get("verification") or {}
     if report:

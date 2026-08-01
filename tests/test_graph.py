@@ -37,8 +37,10 @@ def test_a_component_edge_exists_because_the_family_declares_it():
     """Not because someone wrote it down here."""
     g = G.graph()
     key = f"{G.COMPONENT}:rolling_bearing"
-    declared = {i.function for i in F.implements_for(
-        "rolling_bearing", {"d": 25.0, "D": 52.0, "B": 15.0})}
+    declared = {
+        i.function
+        for i in F.implements_for("rolling_bearing", {"d": 25.0, "D": 52.0, "B": 15.0})
+    }
     linked = {g.nodes[e.dst].id for e in g.out(key, G.IMPLEMENTS)}
     assert linked == declared
 
@@ -60,9 +62,11 @@ def test_choosing_a_component_incurs_interfaces():
 def test_every_edge_carries_its_justification_or_is_structural():
     """An edge with no justification is an assertion nobody can check."""
     g = G.graph()
-    unjustified = [e for e in g.edges
-                   if not e.why and e.kind in (G.IMPLEMENTS, G.CAN_FAIL_BY,
-                                               G.SOURCED_FROM)]
+    unjustified = [
+        e
+        for e in g.edges
+        if not e.why and e.kind in (G.IMPLEMENTS, G.CAN_FAIL_BY, G.SOURCED_FROM)
+    ]
     assert not unjustified, unjustified[:3]
 
 
@@ -84,8 +88,9 @@ def test_every_skill_declares_calculators_that_exist():
 
     for name in registry.names():
         for calculator in registry.get(name).graph.calculators:
-            assert calculator in calc.CALCULATORS, \
-                f"skill {name} declares unknown calculator {calculator}"
+            assert (
+                calculator in calc.CALCULATORS
+            ), f"skill {name} declares unknown calculator {calculator}"
 
 
 def test_registering_a_skill_with_a_bogus_calculator_is_refused():
@@ -93,9 +98,15 @@ def test_registering_a_skill_with_a_bogus_calculator_is_refused():
 
     bare = SkillRegistry()
     with pytest.raises(SkillError, match="do not exist"):
-        bare.register(Skill(name="x", description="", parameters={},
-                            run=lambda: None,
-                            graph=SkillGraph(calculators=["no_such_calc"])))
+        bare.register(
+            Skill(
+                name="x",
+                description="",
+                parameters={},
+                run=lambda: None,
+                graph=SkillGraph(calculators=["no_such_calc"]),
+            )
+        )
 
 
 def test_registering_a_skill_for_an_unknown_function_is_refused():
@@ -103,9 +114,15 @@ def test_registering_a_skill_for_an_unknown_function_is_refused():
 
     bare = SkillRegistry()
     with pytest.raises(SkillError, match="not in the vocabulary"):
-        bare.register(Skill(name="x", description="", parameters={},
-                            run=lambda: None,
-                            graph=SkillGraph(functions=["MakesItNice"])))
+        bare.register(
+            Skill(
+                name="x",
+                description="",
+                parameters={},
+                run=lambda: None,
+                graph=SkillGraph(functions=["MakesItNice"]),
+            )
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -129,7 +146,8 @@ def test_the_explanation_names_the_standard_and_the_dataset():
     from orion.reasoning import reason
 
     why = G.explain_selection(
-        reason("Support a rotating 25 mm shaft carrying 1.5 kN at 900 rpm"))
+        reason("Support a rotating 25 mm shaft carrying 1.5 kN at 900 rpm")
+    )
     validated = " ".join(v["node"] for v in why["validated_by"])
     assert "ISO 286" in validated and "bearing_life_l10" in validated
     assert why["sourced_from"], "a component with no source cannot be audited"
@@ -152,17 +170,21 @@ def test_a_blocked_chain_explains_nothing_and_asks_instead():
 def _bearing(designation: str) -> dict:
     from orion.knowledge.registry import rows_for_family
 
-    return next(r for r in rows_for_family("rolling_bearing")
-                if r["designation"] == designation)
+    return next(
+        r for r in rows_for_family("rolling_bearing") if r["designation"] == designation
+    )
 
 
 def test_a_failure_mode_assesses_this_part_at_this_duty():
     """'A bearing can fail by fatigue' is true of every bearing ever made and
     changes no decision."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=1500,
-                  speed_rpm=1500, life_hours=20000)
-    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"),
-                                          duty)}
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        radial_load_N=1500,
+        speed_rpm=1500,
+        life_hours=20000,
+    )
+    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"), duty)}
     # 6205 gives 10 673 h against 20 000 asked for.
     assert found["fatigue"].verdict == FM.AT_RISK
     assert found["fatigue"].margin < 1.0
@@ -172,10 +194,10 @@ def test_a_failure_mode_assesses_this_part_at_this_duty():
 def test_the_static_check_is_not_the_life_check():
     """A bearing that survives a million revolutions can be ruined by one shock
     while stationary, and rating life says nothing about it."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=9000,
-                  speed_rpm=1500, life_hours=1)
-    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"),
-                                          duty)}
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION, radial_load_N=9000, speed_rpm=1500, life_hours=1
+    )
+    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"), duty)}
     # C0 = 7 800 N, so 9 000 N standing still indents the raceway.
     assert found["static_overload"].verdict == FM.AT_RISK
     assert "ISO 76" in found["static_overload"].basis
@@ -184,33 +206,27 @@ def test_the_static_check_is_not_the_life_check():
 def test_too_little_load_is_a_failure_mode_too():
     """Below the minimum the elements skid instead of rolling, and every life
     calculation says the bearing is barely working."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=50,
-                  speed_rpm=1500)
-    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"),
-                                          duty)}
+    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=50, speed_rpm=1500)
+    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"), duty)}
     assert found["skidding"].verdict == FM.AT_RISK
-    assert found["fatigue"].verdict == FM.OK       # the point: life is fine
+    assert found["fatigue"].verdict == FM.OK  # the point: life is fine
 
 
 def test_the_required_viscosity_is_computed_even_though_the_verdict_is_not():
     """We do not know the oil or the temperature, but the requirement follows
     from size and speed alone and is the number needed to choose a grade."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=1500,
-                  speed_rpm=1500)
-    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"),
-                                          duty)}
+    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=1500, speed_rpm=1500)
+    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"), duty)}
     lube = found["lubrication_starvation"]
     assert lube.verdict == FM.UNKNOWN
-    assert "19 mm2/s" in lube.finding        # 4500 * 1500^-0.5 * 38.5^-0.5
+    assert "19 mm2/s" in lube.finding  # 4500 * 1500^-0.5 * 38.5^-0.5
     assert "operating temperature" in lube.needs
 
 
 def test_a_mode_that_cannot_be_computed_is_named_rather_than_dropped():
     """The modes you cannot compute are the ones that kill bearings."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=1500,
-                  speed_rpm=1500)
-    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"),
-                                          duty)}
+    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=1500, speed_rpm=1500)
+    found = {a.mode: a for a in FM.assess("rolling_bearing", _bearing("6205"), duty)}
     for mode in ("contamination", "false_brinelling", "electrical_erosion"):
         assert found[mode].verdict == FM.UNKNOWN
         assert found[mode].needs
@@ -219,10 +235,10 @@ def test_a_mode_that_cannot_be_computed_is_named_rather_than_dropped():
 def test_risks_are_ordered_by_what_needs_attention():
     """A report that leads with a healthy fatigue life buries the static factor
     of 0.8 underneath it."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=9000,
-                  speed_rpm=1500, life_hours=1)
-    verdicts = [a.verdict for a in FM.assess("rolling_bearing",
-                                             _bearing("6205"), duty)]
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION, radial_load_N=9000, speed_rpm=1500, life_hours=1
+    )
+    verdicts = [a.verdict for a in FM.assess("rolling_bearing", _bearing("6205"), duty)]
     rank = {FM.AT_RISK: 0, FM.MARGINAL: 1, FM.UNKNOWN: 2, FM.OK: 3}
     assert verdicts == sorted(verdicts, key=lambda v: rank[v])
 
@@ -252,8 +268,8 @@ def test_coverage_counts_capability_not_files():
 
 def test_coverage_reports_the_gaps_rather_than_hiding_them():
     c = G.coverage()
-    assert c["calculators"]["orphaned"], \
-        "a calculator no function can reach is the roadmap, not an omission"
-    assert set(c["calculators"]["reachable_from_a_function"]) \
-        & {"bearing_life_l10"}
+    assert c["calculators"][
+        "orphaned"
+    ], "a calculator no function can reach is the roadmap, not an omission"
+    assert set(c["calculators"]["reachable_from_a_function"]) & {"bearing_life_l10"}
     assert G.report().count("--  ") == len(c["functions"]["absent"])

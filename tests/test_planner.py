@@ -18,10 +18,13 @@ from app.services.planner import (
 from orion.family_schema import DEFAULT_DATA, check_guards
 
 needs_corpus = pytest.mark.skipif(
-    not os.path.exists(DEFAULT_DATA), reason="training corpus not present")
+    not os.path.exists(DEFAULT_DATA), reason="training corpus not present"
+)
 
-ASK = ("aluminium mounting plate for a NEMA 17, 112 mm long, 66 wide, "
-       "10 mm thick, milled")
+ASK = (
+    "aluminium mounting plate for a NEMA 17, 112 mm long, 66 wide, "
+    "10 mm thick, milled"
+)
 
 
 class _Reply:
@@ -32,8 +35,10 @@ class _Reply:
 
 def _answering(payload: str):
     """A completion that ignores the brief and returns ``payload``."""
+
     def complete(_messages, _tools):
         return _Reply(payload)
+
     return complete
 
 
@@ -47,9 +52,10 @@ def test_calculator_tools_expose_real_signatures():
     props = by_name["calc_thread_engagement"]["function"]["parameters"]["properties"]
     assert set(props) == {"d_mm", "pitch_mm", "bolt_uts_mpa", "nut_material"}
     # nothing structured leaks in as a scalar
-    assert "args" not in {p for t in tools
-                          for p in t["function"]["parameters"]["properties"]}
-    assert "calc_kutzbach_mobility" not in names   # takes list[dict]
+    assert "args" not in {
+        p for t in tools for p in t["function"]["parameters"]["properties"]
+    }
+    assert "calc_kutzbach_mobility" not in names  # takes list[dict]
 
 
 @needs_corpus
@@ -65,9 +71,12 @@ def test_baseline_alone_is_a_working_part():
 
 @needs_corpus
 def test_a_justified_override_is_applied():
-    planner = EngineeringPlanner(_answering(
-        '[{"variable": "pt", "value": 6.0, '
-        '"why": "6 mm is the thinnest section giving full M4 engagement"}]'))
+    planner = EngineeringPlanner(
+        _answering(
+            '[{"variable": "pt", "value": 6.0, '
+            '"why": "6 mm is the thinnest section giving full M4 engagement"}]'
+        )
+    )
     result = planner.plan(ASK)
     assert result.specification.variables["pt"] == 6.0
     assert result.applied[0]["variable"] == "pt"
@@ -81,8 +90,9 @@ def test_an_override_that_would_break_a_guard_is_refused_with_the_arithmetic():
     it, instead of the verifier refusing the part three stages later."""
     # mount_plate: corner_margin = min(pl/2 - mx, pw/2 - my) - hr - 2.
     # Pushing the hole centre out to the edge drives it negative.
-    planner = EngineeringPlanner(_answering(
-        '[{"variable": "mx", "value": 55.0, "why": "wider bolt spacing"}]'))
+    planner = EngineeringPlanner(
+        _answering('[{"variable": "mx", "value": 55.0, "why": "wider bolt spacing"}]')
+    )
     result = planner.plan(ASK)
 
     assert result.applied == []
@@ -96,8 +106,9 @@ def test_an_override_that_would_break_a_guard_is_refused_with_the_arithmetic():
 
 @needs_corpus
 def test_an_invented_variable_is_refused():
-    planner = EngineeringPlanner(_answering(
-        '[{"variable": "thickness", "value": 8.0, "why": "thicker"}]'))
+    planner = EngineeringPlanner(
+        _answering('[{"variable": "thickness", "value": 8.0, "why": "thicker"}]')
+    )
     result = planner.plan(ASK)
     assert result.applied == []
     assert "not a mount_plate variable" in result.refused[0]["reason"]
@@ -105,8 +116,9 @@ def test_an_invented_variable_is_refused():
 
 @needs_corpus
 def test_non_numeric_value_is_refused():
-    planner = EngineeringPlanner(_answering(
-        '[{"variable": "pt", "value": "8 mm", "why": "thicker"}]'))
+    planner = EngineeringPlanner(
+        _answering('[{"variable": "pt", "value": "8 mm", "why": "thicker"}]')
+    )
     result = planner.plan(ASK)
     assert result.applied == []
     assert "not a number" in result.refused[0]["reason"]
@@ -121,9 +133,12 @@ def test_empty_override_list_keeps_the_baseline():
 
 @needs_corpus
 def test_planner_output_never_reaches_the_design_prompt():
-    planner = EngineeringPlanner(_answering(
-        '[{"variable": "pt", "value": 6.0, "why": "per ISO 2768-mK and a '
-        'calculated 5.9 mm engagement"}]'))
+    planner = EngineeringPlanner(
+        _answering(
+            '[{"variable": "pt", "value": 6.0, "why": "per ISO 2768-mK and a '
+            'calculated 5.9 mm engagement"}]'
+        )
+    )
     result = planner.plan(ASK)
     prompt = result.specification.to_prompt()
     assert "pt=6" in prompt
@@ -162,11 +177,14 @@ def test_apply_overrides_is_pure():
 
     schema = for_family("mount_plate")
     original = EngineeringSpecification(
-        "mount_plate", {n: schema.variables[n].median for n in schema.required()})
+        "mount_plate", {n: schema.variables[n].median for n in schema.required()}
+    )
     before = dict(original.variables)
     updated, applied, _ = apply_overrides(
-        original, [{"variable": "pt", "value": 7.0, "why": "x"}])
-    assert original.variables == before          # untouched
+        original, [{"variable": "pt", "value": 7.0, "why": "x"}]
+    )
+    assert original.variables == before  # untouched
     assert updated.variables["pt"] == 7.0
     assert applied and all(
-        g["holds"] for g in check_guards("mount_plate", updated.variables))
+        g["holds"] for g in check_guards("mount_plate", updated.variables)
+    )

@@ -25,8 +25,13 @@ def test_a_function_search_is_ranked_by_least_waste():
     """An engineer asking for 20 000 hours does not want the bearing that
     lasts 170 000 — it is heavier, needs a bigger housing and costs more to do
     the same job. Life is a gate; size is the ranking."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
-                  speed_rpm=1500, life_hours=20000, bore_mm=25)
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        radial_load_N=3000,
+        speed_rpm=1500,
+        life_hours=20000,
+        bore_mm=25,
+    )
     found = F.search(duty, limit=5)
     assert found, "nothing offered for a routine duty"
     diameters = [c.evidence["outside_dia_mm"] for c in found]
@@ -39,23 +44,33 @@ def test_capability_and_suitability_are_different_claims():
     """Every rolling bearing supports rotation; only some carry the load. A
     search that conflates them answers every query with the whole catalogue."""
     everything = F.Duty(function=F.SUPPORTS_ROTATION, bore_mm=25)
-    demanding = F.Duty(function=F.SUPPORTS_ROTATION, bore_mm=25,
-                       radial_load_N=30000, speed_rpm=3000, life_hours=50000)
-    assert len(F.search(everything, limit=50)) > \
-        len(F.search(demanding, limit=50))
+    demanding = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        bore_mm=25,
+        radial_load_N=30000,
+        speed_rpm=3000,
+        life_hours=50000,
+    )
+    assert len(F.search(everything, limit=50)) > len(F.search(demanding, limit=50))
 
 
 def test_an_impossible_duty_returns_nothing_rather_than_a_best_effort():
-    absurd = F.Duty(function=F.SUPPORTS_ROTATION, bore_mm=25,
-                    radial_load_N=500000, speed_rpm=6000, life_hours=100000)
+    absurd = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        bore_mm=25,
+        radial_load_N=500000,
+        speed_rpm=6000,
+        life_hours=100000,
+    )
     assert F.search(absurd) == []
 
 
 def test_choosing_a_component_creates_interface_debt():
     """A bearing does not float in space. Choosing one obliges a seat, a bore
     and a shoulder, and a planner that tracks these has a task list."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=2000,
-                  speed_rpm=1000, bore_mm=25)
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION, radial_load_N=2000, speed_rpm=1000, bore_mm=25
+    )
     kinds = {r["interface"] for r in F.search(duty)[0].requires}
     assert {"shaft_seat", "housing_seat", "shoulder"} <= kinds
 
@@ -64,9 +79,13 @@ def test_a_bearing_with_no_rating_is_excluded_not_assumed_adequate():
     """A missing number is not a passing one."""
     from orion.knowledge.functions_catalogue import bearing_supports_rotation
 
-    unrated = {"d": 25.0, "D": 52.0, "B": 15.0}          # no C_N
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
-                  speed_rpm=1500, life_hours=20000)
+    unrated = {"d": 25.0, "D": 52.0, "B": 15.0}  # no C_N
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        radial_load_N=3000,
+        speed_rpm=1500,
+        life_hours=20000,
+    )
     assert bearing_supports_rotation(unrated, duty) is None
 
 
@@ -91,10 +110,12 @@ def test_a_skill_declares_what_it_rests_on():
 
 
 def test_the_planner_reaches_a_skill_by_function_not_by_name():
-    assert [s.name for s in skills.for_function(F.SUPPORTS_ROTATION)] == \
-        ["create_bearing_seat"]
-    assert [s.name for s in skills.for_function(F.PROVIDES_CLAMP_FORCE)] == \
-        ["create_bolt_pattern"]
+    assert [s.name for s in skills.for_function(F.SUPPORTS_ROTATION)] == [
+        "create_bearing_seat"
+    ]
+    assert [s.name for s in skills.for_function(F.PROVIDES_CLAMP_FORCE)] == [
+        "create_bolt_pattern"
+    ]
     # a function nothing serves yet returns nothing, rather than a near miss
     assert skills.for_function(F.SEALS_FLUID) == []
 
@@ -104,9 +125,14 @@ def test_intent_reaches_a_buildable_part():
     serves that function, and parameters the compiler accepts."""
     from orion.family_schema import check_guards
 
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
-                  speed_rpm=1500, life_hours=20000, bore_mm=25,
-                  max_outside_dia_mm=60)
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        radial_load_N=3000,
+        speed_rpm=1500,
+        life_hours=20000,
+        bore_mm=25,
+        max_outside_dia_mm=60,
+    )
     chosen = F.search(duty)[0]
     skill = skills.for_function(F.SUPPORTS_ROTATION)[0]
     result = skill.run(bearing_designation=chosen.designation, wall_mm=7)
@@ -146,8 +172,7 @@ def test_the_classification_agrees_with_the_ratings():
         kind = classify(designation)
         if kind is None:
             continue
-        problem = ratings_match_the_type({"designation": designation, **spec},
-                                         kind)
+        problem = ratings_match_the_type({"designation": designation, **spec}, kind)
         if problem:
             disagreements.append(problem)
     assert not disagreements, disagreements[:3]
@@ -168,8 +193,12 @@ def test_a_thrust_bearing_is_never_offered_for_a_radial_load():
     # must be a KNOWN type that carries radial load.
     from orion.knowledge.bearing_types import profile
 
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
-                  speed_rpm=1500, life_hours=10000)
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        radial_load_N=3000,
+        speed_rpm=1500,
+        life_hours=10000,
+    )
     for candidate in F.search(duty, limit=20):
         kind = candidate.evidence["bearing_type"]
         assert kind is not None, f"{candidate.designation} was never classified"
@@ -183,8 +212,7 @@ def test_misalignment_rules_out_the_rigid_types():
         choose_types,
     )
 
-    verdicts = {v.kind: v for v in choose_types(radial_N=2000,
-                                                misalignment_deg=1.0)}
+    verdicts = {v.kind: v for v in choose_types(radial_N=2000, misalignment_deg=1.0)}
     assert verdicts[DEEP_GROOVE_BALL].suitable is False
     assert verdicts[SPHERICAL_ROLLER].suitable is True
 
@@ -192,8 +220,13 @@ def test_misalignment_rules_out_the_rigid_types():
 def test_ties_go_to_the_simpler_bearing():
     """A 6205 and a 30205 are both 25x52. Reaching for the taper roller on a
     light radial duty buys a costlier bearing and a costlier assembly."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=1000,
-                  speed_rpm=1500, life_hours=20000, bore_mm=25)
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        radial_load_N=1000,
+        speed_rpm=1500,
+        life_hours=20000,
+        bore_mm=25,
+    )
     found = F.search(duty, limit=6)
     by_designation = {c.designation: i for i, c in enumerate(found)}
     assert "6205" in by_designation and "30205" in by_designation
@@ -202,9 +235,15 @@ def test_ties_go_to_the_simpler_bearing():
 
 def test_an_empty_search_says_which_requirement_excluded_everything():
     """A planner that gets nothing back needs to know what to renegotiate."""
-    duty = F.Duty(function=F.SUPPORTS_ROTATION, radial_load_N=3000,
-                  axial_load_N=2000, misalignment_deg=0.1, speed_rpm=1500,
-                  life_hours=20000, bore_mm=25)
+    duty = F.Duty(
+        function=F.SUPPORTS_ROTATION,
+        radial_load_N=3000,
+        axial_load_N=2000,
+        misalignment_deg=0.1,
+        speed_rpm=1500,
+        life_hours=20000,
+        bore_mm=25,
+    )
     assert F.search(duty) == []
     why = F.explain_empty(duty)
     assert "no bearing TYPE" in why

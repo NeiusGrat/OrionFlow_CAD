@@ -311,13 +311,21 @@ def test_agent_endpoint_smoke(monkeypatch):
 # refusal must name what failed. A green tick the system did not earn is worse
 # than no tick, because the user cannot tell the difference.
 
+
 def _bundle(**over):
     b = {
-        "success": True, "error": None, "repair_attempts": 0,
+        "success": True,
+        "error": None,
+        "repair_attempts": 0,
         "files": {"stl": "/x.stl"},
-        "analysis": {"properties": {"watertight": True, "volume_cm3": 12.0,
-                                    "bbox_mm": [50.0, 40.0, 10.0]},
-                     "issues": []},
+        "analysis": {
+            "properties": {
+                "watertight": True,
+                "volume_cm3": 12.0,
+                "bbox_mm": [50.0, 40.0, 10.0],
+            },
+            "issues": [],
+        },
     }
     b.update(over)
     return b
@@ -346,8 +354,9 @@ def test_verification_omits_topology_when_analysis_did_not_run():
 def test_verification_refuses_open_faces():
     from orion_physical_ai import verify
 
-    rep = verify.from_bundle(_bundle(
-        analysis={"properties": {"watertight": False}, "issues": []}))
+    rep = verify.from_bundle(
+        _bundle(analysis={"properties": {"watertight": False}, "issues": []})
+    )
     assert rep["verdict"] == "refused"
     topo = next(c for c in rep["checks"] if c["id"] == "topology")
     assert topo["status"] == "fail" and "open faces" in topo["detail"]
@@ -358,8 +367,7 @@ def test_verification_stops_at_a_failed_build():
     them would be inventing evidence."""
     from orion_physical_ai import verify
 
-    rep = verify.from_bundle(_bundle(success=False, error="compile error",
-                                     files={}))
+    rep = verify.from_bundle(_bundle(success=False, error="compile error", files={}))
     assert rep["verdict"] == "refused"
     assert [c["id"] for c in rep["checks"]] == ["builder"]
     assert "compile error" in rep["failed"][0]["detail"]
@@ -381,10 +389,17 @@ def test_verification_checks_a_declared_envelope():
 def test_verification_refuses_critical_manufacturability_faults():
     from orion_physical_ai import verify
 
-    rep = verify.from_bundle(_bundle(analysis={
-        "properties": {"watertight": True},
-        "issues": [{"severity": "critical", "issue": "wall below process min"},
-                   {"severity": "warning", "issue": "thin rib"}]}))
+    rep = verify.from_bundle(
+        _bundle(
+            analysis={
+                "properties": {"watertight": True},
+                "issues": [
+                    {"severity": "critical", "issue": "wall below process min"},
+                    {"severity": "warning", "issue": "thin rib"},
+                ],
+            }
+        )
+    )
     assert rep["verdict"] == "refused"
     mfg = next(c for c in rep["checks"] if c["id"] == "manufacturable")
     assert mfg["status"] == "fail"
@@ -396,19 +411,42 @@ def test_verification_from_forge_assertion_rows():
     proof rather than an observation."""
     from orion_physical_ai import verify
 
-    rep = verify.from_assertion_rows([
-        {"id": "body", "kind": "body_volume", "tier": 1, "passed": True,
-         "target": 1000.0, "measured": 1000.0, "rel_err": 1e-16},
-        {"id": "closed", "kind": "watertight", "tier": 1, "passed": True,
-         "measured": True},
-    ])
+    rep = verify.from_assertion_rows(
+        [
+            {
+                "id": "body",
+                "kind": "body_volume",
+                "tier": 1,
+                "passed": True,
+                "target": 1000.0,
+                "measured": 1000.0,
+                "rel_err": 1e-16,
+            },
+            {
+                "id": "closed",
+                "kind": "watertight",
+                "tier": 1,
+                "passed": True,
+                "measured": True,
+            },
+        ]
+    )
     assert rep["verdict"] == "verified"
     assert rep["checks"][0]["label"] == "Volume matches prediction"
 
-    bad = verify.from_assertion_rows([
-        {"id": "body", "kind": "body_volume", "tier": 1, "passed": False,
-         "target": 1000.0, "measured": 987.0, "rel_err": 1.3e-2},
-    ])
+    bad = verify.from_assertion_rows(
+        [
+            {
+                "id": "body",
+                "kind": "body_volume",
+                "tier": 1,
+                "passed": False,
+                "target": 1000.0,
+                "measured": 987.0,
+                "rel_err": 1.3e-2,
+            },
+        ]
+    )
     assert bad["verdict"] == "refused"
     assert "987" in bad["failed"][0]["detail"]
 
@@ -418,8 +456,10 @@ def test_verification_reports_a_refused_precondition_as_the_whole_story():
     answer, and it must be named."""
     from orion_physical_ai import verify
 
-    rep = verify.from_assertion_rows([], refused=[
-        {"id": "bore_wall", "target": -1.5, "why": "precondition violated"}])
+    rep = verify.from_assertion_rows(
+        [],
+        refused=[{"id": "bore_wall", "target": -1.5, "why": "precondition violated"}],
+    )
     assert rep["verdict"] == "refused"
     assert rep["failed"][0]["id"] == "guard:bore_wall"
     assert rep["failed"][0]["evidence"]["value"] == -1.5

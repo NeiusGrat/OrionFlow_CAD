@@ -29,13 +29,25 @@ _SCAFFOLDING = {"Body", "Sketch"}
 
 #: PartDesign type -> what it does to material, in plain words.
 _ACTION = {
-    "Pad": "extrude", "Pocket": "cut", "Revolution": "revolve",
-    "Groove": "cut a revolved groove", "Hole": "drill",
-    "Loft": "loft", "Sweep": "sweep", "Fillet": "round",
-    "Chamfer": "chamfer", "Draft": "draft", "Thickness": "hollow",
-    "LinearPattern": "pattern", "PolarPattern": "pattern about an axis",
-    "Mirrored": "mirror", "Box": "add a box", "Cylinder": "add a cylinder",
-    "Sphere": "add a sphere", "Cone": "add a cone", "Torus": "add a torus",
+    "Pad": "extrude",
+    "Pocket": "cut",
+    "Revolution": "revolve",
+    "Groove": "cut a revolved groove",
+    "Hole": "drill",
+    "Loft": "loft",
+    "Sweep": "sweep",
+    "Fillet": "round",
+    "Chamfer": "chamfer",
+    "Draft": "draft",
+    "Thickness": "hollow",
+    "LinearPattern": "pattern",
+    "PolarPattern": "pattern about an axis",
+    "Mirrored": "mirror",
+    "Box": "add a box",
+    "Cylinder": "add a cylinder",
+    "Sphere": "add a sphere",
+    "Cone": "add a cone",
+    "Torus": "add a torus",
 }
 
 _CHECK_PROSE = {
@@ -109,7 +121,7 @@ def _was_specified(name: str, value: Any, prompt: str) -> bool:
     is_attachment = name.startswith("att") and name[3:4].isdigit()
     is_radius = name.endswith("_r") or "radius" in _prose_name(name)
     if is_radius and not is_attachment:
-        candidates.append(value * 2)      # the user gave it as a diameter
+        candidates.append(value * 2)  # the user gave it as a diameter
 
     for candidate in candidates:
         s = _fmt(candidate)
@@ -145,14 +157,19 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
         interp.append("Taken from your description: " + ", ".join(given) + ".")
     if chosen:
         interp.append(
-            ("Chosen to complete the design: " if given
-             else "Dimensions chosen for the design: ")
-            + ", ".join(chosen) + ".")
+            (
+                "Chosen to complete the design: "
+                if given
+                else "Dimensions chosen for the design: "
+            )
+            + ", ".join(chosen)
+            + "."
+        )
     datums = bp.get("datums") or {}
     if datums:
         interp.append(
-            "Datums set as " +
-            ", ".join(f"{k} = {v}" for k, v in datums.items()) + ".")
+            "Datums set as " + ", ".join(f"{k} = {v}" for k, v in datums.items()) + "."
+        )
     sections.append({"title": "Interpretation", "body": " ".join(interp)})
 
     # ---- 2. how it was built --------------------------------------------- #
@@ -163,27 +180,34 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
             continue
         action = _ACTION.get(ftype, ftype.lower())
         label = (feat.get("rationale") or feat.get("id", "")).strip()
-        steps.append({"action": action, "detail": label,
-                      "id": feat.get("id", ""), "type": ftype})
+        steps.append(
+            {"action": action, "detail": label, "id": feat.get("id", ""), "type": ftype}
+        )
     if steps:
-        sections.append({
-            "title": "Feature sequence",
-            "body": "Built in this order, each feature referencing the one "
-                    "before it, so the model stays parametric and editable.",
-            "items": [f"**{s['action'].capitalize()}** — {s['detail']}"
-                      for s in steps],
-        })
+        sections.append(
+            {
+                "title": "Feature sequence",
+                "body": "Built in this order, each feature referencing the one "
+                "before it, so the model stays parametric and editable.",
+                "items": [
+                    f"**{s['action'].capitalize()}** — {s['detail']}" for s in steps
+                ],
+            }
+        )
 
     # ---- 3. why it is shaped this way ------------------------------------ #
-    reasons = [d.get("why", "").strip()
-               for d in (plan.get("derivation") or []) if d.get("why")]
+    reasons = [
+        d.get("why", "").strip() for d in (plan.get("derivation") or []) if d.get("why")
+    ]
     if reasons:
-        sections.append({
-            "title": "Design intent",
-            "body": "The reasoning behind the shape, and the terms that make "
-                    "up its volume:",
-            "items": reasons,
-        })
+        sections.append(
+            {
+                "title": "Design intent",
+                "body": "The reasoning behind the shape, and the terms that make "
+                "up its volume:",
+                "items": reasons,
+            }
+        )
 
     # ---- 4. what was actually proved ------------------------------------- #
     checks = report.get("checks") or []
@@ -198,22 +222,33 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
             kinds.append(phrase)
 
     if verdict == "verified" and kinds:
-        body = ("Before any geometry existed, the design committed to what it "
-                "should measure. It was then built and measured, and " +
-                _join(kinds) + ".")
+        body = (
+            "Before any geometry existed, the design committed to what it "
+            "should measure. It was then built and measured, and " + _join(kinds) + "."
+        )
         if stats.get("volume_mm3"):
-            body += (f" Final volume {stats['volume_mm3'] / 1000:.3f} cm³"
-                     + (f", envelope {'×'.join(str(round(v)) for v in stats['bbox_mm'])} mm."
-                        if stats.get("bbox_mm") else "."))
+            body += f" Final volume {stats['volume_mm3'] / 1000:.3f} cm³" + (
+                f", envelope {'×'.join(str(round(v)) for v in stats['bbox_mm'])} mm."
+                if stats.get("bbox_mm")
+                else "."
+            )
     elif failed:
-        body = ("This part is **not** correct as drawn. "
-                + _join([f"{c.get('label', 'a check')} failed — "
-                         f"{c.get('detail', '')}" for c in failed])
-                + ". It is being shown so the failure is visible, not because "
-                  "it is usable.")
+        body = (
+            "This part is **not** correct as drawn. "
+            + _join(
+                [
+                    f"{c.get('label', 'a check')} failed — " f"{c.get('detail', '')}"
+                    for c in failed
+                ]
+            )
+            + ". It is being shown so the failure is visible, not because "
+            "it is usable."
+        )
     else:
-        body = ("Nothing failed, but nothing was proved either — no check "
-                "produced evidence, so treat this geometry as unverified.")
+        body = (
+            "Nothing failed, but nothing was proved either — no check "
+            "produced evidence, so treat this geometry as unverified."
+        )
 
     sections.append({"title": "Verification", "body": body})
 

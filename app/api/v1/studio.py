@@ -72,8 +72,11 @@ def studio_chat(request: StudioChatRequest):
     if intent not in ("design", "explain"):
         # No part open means there is nothing to discuss yet, so even a
         # question becomes a design request.
-        intent = ("explain" if request.part and
-                  _looks_like_a_question(request.message) else "design")
+        intent = (
+            "explain"
+            if request.part and _looks_like_a_question(request.message)
+            else "design"
+        )
 
     events: queue.Queue = queue.Queue()
 
@@ -83,46 +86,65 @@ def studio_chat(request: StudioChatRequest):
     def work() -> None:
         try:
             if intent == "explain":
-                result = agent.explain(request.message, part=request.part,
-                                       history=request.history,
-                                       on_event=on_event)
-                events.put(("done", {
-                    "intent": "explain",
-                    "success": result.get("success", False),
-                    "answer": result.get("answer", ""),
-                    "model": result.get("model", ""),
-                    "error": result.get("error"),
-                }))
+                result = agent.explain(
+                    request.message,
+                    part=request.part,
+                    history=request.history,
+                    on_event=on_event,
+                )
+                events.put(
+                    (
+                        "done",
+                        {
+                            "intent": "explain",
+                            "success": result.get("success", False),
+                            "answer": result.get("answer", ""),
+                            "model": result.get("model", ""),
+                            "error": result.get("error"),
+                        },
+                    )
+                )
                 return
 
             bundle = agent.design(request.message, on_event=on_event)
             if not bundle.get("success"):
-                events.put(("error", {
-                    "intent": "design",
-                    "error": bundle.get("error") or "the part could not be built",
-                    "model": bundle.get("model", ""),
-                    "verification": bundle.get("verification") or {},
-                    "raw_completion": bundle.get("raw_completion"),
-                }))
+                events.put(
+                    (
+                        "error",
+                        {
+                            "intent": "design",
+                            "error": bundle.get("error")
+                            or "the part could not be built",
+                            "model": bundle.get("model", ""),
+                            "verification": bundle.get("verification") or {},
+                            "raw_completion": bundle.get("raw_completion"),
+                        },
+                    )
+                )
                 return
-            events.put(("done", {
-                "intent": "design",
-                "success": True,
-                "model": bundle.get("model", ""),
-                "part_class": bundle.get("part_class", ""),
-                "variables": bundle.get("variables", {}),
-                "blueprint": bundle.get("blueprint"),
-                # The readable account. `thinking` and `blueprint` stay in the
-                # payload untouched — they are the debugging record — but the
-                # UI leads with this.
-                "narrative": bundle.get("narrative"),
-                "thinking": bundle.get("thinking", ""),
-                "files": bundle.get("files", {}),
-                "stats": bundle.get("stats"),
-                "verification": bundle.get("verification") or {},
-                "generation_time_ms": bundle.get("generation_time_ms", 0),
-                "request_id": bundle.get("request_id", ""),
-            }))
+            events.put(
+                (
+                    "done",
+                    {
+                        "intent": "design",
+                        "success": True,
+                        "model": bundle.get("model", ""),
+                        "part_class": bundle.get("part_class", ""),
+                        "variables": bundle.get("variables", {}),
+                        "blueprint": bundle.get("blueprint"),
+                        # The readable account. `thinking` and `blueprint` stay in the
+                        # payload untouched — they are the debugging record — but the
+                        # UI leads with this.
+                        "narrative": bundle.get("narrative"),
+                        "thinking": bundle.get("thinking", ""),
+                        "files": bundle.get("files", {}),
+                        "stats": bundle.get("stats"),
+                        "verification": bundle.get("verification") or {},
+                        "generation_time_ms": bundle.get("generation_time_ms", 0),
+                        "request_id": bundle.get("request_id", ""),
+                    },
+                )
+            )
         except Exception as exc:  # noqa: BLE001
             # The generator below is the only thing that can report to the
             # client, so every failure has to become an event or the stream
