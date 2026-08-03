@@ -28,15 +28,21 @@ from typing import Any, Optional
 PASS = "pass"
 FAIL = "fail"
 
-VERIFIED = "verified"     # every check that ran, passed
-REFUSED = "refused"       # at least one check failed
-UNPROVEN = "unproven"     # nothing failed, but nothing was provable either
+VERIFIED = "verified"  # every check that ran, passed
+REFUSED = "refused"  # at least one check failed
+UNPROVEN = "unproven"  # nothing failed, but nothing was provable either
 
 
-def _check(cid: str, label: str, status: str, detail: str,
-           evidence: Optional[dict] = None) -> dict:
-    return {"id": cid, "label": label, "status": status, "detail": detail,
-            "evidence": evidence or {}}
+def _check(
+    cid: str, label: str, status: str, detail: str, evidence: Optional[dict] = None
+) -> dict:
+    return {
+        "id": cid,
+        "label": label,
+        "status": status,
+        "detail": detail,
+        "evidence": evidence or {},
+    }
 
 
 def verdict_for(checks: list[dict]) -> str:
@@ -57,29 +63,50 @@ def from_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     built = bool(bundle.get("success")) and not bundle.get("error")
     has_geom = any(files.get(k) for k in ("step", "stl", "glb"))
     if built and has_geom:
-        checks.append(_check(
-            "builder", "Builder succeeded", PASS,
-            "the feature program compiled and exported geometry",
-            {"repair_attempts": bundle.get("repair_attempts", 0)}))
+        checks.append(
+            _check(
+                "builder",
+                "Builder succeeded",
+                PASS,
+                "the feature program compiled and exported geometry",
+                {"repair_attempts": bundle.get("repair_attempts", 0)},
+            )
+        )
     else:
-        checks.append(_check(
-            "builder", "Builder succeeded", FAIL,
-            bundle.get("error") or "no geometry was produced",
-            {"repair_attempts": bundle.get("repair_attempts", 0)}))
+        checks.append(
+            _check(
+                "builder",
+                "Builder succeeded",
+                FAIL,
+                bundle.get("error") or "no geometry was produced",
+                {"repair_attempts": bundle.get("repair_attempts", 0)},
+            )
+        )
         # Nothing downstream is meaningful without a solid.
-        return {"verdict": REFUSED, "checks": checks,
-                "failed": [c for c in checks if c["status"] == FAIL],
-                "measured": {}}
+        return {
+            "verdict": REFUSED,
+            "checks": checks,
+            "failed": [c for c in checks if c["status"] == FAIL],
+            "measured": {},
+        }
 
     # 2. Topology: a mesh with open faces is not a solid, whatever it looks
     #    like in a viewer. Only claimed when the analyser actually ran.
     if "watertight" in props:
         wt = bool(props["watertight"])
-        checks.append(_check(
-            "topology", "Topology valid", PASS if wt else FAIL,
-            "closed, watertight solid" if wt
-            else "mesh has open faces — this is not a solid",
-            {"watertight": wt, "solidity": props.get("solidity")}))
+        checks.append(
+            _check(
+                "topology",
+                "Topology valid",
+                PASS if wt else FAIL,
+                (
+                    "closed, watertight solid"
+                    if wt
+                    else "mesh has open faces — this is not a solid"
+                ),
+                {"watertight": wt, "solidity": props.get("solidity")},
+            )
+        )
 
     # 3. Declared envelope, when the plan committed to one. This is a genuine
     #    prediction-vs-measurement check: the plan named a size before the
@@ -89,35 +116,61 @@ def from_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     if envelope and bbox and len(envelope) == len(bbox) == 3:
         over = [round(b - e, 2) for b, e in zip(bbox, envelope)]
         fits = all(b <= e + 0.5 for b, e in zip(bbox, envelope))
-        checks.append(_check(
-            "envelope", "Fits declared envelope", PASS if fits else FAIL,
-            "within the envelope the plan committed to" if fits
-            else f"exceeds the declared envelope by {over} mm",
-            {"declared_mm": envelope, "measured_mm": bbox}))
+        checks.append(
+            _check(
+                "envelope",
+                "Fits declared envelope",
+                PASS if fits else FAIL,
+                (
+                    "within the envelope the plan committed to"
+                    if fits
+                    else f"exceeds the declared envelope by {over} mm"
+                ),
+                {"declared_mm": envelope, "measured_mm": bbox},
+            )
+        )
 
     # 4. Manufacturability faults the analyser rates as critical. A warning is
     #    an opinion; a critical issue means the part cannot be made as drawn.
     critical = [i for i in issues if i.get("severity") == "critical"]
     if issues or analysis:
-        checks.append(_check(
-            "manufacturable", "No critical faults", FAIL if critical else PASS,
-            f"{len(critical)} critical manufacturability fault(s)" if critical
-            else "no critical faults found",
-            {"critical": critical,
-             "warnings": sum(1 for i in issues
-                             if i.get("severity") == "warning")}))
+        checks.append(
+            _check(
+                "manufacturable",
+                "No critical faults",
+                FAIL if critical else PASS,
+                (
+                    f"{len(critical)} critical manufacturability fault(s)"
+                    if critical
+                    else "no critical faults found"
+                ),
+                {
+                    "critical": critical,
+                    "warnings": sum(
+                        1 for i in issues if i.get("severity") == "warning"
+                    ),
+                },
+            )
+        )
 
-    measured = {k: props[k] for k in
-                ("volume_cm3", "mass_g", "bbox_mm", "center_of_mass_mm")
-                if k in props}
-    return {"verdict": verdict_for(checks), "checks": checks,
-            "failed": [c for c in checks if c["status"] == FAIL],
-            "measured": measured}
+    measured = {
+        k: props[k]
+        for k in ("volume_cm3", "mass_g", "bbox_mm", "center_of_mass_mm")
+        if k in props
+    }
+    return {
+        "verdict": verdict_for(checks),
+        "checks": checks,
+        "failed": [c for c in checks if c["status"] == FAIL],
+        "measured": measured,
+    }
 
 
-def from_assertion_rows(rows: list[dict],
-                        refused: Optional[list[dict]] = None,
-                        measured: Optional[dict] = None) -> dict[str, Any]:
+def from_assertion_rows(
+    rows: list[dict],
+    refused: Optional[list[dict]] = None,
+    measured: Optional[dict] = None,
+) -> dict[str, Any]:
     """Verification report for the forge path, where a frozen closed form is
     compared against what the kernel measured.
 
@@ -128,19 +181,28 @@ def from_assertion_rows(rows: list[dict],
     ticked, unless a row above actually checked them.
     """
     if refused:
-        checks = [_check(f"guard:{r.get('id')}", f"Guard {r.get('id')}", FAIL,
-                         r.get("why") or "precondition violated",
-                         {"value": r.get("target")}) for r in refused]
-        return {"verdict": REFUSED, "checks": checks, "failed": checks,
-                "measured": {}}
+        checks = [
+            _check(
+                f"guard:{r.get('id')}",
+                f"Guard {r.get('id')}",
+                FAIL,
+                r.get("why") or "precondition violated",
+                {"value": r.get("target")},
+            )
+            for r in refused
+        ]
+        return {"verdict": REFUSED, "checks": checks, "failed": checks, "measured": {}}
 
-    label = {"body_volume": "Volume matches prediction",
-             "body_volume_profile": "Volume matches profile area",
-             "body_mesh_converged": "Mesh converges to kernel volume",
-             "bbox_extent": "Extent matches prediction",
-             "feature_volume": "Feature volume matches prediction",
-             "solids": "Single solid", "watertight": "Topology valid",
-             "precondition": "Precondition holds"}
+    label = {
+        "body_volume": "Volume matches prediction",
+        "body_volume_profile": "Volume matches profile area",
+        "body_mesh_converged": "Mesh converges to kernel volume",
+        "bbox_extent": "Extent matches prediction",
+        "feature_volume": "Feature volume matches prediction",
+        "solids": "Single solid",
+        "watertight": "Topology valid",
+        "precondition": "Precondition holds",
+    }
     checks = []
     for r in rows:
         kind = r.get("kind", "?")
@@ -149,8 +211,10 @@ def from_assertion_rows(rows: list[dict],
         if r.get("why"):
             detail = r["why"]
         elif err is not None:
-            detail = (f"predicted {r.get('target')}, measured "
-                      f"{r.get('measured')} (rel err {err:.2e})")
+            detail = (
+                f"predicted {r.get('target')}, measured "
+                f"{r.get('measured')} (rel err {err:.2e})"
+            )
         elif kind == "precondition":
             # A precondition has no measurement — it is a guard the model
             # authored and the resolved variables satisfy. Reporting it as
@@ -158,12 +222,79 @@ def from_assertion_rows(rows: list[dict],
             detail = f"holds at {r.get('target')}"
         else:
             detail = f"measured {r.get('measured')}"
-        checks.append(_check(f"{kind}:{r.get('id')}",
-                             label.get(kind, kind), PASS if ok else FAIL,
-                             detail,
-                             {"target": r.get("target"),
-                              "measured": r.get("measured"),
-                              "rel_err": err, "tier": r.get("tier")}))
-    return {"verdict": verdict_for(checks), "checks": checks,
-            "failed": [c for c in checks if c["status"] == FAIL],
-            "measured": dict(measured or {})}
+        checks.append(
+            _check(
+                f"{kind}:{r.get('id')}",
+                label.get(kind, kind),
+                PASS if ok else FAIL,
+                detail,
+                {
+                    "target": r.get("target"),
+                    "measured": r.get("measured"),
+                    "rel_err": err,
+                    "tier": r.get("tier"),
+                },
+            )
+        )
+    checks.extend(solid_validity_checks(measured))
+
+    return {
+        "verdict": verdict_for(checks),
+        "checks": checks,
+        "failed": [c for c in checks if c["status"] == FAIL],
+        "measured": dict(measured or {}),
+    }
+
+
+#: Whether OCC's own opinion of the solid counts towards the verdict.
+#:
+#: PROPOSED, and off. See ``solid_validity_checks`` for what turning it on would
+#: mean. Nothing reads this but that function, and with it False the report is
+#: byte-identical to before.
+COUNT_SOLID_VALIDITY = False
+
+
+def solid_validity_checks(measured: Optional[dict]) -> list[dict]:
+    """OCC's ``isValid()`` as a check — currently reported, never counted.
+
+    **The gap.** ``check_assertions`` grades the closed form against the
+    measurement: volume, extent, the guards the model authored. None of it asks
+    the kernel whether the solid it produced is geometrically sound.
+    ``measured["valid"]`` carries exactly that and nothing consumes it, so a
+    part can satisfy every assertion to 1e-16 and still be invalid.
+
+    That is not theoretical. A Blueprint with two overlapping holes built, came
+    back ``watertight: true``, ``solids: 1``, volume matching the closed form to
+    ten decimal places — and ``valid: false``. OCC had removed two full disks
+    rather than merging the overlapping wires, so the arithmetic agreed while
+    the topology did not. It was reported VERIFIED.
+
+    **Why it is off.** Turning it on changes what VERIFIED means, and every
+    published number was measured under the current definition — the live 88%,
+    the fine-tune's 95.3% and 94.0%. Flipping the flag without re-measuring
+    would silently invalidate all of them.
+
+    **``None`` is not failure.** A measurement that never ran is unknown, not
+    bad. Of 182 local build records, 179 are valid, 2 invalid and 1 unmeasured;
+    treating that last as a failure would refuse a part nobody checked, which is
+    the exact error this codebase treats as unacceptable elsewhere.
+    """
+    if not COUNT_SOLID_VALIDITY:
+        return []
+    if not measured or measured.get("valid") is None:
+        return []
+    ok = bool(measured["valid"])
+    return [
+        _check(
+            "solid:valid",
+            "Solid is geometrically valid",
+            PASS if ok else FAIL,
+            (
+                "OCC reports the shape as valid"
+                if ok
+                else "OCC reports the shape as invalid — the assertions can still "
+                "agree, because a wrong topology can have a right volume"
+            ),
+            {"measured": measured["valid"]},
+        )
+    ]
