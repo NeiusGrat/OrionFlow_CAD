@@ -223,12 +223,27 @@ def test_build_passes_force_through(client):
 
 
 def test_the_routes_are_mounted_where_the_client_expects(client):
-    """Guards the prefix, which nothing else would catch until a 404 in the UI."""
+    """Guards the prefix, which nothing else would catch until a 404 in the UI.
+
+    Read off the OpenAPI schema rather than by walking ``api_router.routes``.
+    That walk assumed every entry exposes ``.path``, which is a FastAPI internal
+    — a newer version wraps included routers in ``_IncludedRouter`` objects that
+    do not, and the test failed on CI while passing locally purely because the
+    two resolved different versions of an unpinned dependency. The schema is the
+    published contract and is what a client actually reads, so asserting on it
+    tests the thing that matters and cannot break on an internal again.
+    """
+    from fastapi import FastAPI as _FastAPI
+
     from app.api.v1 import api_router
 
-    paths = {r.path for r in api_router.routes}
+    probe = _FastAPI()
+    probe.include_router(api_router)
+    paths = set(probe.openapi()["paths"])
+
     assert "/api/v1/studio/sessions" in paths
     assert "/api/v1/studio/sessions/{session_id}/build" in paths
     assert "/api/v1/studio/sessions/{session_id}/approve" in paths
+    assert "/api/v1/studio/sessions/{session_id}/events" in paths
     # The one-shot route is untouched and still mounted beside it.
     assert "/api/v1/studio/chat" in paths
