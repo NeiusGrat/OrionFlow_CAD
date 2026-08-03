@@ -247,8 +247,9 @@ async def create(user_id: uuid.UUID, prompt: str) -> dict:
             session.open_questions = proposal.questions
             session.reasoning = proposal.reasoning
             await _emit(db, session, "session_created", 0, prompt=prompt)
-            await _emit(db, session, "questions_required", 0,
-                        questions=proposal.questions)
+            await _emit(
+                db, session, "questions_required", 0, questions=proposal.questions
+            )
             await db.commit()
             return await _view(db, session)
 
@@ -275,19 +276,22 @@ async def create(user_id: uuid.UUID, prompt: str) -> dict:
         session.reasoning = proposal.reasoning
         session.open_questions = []
         await _emit(db, session, "session_created", 1, prompt=prompt)
-        await _emit(db, session, "plan_created", 1,
-                    part_class=proposal.part_class,
-                    blueprint_hash=proposal.blueprint_hash,
-                    variables=proposal.variables,
-                    critique_ok=bool((proposal.critique or {}).get("ok")))
+        await _emit(
+            db,
+            session,
+            "plan_created",
+            1,
+            part_class=proposal.part_class,
+            blueprint_hash=proposal.blueprint_hash,
+            variables=proposal.variables,
+            critique_ok=bool((proposal.critique or {}).get("ok")),
+        )
         await _emit(db, session, "approval_required", 1)
         await db.commit()
         return await _view(db, session)
 
 
-async def revise(
-    user_id: uuid.UUID, session_id: uuid.UUID, instruction: str
-) -> dict:
+async def revise(user_id: uuid.UUID, session_id: uuid.UUID, instruction: str) -> dict:
     """Ask for a change in words; get a new revision, pending approval.
 
     The previous revision is superseded, never edited. Whether the new one
@@ -350,10 +354,17 @@ async def revise(
         session.state = _state_for_new_revision(session.state)
         session.current_revision = next_number
         session.part_class = proposal.part_class
-        await _emit(db, session, "revision_created", next_number,
-                    parent=parent_number, instruction=instruction,
-                    blueprint_hash=proposal.blueprint_hash,
-                    material_change=material, reasons=reasons)
+        await _emit(
+            db,
+            session,
+            "revision_created",
+            next_number,
+            parent=parent_number,
+            instruction=instruction,
+            blueprint_hash=proposal.blueprint_hash,
+            material_change=material,
+            reasons=reasons,
+        )
         await _emit(db, session, "approval_required", next_number)
         await db.commit()
         return await _view(db, session)
@@ -468,9 +479,7 @@ async def cancel(user_id: uuid.UUID, session_id: uuid.UUID) -> dict:
 # --------------------------------------------------------------------------- #
 # building
 # --------------------------------------------------------------------------- #
-async def build(
-    user_id: uuid.UUID, session_id: uuid.UUID, force: bool = False
-) -> dict:
+async def build(user_id: uuid.UUID, session_id: uuid.UUID, force: bool = False) -> dict:
     """Start the approved build and return immediately. Refuses anything else.
 
     The request no longer waits for FreeCAD. It authorises, claims the revision,
@@ -555,7 +564,9 @@ async def build(
         return await _view(db, session)
 
 
-async def reconcile(user_id: uuid.UUID, session_id: uuid.UUID, wait: float = 0.0) -> dict:
+async def reconcile(
+    user_id: uuid.UUID, session_id: uuid.UUID, wait: float = 0.0
+) -> dict:
     """Collect a finished build, if there is one. Safe to call at any time.
 
     This is how a result gets recorded without a worker process: every read of a
@@ -691,9 +702,7 @@ def _revision_view(rev, full: bool = False) -> dict:
 async def _view(db, session) -> dict:
     """The whole session as a client sees it: state, plan, history."""
     revisions = await _revisions(db, session.id)
-    current = next(
-        (r for r in revisions if r.number == session.current_revision), None
-    )
+    current = next((r for r in revisions if r.number == session.current_revision), None)
     return {
         "id": str(session.id),
         "state": session.state.value,
@@ -786,7 +795,11 @@ async def follow(
 
         state = SessionState(view["state"])
         if state in SETTLED or time.monotonic() >= deadline:
-            yield cursor, {"seq": cursor, "type": "idle", "data": {"state": state.value}}
+            yield cursor, {
+                "seq": cursor,
+                "type": "idle",
+                "data": {"state": state.value},
+            }
             return
         await asyncio.sleep(poll_s)
 

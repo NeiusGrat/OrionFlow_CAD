@@ -196,9 +196,7 @@ def test_a_decision_must_name_its_revision(client):
     """Defaulting to "the current one" is how an approval silently transfers to
     a design the user never saw."""
     tc = client(allowed(), approve=_ok)
-    assert (
-        tc.post(f"/api/v1/studio/sessions/{SID}/approve", json={}).status_code == 422
-    )
+    assert tc.post(f"/api/v1/studio/sessions/{SID}/approve", json={}).status_code == 422
 
 
 def test_a_malformed_session_id_is_a_404_not_a_500(client):

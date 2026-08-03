@@ -812,9 +812,7 @@ class StudioAgent:
         diagnosis is derived from measured evidence — which assertion missed, by
         how much, and which feature's own volume accounts for the gap.
         """
-        messages = _repair_turn(
-            previous.base_messages, previous.completion, diagnosis
-        )
+        messages = _repair_turn(previous.base_messages, previous.completion, diagnosis)
         return self._draw(
             messages,
             previous.base_messages,
@@ -881,7 +879,9 @@ class StudioAgent:
 
         route_dict = route.to_dict() if hasattr(route, "to_dict") else dict(route or {})
 
-        def failed(kind: str, error: str, completion: str = "", model: str = "") -> Proposal:
+        def failed(
+            kind: str, error: str, completion: str = "", model: str = ""
+        ) -> Proposal:
             return Proposal(
                 failure=kind,
                 error=error,
@@ -1157,7 +1157,9 @@ class StudioAgent:
             else:
                 error, verdict = _classify_failure(bundle)
                 diagnosis = repair_loop.diagnose(
-                    proposal.payload, error, verdict=verdict,
+                    proposal.payload,
+                    error,
+                    verdict=verdict,
                     measured=bundle.get("measured"),
                 )
                 _emit_step(

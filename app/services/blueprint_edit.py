@@ -195,7 +195,13 @@ def append_feature(
             raise EditError(f"{plane!r} is not a principal plane")
 
         sketch_id = _unique_id(template, "s_manual")
-        sketches.append({"id": sketch_id, "plane": plane, "profile": {"builder": builder, "args": args}})
+        sketches.append(
+            {
+                "id": sketch_id,
+                "plane": plane,
+                "profile": {"builder": builder, "args": args},
+            }
+        )
         # The sketch feature has to exist in the feature list *before* the
         # operation that consumes it: reconstruction walks the list in order and
         # builds the profile when it reaches it.

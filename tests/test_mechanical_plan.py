@@ -45,7 +45,11 @@ def blueprint(variables, sketch_args, builder="rect_with_holes", extra=None):
             ]
             + (extra or []),
             "sketches": [
-                {"id": "s0", "plane": "XY", "profile": {"builder": builder, "args": sketch_args}}
+                {
+                    "id": "s0",
+                    "plane": "XY",
+                    "profile": {"builder": builder, "args": sketch_args},
+                }
             ],
             "dependencies": [{"source": "s0", "target": "pad", "kind": "profile"}],
         },
@@ -123,7 +127,11 @@ def test_a_bore_inside_an_outer_boundary_is_not_a_clash():
     shape there is.
     """
     report = mp.review_blueprint(
-        blueprint({"t": 6.0, "w": 40.0}, {"r_outer": "w/2", "r_inner": "w/6"}, builder="annulus")
+        blueprint(
+            {"t": 6.0, "w": 40.0},
+            {"r_outer": "w/2", "r_inner": "w/6"},
+            builder="annulus",
+        )
     )
 
     assert report["findings"] == []

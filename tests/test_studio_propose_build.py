@@ -25,7 +25,9 @@ from app.services import studio_agent as sa
 # --------------------------------------------------------------------------- #
 # fixtures: a Blueprint that freezes, and a model that returns whatever we say
 # --------------------------------------------------------------------------- #
-def blueprint(volume_expr: str = "width*width*thick", guard: str = "width - 10") -> dict:
+def blueprint(
+    volume_expr: str = "width*width*thick", guard: str = "width - 10"
+) -> dict:
     """A minimal Blueprint that passes the static check: one sketch, one pad."""
     return {
         "part_class": "plate",
@@ -88,7 +90,9 @@ def agent(monkeypatch):
     a.scripted: list = []
     a.draws = 0
 
-    def _complete(messages, on_event, channel=None, max_tokens=None, model=None, tools=None):
+    def _complete(
+        messages, on_event, channel=None, max_tokens=None, model=None, tools=None
+    ):
         reply = a.scripted[min(a.draws, len(a.scripted) - 1)]
         a.draws += 1
         if reply is None:
@@ -311,7 +315,10 @@ def test_a_sound_design_builds_once_and_verifies(agent, no_kernel):
 
 def test_a_reply_that_is_not_a_blueprint_is_repaired_without_a_build(agent, no_kernel):
     """A parse failure costs a model call and nothing else."""
-    agent.scripted = ["I would suggest a plate of about 40mm.", completion_for(blueprint())]
+    agent.scripted = [
+        "I would suggest a plate of about 40mm.",
+        completion_for(blueprint()),
+    ]
 
     bundle = agent.design("a plate")
 
@@ -360,7 +367,9 @@ def test_the_best_attempt_is_kept_not_the_last(agent, no_kernel, monkeypatch):
     assert bundle["attempts"] == 2, "the repair round is still counted"
 
 
-def test_a_dead_endpoint_does_not_cost_a_part_that_already_built(agent, no_kernel, monkeypatch):
+def test_a_dead_endpoint_does_not_cost_a_part_that_already_built(
+    agent, no_kernel, monkeypatch
+):
     from app.services import blueprint_service
 
     real = blueprint_service.build_from_payload

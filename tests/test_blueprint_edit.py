@@ -27,7 +27,14 @@ def plate():
                 {"id": "pad", "type": "Pad", "parameters": {"Length": "thick"}},
             ],
             "sketches": [
-                {"id": "s0", "plane": "XY", "profile": {"builder": "rect", "args": {"w": "width", "h": "width"}}}
+                {
+                    "id": "s0",
+                    "plane": "XY",
+                    "profile": {
+                        "builder": "rect",
+                        "args": {"w": "width", "h": "width"},
+                    },
+                }
             ],
             "dependencies": [{"source": "s0", "target": "pad", "kind": "profile"}],
         },
@@ -68,7 +75,9 @@ class TestRetune:
 class TestAppendFeature:
     def test_adds_a_dressup_with_a_named_dimension(self, plate):
         out = be.append_feature(
-            plate, "Fillet", parameters={"Radius": "fillet_r_1", "_Edges": "all"},
+            plate,
+            "Fillet",
+            parameters={"Radius": "fillet_r_1", "_Edges": "all"},
             variables={"fillet_r_1": 2.0},
         )
         assert out["variables"]["fillet_r_1"] == 2.0
@@ -86,7 +95,8 @@ class TestAppendFeature:
 
     def test_a_profile_operation_brings_its_sketch_and_dependency(self, plate):
         out = be.append_feature(
-            plate, "Pocket",
+            plate,
+            "Pocket",
             parameters={"Length": "d1", "Type": "Length"},
             variables={"d1": 4.0, "r1": 5.0},
             sketch={"builder": "circle", "plane": "XY", "args": {"r": "r1"}},
@@ -102,33 +112,47 @@ class TestAppendFeature:
 
     def test_refuses_a_profile_operation_with_no_profile(self, plate):
         with pytest.raises(be.EditError, match="needs a profile"):
-            be.append_feature(plate, "Pad", parameters={"Length": "d"}, variables={"d": 2.0})
+            be.append_feature(
+                plate, "Pad", parameters={"Length": "d"}, variables={"d": 2.0}
+            )
 
     def test_refuses_a_profile_on_a_dressup(self, plate):
         with pytest.raises(be.EditError, match="does not take a profile"):
             be.append_feature(
-                plate, "Fillet", parameters={"Radius": "r"}, variables={"r": 1.0},
+                plate,
+                "Fillet",
+                parameters={"Radius": "r"},
+                variables={"r": 1.0},
                 sketch={"builder": "circle", "args": {"r": "r"}},
             )
 
     def test_refuses_an_unknown_profile_builder(self, plate):
         with pytest.raises(be.EditError, match="not a profile"):
             be.append_feature(
-                plate, "Pad", parameters={"Length": "d"}, variables={"d": 2.0},
+                plate,
+                "Pad",
+                parameters={"Length": "d"},
+                variables={"d": 2.0},
                 sketch={"builder": "spline_of_theseus", "args": {}},
             )
 
     def test_refuses_a_profile_missing_an_argument(self, plate):
         with pytest.raises(be.EditError, match="needs"):
             be.append_feature(
-                plate, "Pad", parameters={"Length": "d"}, variables={"d": 2.0, "w": 5.0},
+                plate,
+                "Pad",
+                parameters={"Length": "d"},
+                variables={"d": 2.0, "w": 5.0},
                 sketch={"builder": "rect", "args": {"w": "w"}},  # no h
             )
 
     def test_refuses_a_variable_that_already_exists(self, plate):
         with pytest.raises(be.EditError, match="already declares"):
             be.append_feature(
-                plate, "Fillet", parameters={"Radius": "thick"}, variables={"thick": 1.0}
+                plate,
+                "Fillet",
+                parameters={"Radius": "thick"},
+                variables={"thick": 1.0},
             )
 
     def test_refuses_an_unusable_variable_name(self, plate):
@@ -144,7 +168,10 @@ class TestAppendFeature:
     def test_refuses_a_non_principal_sketch_plane(self, plate):
         with pytest.raises(be.EditError, match="principal plane"):
             be.append_feature(
-                plate, "Pad", parameters={"Length": "d"}, variables={"d": 2.0, "r": 3.0},
+                plate,
+                "Pad",
+                parameters={"Length": "d"},
+                variables={"d": 2.0, "r": 3.0},
                 sketch={"builder": "circle", "plane": "XQ", "args": {"r": "r"}},
             )
 
@@ -167,7 +194,9 @@ class TestChecksSurviveTheRoundTrip:
         from orion.blueprint import Blueprint
 
         out = be.append_feature(
-            plate, "Fillet", parameters={"Radius": "fillet_r_1", "_Edges": "all"},
+            plate,
+            "Fillet",
+            parameters={"Radius": "fillet_r_1", "_Edges": "all"},
             variables={"fillet_r_1": 2.0},
         )
         # freeze() runs check_blueprint; a bare number would raise here.

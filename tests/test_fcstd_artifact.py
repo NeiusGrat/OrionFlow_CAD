@@ -89,7 +89,9 @@ def test_the_modal_builder_returns_the_fcstd():
         if isinstance(n, ast.FunctionDef) and n.name == "build_blueprint"
     )
     literals = {
-        n.value for n in ast.walk(fn) if isinstance(n, ast.Constant) and isinstance(n.value, str)
+        n.value
+        for n in ast.walk(fn)
+        if isinstance(n, ast.Constant) and isinstance(n.value, str)
     }
     assert "part.FCStd" in literals, (
         "build_blueprint no longer names part.FCStd — the parametric document "

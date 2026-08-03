@@ -538,9 +538,7 @@ async def test_another_account_cannot_see_or_touch_a_session(db, agent, builder)
 
 
 @pytest.mark.asyncio
-async def test_the_build_claims_its_revision_before_the_kernel_runs(
-    db, agent, builder
-):
+async def test_the_build_claims_its_revision_before_the_kernel_runs(db, agent, builder):
     """The claim and the check share one transaction.
 
     A second request therefore finds ``building`` rather than ``approved`` and

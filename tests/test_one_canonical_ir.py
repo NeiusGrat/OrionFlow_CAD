@@ -131,7 +131,12 @@ def test_the_blueprint_is_the_only_thing_the_builder_accepts():
     from app.services import blueprint_service
 
     source = inspect.getsource(blueprint_service)
-    for foreign in ("ConstructionPlan", "FeatureGraphV1", "FeatureGraphV3", "build123d"):
+    for foreign in (
+        "ConstructionPlan",
+        "FeatureGraphV1",
+        "FeatureGraphV3",
+        "build123d",
+    ):
         assert foreign not in source, (
             f"{foreign} appeared in the Blueprint builder — the live path takes "
             "one IR and it is the Blueprint"

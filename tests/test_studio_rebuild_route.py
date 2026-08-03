@@ -86,7 +86,9 @@ def client(monkeypatch):
     monkeypatch.setattr(blueprint_service, "build_from_payload", _build)
 
     async def _record(bundle, prompt, user_id):
-        state["recorded"].append({"bundle": bundle, "prompt": prompt, "user_id": user_id})
+        state["recorded"].append(
+            {"bundle": bundle, "prompt": prompt, "user_id": user_id}
+        )
 
     monkeypatch.setattr(sp, "record_studio_build", _record)
 
@@ -174,7 +176,10 @@ def test_a_rejected_edit_is_a_400_not_a_failed_build(client):
 
 def test_a_rebuild_is_recorded_like_any_other_build(client):
     tc, state, _ = client
-    tc.post("/api/v1/studio/rebuild", json={"blueprint": BLUEPRINT, "variables": {"thick": 8.0}})
+    tc.post(
+        "/api/v1/studio/rebuild",
+        json={"blueprint": BLUEPRINT, "variables": {"thick": 8.0}},
+    )
     # A rebuild is a FreeCAD container whether or not a model was called, and
     # the kernel is the expensive half.
     assert len(state["recorded"]) == 1

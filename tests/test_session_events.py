@@ -71,7 +71,9 @@ async def test_a_session_records_what_happened_in_order(db, agent, builder):
 
 
 @pytest.mark.asyncio
-async def test_events_written_in_one_transaction_get_distinct_numbers(db, agent, builder):
+async def test_events_written_in_one_transaction_get_distinct_numbers(
+    db, agent, builder
+):
     """The bug real Postgres found and the fake could not.
 
     ``_emit`` computes the next sequence number by querying for the current
@@ -296,9 +298,7 @@ async def test_follow_replays_then_stops_when_nothing_more_can_happen(
 
     seen = [
         event
-        async for _cursor, event in ds.follow(
-            USER, sid, poll_s=0.01, budget_s=5.0
-        )
+        async for _cursor, event in ds.follow(USER, sid, poll_s=0.01, budget_s=5.0)
     ]
 
     assert _types(seen)[:3] == [

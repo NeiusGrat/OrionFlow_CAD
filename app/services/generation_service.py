@@ -77,8 +77,14 @@ MAX_RETRIES = settings.max_llm_retries
 # site: ``if BUILD123D_AVAILABLE:`` and ``export_step(...)`` still read as plain
 # globals, and the import happens the first time one of them is actually
 # evaluated — which is inside the legacy generate path and nowhere else.
-_LAZY = ("BUILD123D_AVAILABLE", "Build123dCompiler", "FeatureGraphCompilerV1",
-         "export_gltf", "export_step", "export_stl")
+_LAZY = (
+    "BUILD123D_AVAILABLE",
+    "Build123dCompiler",
+    "FeatureGraphCompilerV1",
+    "export_gltf",
+    "export_step",
+    "export_stl",
+)
 
 # Declared for the reader and the linter, never executed: a module __getattr__
 # is invisible to static analysis, so without this the six call sites below read

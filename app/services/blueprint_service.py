@@ -557,9 +557,7 @@ def start_build(payload: dict, request_id: Optional[str] = None) -> dict:
     executor = _LOCAL_BUILDS.setdefault(
         "_executor", ThreadPoolExecutor(max_workers=2, thread_name_prefix="build")
     )
-    _LOCAL_BUILDS[request_id] = executor.submit(
-        run_builder, graph, workdir, mesh_body
-    )
+    _LOCAL_BUILDS[request_id] = executor.submit(run_builder, graph, workdir, mesh_body)
     handle["call_id"] = f"local:{request_id}"
     return handle
 
@@ -606,9 +604,7 @@ def collect_build(
         finally:
             if future.done():
                 _LOCAL_BUILDS.pop(request_id, None)
-        return _finish(
-            bp, analysis, workdir, request_id, build_log, measured_raw, t0
-        )
+        return _finish(bp, analysis, workdir, request_id, build_log, measured_raw, t0)
 
     try:
         import modal

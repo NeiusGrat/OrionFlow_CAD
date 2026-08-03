@@ -201,7 +201,7 @@ def test_adding_or_dropping_a_dimension_is_always_material():
 
 
 def test_the_reasons_are_specific_enough_to_show_someone():
-    """"This needs your approval again" without saying what moved is a dialog
+    """ "This needs your approval again" without saying what moved is a dialog
     people click through."""
     _, reasons = needs_reapproval(
         {"w": 40.0, "t": 6.0}, {"w": 90.0, "t": 6.0, "r": 2.0}

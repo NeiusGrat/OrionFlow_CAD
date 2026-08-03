@@ -98,8 +98,7 @@ def _circles(sketch: dict) -> list[tuple[float, float, float]]:
         radius = g.get("radius", g.get("r"))
         if radius is None:
             raise KeyError(
-                f"circle in sketch {sketch.get('id')!r} has no radius: "
-                f"{sorted(g)}"
+                f"circle in sketch {sketch.get('id')!r} has no radius: " f"{sorted(g)}"
             )
         out.append((float(g["cx"]), float(g["cy"]), float(radius)))
     return out
