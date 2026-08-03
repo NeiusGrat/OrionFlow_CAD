@@ -938,8 +938,21 @@ class UsageRecord(Base):
     reported_to_stripe: Mapped[bool] = mapped_column(Boolean, default=False)
     stripe_usage_record_id: Mapped[Optional[str]] = mapped_column(String(100))
 
-    # Extra data
-    extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    # Extra data.
+    #
+    # The column is named ``metadata`` in the database — see migration 001 —
+    # but ``metadata`` cannot be an attribute on a declarative class, because
+    # SQLAlchemy already uses that name for ``Base.metadata``. Hence the
+    # attribute rename, and hence the explicit column name here: without it
+    # SQLAlchemy derives the column from the attribute and emits INSERTs
+    # against an ``extra_data`` column that has never existed.
+    #
+    # That is not a theoretical mismatch. Every ``track_usage`` call raised
+    # UndefinedColumnError in production, and because it shares a transaction
+    # with the generation-history insert, both were rolled back — so no studio
+    # build has ever been metered or recorded. It was silent because the caller
+    # swallows telemetry failures by design.
+    extra_data: Mapped[Optional[Dict[str, Any]]] = mapped_column("metadata", JSONB)
 
     # Timestamp
     created_at: Mapped[datetime] = mapped_column(

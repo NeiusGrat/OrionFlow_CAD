@@ -287,3 +287,115 @@ async def test_recording_failure_never_raises(monkeypatch):
     monkeypatch.setattr("app.db.session.get_db_context", _explode)
     # No exception escapes.
     await sp.record_studio_build(_bundle(), "a pillow block", uuid.uuid4())
+
+
+# --------------------------------------------------------------------------- #
+# the telemetry write itself
+# --------------------------------------------------------------------------- #
+def test_usage_records_is_mapped_to_the_column_that_exists():
+    """``UsageRecord.extra_data`` must name the ``metadata`` column explicitly.
+
+    Migration 001 created the column as ``metadata``. The attribute cannot be
+    called that — SQLAlchemy reserves it for ``Base.metadata`` — so it was
+    renamed to ``extra_data`` and the column name was never pinned. SQLAlchemy
+    then derived the column from the attribute and every INSERT went at an
+    ``extra_data`` column that has never existed.
+
+    Asserted against the mapping rather than by writing a row, so it holds
+    without a database and cannot be satisfied by a fixture that happens to have
+    both columns.
+    """
+    from app.db.models import UsageRecord
+
+    column = UsageRecord.__table__.c["metadata"]
+    assert column is not None
+    assert UsageRecord.extra_data.property.columns[0].name == "metadata"
+    assert "extra_data" not in UsageRecord.__table__.c, (
+        "the database has no extra_data column; mapping one would send every "
+        "usage insert at a column that does not exist"
+    )
+
+
+def test_every_usage_column_exists_in_the_initial_migration():
+    """Guards the whole table against the same drift, not just this one column.
+
+    The mismatch survived because nothing compared the model to the schema. This
+    does, cheaply, by reading the column names migration 001 creates.
+    """
+    import re
+
+    from app.db.models import UsageRecord
+
+    source = open("alembic/versions/001_initial_schema.py", encoding="utf-8").read()
+    block = source[source.index("'usage_records'") :]
+    block = block[
+        : (
+            block.index("op.create_table", 1)
+            if "op.create_table" in block[1:]
+            else len(block)
+        )
+    ]
+    created = set(re.findall(r"sa\.Column\(\s*'([a-z_]+)'", block))
+
+    mapped = {c.name for c in UsageRecord.__table__.columns}
+    missing = mapped - created
+    assert (
+        not missing
+    ), f"model columns with no column in migration 001: {sorted(missing)}"
+
+
+@pytest.mark.asyncio
+async def test_a_billing_failure_does_not_lose_the_build_record():
+    """The property the production bug violated.
+
+    ``track_usage`` used to run inside the same transaction as the history
+    insert and commit it, so when its INSERT raised, both were rolled back — no
+    usage row *and* no record of the build. A charge can be reconciled later
+    from the record; the record cannot be reconstructed from anything.
+    """
+    from app.billing import usage as billing
+
+    committed: list = []
+
+    class _Session:
+        """Staged rows are only committed if the block exits cleanly.
+
+        Modelling the rollback is the whole point. A fake that recorded ``add``
+        immediately would pass against the broken code too — the add *did*
+        happen, it was the commit that took it away.
+        """
+
+        def __init__(self):
+            self.staged: list = []
+
+        def add(self, row):
+            self.staged.append(type(row).__name__)
+
+    class _Ctx:
+        async def __aenter__(self):
+            self.session = _Session()
+            return self.session
+
+        async def __aexit__(self, exc_type, *_rest):
+            if exc_type is None:
+                committed.extend(self.session.staged)
+            return False
+
+    async def _explode(*_a, **_kw):
+        raise RuntimeError('column "extra_data" does not exist')
+
+    import app.db.session as session_mod
+
+    original_ctx, original_track = session_mod.get_db_context, billing.track_usage
+    session_mod.get_db_context = lambda: _Ctx()
+    billing.track_usage = _explode
+    try:
+        await sp.record_studio_build(_bundle(), "a pillow block", uuid.uuid4())
+    finally:
+        session_mod.get_db_context = original_ctx
+        billing.track_usage = original_track
+
+    assert "GenerationHistory" in committed, (
+        "the build record must survive a billing failure — it is the half that "
+        "cannot be reconstructed"
+    )

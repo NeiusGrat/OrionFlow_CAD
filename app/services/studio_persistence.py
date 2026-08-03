@@ -214,6 +214,14 @@ async def record_studio_build(
         duration = bundle.get("generation_time_ms") or 0
         request_id = str(bundle.get("request_id") or "")[:32]
 
+        # Two transactions, not one, and the order is the point. The record of
+        # what happened is worth more than the charge for it: a lost history row
+        # cannot be reconstructed, while an unmetered build is a known quantity
+        # that can be reconciled from the record later.
+        #
+        # They shared a transaction until now, and ``track_usage`` commits it —
+        # so when its INSERT failed, the history row went with it. Splitting
+        # them means a billing fault can only ever cost the billing row.
         async with get_db_context() as db:
             db.add(
                 GenerationHistory(
@@ -238,30 +246,40 @@ async def record_studio_build(
                 )
             )
 
-            if success:
-                # Separate session work, same transaction: track_usage commits
-                # on its own, and the history row above is flushed with it.
-                #
-                # The action MUST be the one the quota queries filter on, hence
-                # the imported constant rather than a descriptive name of our
-                # own. Writing "studio_design" here — which this did first —
-                # produces a usage row the free-tier counter cannot see, so the
-                # limit never trips and metering silently does nothing. What
-                # distinguishes a studio build from any other billable one goes
-                # in the metadata, where nothing depends on it.
-                await track_usage(
-                    db,
-                    user_id,
-                    action=BILLABLE_ACTION,
-                    metadata={
-                        "source": "studio",
-                        "request_id": request_id,
-                        "part_class": bundle.get("part_class") or "",
-                        "verdict": (bundle.get("verification") or {}).get(
-                            "verdict", ""
-                        ),
-                        "model": bundle.get("model") or "",
-                    },
+        if success:
+            # Charged in its own transaction, and its own try: the history row
+            # is already committed above and must stay committed whatever
+            # happens here.
+            #
+            # The action MUST be the one the quota queries filter on, hence the
+            # imported constant rather than a descriptive name of our own.
+            # Writing "studio_design" here — which this did first — produces a
+            # usage row the free-tier counter cannot see, so the limit never
+            # trips and metering silently does nothing. What distinguishes a
+            # studio build from any other billable one goes in the metadata,
+            # where nothing depends on it.
+            try:
+                async with get_db_context() as db:
+                    await track_usage(
+                        db,
+                        user_id,
+                        action=BILLABLE_ACTION,
+                        metadata={
+                            "source": "studio",
+                            "request_id": request_id,
+                            "part_class": bundle.get("part_class") or "",
+                            "verdict": (bundle.get("verification") or {}).get(
+                                "verdict", ""
+                            ),
+                            "model": bundle.get("model") or "",
+                        },
+                    )
+            except Exception as exc:  # noqa: BLE001 — never costs the record
+                logger.warning(
+                    "studio_usage_track_failed",
+                    user_id=str(user_id),
+                    request_id=request_id,
+                    error=repr(exc),
                 )
     except Exception as exc:  # noqa: BLE001 — never costs the user their part
         logger.warning(
