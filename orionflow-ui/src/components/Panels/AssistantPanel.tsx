@@ -285,9 +285,17 @@ function VariableChips({ variables }: { variables: Record<string, number> }) {
 }
 
 function Exports({ files }: { files: DesignOutcome["files"] }) {
-    const entries = ([["STEP", files.step], ["STL", files.stl], ["GLB", files.glb]] as const).filter(
-        ([, u]) => u,
-    );
+    // FCStd leads: it is the only one of the four that reopens as a parametric
+    // model, so it is the download an engineer actually wants and the others
+    // are what they hand to someone else.
+    const entries = (
+        [
+            ["FCStd", files.fcstd],
+            ["STEP", files.step],
+            ["STL", files.stl],
+            ["GLB", files.glb],
+        ] as const
+    ).filter(([, u]) => u);
     if (!entries.length) return null;
     return (
         <div style={{ display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" }}>
@@ -667,14 +675,17 @@ export default function AssistantPanel() {
     return (
         <div
             style={{
-                width: "392px",
-                flexShrink: 0,
+                // Fills the panel column rather than defining it. The width,
+                // the left rule and the sheet background moved to the tab
+                // container in Workspace when this became one of two panels
+                // sharing that column — kept here as well, they drew a second
+                // border inside the first.
+                width: "100%",
+                flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 height: "100%",
                 minHeight: 0,
-                background: "var(--st-sheet)",
-                borderLeft: "1px solid var(--st-rule)",
             }}
         >
             {/* header */}

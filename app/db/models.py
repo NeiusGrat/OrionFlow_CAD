@@ -25,11 +25,22 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    UniqueConstraint,
     Enum as SQLEnum,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import enum
+
+# The session lifecycle is domain logic, not storage: the transition table and
+# the approval gate live in app/domain/design_session.py so they can be tested
+# without a database. These columns only persist their result.
+from app.domain.design_session import (  # noqa: E402
+    ApprovalState,
+    BuildStatus,
+    RevisionOrigin,
+    SessionState,
+)
 
 
 class Base(DeclarativeBase):
@@ -217,6 +228,13 @@ class Design(Base):
     glb_path: Mapped[Optional[str]] = mapped_column(String(500))
     step_path: Mapped[Optional[str]] = mapped_column(String(500))
     stl_path: Mapped[Optional[str]] = mapped_column(String(500))
+    #: The parametric FreeCAD document. Unlike the three above it is not a view
+    #: of the finished solid — it holds the sketches, the feature history and
+    #: the expressions binding dimensions to named variables, so it is the only
+    #: artifact from which this design can be reopened and retuned rather than
+    #: merely displayed. Nullable because designs saved before this column
+    #: existed genuinely have no FCStd: it was discarded at build time.
+    fcstd_path: Mapped[Optional[str]] = mapped_column(String(500))
     thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500))
 
     # Metadata
@@ -318,6 +336,241 @@ class GenerationHistory(Base):
 
     def __repr__(self) -> str:
         return f"<GenerationHistory {self.id} status={self.status}>"
+
+
+# =============================================================================
+# Design Sessions — a design that exists before it is a solid
+# =============================================================================
+
+
+class DesignSession(Base):
+    """One design, from the prompt to the part someone accepted.
+
+    ``designs`` records what a user chose to keep; ``generation_history``
+    records what the kernel did. Neither records the part in between — the plan
+    that was proposed, the person who said no to it, and the revision that
+    replaced it. That middle is where the engineering actually happens, and it
+    was the only part of a studio turn that was never written down.
+
+    The state machine lives in ``app/domain/design_session.py`` and is enforced
+    there. This table only stores where a session got to.
+    """
+
+    __tablename__ = "design_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    original_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    state: Mapped[SessionState] = mapped_column(
+        ValueEnum(SessionState), default=SessionState.DRAFT, nullable=False
+    )
+
+    #: Which revision the session is currently about. A number rather than a
+    #: foreign key: revisions are numbered per session and the pair is already
+    #: unique, so this avoids a circular FK between the two tables.
+    current_revision: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    part_class: Mapped[Optional[str]] = mapped_column(String(120))
+    #: What the request did not say. Kept on the session rather than the
+    #: revision because they are properties of the ask, not of any one answer.
+    open_questions: Mapped[Optional[List[str]]] = mapped_column(JSONB, default=list)
+    #: How the request was routed and what the chain derived, if it ran.
+    reasoning: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+
+    #: Provenance. Which weights answered, so a session can be replayed against
+    #: the model that actually produced it rather than whatever is deployed now.
+    model: Mapped[Optional[str]] = mapped_column(String(120))
+    provider: Mapped[Optional[str]] = mapped_column(String(60))
+
+    error: Mapped[Optional[str]] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    #: When a person accepted the finished part. Distinct from ``updated_at``:
+    #: this is the only timestamp that means a human was satisfied.
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped["User"] = relationship("User")
+    revisions: Mapped[List["DesignRevision"]] = relationship(
+        "DesignRevision",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="DesignRevision.number",
+    )
+
+    __table_args__ = (
+        Index("ix_design_sessions_user_created", "user_id", "created_at"),
+        Index("ix_design_sessions_state", "state"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DesignSession {self.id} state={self.state}>"
+
+
+class DesignRevision(Base):
+    """One frozen Blueprint, its verdict from a person, and what it built.
+
+    Never edited. A change produces the next revision with ``parent_number``
+    pointing back, so the history is append-only and a rejected proposal keeps
+    its critique, its reason for rejection and its build result. Those records
+    are the point: a design a human judged wrong says more about the model than
+    the one that survived.
+    """
+
+    __tablename__ = "design_revisions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("design_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    #: 1-based, unique within the session. Also the idempotency key a build is
+    #: keyed on, together with the blueprint hash.
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    parent_number: Mapped[Optional[int]] = mapped_column(Integer)
+    origin: Mapped[RevisionOrigin] = mapped_column(
+        ValueEnum(RevisionOrigin), default=RevisionOrigin.MODEL, nullable=False
+    )
+    #: Why this revision exists, in words — the repair diagnosis, or what the
+    #: person asked to change.
+    instruction: Mapped[Optional[str]] = mapped_column(Text)
+
+    # ---- the design ---------------------------------------------------- #
+    blueprint: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    #: sha256 over everything the model authored, computed by
+    #: ``Blueprint.freeze`` before FreeCAD is involved. This is what an approval
+    #: binds to and what a build is checked against.
+    blueprint_hash: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+    part_class: Mapped[Optional[str]] = mapped_column(String(120))
+    variables: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    design_plan: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    assertions: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSONB, default=list
+    )
+    #: What was known before the kernel ran — preconditions, the closed-form
+    #: volume against the profile it was derived from.
+    critique: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    #: The deterministic engineering review of the resolved geometry — clashing
+    #: holes, dimensions that cannot build, dressups larger than the face they
+    #: land on. Separate from ``critique`` because they answer different
+    #: questions: one grades the model against its own contract, the other
+    #: grades the part against mechanics.
+    mechanical: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    thinking: Mapped[Optional[str]] = mapped_column(Text)
+    model: Mapped[Optional[str]] = mapped_column(String(120))
+
+    # ---- the human ----------------------------------------------------- #
+    approval: Mapped[ApprovalState] = mapped_column(
+        ValueEnum(ApprovalState), default=ApprovalState.PENDING, nullable=False
+    )
+    decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    #: Why a person rejected or revised it. The single most valuable field in
+    #: this table and the only one no synthetic pipeline can produce.
+    decision_note: Mapped[Optional[str]] = mapped_column(Text)
+
+    # ---- the kernel ---------------------------------------------------- #
+    build_status: Mapped[BuildStatus] = mapped_column(
+        ValueEnum(BuildStatus), default=BuildStatus.NOT_BUILT, nullable=False
+    )
+    #: The build's own id, which is also where its artifacts are served from
+    #: and how ``generation_history`` joins to this revision.
+    request_id: Mapped[Optional[str]] = mapped_column(String(32), index=True)
+    #: The builder's handle — a Modal call id in the cloud. This is what lets a
+    #: build outlive the request that started it: any container can resolve the
+    #: id and collect the result, so a session is never stranded by the one that
+    #: happened to kick it off scaling to zero.
+    build_call_id: Mapped[Optional[str]] = mapped_column(String(120))
+    build_started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    verification: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    stats: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB)
+    #: Every built file including the FCStd, keyed by kind.
+    artifacts: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    freecad_version: Mapped[Optional[str]] = mapped_column(String(40))
+    build_error: Mapped[Optional[str]] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    session: Mapped["DesignSession"] = relationship(
+        "DesignSession", back_populates="revisions"
+    )
+
+    __table_args__ = (
+        # The idempotency spine: a session cannot have two revision 3s, so a
+        # retried proposal collides rather than forking the history.
+        UniqueConstraint("session_id", "number", name="uq_design_revision_number"),
+        Index("ix_design_revisions_session_number", "session_id", "number"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DesignRevision {self.session_id}#{self.number} {self.approval}>"
+
+
+class SessionEvent(Base):
+    """One thing that happened, in the order it happened.
+
+    A design session outlives the request that started it — an approval is a
+    person reading, and a build is a container somewhere else — so progress
+    cannot be a stream held open on one connection. It has to be a log that any
+    later request can replay from a cursor.
+
+    ``seq`` is per session and monotonic, and it is the cursor: a client
+    reconnecting sends the last one it saw and gets everything after it. The
+    unique constraint is what makes that promise real — two writers racing to
+    append collide rather than quietly producing two events with the same
+    number, which would make the cursor skip one of them forever.
+    """
+
+    __tablename__ = "session_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("design_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: The event name a client switches on. Free text rather than an enum: a new
+    #: event should not need a migration, and a client already ignores names it
+    #: does not know.
+    type: Mapped[str] = mapped_column(String(40), nullable=False)
+    revision: Mapped[Optional[int]] = mapped_column(Integer)
+    data: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (
+        UniqueConstraint("session_id", "seq", name="uq_session_event_seq"),
+        Index("ix_session_events_session_seq", "session_id", "seq"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<SessionEvent {self.session_id}#{self.seq} {self.type}>"
 
 
 class OFLEvent(Base):

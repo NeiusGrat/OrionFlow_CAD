@@ -48,8 +48,8 @@ from app.logging_config import (
 # Exception Handling
 from app.exceptions import OrionFlowError
 
-# Service Layer
-from app.services.generation_service import GenerationService
+# Service Layer — see _generation_service() below for why this is not imported
+# here.
 
 # Domain Models
 from app.domain.feature_graph import FeatureGraph
@@ -445,12 +445,32 @@ app.mount("/metrics", metrics_app)
 # Include API v1 routes
 app.include_router(api_router)
 
-# Initialize Generation Service with configuration
-generation_service = GenerationService(
-    output_dir=settings.output_dir,
-    use_v3_compiler=settings.use_v3_compiler,
-    use_two_stage=settings.use_two_stage_pipeline,
-)
+_generation_service_instance = None
+
+
+def _generation_service():
+    """The legacy build123d generator, built on first use.
+
+    Constructed eagerly at import until now, which meant every process — a
+    login, an artifact download, a studio build that goes Blueprint → FreeCAD
+    and never touches build123d — loaded the geometry kernel and its 542 OCP
+    modules before it could serve anything. That is the whole of the ~2-minute
+    cold boot the Modal deployment carries a memory snapshot to hide.
+
+    The endpoints below (``/generate``, ``/regenerate``) still work exactly as
+    they did; they are simply the only things that now pay for it. Nothing the
+    live studio does reaches this function.
+    """
+    global _generation_service_instance
+    if _generation_service_instance is None:
+        from app.services.generation_service import GenerationService
+
+        _generation_service_instance = GenerationService(
+            output_dir=settings.output_dir,
+            use_v3_compiler=settings.use_v3_compiler,
+            use_two_stage=settings.use_two_stage_pipeline,
+        )
+    return _generation_service_instance
 
 
 # =============================================================================
@@ -545,7 +565,7 @@ async def generate_cad(request: GenerateRequest):
     logger.info(f"Generate request: prompt='{request.prompt[:50]}...'")
 
     try:
-        result = await generation_service.generate(
+        result = await _generation_service().generate(
             request.prompt, backend=request.backend
         )
     except ValueError as e:
@@ -611,7 +631,7 @@ async def regenerate_cad(request: RegenerateRequest):
             logger.info(f"Applied conversational edit: '{request.prompt}'")
 
         # Regenerate geometry
-        result = await generation_service.regenerate(
+        result = await _generation_service().regenerate(
             feature_graph.model_dump(), request.prompt
         )
 

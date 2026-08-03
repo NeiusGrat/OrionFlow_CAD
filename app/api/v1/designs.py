@@ -42,6 +42,11 @@ class CreateDesignRequest(BaseModel):
     glb_path: Optional[str] = None
     step_path: Optional[str] = None
     stl_path: Optional[str] = None
+    #: The parametric FreeCAD document — what makes this design reopenable
+    #: rather than merely viewable. Optional so a client that has not been
+    #: updated still saves successfully, and so designs built before the FCStd
+    #: was preserved can still be saved from an open session.
+    fcstd_path: Optional[str] = None
     #: The build this design came from. Optional because a design can be saved
     #: from a session older than the build record, and a missing link costs the
     #: feature tree its per-feature evidence, not the save.
@@ -69,6 +74,7 @@ class DesignResponse(BaseModel):
     glb_path: Optional[str]
     step_path: Optional[str]
     stl_path: Optional[str]
+    fcstd_path: Optional[str] = None
     is_public: bool
     tags: List[str]
     created_at: str
@@ -156,6 +162,7 @@ async def list_designs(
                 glb_path=d.glb_path,
                 step_path=d.step_path,
                 stl_path=d.stl_path,
+                fcstd_path=d.fcstd_path,
                 is_public=d.is_public,
                 tags=d.tags or [],
                 created_at=d.created_at.isoformat(),
@@ -193,6 +200,7 @@ async def create_design(
         glb_path=request.glb_path,
         step_path=request.step_path,
         stl_path=request.stl_path,
+        fcstd_path=request.fcstd_path,
     )
     db.add(design)
     await db.commit()
@@ -221,6 +229,7 @@ async def create_design(
         glb_path=design.glb_path,
         step_path=design.step_path,
         stl_path=design.stl_path,
+        fcstd_path=design.fcstd_path,
         is_public=design.is_public,
         tags=design.tags or [],
         created_at=design.created_at.isoformat(),
@@ -327,6 +336,7 @@ async def get_design(
         glb_path=design.glb_path,
         step_path=design.step_path,
         stl_path=design.stl_path,
+        fcstd_path=design.fcstd_path,
         is_public=design.is_public,
         tags=design.tags or [],
         created_at=design.created_at.isoformat(),
@@ -398,6 +408,7 @@ async def update_design(
         glb_path=design.glb_path,
         step_path=design.step_path,
         stl_path=design.stl_path,
+        fcstd_path=design.fcstd_path,
         is_public=design.is_public,
         tags=design.tags or [],
         created_at=design.created_at.isoformat(),
@@ -443,7 +454,9 @@ async def delete_design(
     # errors, otherwise the user cannot get rid of their own design.
     from app.services.storage import delete_artifacts
 
-    removed = delete_artifacts(design.glb_path, design.step_path, design.stl_path)
+    removed = delete_artifacts(
+        design.glb_path, design.step_path, design.stl_path, design.fcstd_path
+    )
 
     await db.delete(design)
     await db.commit()

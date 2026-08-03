@@ -19,6 +19,14 @@ from functools import lru_cache
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+#: The JWT secret used when none is configured — generated once per process, so
+#: a development server keeps its sessions across requests, and identifiable
+#: afterwards so ``validate_for_production`` can tell "nobody set this" from a
+#: real secret. Note it is per *process*: two processes sign with different keys,
+#: which is fine for one dev server and is exactly what must not happen in
+#: production.
+_GENERATED_JWT_SECRET = secrets.token_urlsafe(32)
+
 
 class Settings(BaseSettings):
     """
@@ -237,7 +245,7 @@ class Settings(BaseSettings):
     # JWT Authentication
     # -------------------------------------------------------------------------
     jwt_secret_key: str = Field(
-        default_factory=lambda: secrets.token_urlsafe(32),
+        default_factory=lambda: _GENERATED_JWT_SECRET,
         description="JWT secret key (CHANGE IN PRODUCTION!)",
     )
     jwt_algorithm: str = Field(default="HS256", description="JWT algorithm")
@@ -507,7 +515,15 @@ class Settings(BaseSettings):
         """
         warnings = []
 
-        if self.jwt_secret_key == secrets.token_urlsafe(32):
+        # Compared against the *same* value the default factory hands out. This
+        # used to call ``secrets.token_urlsafe(32)`` again, which generates a
+        # fresh random string every time — so the comparison was never true and
+        # the warning could never fire. That mattered more than a dead branch
+        # normally would: an unset secret means every container signs with its
+        # own key, and on a scale-to-zero host users are silently logged out
+        # whenever a new container serves them. The symptom reads as flaky auth,
+        # a long way from the cause.
+        if self.jwt_secret_key == _GENERATED_JWT_SECRET:
             warnings.append("JWT_SECRET_KEY should be set explicitly in production")
 
         if not self.is_stripe_configured:

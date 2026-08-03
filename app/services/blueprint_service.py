@@ -268,19 +268,39 @@ def build_from_completion(completion: str, request_id: Optional[str] = None) -> 
     return bundle
 
 
-def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
-    """Freeze a Blueprint, build it under FreeCAD, measure and grade it.
+def _prepare(payload: dict, request_id: str) -> tuple[Any, Optional[dict], str, str]:
+    """Freeze, resolve and locate the workdir. Raises ``BlueprintBuildError``.
 
-    Never raises for a *build* failure — a part that will not compile is a
-    result the caller must be able to show. Raises only when the input was
-    never a Blueprint.
+    Deterministic by construction — the same payload always produces the same
+    frozen Blueprint, the same graph and the same analysis — which is what lets
+    an asynchronous build redo this at collection time on a completely different
+    container instead of persisting intermediate state. Nothing here touches the
+    kernel or the network.
     """
     from orion.blueprint import Blueprint, BlueprintError
 
-    t0 = time.time()
-    request_id = request_id or uuid.uuid4().hex[:12]
+    try:
+        bp = Blueprint.from_dict(payload).freeze()
+    except (BlueprintError, KeyError, TypeError, ValueError) as exc:
+        # A static rejection is the model failing its own contract (a bare
+        # number where an expression belongs, an unknown feature type). Report
+        # it as such rather than as a kernel error.
+        raise BlueprintBuildError(f"blueprint rejected: {exc}") from exc
 
-    bundle: dict[str, Any] = {
+    try:
+        graph = bp.resolve()
+    except (BlueprintError, KeyError, TypeError, ValueError) as exc:
+        raise BlueprintBuildError(f"blueprint could not be resolved: {exc}") from exc
+
+    analysis = graph.pop("_analysis", None)
+
+    from app.services import artifacts
+
+    return bp, analysis, graph, artifacts.workdir(request_id)
+
+
+def _empty_bundle(request_id: str) -> dict:
+    return {
         "success": False,
         "request_id": request_id,
         "thinking": "",
@@ -296,58 +316,36 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
         "generation_time_ms": 0.0,
     }
 
-    try:
-        bp = Blueprint.from_dict(payload).freeze()
-    except (BlueprintError, KeyError, TypeError, ValueError) as exc:
-        # A static rejection is the model failing its own contract (a bare
-        # number where an expression belongs, an unknown feature type). Report
-        # it as such rather than as a kernel error.
-        bundle["error"] = f"blueprint rejected: {exc}"
-        bundle["generation_time_ms"] = (time.time() - t0) * 1000
-        return bundle
 
+def _finish(
+    bp: Any,
+    analysis: Optional[dict],
+    workdir: str,
+    request_id: str,
+    build_log: dict,
+    measured_raw: Optional[dict],
+    t0: float,
+) -> dict:
+    """Everything after the kernel: artifacts, upload, measurement, grading.
+
+    One implementation, reached by both the synchronous path and the
+    asynchronous one. A second copy here would mean the part a user downloads
+    could be graded differently depending on which route built it, which is
+    exactly the class of divergence this module's docstring exists to prevent.
+    """
+    bundle = _empty_bundle(request_id)
     bundle["blueprint"] = bp.to_dict()
     bundle["part_class"] = bp.part_class
     bundle["variables"] = dict(bp.variables)
-
-    try:
-        graph = bp.resolve()
-    except (BlueprintError, KeyError, TypeError, ValueError) as exc:
-        bundle["error"] = f"blueprint could not be resolved: {exc}"
-        bundle["generation_time_ms"] = (time.time() - t0) * 1000
-        return bundle
-
-    analysis = graph.pop("_analysis", None)
-
-    from app.services import artifacts
-
-    workdir = artifacts.workdir(request_id)
+    bundle["build_log"] = build_log
 
     step = os.path.join(workdir, "part.step")
     stl = os.path.join(workdir, "part.stl")
+    fcstd = os.path.join(workdir, "part.FCStd")
 
-    try:
-        build_log, measured_raw = run_builder(
-            graph, workdir, mesh_body=needs_mesh_body(bp)
-        )
-    except BlueprintBuildError as exc:
-        bundle["error"] = str(exc)
-        bundle["generation_time_ms"] = (time.time() - t0) * 1000
-        return bundle
-
-    bundle["build_log"] = build_log
     returncode = build_log.get("returncode", -1)
-    timed_out = bool(build_log.get("timeout"))
-
-    def _tail(path: str, n: int = 4000) -> str:
-        try:
-            with open(path, encoding="utf-8", errors="replace") as fh:
-                return fh.read()[-n:]
-        except OSError:
-            return ""
-
-    if timed_out:
-        bundle["error"] = f"the kernel did not converge within " f"{BUILD_TIMEOUT_S}s"
+    if build_log.get("timeout"):
+        bundle["error"] = f"the kernel did not converge within {BUILD_TIMEOUT_S}s"
         bundle["generation_time_ms"] = (time.time() - t0) * 1000
         return bundle
     if returncode != 0 or measured_raw is None:
@@ -371,8 +369,16 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
         except Exception as exc:  # noqa: BLE001
             logger.warning("blueprint_glb_failed", error=str(exc))
 
+    # The FCStd is listed first among the durable formats because it is the
+    # only one that is not lossy: STEP and STL are the finished solid, while
+    # the FCStd is the parametric document — sketches, feature history, and the
+    # expressions that bind each dimension to a named variable. A part whose
+    # FCStd survives can be reopened and retuned; one with only a STEP is a
+    # dead shape.
+    from app.services import artifacts
+
     files: dict[str, str] = {}
-    for kind, path in (("step", step), ("stl", stl), ("glb", glb)):
+    for kind, path in (("fcstd", fcstd), ("step", step), ("stl", stl), ("glb", glb)):
         if path and os.path.exists(path):
             files[kind] = artifacts.artifact_url(request_id, path)
     bundle["files"] = files
@@ -387,7 +393,7 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
         from app.services.storage import get_storage
 
         storage = get_storage()
-        for path in (step, stl, glb):
+        for path in (fcstd, step, stl, glb):
             if path and os.path.exists(path):
                 try:
                     storage.publish(
@@ -435,8 +441,208 @@ def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
         bundle["verification"] = verify.from_assertion_rows(rows, measured=observed)
 
     bundle["assertions"] = rows
-    bundle["success"] = bool(files) and bool(volume)
+    # Success is judged on the exchange formats, not on ``files`` as a whole.
+    # An FCStd can save even when a STEP/STL export fails, and counting it here
+    # would report success for a build the user cannot see or download in any
+    # tool — the viewer needs the GLB, and the GLB comes from the STL.
+    bundle["success"] = any(k in files for k in ("step", "stl", "glb")) and bool(volume)
     if not bundle["success"] and not bundle["error"]:
         bundle["error"] = "the build produced no measurable solid"
     bundle["generation_time_ms"] = (time.time() - t0) * 1000
     return bundle
+
+
+def build_from_payload(payload: dict, request_id: Optional[str] = None) -> dict:
+    """Freeze a Blueprint, build it under FreeCAD, measure and grade it.
+
+    Synchronous: blocks for the length of the build. Used by ``/studio/chat``
+    and ``/studio/rebuild``, where the request *is* the build and the client is
+    holding a stream open for it. Design sessions use ``start_build`` /
+    ``collect_build`` instead, because an approval means a build can outlive the
+    request that asked for it.
+
+    Never raises for a *build* failure — a part that will not compile is a
+    result the caller must be able to show. Raises only when the input was never
+    a Blueprint.
+    """
+    t0 = time.time()
+    request_id = request_id or uuid.uuid4().hex[:12]
+
+    try:
+        bp, analysis, graph, workdir = _prepare(payload, request_id)
+    except BlueprintBuildError as exc:
+        bundle = _empty_bundle(request_id)
+        bundle["error"] = str(exc)
+        bundle["generation_time_ms"] = (time.time() - t0) * 1000
+        return bundle
+
+    try:
+        build_log, measured_raw = run_builder(
+            graph, workdir, mesh_body=needs_mesh_body(bp)
+        )
+    except BlueprintBuildError as exc:
+        bundle = _empty_bundle(request_id)
+        bundle["blueprint"] = bp.to_dict()
+        bundle["part_class"] = bp.part_class
+        bundle["variables"] = dict(bp.variables)
+        bundle["error"] = str(exc)
+        bundle["generation_time_ms"] = (time.time() - t0) * 1000
+        return bundle
+
+    return _finish(bp, analysis, workdir, request_id, build_log, measured_raw, t0)
+
+
+# --------------------------------------------------------------------------- #
+# asynchronous build: start here, collect anywhere
+# --------------------------------------------------------------------------- #
+#: Local-mode builds in flight, keyed by request id. Process-local on purpose:
+#: ``ORION_BUILDER_MODE=local`` means FreeCAD is a subprocess of *this* process,
+#: so a build genuinely cannot be collected anywhere else. In the cloud the
+#: handle is a Modal call id, which any container can resolve — which is the
+#: whole reason a session can outlive the request that started its build.
+_LOCAL_BUILDS: dict[str, Any] = {}
+
+
+def start_build(payload: dict, request_id: Optional[str] = None) -> dict:
+    """Hand a Blueprint to the builder and return a handle, without waiting.
+
+    The handle is everything a *different* container needs to finish the job:
+    the request id (which is where the artifacts land) and the builder's own
+    call id. Nothing else is persisted, because ``_prepare`` is deterministic —
+    re-freezing and re-resolving the stored payload at collection time gives
+    back exactly the Blueprint and the analysis the assertions must be checked
+    against.
+
+    A handle with ``error`` set never reached the builder at all.
+    """
+    request_id = request_id or uuid.uuid4().hex[:12]
+    handle = {
+        "request_id": request_id,
+        "call_id": "",
+        "mode": BUILDER_MODE,
+        "error": None,
+        "started_at": time.time(),
+    }
+
+    try:
+        bp, _analysis, graph, workdir = _prepare(payload, request_id)
+    except BlueprintBuildError as exc:
+        handle["error"] = str(exc)
+        return handle
+
+    mesh_body = needs_mesh_body(bp)
+
+    if BUILDER_MODE == "modal":
+        try:
+            import modal
+        except ImportError as exc:
+            handle["error"] = (
+                "ORION_BUILDER_MODE=modal but the modal package is not installed"
+            )
+            logger.warning("blueprint_spawn_no_modal", error=str(exc))
+            return handle
+        try:
+            fn = modal.Function.from_name(MODAL_BUILDER_APP, MODAL_BUILDER_FN)
+            call = fn.spawn(graph, mesh_body)
+        except Exception as exc:  # noqa: BLE001
+            handle["error"] = f"the build service is unreachable: {exc}"
+            return handle
+        handle["call_id"] = call.object_id
+        return handle
+
+    # Local: a thread, so the caller still returns immediately and the same
+    # start/collect shape is exercised on a dev box.
+    from concurrent.futures import ThreadPoolExecutor
+
+    executor = _LOCAL_BUILDS.setdefault(
+        "_executor", ThreadPoolExecutor(max_workers=2, thread_name_prefix="build")
+    )
+    _LOCAL_BUILDS[request_id] = executor.submit(
+        run_builder, graph, workdir, mesh_body
+    )
+    handle["call_id"] = f"local:{request_id}"
+    return handle
+
+
+def collect_build(
+    payload: dict, request_id: str, call_id: str, wait: float = 0.0
+) -> Optional[dict]:
+    """The finished bundle, or None if the builder has not finished yet.
+
+    ``wait`` is the number of seconds to block for. Zero — the default — makes
+    this a poll, which is what a reconcile-on-read wants: any request touching a
+    building session tries to collect, and a client that never comes back costs
+    nothing because the result is held by the builder, not by us.
+
+    Raising is reserved for a handle that cannot be resolved at all. A build
+    that ran and failed comes back as a bundle with ``error`` set, because that
+    is a result the user has to be able to see.
+    """
+    t0 = time.time()
+
+    try:
+        bp, analysis, _graph, workdir = _prepare(payload, request_id)
+    except BlueprintBuildError as exc:
+        bundle = _empty_bundle(request_id)
+        bundle["error"] = str(exc)
+        return bundle
+
+    if call_id.startswith("local:"):
+        future = _LOCAL_BUILDS.get(request_id)
+        if future is None:
+            bundle = _empty_bundle(request_id)
+            bundle["error"] = "the build was lost — this process did not start it"
+            return bundle
+        if not future.done() and wait <= 0:
+            return None
+        try:
+            build_log, measured_raw = future.result(timeout=wait or None)
+        except TimeoutError:
+            return None
+        except Exception as exc:  # noqa: BLE001
+            bundle = _empty_bundle(request_id)
+            bundle["error"] = f"the build failed to run: {exc}"
+            return bundle
+        finally:
+            if future.done():
+                _LOCAL_BUILDS.pop(request_id, None)
+        return _finish(
+            bp, analysis, workdir, request_id, build_log, measured_raw, t0
+        )
+
+    try:
+        import modal
+    except ImportError:
+        bundle = _empty_bundle(request_id)
+        bundle["error"] = "the modal package is not installed"
+        return bundle
+
+    try:
+        call = modal.FunctionCall.from_id(call_id)
+        result = call.get(timeout=wait)
+    except TimeoutError:
+        return None
+    except Exception as exc:  # noqa: BLE001
+        # Modal raises its own timeout type on a poll that finds nothing ready;
+        # anything whose name says timeout is "not finished", not "broken".
+        if "timeout" in type(exc).__name__.lower():
+            return None
+        bundle = _empty_bundle(request_id)
+        bundle["error"] = f"the build could not be collected: {exc}"
+        return bundle
+
+    build_log = dict((result or {}).get("build_log") or {})
+    build_log["where"] = "modal"
+
+    # Artifacts come back as bytes and are written into this container's copy of
+    # the workdir, so the GLB conversion, the upload and the download route are
+    # identical to the synchronous path — including on a container that had
+    # nothing to do with starting the build.
+    for name, blob in ((result or {}).get("artifacts") or {}).items():
+        if blob:
+            with open(os.path.join(workdir, name), "wb") as fh:
+                fh.write(blob)
+
+    return _finish(
+        bp, analysis, workdir, request_id, build_log, (result or {}).get("measured"), t0
+    )

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import Viewer from "../Viewer/Viewer";
 import AssistantPanel from "../Panels/AssistantPanel";
+import SessionPanel from "../Panels/SessionPanel";
 import ModelDock from "../Panels/ModelDock";
 import TitleBar from "./TitleBar";
 import Ribbon from "./Ribbon";
@@ -30,8 +32,63 @@ import { useDesignStore } from "../../store/designStore";
  * gets the column it needs for a derivation without pushing the model out of
  * sight.
  */
+/**
+ * The two ways to design, side by side rather than one replacing the other.
+ *
+ * `chat` is the one-shot route: describe a part and get geometry. It is live,
+ * it is what every existing user knows, and nothing here changes it.
+ *
+ * `reviewed` is the session route: the design stops at a plan and waits to be
+ * approved. It is the better shape for anything load-bearing, but it asks for
+ * patience, so it is offered rather than imposed.
+ */
+type PanelTab = "chat" | "reviewed";
+
+function PanelTabs({
+    tab,
+    onChange,
+}: {
+    tab: PanelTab;
+    onChange: (t: PanelTab) => void;
+}) {
+    return (
+        <div style={{ display: "flex", borderBottom: "1px solid var(--st-rule)" }}>
+            {(
+                [
+                    ["chat", "Assistant"],
+                    ["reviewed", "Reviewed build"],
+                ] as const
+            ).map(([id, text]) => (
+                <button
+                    key={id}
+                    onClick={() => onChange(id)}
+                    style={{
+                        flex: 1,
+                        padding: "8px 6px",
+                        fontSize: "11px",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        fontFamily: "inherit",
+                        background: "transparent",
+                        color: tab === id ? "var(--st-ink)" : "var(--st-pencil)",
+                        border: "none",
+                        borderBottom:
+                            tab === id
+                                ? "2px solid var(--st-blue)"
+                                : "2px solid transparent",
+                        cursor: "pointer",
+                    }}
+                >
+                    {text}
+                </button>
+            ))}
+        </div>
+    );
+}
+
 export default function Workspace() {
     const current = useDesignStore((s) => s.current);
+    const [tab, setTab] = useState<PanelTab>("chat");
 
     return (
         <div
@@ -52,7 +109,43 @@ export default function Workspace() {
                 <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
                     <Viewer url={current ? current.files.glb : ""} />
                 </div>
-                <AssistantPanel />
+                <div
+                    style={{
+                        width: "392px",
+                        flexShrink: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        minHeight: 0,
+                        borderLeft: "1px solid var(--st-rule)",
+                        background: "var(--st-sheet)",
+                    }}
+                >
+                    <PanelTabs tab={tab} onChange={setTab} />
+                    {/* The assistant is kept mounted rather than unmounted on
+                        switch: it holds a live conversation and a streaming
+                        turn, and remounting it mid-build would abandon both. */}
+                    <div
+                        style={{
+                            flex: 1,
+                            minHeight: 0,
+                            display: tab === "chat" ? "flex" : "none",
+                            flexDirection: "column",
+                        }}
+                    >
+                        <AssistantPanel />
+                    </div>
+                    <div
+                        style={{
+                            flex: 1,
+                            minHeight: 0,
+                            display: tab === "reviewed" ? "flex" : "none",
+                            flexDirection: "column",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <SessionPanel />
+                    </div>
+                </div>
             </div>
             <TitleBlock />
             <ToolDialog />

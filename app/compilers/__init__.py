@@ -9,12 +9,32 @@ Available compilers:
 - Build123dCompiler: V1 compiler for STEP/STL/GLB export
 - Build123dCompilerV2: V2 compiler with semantic selector support
 - Build123dCompilerV3: V3 compiler with topological identity tracking (Phase 2)
+
+Every name below is resolved on first use rather than at import. Each of these
+modules imports build123d, and build123d imports 542 OCP modules — so merely
+naming this package used to cost a two-minute cold start, including in processes
+that only wanted ``BuildContext``.
 """
 
-from .base_compiler import BaseCompiler, BuildContext
-from .build123d_compiler import Build123dCompiler
-from .build123d_compiler_v2 import Build123dCompilerV2
-from .build123d_compiler_v3 import Build123dCompilerV3
+from typing import Any
+
+_LAZY = {
+    "BaseCompiler": ".base_compiler",
+    "BuildContext": ".base_compiler",
+    "Build123dCompiler": ".build123d_compiler",
+    "Build123dCompilerV2": ".build123d_compiler_v2",
+    "Build123dCompilerV3": ".build123d_compiler_v3",
+}
+
+
+def __getattr__(name: str) -> Any:
+    module = _LAZY.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from importlib import import_module
+
+    return getattr(import_module(module, __name__), name)
+
 
 __all__ = [
     "BaseCompiler",

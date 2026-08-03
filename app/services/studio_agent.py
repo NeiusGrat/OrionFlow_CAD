@@ -25,6 +25,7 @@ nobody can tell which system produced the result.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
 from app.logging_config import get_logger
@@ -343,6 +344,265 @@ def _looks_like_a_question(text: str) -> bool:
     return t.startswith(openers)
 
 
+# --------------------------------------------------------------------------- #
+# the proposal: a design that exists before it is a solid
+# --------------------------------------------------------------------------- #
+def _emit_step(
+    on_event: EventSink,
+    sid: str,
+    label: str,
+    status: str = "active",
+    detail: str = "",
+    items: Optional[list] = None,
+) -> None:
+    """One stage of a turn, reported when it genuinely happened.
+
+    Steps are keyed by id and replace in place on the client, so re-emitting
+    one with a new status is how a stage moves from active to done or fail.
+    """
+    if on_event:
+        on_event(
+            "step",
+            {
+                "id": sid,
+                "label": label,
+                "status": status,
+                "detail": detail,
+                "items": items or [],
+            },
+        )
+
+
+def critique(bp: Any, payload: dict) -> dict:
+    """Everything that can be known about a Blueprint before FreeCAD runs.
+
+    Three checks, all arithmetic over the model's own expressions, all in about
+    a millisecond against the three seconds a build costs:
+
+    ``static``
+        implicit — the Blueprint only exists here because ``freeze()`` accepted
+        it, which is what rejects a bare number where an expression belongs.
+    ``preconditions``
+        every guard the model authored evaluates greater than zero. A violated
+        guard means the closed form the part will be graded against is not valid
+        for these values, so nothing built from it can verify.
+    ``volume``
+        the authored closed form against the profile builder's exact area times
+        the extrusion length. Decidable only for a single-extrusion tree — where
+        booleans between separately-sketched features can overlap, the analytic
+        answer would be a guess and this reports ``unknown`` rather than
+        pretending otherwise.
+
+    These are the two failure classes that dominate live failures (see
+    ``orion/reward.py``: the SFT corpus contains only verified records, so the
+    model has never seen a bad dimension choice and its consequence). Reusing
+    ``reward.analytic_volume`` rather than reimplementing it is deliberate: the
+    critique a user reads is then the same function that scores an RL rollout,
+    and the two cannot drift into disagreeing about the same part.
+
+    Advisory, not a veto. ``design()`` still builds a Blueprint that fails here,
+    because geometry a user can look at beats nothing even when it is refused —
+    but the failure is named before the container starts rather than after.
+    """
+    from orion import reward
+
+    checks: list[dict] = []
+    blocking: list[str] = []
+
+    checks.append(
+        {
+            "id": "static",
+            "label": "Every dimension is an expression over a named variable",
+            "status": "pass",
+            "detail": f"{len(bp.variables)} variables, {len(bp.assertions)} assertions",
+        }
+    )
+
+    try:
+        rows = bp.resolve_assertions()
+    except Exception as exc:  # noqa: BLE001 — an unresolvable Blueprint is a finding
+        checks.append(
+            {
+                "id": "resolve",
+                "label": "The Blueprint resolves to concrete numbers",
+                "status": "fail",
+                "detail": str(exc)[:200],
+            }
+        )
+        return {
+            "ok": False,
+            "checks": checks,
+            "blocking": ["resolve"],
+            "advisories": [],
+        }
+
+    guards = [a for a in rows if a.get("kind") == "precondition"]
+    failed = [
+        a
+        for a in guards
+        if not (a.get("target_value") is not None and a["target_value"] > 0)
+    ]
+    if guards:
+        checks.append(
+            {
+                "id": "preconditions",
+                "label": "Every guard the model authored holds",
+                "status": "fail" if failed else "pass",
+                "detail": (
+                    f"{len(failed)} of {len(guards)} violated: "
+                    + ", ".join(str(a.get("id")) for a in failed)
+                    if failed
+                    else f"all {len(guards)} satisfied"
+                ),
+            }
+        )
+        if failed:
+            blocking.append("preconditions")
+
+    predicted = next(
+        (a.get("target_value") for a in rows if a.get("kind") == "body_volume"), None
+    )
+    try:
+        exact = reward.analytic_volume(bp)
+    except Exception:  # noqa: BLE001 — undecidable is not a failure
+        exact = None
+
+    if predicted is not None and exact is not None:
+        err = abs(predicted - exact) / max(abs(exact), 1e-12)
+        agrees = err <= 1e-6
+        checks.append(
+            {
+                "id": "volume",
+                "label": "The predicted volume matches the profile it was derived from",
+                "status": "pass" if agrees else "fail",
+                "detail": f"closed form {predicted:.4f} mm^3 against "
+                f"{exact:.4f} mm^3 from the sketch area"
+                + ("" if agrees else f" — off by {err:.2%}"),
+            }
+        )
+        if not agrees:
+            blocking.append("volume")
+    else:
+        checks.append(
+            {
+                "id": "volume",
+                "label": "The predicted volume matches the profile it was derived from",
+                "status": "unknown",
+                "detail": "not decidable without the kernel — this feature tree "
+                "is not a single extrusion",
+            }
+        )
+
+    try:
+        from orion.checker import advisories
+
+        notes = list(
+            advisories(payload.get("variables") or {}, payload.get("template") or {})
+        )
+    except Exception:  # noqa: BLE001 — an advisory must never block a design
+        notes = []
+
+    return {
+        "ok": not blocking,
+        "checks": checks,
+        "blocking": blocking,
+        "advisories": notes,
+    }
+
+
+@dataclass
+class Proposal:
+    """A Blueprint the model has committed to, frozen, before any geometry.
+
+    The point of the type is the hash. ``freeze()`` runs the static check and
+    then sha256s every number the model authored, so a proposal names exactly
+    one design and cannot be edited without becoming a different one. That is
+    what an approval will bind to, and what lets ``build`` prove it is building
+    the thing that was proposed rather than something that drifted in between.
+
+    ``failure`` classifies a proposal that did not come off, in the vocabulary
+    ``orion.repair_loop`` already switches on, so the caller can decide whether
+    to repair (``parse``, ``freeze``) or stop (``model``, ``questions``).
+    """
+
+    ok: bool = False
+    #: "" when ok, else one of: questions | model | parse | freeze
+    failure: str = ""
+    error: str = ""
+    #: What the request would have to say before it can be designed at all.
+    questions: list = field(default_factory=list)
+
+    payload: dict = field(default_factory=dict)
+    blueprint_hash: str = ""
+    part_class: str = ""
+    variables: dict = field(default_factory=dict)
+    features: list = field(default_factory=list)
+    design_plan: dict = field(default_factory=dict)
+    assertions: list = field(default_factory=list)
+
+    thinking: str = ""
+    #: The raw completion, kept because a repair turn has to show the model its
+    #: own failed attempt as its own.
+    completion: str = ""
+    model: str = ""
+    volume_claim: dict = field(default_factory=dict)
+    critique: dict = field(default_factory=dict)
+    #: The deterministic engineering review of the resolved geometry — holes
+    #: that clash, dimensions that cannot build, dressups too big for the face
+    #: they land on. Distinct from ``critique``, which grades the model against
+    #: its own contract; this grades the part against mechanics.
+    mechanical: dict = field(default_factory=dict)
+
+    route: dict = field(default_factory=dict)
+    reasoning: Optional[dict] = None
+    citations: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)
+
+    attempt: int = 1
+    #: The two-message base this draw started from. Repair turns are rebuilt
+    #: from it rather than appended to a growing history — see ``_repair_turn``.
+    base_messages: list = field(default_factory=list)
+    #: The reasoning chain, when one ran. Held as the object so the caller can
+    #: still ask it to explain itself.
+    chain: Any = None
+
+    def to_dict(self) -> dict:
+        """What a client is shown before anything is built or approved."""
+        return {
+            "blueprint_hash": self.blueprint_hash,
+            "part_class": self.part_class,
+            "variables": self.variables,
+            "features": self.features,
+            "design_plan": self.design_plan,
+            "assertions": self.assertions,
+            "critique": self.critique,
+            "mechanical": self.mechanical,
+            "attempt": self.attempt,
+        }
+
+
+def _failed_bundle(proposal: Proposal) -> dict:
+    """A proposal that never reached the kernel, in the shape of a build result.
+
+    Lets the orchestration rank and report every outcome the same way, whether
+    it died at the model, at the parser or at the geometry.
+    """
+    return {
+        "success": False,
+        "model": proposal.model,
+        "error": proposal.error,
+        "verification": {},
+        "files": {},
+        "blueprint": proposal.payload or None,
+        "part_class": proposal.part_class,
+        "variables": proposal.variables,
+        "critique": proposal.critique,
+        "mechanical": proposal.mechanical,
+        "attempts": proposal.attempt,
+        "raw_completion": (proposal.completion or "")[:4000] or None,
+    }
+
+
 class StudioAgent:
     """Owns the model clients. Cheap to construct, so the API can hold one."""
 
@@ -372,7 +632,18 @@ class StudioAgent:
             "provider": primary,
             "fallback": fallback,
             "serving_our_model": primary in OURS,
-            "model": cfg.llm.model,
+            # The adapter that actually authors geometry, which is the one a
+            # user is asking about. This reported ``cfg.llm.model`` — the value
+            # the agent loop and the conversation use — so a correctly
+            # configured deployment could show "orionflow-base" on the
+            # diagnostics panel while every part was being designed by
+            # ``ORION_DESIGN_MODEL``. Health that names different weights than
+            # produced the result is worse than no health at all, because it
+            # sends you debugging the fine-tune instead of the config.
+            "model": DESIGN_MODEL,
+            "conversation_model": CONVERSATION_MODEL,
+            #: What the shared config carries, for when the two disagree.
+            "configured_model": cfg.llm.model,
             "endpoint": cfg.llm.base_url,
             "builder": "freecad" if builder_ok else "unavailable",
             "builder_mode": BUILDER_MODE,
@@ -448,75 +719,62 @@ class StudioAgent:
         return None, ""
 
     # ------------------------------------------------------------------ #
-    def design(self, prompt: str, on_event: EventSink = None) -> dict:
-        """Prompt → Blueprint → geometry → verdict.
+    # propose → build
+    #
+    # These were one method, and the seam mattered more than it looked.
+    # Everything before the kernel — routing the request, deriving dimensions
+    # from a duty, drawing a Blueprint, freezing it, and settling what
+    # arithmetic alone can settle — is cheap, reversible, and the part worth
+    # showing to a person. Everything after it costs a FreeCAD container and
+    # produces a solid. Fused, there was no moment at which a design existed but
+    # had not yet been built, and therefore nowhere to put an approval, a
+    # revision, or a critique that could have saved the build.
+    # ------------------------------------------------------------------ #
+    def propose(self, prompt: str, on_event: EventSink = None) -> Proposal:
+        """Prompt → a frozen Blueprint and its pre-build critique. No geometry.
 
-        Emits ``step`` events as each stage genuinely completes. They are
-        derived from real state — the parsed part class, the actual feature
-        list, the checks that ran — never from a timer, so a stalled stage
-        looks stalled instead of animating cheerfully towards a result that
-        will not arrive.
+        Runs the deterministic stages first — see ``app/services/design_router``
+        for why a stated load, and only a stated load, diverts to the reasoning
+        chain — then takes one draw from the model and freezes what comes back.
         """
-        from orion import calc, repair_loop
+        from app.services import design_router
         from orion.pack_sft import SYSTEM_PROMPT
         from orion_agent.harness.llm.base import LLMMessage
-        from app.services import blueprint_service, design_narrative, design_router
 
-        def step(
-            sid: str,
-            label: str,
-            status: str = "active",
-            detail: str = "",
-            items: Optional[list] = None,
-        ) -> None:
-            if on_event:
-                on_event(
-                    "step",
-                    {
-                        "id": sid,
-                        "label": label,
-                        "status": status,
-                        "detail": detail,
-                        "items": items or [],
-                    },
-                )
-
-        # ---- deterministic stages, before the model is asked anything ------ #
         # A request that states a duty is not a description of a part, it is a
         # question about one, and the answer is arithmetic over catalogues and
-        # standards rather than anything a model should be sampling. The router
-        # decides which it is from what the extractor actually read; see
-        # app/services/design_router.py for why a load is the only signal that
-        # diverts.
+        # standards rather than anything a model should be sampling.
         route = design_router.resolve(prompt)
         model_prompt = prompt
         chain = route.chain
 
         if route.to_branch:
-            step("understand", "Understanding the request", "active", route.why)
+            _emit_step(
+                on_event, "understand", "Understanding the request", "active", route.why
+            )
             if chain is not None and not chain.complete:
                 # The chain stopped because the request did not say enough. Its
                 # questions are the useful answer — inventing the missing number
                 # is exactly the failure the chain exists to prevent — so the
                 # turn ends here rather than handing the model a gap to fill.
-                step(
+                _emit_step(
+                    on_event,
                     "understand",
                     "Understanding the request",
                     "fail",
                     f"stopped at {chain.stopped_at}",
                     chain.asks(),
                 )
-                return {
-                    "success": False,
-                    "model": "",
-                    "error": "; ".join(chain.asks())
+                return Proposal(
+                    failure="questions",
+                    error="; ".join(chain.asks())
                     or f"the request could not be specified "
                     f"(stopped at {chain.stopped_at})",
-                    "needs": chain.asks(),
-                    "reasoning": chain.to_dict(),
-                    "verification": {},
-                    "files": {},
-                }
+                    questions=chain.asks(),
+                    route=route.to_dict(),
+                    reasoning=chain.to_dict(),
+                    chain=chain,
+                )
             if chain is not None:
                 # Every dimension now comes from a standard or a calculation, and
                 # the model's only remaining job is to render it as a coherent
@@ -525,7 +783,8 @@ class StudioAgent:
                 # derivation is for the user, and feeding it back invites the
                 # model to re-litigate settled arithmetic.
                 model_prompt = route.design_prompt
-                step(
+                _emit_step(
+                    on_event,
                     "specify",
                     "Specifying the design",
                     "done",
@@ -540,161 +799,369 @@ class StudioAgent:
         # diagnosis — never by appending to a growing history, which would put a
         # second user turn in front of the model on attempt 3 and stop looking
         # like the repair records at all.
-        base_messages = [
-            LLMMessage.system(SYSTEM_PROMPT),
-            LLMMessage.user(model_prompt),
+        base = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(model_prompt)]
+        return self._draw(base, base, route, chain, 1, on_event)
+
+    def repropose(
+        self, previous: Proposal, diagnosis: str, on_event: EventSink = None
+    ) -> Proposal:
+        """Another draw, given exactly why the last one failed.
+
+        A failed attempt is never resampled blind: the same prompt draws the
+        same reasoning, so blind resampling cannot fix a wrong derivation. The
+        diagnosis is derived from measured evidence — which assertion missed, by
+        how much, and which feature's own volume accounts for the gap.
+        """
+        messages = _repair_turn(
+            previous.base_messages, previous.completion, diagnosis
+        )
+        return self._draw(
+            messages,
+            previous.base_messages,
+            previous.route,
+            previous.chain,
+            previous.attempt + 1,
+            on_event,
+        )
+
+    def redesign(
+        self,
+        prompt: str,
+        previous: dict,
+        instruction: str,
+        attempt: int = 1,
+        on_event: EventSink = None,
+    ) -> Proposal:
+        """Redraw a stored design because a person asked for a change.
+
+        Reconstructed from the persisted Blueprint rather than from a live
+        conversation, because a revision can be asked for days after the
+        proposal and nothing in memory survives that. The shape is the same as a
+        repair turn — original ask, the design as the model's own answer, then
+        what is wrong with it — so the model sees its previous output as its own
+        and edits rather than starting over. What differs is the last turn: a
+        repair carries a diagnosis the verifier derived, this carries a person's
+        words, and the two must not be conflated in the record.
+        """
+        import json
+
+        from orion.pack_sft import SYSTEM_PROMPT
+        from orion_agent.harness.llm.base import LLMMessage
+
+        base = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(prompt)]
+        messages = base + [
+            LLMMessage.assistant(json.dumps(previous)),
+            LLMMessage.user(
+                f"Change that part as follows.\n\n{instruction}\n\n"
+                "Keep everything the change does not touch. Re-derive the "
+                "volume if the change affects it, then emit the corrected "
+                "Blueprint as a single JSON object."
+            ),
         ]
-        messages = list(base_messages)
+        from app.services import design_router
 
-        # A failed attempt is not resampled blind. The verifier already knows
-        # exactly what went wrong — which assertion missed, by how much, and
-        # which feature's own volume accounts for the gap — so the next turn
-        # gets that as a diagnosis. Blind resampling was the previous behaviour
-        # and it cannot fix a wrong derivation: the same prompt draws the same
-        # reasoning. The measured evidence is what changes the answer.
-        bundle: dict = {}
-        best: dict = {}
-        features: list = []
-        best_features: list = []
-        for attempt in range(1, DESIGN_ATTEMPTS + 1):
-            again = attempt > 1
-            step(
+        route = design_router.Route(
+            design_router.DIRECT, "a revision of an existing design"
+        )
+        return self._draw(messages, base, route, None, attempt, on_event)
+
+    def _draw(
+        self,
+        messages: list,
+        base_messages: list,
+        route: Any,
+        chain: Any,
+        attempt: int,
+        on_event: EventSink,
+    ) -> Proposal:
+        """One model draw, parsed, frozen and critiqued. The half that costs tokens."""
+        from app.services import blueprint_service, design_narrative, mechanical_plan
+        from orion import calc
+        from orion.blueprint import Blueprint, BlueprintError
+
+        route_dict = route.to_dict() if hasattr(route, "to_dict") else dict(route or {})
+
+        def failed(kind: str, error: str, completion: str = "", model: str = "") -> Proposal:
+            return Proposal(
+                failure=kind,
+                error=error,
+                completion=completion,
+                model=model,
+                attempt=attempt,
+                route=route_dict,
+                chain=chain,
+                base_messages=base_messages,
+            )
+
+        _emit_step(
+            on_event,
+            "understand",
+            "Understanding the request",
+            "active",
+            f"repair attempt {attempt}" if attempt > 1 else "",
+        )
+        if on_event:
+            on_event("phase", {"phase": "reasoning"})
+
+        # channel=None: emit no raw tokens. See _complete for why.
+        resp, label = self._complete(
+            messages, on_event, channel=None, max_tokens=4096, model=DESIGN_MODEL
+        )
+        if resp is None:
+            _emit_step(
+                on_event,
                 "understand",
                 "Understanding the request",
-                "active",
-                f"repair attempt {attempt}" if again else "",
+                "fail",
+                "no model is reachable",
             )
-            if on_event:
-                on_event("phase", {"phase": "reasoning"})
-            # channel=None: emit no raw tokens. See _complete for why.
-            resp, label = self._complete(
-                messages, on_event, channel=None, max_tokens=4096, model=DESIGN_MODEL
+            return failed(
+                "model",
+                "no model is reachable — the inference endpoint is down and "
+                "the fallback also failed",
             )
-            if resp is None:
-                # An endpoint that dies on the repair turn must not cost the
-                # user a part that already built on the first one. Same rule as
-                # the parse-failure path below: keep the best result, report
-                # only when there is nothing to keep.
-                if best:
-                    break
-                step(
-                    "understand",
-                    "Understanding the request",
-                    "fail",
-                    "no model is reachable",
-                )
-                return {
-                    "success": False,
-                    "model": "",
-                    "error": "no model is reachable — the inference "
-                    "endpoint is down and the fallback also "
-                    "failed",
-                    "verification": {},
-                    "files": {},
-                }
 
-            completion = resp.content
+        completion = resp.content
 
-            # ---- interpretation: facts straight off the parsed Blueprint ----
-            try:
-                _, payload = blueprint_service.parse_completion(completion)
-            except blueprint_service.BlueprintBuildError as exc:
-                # The model answered, but not with a Blueprint. That is a model
-                # failure and must read as one — not as a kernel error.
-                if attempt < DESIGN_ATTEMPTS:
-                    step(
-                        "understand",
-                        "Understanding the request",
-                        "active",
-                        "no Blueprint returned — asking again with the reason",
-                    )
-                    messages = _repair_turn(
-                        base_messages,
-                        completion,
-                        repair_loop.diagnose(None, f"parse: {exc}"),
-                    )
-                    continue
-                if best:
-                    break
-                step(
-                    "understand",
-                    "Understanding the request",
-                    "fail",
-                    "the model did not return a Blueprint",
-                )
-                return {
-                    "success": False,
-                    "model": label,
-                    "error": str(exc),
-                    "raw_completion": completion[:4000],
-                    "verification": {},
-                    "files": {},
-                }
-
-            part_class = payload.get("part_class", "")
-            variables = payload.get("variables", {}) or {}
-            template = payload.get("template", {}) or {}
-
-            step(
+        try:
+            _, payload = blueprint_service.parse_completion(completion)
+        except blueprint_service.BlueprintBuildError as exc:
+            # The model answered, but not with a Blueprint. That is a model
+            # failure and must read as one — not as a kernel error.
+            _emit_step(
+                on_event,
                 "understand",
                 "Understanding the request",
-                "done",
-                design_narrative._readable_class(part_class),
+                "fail",
+                "the model did not return a Blueprint",
             )
-            step(
-                "dimensions",
-                "Solving dimensions",
-                "done",
-                f"{len(variables)} parameters",
-                [f"{k} = {v}" for k, v in variables.items()],
+            return failed("parse", str(exc), completion, label)
+
+        # Frozen here rather than at build time, which is the whole point of
+        # the split: the hash covers every number the model authored, so from
+        # this line on the design has an identity that a build can be checked
+        # against. A static rejection is the model failing its own contract, and
+        # is now named before a container is started rather than after.
+        try:
+            bp = Blueprint.from_dict(payload).freeze()
+        except (BlueprintError, KeyError, TypeError, ValueError) as exc:
+            _emit_step(
+                on_event,
+                "understand",
+                "Understanding the request",
+                "fail",
+                _short(str(exc)),
             )
+            return failed("freeze", f"blueprint rejected: {exc}", completion, label)
 
-            features = [
-                f
-                for f in (template.get("features") or [])
-                if f.get("type") not in ("Body", "Sketch")
-            ]
-            step(
-                "build",
-                "Building the model",
-                "active",
-                f"{len(features)} features",
-                [f.get("rationale") or f.get("id", "") for f in features],
-            )
-            if on_event:
-                on_event("phase", {"phase": "building"})
+        variables = dict(bp.variables)
+        features = [
+            f
+            for f in (bp.template.get("features") or [])
+            if f.get("type") not in ("Body", "Sketch")
+        ]
 
-            bundle = blueprint_service.build_from_payload(payload)
-            bundle["model"] = label
-            bundle["thinking"] = resp.thinking or bundle.get("thinking", "")
-            bundle["prompt"] = prompt
-            bundle["attempts"] = attempt
+        _emit_step(
+            on_event,
+            "understand",
+            "Understanding the request",
+            "done",
+            design_narrative._readable_class(bp.part_class),
+        )
+        _emit_step(
+            on_event,
+            "dimensions",
+            "Solving dimensions",
+            "done",
+            f"{len(variables)} parameters",
+            [f"{k} = {v}" for k, v in variables.items()],
+        )
 
+        thinking = resp.thinking or ""
+        proposal = Proposal(
+            ok=True,
+            payload=payload,
+            blueprint_hash=bp.blueprint_hash,
+            part_class=bp.part_class,
+            variables=variables,
+            features=features,
+            design_plan=dict(bp.design_plan or {}),
+            assertions=list(bp.assertions or []),
+            thinking=thinking,
+            completion=completion,
+            model=label,
             # The model states a number at the end of its derivation and never
             # evaluates it — measured across the held-out set, that number
             # disagrees with the model's OWN expression in every single case,
             # including parts that go on to verify. The expression is the
-            # contract; the prose is decoration. Recompute it here so the raw
+            # contract; the prose is decoration. Recomputed here so the raw
             # derivation is never shown to a user as if it were arithmetic.
-            bundle["volume_claim"] = calc.check_stated_volume(
-                payload, bundle["thinking"]
+            volume_claim=calc.check_stated_volume(payload, thinking),
+            critique=critique(bp, payload),
+            mechanical=mechanical_plan.review_blueprint(bp),
+            route=route_dict,
+            reasoning=chain.to_dict() if chain is not None else None,
+            citations=list(chain.citations) if chain is not None else [],
+            warnings=list(chain.warnings) if chain is not None else [],
+            attempt=attempt,
+            base_messages=base_messages,
+            chain=chain,
+        )
+
+        if on_event:
+            on_event("proposal", proposal.to_dict())
+        return proposal
+
+    def build(
+        self, proposal: Proposal, on_event: EventSink = None, prompt: str = ""
+    ) -> dict:
+        """A frozen Blueprint → geometry, measured and graded. No model call.
+
+        Refuses a payload that no longer hashes to the proposal's own hash.
+        Nothing between ``propose`` and here mutates a payload today, so that
+        check can only fire on a bug — but it is precisely the check an approval
+        gate is made of, and it is worth having in place before anything is
+        allowed to sit in the gap.
+        """
+        from app.services import blueprint_service
+
+        if not proposal.ok:
+            return _failed_bundle(proposal)
+
+        _emit_step(
+            on_event,
+            "build",
+            "Building the model",
+            "active",
+            f"{len(proposal.features)} features",
+            [f.get("rationale") or f.get("id", "") for f in proposal.features],
+        )
+        if on_event:
+            on_event("phase", {"phase": "building"})
+
+        bundle = blueprint_service.build_from_payload(proposal.payload)
+
+        built = (bundle.get("blueprint") or {}).get("blueprint_hash", "")
+        if built and proposal.blueprint_hash and built != proposal.blueprint_hash:
+            bundle["success"] = False
+            bundle["error"] = (
+                "the Blueprint changed between proposal and build "
+                f"({proposal.blueprint_hash[:10]} → {built[:10]})"
+            )
+
+        bundle["model"] = proposal.model
+        bundle["thinking"] = proposal.thinking
+        bundle["prompt"] = prompt
+        bundle["attempts"] = proposal.attempt
+        bundle["volume_claim"] = proposal.volume_claim
+        bundle["critique"] = proposal.critique
+        bundle["mechanical"] = proposal.mechanical
+        return bundle
+
+    # ------------------------------------------------------------------ #
+    def design(self, prompt: str, on_event: EventSink = None) -> dict:
+        """Prompt → Blueprint → geometry → verdict.
+
+        Orchestration only: ``propose`` draws and freezes, ``build`` runs the
+        kernel, and this decides how many times to try and which result to keep.
+        The repair budget, the keep-the-best-attempt rule and the event stream
+        are unchanged from when this was one method.
+
+        Emits ``step`` events as each stage genuinely completes. They are
+        derived from real state — the parsed part class, the actual feature
+        list, the checks that ran — never from a timer, so a stalled stage looks
+        stalled instead of animating cheerfully towards a result that will not
+        arrive.
+        """
+        from orion import repair_loop
+
+        proposal = self.propose(prompt, on_event)
+        if proposal.failure == "questions":
+            return {
+                "success": False,
+                "model": "",
+                "error": proposal.error,
+                "needs": proposal.questions,
+                "reasoning": proposal.reasoning,
+                "verification": {},
+                "files": {},
+            }
+
+        best: dict = {}
+        best_proposal = proposal
+        bundle: dict = {}
+
+        while True:
+            bundle = (
+                self.build(proposal, on_event, prompt=prompt)
+                if proposal.ok
+                else _failed_bundle(proposal)
             )
 
             # Keep the best result seen, not the last one. A later attempt that
             # fails to parse must not throw away an earlier part that built —
             # geometry the user can look at beats nothing, even unverified.
             if _rank(bundle) > _rank(best):
-                best, best_features = bundle, features
+                best, best_proposal = bundle, proposal
 
-            if _rank(bundle) == _VERIFIED:
+            if _rank(bundle) == _VERIFIED or proposal.attempt >= DESIGN_ATTEMPTS:
+                break
+            if proposal.failure == "model":
+                # Nothing to repair — the endpoint is down, and asking it again
+                # with a diagnosis will reach the same dead socket. An endpoint
+                # that dies on the repair turn must not cost the user a part
+                # that already built on the first one, which is what keeping
+                # ``best`` above is for.
                 break
 
-            if attempt < DESIGN_ATTEMPTS:
+            blocking = (proposal.mechanical or {}).get("blocking", 0)
+            if proposal.ok and blocking and bundle.get("error"):
+                # The kernel failed *and* the deterministic review had already
+                # said why. Lead with the mechanical finding: it names the
+                # coordinates that clash, which a stderr tail from OCC never
+                # does, and the model repairs a derivation it can see is wrong
+                # far more reliably than one it is merely told is wrong.
+                from app.services import mechanical_plan
+
+                diagnosis = mechanical_plan.as_diagnosis(proposal.mechanical)
+                _emit_step(
+                    on_event,
+                    "build",
+                    "Building the model",
+                    "active",
+                    f"{blocking} geometry problem"
+                    f"{'s' if blocking != 1 else ''} — repairing",
+                )
+                if on_event:
+                    on_event(
+                        "repair",
+                        {
+                            "attempt": proposal.attempt,
+                            "error": "mechanical",
+                            "diagnosis": diagnosis,
+                        },
+                    )
+            elif proposal.failure in ("parse", "freeze"):
+                # Caught before the kernel, so this repair round costs a model
+                # call and nothing else.
+                diagnosis = repair_loop.diagnose(
+                    proposal.payload or None, f"{proposal.failure}: {proposal.error}"
+                )
+                _emit_step(
+                    on_event,
+                    "understand",
+                    "Understanding the request",
+                    "active",
+                    "no Blueprint returned — asking again with the reason",
+                )
+            else:
                 error, verdict = _classify_failure(bundle)
                 diagnosis = repair_loop.diagnose(
-                    payload, error, verdict=verdict, measured=bundle.get("measured")
+                    proposal.payload, error, verdict=verdict,
+                    measured=bundle.get("measured"),
                 )
-                step(
+                _emit_step(
+                    on_event,
                     "build",
                     "Building the model",
                     "active",
@@ -705,22 +1172,40 @@ class StudioAgent:
                     # a different claim from one that verified first time.
                     on_event(
                         "repair",
-                        {"attempt": attempt, "error": error, "diagnosis": diagnosis},
+                        {
+                            "attempt": proposal.attempt,
+                            "error": error,
+                            "diagnosis": diagnosis,
+                        },
                     )
-                messages = _repair_turn(base_messages, completion, diagnosis)
-                continue
 
+            proposal = self.repropose(proposal, diagnosis, on_event)
+
+        attempts = proposal.attempt
+        proposal = best_proposal
         bundle = best or bundle
-        features = best_features or features
         # How many attempts the turn actually cost, not how many the surviving
         # bundle happened to be produced on. When every attempt fails at the
         # same rank the first one is kept, and reporting its ``attempts`` of 1
         # hides the repair round entirely from anything counting them.
         if bundle:
-            bundle["attempts"] = attempt
+            bundle["attempts"] = attempts
+        return self._report(bundle, proposal, on_event, prompt)
+
+    # ------------------------------------------------------------------ #
+    def _report(
+        self, bundle: dict, proposal: Proposal, on_event: EventSink, prompt: str
+    ) -> dict:
+        """Announce the outcome and attach everything derived from it.
+
+        Separate from ``build`` because a build is one attempt and this is the
+        turn's verdict: it runs once, over whichever attempt was kept.
+        """
+        from app.services import design_narrative
 
         if not bundle.get("success"):
-            step(
+            _emit_step(
+                on_event,
                 "build",
                 "Building the model",
                 "fail",
@@ -738,7 +1223,13 @@ class StudioAgent:
                 )
             return bundle
 
-        step("build", "Building the model", "done", f"{len(features)} features")
+        _emit_step(
+            on_event,
+            "build",
+            "Building the model",
+            "done",
+            f"{len(proposal.features)} features",
+        )
         if on_event:
             on_event(
                 "built",
@@ -752,7 +1243,8 @@ class StudioAgent:
 
         report = bundle.get("verification") or {}
         checks = report.get("checks") or []
-        step(
+        _emit_step(
+            on_event,
             "verify",
             "Running verification",
             "done" if report.get("verdict") == "verified" else "fail",
@@ -766,21 +1258,21 @@ class StudioAgent:
         # behind every dimension. This is the half of the answer the model did
         # not produce, and the half an engineer can check: each number traceable
         # to the stage, standard or calculation that decided it.
-        bundle["route"] = route.to_dict()
-        if chain is not None:
-            bundle["reasoning"] = chain.to_dict()
-            bundle["citations"] = list(chain.citations)
-            if chain.warnings:
-                bundle.setdefault("warnings", []).extend(chain.warnings)
+        bundle["route"] = proposal.route
+        if proposal.chain is not None:
+            bundle["reasoning"] = proposal.reasoning
+            bundle["citations"] = proposal.citations
+            if proposal.warnings:
+                bundle.setdefault("warnings", []).extend(proposal.warnings)
             if on_event:
                 on_event(
                     "reasoning",
                     {
-                        "explain": chain.explain(),
-                        "citations": list(chain.citations),
-                        "warnings": list(chain.warnings),
-                        "part_class": chain.part_class,
-                        "variables": dict(chain.variables),
+                        "explain": proposal.chain.explain(),
+                        "citations": proposal.citations,
+                        "warnings": proposal.warnings,
+                        "part_class": proposal.chain.part_class,
+                        "variables": dict(proposal.chain.variables),
                     },
                 )
 
