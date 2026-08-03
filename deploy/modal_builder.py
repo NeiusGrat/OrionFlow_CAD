@@ -73,10 +73,11 @@ def build_blueprint(graph: dict, mesh_body: bool = False) -> dict:
 
     step = os.path.join(workdir, "part.step")
     stl = os.path.join(workdir, "part.stl")
+    fcstd = os.path.join(workdir, "part.FCStd")
     mpath = os.path.join(workdir, "measured.json")
 
     cmd = [sys.executable, "/root/orion/build_export_fc.py",
-           "--graph", gpath, "--fcstd", os.path.join(workdir, "part.FCStd"),
+           "--graph", gpath, "--fcstd", fcstd,
            "--out", mpath, "--step", step, "--stl", stl]
     if mesh_body:
         cmd.append("--mesh-body")
@@ -99,8 +100,19 @@ def build_blueprint(graph: dict, mesh_body: bool = False) -> dict:
         with open(mpath, encoding="utf-8") as fh:
             measured = json.load(fh)
 
+    # The FCStd is returned alongside the exchange formats, not instead of
+    # them, and it is the one that must never be dropped. STEP and STL are
+    # derived views: they carry the final solid and nothing about how it was
+    # arrived at. The FCStd carries the parametric document itself — the
+    # sketches, the feature history, the expressions binding dimensions to
+    # named variables — which is what makes a build re-openable, re-tunable and
+    # usable as training evidence. It was already written here and thrown away
+    # with the container; the STEP was the only thing that survived, so every
+    # part this system has ever built lost its history at the container
+    # boundary.
     artifacts = {}
-    for name, path in (("part.step", step), ("part.stl", stl)):
+    for name, path in (("part.step", step), ("part.stl", stl),
+                       ("part.FCStd", fcstd)):
         if os.path.exists(path):
             with open(path, "rb") as fh:
                 artifacts[name] = fh.read()

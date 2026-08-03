@@ -22,6 +22,8 @@ export interface SavedDesign {
     glb_path: string | null;
     step_path: string | null;
     stl_path: string | null;
+    /** The parametric FreeCAD document. Null for designs saved before it was kept. */
+    fcstd_path: string | null;
     is_public: boolean;
     tags: string[];
     created_at: string;
@@ -51,6 +53,7 @@ export interface CreateDesignInput {
     glb_path?: string;
     step_path?: string;
     stl_path?: string;
+    fcstd_path?: string;
     /** The build this was designed in, so the server can attach its evidence. */
     request_id?: string;
 }

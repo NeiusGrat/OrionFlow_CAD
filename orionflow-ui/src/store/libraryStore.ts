@@ -158,6 +158,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
                 glb_path: part.files.glb,
                 step_path: part.files.step,
                 stl_path: part.files.stl,
+                fcstd_path: part.files.fcstd,
                 request_id: part.requestId || undefined,
             });
             set((s) => ({
@@ -210,6 +211,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             glb: design.glb_path ?? undefined,
             step: design.step_path ?? undefined,
             stl: design.stl_path ?? undefined,
+            // Carried back so reopening and re-saving a design does not quietly
+            // drop the one artifact that makes it parametric.
+            fcstd: design.fcstd_path ?? undefined,
         };
 
         set({ activeId: id });

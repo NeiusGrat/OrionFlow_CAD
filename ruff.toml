@@ -1,4 +1,11 @@
 [lint.per-file-ignores]
+# The session fixtures (db, agent, builder) live in test_design_sessions.py and
+# are imported by name here — the pytest idiom for sharing them without adding a
+# conftest.py, which would change fixture resolution for the whole suite. Ruff
+# reads the test parameter that *requests* an imported fixture as a
+# redefinition of it, so F811 fires once per test rather than once per import.
+"tests/test_session_events.py" = ["F811"]
+
 "app/compilers/build123d_compiler.py" = ["F403", "F405"]
 "app/compilers/v1/feature_compiler.py" = ["F403", "F405"]
 "app/compilers/v1/sketch_compiler.py" = ["F403", "F405"]

@@ -14,12 +14,26 @@ import modal
 
 
 def _build_stamp() -> str:
-    """A string that changes whenever the checked-out code does.
+    """A string that changes whenever the code *in the image* does.
 
     Exposed on ``GET /health`` as ``build`` so "did my deploy actually take?"
     is one request rather than an inspection of the OpenAPI schema. A dirty
     tree is marked, because the commit alone would then be a lie about what is
     running.
+
+    Scoped by **path** to what is actually baked into the image, which is the
+    whole point of the flag rather than a refinement of it. ``git status
+    --porcelain`` over the entire tree reports untracked notes, scratch data and
+    downloaded datasets sitting at the repo root — none of which enter the image
+    — so production reported ``-dirty`` while the code it served was exactly the
+    commit. A marker that is always on tells you nothing, and the one time it
+    matters you have already learned to ignore it.
+
+    Untracked files *inside* those paths still count, and deliberately so: a new
+    module under ``app/`` has never been committed but is copied into the image
+    all the same, so the running code really does differ from the commit. Adding
+    ``--untracked-files=no`` would scope this by the wrong axis and hide exactly
+    the case the flag exists for.
     """
     try:
         sha = subprocess.run(
@@ -27,7 +41,8 @@ def _build_stamp() -> str:
             capture_output=True, text=True, timeout=10,
         ).stdout.strip()
         dirty = subprocess.run(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "--"]
+            + _SOURCE_DIRS + ["requirements.txt", "alembic.ini"],
             capture_output=True, text=True, timeout=10,
         ).stdout.strip()
         return f"{sha}{'-dirty' if dirty else ''}" if sha else "unknown"
@@ -94,8 +109,17 @@ image = image.add_local_file("alembic.ini", "/root/alembic.ini", copy=True)
 
 app = modal.App("orionflow-api")
 
-# Import the FastAPI app (and with it OCP/OpenCascade, the ~2-min cold-boot
-# cost) at container-import time so the memory snapshot captures it.
+# Import the FastAPI app at container-import time so the memory snapshot
+# captures it.
+#
+# This used to drag in OCP/OpenCascade — 542 modules, and the whole reason the
+# snapshot below exists. It no longer does: build123d is behind a lazy import
+# (see app/services/generation_service.py) because no live route uses it, and
+# `import app.main` now costs seconds rather than minutes. The snapshot is still
+# worth keeping — it also captures the FastAPI app, the SQLAlchemy metadata and
+# the pydantic model builds — but it is no longer hiding a two-minute import.
+#
+# tests/test_one_canonical_ir.py asserts this stays true.
 with image.imports():
     from app.main import app as fastapi_app
 

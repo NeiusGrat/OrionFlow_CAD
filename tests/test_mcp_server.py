@@ -210,7 +210,25 @@ def test_design_and_conversation_select_their_models_explicitly():
     from app.services import studio_agent
 
     assert studio_agent.DESIGN_MODEL != studio_agent.CONVERSATION_MODEL
-    source = inspect.getsource(studio_agent.StudioAgent.design)
+
+    # Asserted against ``_draw`` — the one place a design turn calls the model,
+    # for both the first attempt and every repair. Anchoring on ``design``
+    # instead is what this test used to do, and it broke the moment the model
+    # call moved without the property changing at all. What matters is that no
+    # design call inherits ``config.llm.model``, so the check follows the call.
+    draw = inspect.getsource(studio_agent.StudioAgent._draw)
     assert (
-        "model=DESIGN_MODEL" in source
+        "model=DESIGN_MODEL" in draw
     ), "the design turn must name its adapter, not inherit it"
+
+    talk = inspect.getsource(studio_agent.StudioAgent.explain)
+    assert (
+        "model=CONVERSATION_MODEL" in talk
+    ), "the conversation turn must name the base adapter, not the LoRA"
+
+    # And nothing on the design path may reach the model any other way: an
+    # unqualified ``_complete`` there would silently use whatever the agent loop
+    # has configured.
+    for name in ("propose", "repropose", "design", "build"):
+        body = inspect.getsource(getattr(studio_agent.StudioAgent, name))
+        assert "_complete(" not in body, f"{name} must draw through _draw"

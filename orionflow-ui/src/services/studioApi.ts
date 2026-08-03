@@ -24,6 +24,14 @@ export interface StudioFiles {
     step?: string;
     stl?: string;
     glb?: string;
+    /**
+     * The FreeCAD document itself. Unlike the other three it is not a view of
+     * the finished solid — it carries the sketches, the feature history and the
+     * expressions binding every dimension to a named variable, so it is the
+     * only download that reopens as a parametric model rather than a shape.
+     * Optional: builds made before it was preserved have none.
+     */
+    fcstd?: string;
 }
 
 /** A stage that genuinely happened, reported when it happened. */
@@ -105,6 +113,32 @@ export interface StudioExplainResult {
     error?: string | null;
 }
 
+/** The design the model committed to, before any geometry exists.
+ *
+ *  Everything here is known without running FreeCAD: the Blueprint is frozen
+ *  and hashed, and `critique` is the set of checks that can be settled by
+ *  arithmetic over the model's own expressions. This is what a plan review
+ *  shows, and what an approval will eventually bind to via `blueprint_hash`.
+ */
+export interface StudioProposal {
+    blueprint_hash: string;
+    part_class: string;
+    variables: Record<string, number>;
+    features: { id: string; type: string; label?: string; rationale?: string }[];
+    design_plan: Record<string, unknown>;
+    assertions: Record<string, unknown>[];
+    critique: StudioCritique;
+    attempt: number;
+}
+
+/** What could be known about a Blueprint before the kernel ran. */
+export interface StudioCritique {
+    ok: boolean;
+    checks: { id: string; label: string; status: 'pass' | 'fail' | 'unknown'; detail: string }[];
+    blocking: string[];
+    advisories: string[];
+}
+
 export type StudioEvent =
     | { type: 'model'; model: string; provider: string }
     | { type: 'phase'; phase: 'reasoning' | 'building' }
@@ -112,8 +146,12 @@ export type StudioEvent =
     | { type: 'narrative'; narrative: DesignNarrative }
     | { type: 'thinking'; text: string }
     | { type: 'answer'; text: string }
+    | { type: 'proposal'; proposal: StudioProposal }
     | { type: 'built'; success: boolean; files: StudioFiles; stats: StudioStats | null; error: string | null }
     | { type: 'verification'; report: VerificationReport }
+    | { type: 'repair'; attempt: number; error: string; diagnosis: string }
+    | { type: 'reasoning'; explain: string; citations: string[]; warnings: string[]; part_class: string; variables: Record<string, number> }
+    | { type: 'tool'; name: string; ok: boolean }
     | { type: 'done'; result: StudioDesignResult | StudioExplainResult }
     | { type: 'error'; error: string; raw_completion?: string; model?: string };
 
@@ -207,12 +245,13 @@ export async function streamStudioChat(
             } catch {
                 continue;
             }
-            onEvent(toEvent(event, parsed));
+            const mapped = toEvent(event, parsed);
+            if (mapped) onEvent(mapped);
         }
     }
 }
 
-function toEvent(event: string, d: any): StudioEvent {
+function toEvent(event: string, d: any): StudioEvent | null {
     switch (event) {
         case 'model':
             return { type: 'model', model: d.model, provider: d.provider };
@@ -245,10 +284,37 @@ function toEvent(event: string, d: any): StudioEvent {
             };
         case 'verification':
             return { type: 'verification', report: d as VerificationReport };
+        case 'proposal':
+            return { type: 'proposal', proposal: d as StudioProposal };
+        case 'repair':
+            return { type: 'repair', attempt: d.attempt ?? 0, error: d.error ?? '', diagnosis: d.diagnosis ?? '' };
+        case 'reasoning':
+            return {
+                type: 'reasoning',
+                explain: d.explain ?? '',
+                citations: d.citations ?? [],
+                warnings: d.warnings ?? [],
+                part_class: d.part_class ?? '',
+                variables: d.variables ?? {},
+            };
+        case 'tool':
+            return { type: 'tool', name: d.name ?? '', ok: !!d.ok };
         case 'done':
             return { type: 'done', result: d };
+        case 'error':
+            return { type: 'error', error: d.error ?? 'the turn failed', raw_completion: d.raw_completion, model: d.model };
         default:
-            return { type: 'error', error: d.error ?? 'unknown studio event', raw_completion: d.raw_completion, model: d.model };
+            // An event this client does not know about is not an error. It used
+            // to be: the default branch turned every unrecognised name into
+            // `{type:'error', error:'unknown studio event'}`, and the store acts
+            // on an error by clearing `streaming` and showing the message. The
+            // server has been emitting `repair`, `reasoning` and `tool` for some
+            // time, so a design that needed a repair round — or any request
+            // stating a load, which always emits `reasoning` — flashed a
+            // spurious failure mid-turn and stopped the spinner while the build
+            // was still running. Unknown events are ignored, which is also what
+            // lets the server add one without waiting for a client deploy.
+            return null;
     }
 }
 
@@ -257,7 +323,11 @@ export interface StudioHealth {
     fallback: string;
     /** True only when the configured provider serves OUR fine-tuned weights. */
     serving_our_model: boolean;
+    /** The adapter that authors geometry — not the one the agent loop uses. */
     model: string;
+    conversation_model?: string;
+    /** What the shared config carries, for when the two disagree. */
+    configured_model?: string;
     /** Absent for anonymous callers — the server redacts our own GPU host on
      *  the open health route. */
     endpoint?: string;

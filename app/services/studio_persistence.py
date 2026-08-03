@@ -112,6 +112,17 @@ def build_evidence(bundle: dict) -> dict[str, Any]:
     ``recompute_errors``
         keyed by feature **id**, not by position — a feature can fail while the
         ones after it succeed, and the tree has to mark the right node.
+
+    ``artifacts`` and ``blueprint_hash``
+        where the built files landed, and the hash of the contract they were
+        built from. Recorded on *every* build, not only on the ones a user
+        chooses to save, because the FCStd is the parametric document and a
+        build is the only moment it exists. ``designs.fcstd_path`` covers the
+        saved case; this covers the other 90% — the builds that were tried,
+        judged and moved on from, which are exactly the ones a training corpus
+        of real design sessions is made of. The hash travels with them so a
+        stored artifact can always be tied back to the frozen Blueprint that
+        produced it, and a mismatch is detectable rather than assumed away.
     """
     measured = bundle.get("measured") or {}
     log = bundle.get("build_log") or {}
@@ -130,6 +141,17 @@ def build_evidence(bundle: dict) -> dict[str, Any]:
         "volume_claim": bundle.get("volume_claim"),
         "attempts": bundle.get("attempts", 1),
         "built_where": log.get("where") or "",
+        "artifacts": bundle.get("files") or {},
+        "blueprint_hash": (bundle.get("blueprint") or {}).get("blueprint_hash", ""),
+        # What was known before the kernel ran. Stored beside what it measured
+        # so a record says both what the design claimed about itself and what
+        # the geometry turned out to be — a pair, not two separate facts.
+        "critique": bundle.get("critique") or {},
+        # The deterministic engineering review of the resolved geometry. Kept
+        # beside the critique rather than merged into it: one grades the model
+        # against its own contract, the other grades the part against mechanics,
+        # and a corpus that cannot tell them apart cannot learn from either.
+        "mechanical": bundle.get("mechanical") or {},
     }
 
 

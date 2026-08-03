@@ -20,7 +20,7 @@ import uuid
 import datetime
 import json
 from pathlib import Path
-from typing import Dict
+from typing import TYPE_CHECKING, Any, Dict
 import logging
 
 from app.config import settings
@@ -34,20 +34,6 @@ from pydantic import ValidationError
 from app.services.retry_policy import is_retryable
 from app.llm import LLMClient
 
-# Conditional CAD imports
-try:
-    from app.compilers.build123d_compiler import Build123dCompiler
-    from app.compilers.v1.compiler import FeatureGraphCompilerV1
-    from build123d import export_gltf, export_step, export_stl
-
-    BUILD123D_AVAILABLE = True
-except ImportError:
-    BUILD123D_AVAILABLE = False
-    Build123dCompiler = None
-    FeatureGraphCompilerV1 = None
-    export_gltf = None
-    export_step = None
-    export_stl = None
 from app.services.intent_contract import DecomposedIntent
 from app.cad.onshape.adapter import OnshapeFeatureGraphAdapter
 from app.services.dataset_writer import write_dataset_sample
@@ -75,6 +61,80 @@ MAX_RETRIES = settings.max_llm_retries
 # from app.intent.intent_parser import parse_intent
 # import app.ml.parameter_infer as infer_rules
 # from app.validation.sanity import validate
+
+# --------------------------------------------------------------------------- #
+# build123d, imported only if something actually asks for it
+# --------------------------------------------------------------------------- #
+# These used to be imported at module scope. Nothing here is wrong with that in
+# isolation — but ``app.main`` imports this module, so every process that served
+# a login, a download or a studio build was also loading build123d and, through
+# it, 542 OCP modules. That is the entire ~2-minute cold boot the Modal
+# deployment works around with a memory snapshot, paid on an image that no live
+# route needs: the studio path goes Blueprint → FreeCAD and never touches
+# build123d at all.
+#
+# PEP 562 module ``__getattr__`` defers the cost without changing a single call
+# site: ``if BUILD123D_AVAILABLE:`` and ``export_step(...)`` still read as plain
+# globals, and the import happens the first time one of them is actually
+# evaluated — which is inside the legacy generate path and nowhere else.
+_LAZY = (
+    "BUILD123D_AVAILABLE",
+    "Build123dCompiler",
+    "FeatureGraphCompilerV1",
+    "export_gltf",
+    "export_step",
+    "export_stl",
+)
+
+# Declared for the reader and the linter, never executed: a module __getattr__
+# is invisible to static analysis, so without this the six call sites below read
+# as undefined names. TYPE_CHECKING is false at runtime, so nothing is imported.
+if TYPE_CHECKING:  # pragma: no cover
+    from app.compilers.build123d_compiler import Build123dCompiler
+    from app.compilers.v1.compiler import FeatureGraphCompilerV1
+    from build123d import export_gltf, export_step, export_stl
+
+    # An assignment rather than a bare annotation: an annotation alone does not
+    # bind the name, so the linter still reads the call sites as undefined.
+    BUILD123D_AVAILABLE = True
+
+_b123d: dict[str, Any] = {}
+
+
+def _load_build123d() -> dict:
+    """Resolve the build123d symbols once, or record that they are absent."""
+    if _b123d:
+        return _b123d
+    try:
+        from app.compilers.build123d_compiler import Build123dCompiler
+        from app.compilers.v1.compiler import FeatureGraphCompilerV1
+        from build123d import export_gltf, export_step, export_stl
+
+        _b123d.update(
+            BUILD123D_AVAILABLE=True,
+            Build123dCompiler=Build123dCompiler,
+            FeatureGraphCompilerV1=FeatureGraphCompilerV1,
+            export_gltf=export_gltf,
+            export_step=export_step,
+            export_stl=export_stl,
+        )
+    except ImportError:
+        _b123d.update(
+            BUILD123D_AVAILABLE=False,
+            Build123dCompiler=None,
+            FeatureGraphCompilerV1=None,
+            export_gltf=None,
+            export_step=None,
+            export_stl=None,
+        )
+    return _b123d
+
+
+def __getattr__(name: str):
+    if name in _LAZY:
+        return _load_build123d()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 logger = logging.getLogger(__name__)
 

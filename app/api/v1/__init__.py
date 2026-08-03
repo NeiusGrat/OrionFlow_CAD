@@ -14,6 +14,7 @@ from app.api.v1 import (
     designs,
     billing,
     jobs,
+    sessions,
     studio,
     waitlist,
 )
@@ -29,6 +30,12 @@ api_router.include_router(jobs.router, prefix="/jobs", tags=["Jobs"])
 api_router.include_router(waitlist.router, prefix="/waitlist", tags=["Waitlist"])
 api_router.include_router(agent.router, prefix="/agent", tags=["Agent"])
 api_router.include_router(studio.router, prefix="/studio", tags=["Studio"])
+# The workflow with a person in the middle. Mounted beside /studio/chat rather
+# than replacing it: the one-shot route is live and metered, and both will run
+# side by side until the frontend has moved over.
+api_router.include_router(
+    sessions.router, prefix="/studio/sessions", tags=["Design Sessions"]
+)
 
 # Built files. The studio is the only generator now, but the artifacts it
 # produces are still reached through both link shapes — see app/api/v1/

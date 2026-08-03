@@ -74,6 +74,27 @@ def test_serves_a_real_artifact(client, tmp_path, monkeypatch, prefix):
     assert response.text == "ISO-10303-21;"
 
 
+@pytest.mark.parametrize("prefix", PREFIXES)
+def test_serves_the_fcstd_as_a_binary_download(client, tmp_path, monkeypatch, prefix):
+    """The FCStd is a zip; served as bytes, never guessed at as text.
+
+    It reaches this route under both prefixes like everything else, but it is
+    the one artifact a browser must not try to render or transcode — a mangled
+    FCStd opens as a corrupt document rather than failing visibly.
+    """
+    request_id = "0123456789ab"
+    directory = tmp_path / request_id
+    directory.mkdir()
+    (directory / "part.FCStd").write_bytes(b"PK\x03\x04\x00\x00document")
+
+    monkeypatch.setattr(_mod, "OUTPUT_BASE", str(tmp_path))
+
+    response = client.get(f"{prefix}/{request_id}/part.FCStd")
+    assert response.status_code == 200
+    assert response.content == b"PK\x03\x04\x00\x00document"
+    assert response.headers["content-type"] == "application/octet-stream"
+
+
 def test_both_paths_resolve_to_the_same_object_key():
     """Deleting a design has to reach the object behind either link shape."""
     from app.services.storage import storage_key_for
