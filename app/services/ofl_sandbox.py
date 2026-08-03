@@ -25,9 +25,34 @@ from app.services.artifacts import OUTPUT_BASE, PROJECT_ROOT  # noqa: E402,F401
 class OFLSandbox:
     """Execute OFL code safely and collect output files."""
 
+    #: How long the CAD kernel takes to load before any user code runs.
+    #:
+    #: Importing build123d pulls in ~540 OCP modules. On an idle machine that is
+    #: about six seconds; on a loaded CI runner it is several times that, and it
+    #: is pure startup — the user's code has not begun. Measured, not guessed:
+    #: `python -c "import build123d"` against `python -c "pass"`.
+    STARTUP_ALLOWANCE_S = 60
+
     def __init__(self, timeout: int = 30):
+        """``timeout`` is the budget for the *user's code*, not for the process.
+
+        The two used to be the same number, and that made the limit mean two
+        unrelated things at once: a security control on how long submitted code
+        may run, and an implicit bet on how fast a CAD kernel imports. A plate
+        that renders in a fraction of a second was failing at 30 seconds because
+        the kernel import had eaten the budget before the first statement — so
+        the control fired on load, not on the thing it exists to bound.
+
+        Separating them keeps the security budget honest and stops the test that
+        exercises this path from turning into a machine-speed measurement.
+        """
         self.timeout = timeout
         os.makedirs(OUTPUT_BASE, exist_ok=True)
+
+    @property
+    def _process_timeout(self) -> int:
+        """Wall-clock budget for the subprocess: user code plus kernel startup."""
+        return self.timeout + self.STARTUP_ALLOWANCE_S
 
     def execute(self, ofl_code: str) -> dict:
         """Execute OFL code in subprocess. Returns result dict."""
@@ -61,7 +86,7 @@ class OFLSandbox:
                 [sys.executable, script_path],
                 capture_output=True,
                 text=True,
-                timeout=self.timeout,
+                timeout=self._process_timeout,
                 cwd=output_dir,
                 env=env,
             )
@@ -89,7 +114,7 @@ class OFLSandbox:
                 "output_dir": output_dir,
                 "step_file": None,
                 "stl_file": None,
-                "error": f"Execution timed out ({self.timeout}s)",
+                "error": f"Execution timed out ({self._process_timeout}s)",
                 "stdout": "",
                 "stderr": "",
             }
