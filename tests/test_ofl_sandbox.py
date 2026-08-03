@@ -89,3 +89,29 @@ def test_rule_based_thickness_edit():
     edited = svc._try_rule_based_edit(code, "set thickness to 10")
     assert edited is not None
     assert "thickness = 10" in edited
+
+
+def test_the_user_code_budget_is_not_spent_on_importing_the_kernel():
+    """``timeout`` bounds submitted code; it is not a bet on machine speed.
+
+    The two were one number, and that made the limit mean two unrelated things
+    at once. Importing build123d pulls in ~540 OCP modules — about six seconds
+    on an idle machine and several times that on a loaded runner — all of it
+    before the first submitted statement runs. So a plate that renders in a
+    fraction of a second failed at 30 seconds, and the security control fired on
+    load rather than on the thing it exists to bound.
+
+    Asserted on the arithmetic rather than by timing anything, so the test does
+    not itself become a machine-speed measurement.
+    """
+    from app.services.ofl_sandbox import OFLSandbox
+
+    sandbox = OFLSandbox(timeout=30)
+    assert sandbox.timeout == 30, "the user-code budget is what callers set"
+    assert sandbox._process_timeout == 30 + OFLSandbox.STARTUP_ALLOWANCE_S
+    assert sandbox._process_timeout > sandbox.timeout, (
+        "the process budget must leave room for the kernel import, or the "
+        "limit fires on startup instead of on the submitted code"
+    )
+    # A caller tightening the user budget must not lose the startup allowance.
+    assert OFLSandbox(timeout=1)._process_timeout > OFLSandbox.STARTUP_ALLOWANCE_S
