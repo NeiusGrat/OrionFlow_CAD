@@ -1,4 +1,4 @@
-"""Ask until the request is complete, then emit. Never invent.
+"""Ask until the request is complete. Never invent.
 
 The fine-tune drifts because it was taught to fill gaps. Every training prompt
 ended with *"Choose sensible values for anything I have not given"*, and 91.7%
@@ -35,6 +35,7 @@ Python decides *what it is*.
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -59,20 +60,32 @@ TAPPING = {"G1/8": 8.8, "G1/4": 11.8, "G3/8": 15.25, "G1/2": 19.0,
 # --------------------------------------------------------------------------- #
 # what each family cannot be built without
 # --------------------------------------------------------------------------- #
+#: The schema, loaded from data rather than declared in code.
+#:
+#: ``part_families.yaml`` is versioned and is the single source of truth for
+#: what a family needs. The extraction prompt is generated FROM it, so a family
+#: added there is asked about correctly without touching a prompt — and the two
+#: cannot drift apart, which they would the moment a field existed in one and
+#: not the other.
+SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "part_families.yaml")
+
+
 @dataclass(frozen=True)
 class Slot:
     name: str
     prompt: str
     unit: str = "mm"
-    #: A diameter the Blueprint stores as a radius. Halved in :func:`resolve`,
-    #: never by the model — "40 mm bore" and "bore radius 20" are the same fact
-    #: and only one of them is what the template holds.
+    #: A diameter the request states but the Blueprint stores as a radius.
+    #: Halved in :func:`resolve`, never by the model.
     diameter: bool = False
+    #: A value that must stay a string — a material, a thread designation.
+    text: bool = False
 
 
 @dataclass(frozen=True)
 class Family:
     name: str
+    label: str
     required: tuple[Slot, ...]
     optional: tuple[Slot, ...] = ()
 
@@ -83,94 +96,48 @@ class Family:
         return None
 
 
-_L = Slot("length", "How long should the part be (overall)?")
-_W = Slot("width", "How wide should the part be (overall)?")
-_T = Slot("thickness", "How thick should it be?")
-_H = Slot("height", "How tall should it be (overall)?")
+def _slots_of(block: dict) -> tuple[Slot, ...]:
+    out = []
+    for name, spec in (block or {}).items():
+        spec = spec or {}
+        out.append(Slot(
+            name=name,
+            prompt=spec.get("ask") or f"What is the {name.replace('_', ' ')}?",
+            unit=spec.get("unit", "mm"),
+            diameter=bool(spec.get("diameter")),
+            text=bool(spec.get("text")),
+        ))
+    return tuple(out)
 
-FAMILIES: dict[str, Family] = {
-    "rect_plate": Family(
-        "rect_plate",
-        required=(_L, _W, _T),
-        optional=(
-            Slot("corner_radius", "Corner radius?"),
-            Slot("bore_d", "Central bore diameter?", diameter=True),
-            Slot("hole_count", "How many mounting holes?", unit=""),
-            Slot("hole_d", "Mounting hole diameter?", diameter=True),
-            Slot("pcd", "Bolt circle diameter?", diameter=True),
-            Slot("pocket_l", "Pocket length?"),
-            Slot("pocket_w", "Pocket width?"),
-            Slot("pocket_depth", "Pocket depth?"),
-            Slot("fillet", "External fillet radius?"),
-            Slot("chamfer", "Edge chamfer size?"),
-            Slot("material", "Material?", unit=""),
-        ),
-    ),
-    "l_bracket": Family(
-        "l_bracket",
-        required=(
-            Slot("base_length", "How long is the base plate?"),
-            Slot("base_width", "How wide is the base plate?"),
-            Slot("base_thickness", "How thick is the base plate?"),
-            Slot("upright_height", "How tall is the vertical plate?"),
-            Slot("upright_thickness", "How thick is the vertical plate?"),
-        ),
-        optional=(
-            Slot("upright_width", "How wide is the vertical plate?"),
-            Slot("inside_fillet", "Inside fillet radius at the joint?"),
-            Slot("bore_d", "Pilot bore diameter on the vertical plate?",
-                 diameter=True),
-            Slot("hole_d", "Mounting hole diameter?", diameter=True),
-            Slot("bolt_square", "Square bolt pattern spacing?"),
-            Slot("cbore_d", "Counterbore diameter?", diameter=True),
-            Slot("cbore_depth", "Counterbore depth?"),
-            Slot("slot_length", "Mounting slot length?"),
-            Slot("slot_width", "Mounting slot width?"),
-            Slot("fillet", "External fillet radius?"),
-            Slot("chamfer", "Edge chamfer size?"),
-            Slot("material", "Material?", unit=""),
-        ),
-    ),
-    "bearing_housing": Family(
-        "bearing_housing",
-        required=(
-            _L, _W, _H,
-            Slot("bore_d", "What is the bearing seat diameter?", diameter=True),
-            Slot("seat_depth", "How deep is the bearing seat?"),
-        ),
-        optional=(
-            Slot("shoulder", "Locating shoulder width?"),
-            Slot("recess_d", "Flange recess diameter?", diameter=True),
-            Slot("recess_depth", "Flange recess depth?"),
-            Slot("hole_d", "Mounting hole diameter?", diameter=True),
-            Slot("hole_pitch_x", "Hole spacing along the length?"),
-            Slot("hole_pitch_y", "Hole spacing across the width?"),
-            Slot("fillet", "Fillet radius where the feet meet the body?"),
-            Slot("chamfer", "Edge chamfer size?"),
-            Slot("material", "Material?", unit=""),
-        ),
-    ),
-    "manifold": Family(
-        "manifold",
-        required=(
-            _L, _W, _H,
-            Slot("passage_d", "What diameter is the main passage?",
-                 diameter=True),
-        ),
-        optional=(
-            Slot("port_count", "How many ports?", unit=""),
-            Slot("port_thread", "Port thread size?", unit=""),
-            Slot("port_d", "Port tapping drill diameter?", diameter=True),
-            Slot("inlet_thread", "Inlet thread size?", unit=""),
-            Slot("hole_d", "Mounting hole diameter?", diameter=True),
-            Slot("cbore_d", "Counterbore diameter?", diameter=True),
-            Slot("cbore_depth", "Counterbore depth?"),
-            Slot("fillet", "External fillet radius?"),
-            Slot("chamfer", "Edge chamfer size?"),
-            Slot("material", "Material?", unit=""),
-        ),
-    ),
-}
+
+def load_schema(path: str = SCHEMA_PATH) -> tuple[int, dict[str, Family]]:
+    """(version, families). Raises rather than falling back to a default.
+
+    A missing or malformed schema must not degrade to "no required fields",
+    because that failure is invisible: the interview would simply stop asking
+    and every part would be built from whatever the request happened to state.
+    """
+    import yaml
+
+    with open(path, encoding="utf-8") as fh:
+        doc = yaml.safe_load(fh) or {}
+    fams = doc.get("families") or {}
+    if not fams:
+        raise ValueError(f"no families defined in {path}")
+    out: dict[str, Family] = {}
+    for name, spec in fams.items():
+        spec = spec or {}
+        required = _slots_of(spec.get("required"))
+        if not required:
+            raise ValueError(f"family {name!r} declares no required fields")
+        out[name] = Family(name=name,
+                           label=spec.get("label") or name.replace("_", " "),
+                           required=required,
+                           optional=_slots_of(spec.get("optional")))
+    return int(doc.get("version", 0)), out
+
+
+SCHEMA_VERSION, FAMILIES = load_schema()
 
 #: Offered to the model so it picks from a closed set rather than inventing a
 #: name nothing downstream knows how to build.
@@ -321,72 +288,6 @@ def extract_prompt(family: str) -> str:
         family.replace("_", " "), show(fam.required), show(fam.optional))
 
 
-#: A real, frozen, verified Blueprint. Shown rather than described.
-#:
-#: Describing the schema in prose produced a JSON object with no ``part_class``
-#: and no features — a capable model inventing a plausible shape because it had
-#: never been shown the real one. The fine-tune knows this format from 23k
-#: examples; a general model has to be given it once.
-EMIT_EXAMPLE = """{
-  "part_class": "tee_plate",
-  "variables": {"span": 128, "stem": 64, "w": 27, "t": 12.5, "end_r": 4.25},
-  "datums": {"A": "bottom face z=0 (primary)", "B": "long edge (secondary)"},
-  "design_plan": {"derivation": [
-    {"step": 1, "eq": "A = (span*w + stem*w)", "why": "disjoint bar plus stem"},
-    {"step": 2, "eq": "V = (A - 3*pi*end_r^2)*t", "why": "three bores"}]},
-  "assertions": [
-    {"id": "limb_width", "kind": "precondition", "tier": 1,
-     "target": "w - 2*end_r - 5"},
-    {"id": "len_extent", "kind": "bbox_extent", "axis": "x", "tier": 1,
-     "tol_rel": 1e-06, "target": "span"},
-    {"id": "body", "kind": "body_volume", "tier": 1, "tol_rel": 1e-06,
-     "target": "((span*w + stem*w) - 3*pi*end_r**2)*t"}],
-  "template": {
-    "features": [
-      {"id": "Body", "type": "Body", "parameters": {}},
-      {"id": "s0", "type": "Sketch", "parameters": {}},
-      {"id": "tee", "type": "Pad", "rationale": "plate with bores in-profile",
-       "parameters": {"Length": "t", "Type": "Length"}}],
-    "sketches": [
-      {"id": "s0", "plane": "XY", "profile": {"builder": "rect_with_holes",
-       "args": {"w": "span", "h": "w",
-                "holes": [["-span/2 + w/2", "0", "end_r"],
-                          ["span/2 - w/2", "0", "end_r"]]}}}],
-    "dependencies": [{"source": "s0", "target": "tee", "kind": "profile"}]}
-}"""
-
-
-EMIT_SYSTEM = """You are OrionFlow's Blueprint emitter.
-
-Every dimension has already been decided and is given to you. Your only job is \
-to express them in the Blueprint format below. You are not designing.
-
-THE FORMAT — follow it exactly:
-""" + EMIT_EXAMPLE + """
-
-Rules that are not negotiable:
-- Top-level keys are exactly: part_class, variables, datums, design_plan, \
-assertions, template. All six are required.
-- `variables` holds plain numbers. EVERYWHERE ELSE, every dimension is a STRING \
-expression over those variable names — never a bare number. "Length": "t", not \
-"Length": 12.5.
-- Every declared variable must be referenced by some feature, sketch or \
-assertion, or the Blueprint is rejected.
-- Exactly one assertion of kind "body_volume" whose `target` is the exact closed \
-form of the solid you emitted. Use ** for powers and `pi` for π.
-- Use ONLY the dimensions provided. Do not add features nobody asked for.
-- Prefer putting holes and slots IN the sketch profile (rect_with_holes, \
-poly_with_holes, hole_grid, bolt_circle) rather than as separate Pockets — the \
-volume is then one closed form.
-
-Feature types: Body, Sketch, Pad, Pocket, Revolution, Groove, Hole, Fillet, \
-Chamfer, Draft, Thickness, LinearPattern, PolarPattern, Mirrored, Loft, Sweep.
-Profile builders: circle, annulus, rect, rect_with_holes, rounded_rect, slot, \
-bolt_circle, regular_polygon, polyline, poly_with_holes, hole_grid, arc_spine.
-
-Reply with ONE JSON object and nothing else."""
-
-
 def _json_of(text: str) -> Optional[dict]:
     """First balanced JSON object in a reply. Tolerates fences and prose."""
     if not text:
@@ -515,34 +416,40 @@ def answer(iv: Interview, slot_name: str, value: Any) -> Interview:
     return iv
 
 
-def emit(client, iv: Interview, max_tokens: int = EMIT_TOKENS
-         ) -> tuple[Optional[dict], str]:
-    """Blueprint JSON from a complete interview. Refuses an incomplete one."""
-    from orion_agent.harness.llm.base import LLMMessage
+def requirements(iv: Interview) -> dict:
+    """The Requirements object: the interview's only output.
 
+    This is the handoff, and it is deliberately not a Blueprint. Everything
+    above this line is language; everything below it is arithmetic. Radii are
+    already resolved, standards already applied, and the schema version is
+    recorded so a requirements set can be re-read after the schema moves on.
+    """
     gaps = missing(iv.family, iv.slots)
     if gaps:
         raise ValueError("interview incomplete; still missing: "
                          + ", ".join(s.name for s in gaps))
-
-    # The decided dimensions and nothing else. Including the original prose
-    # here made the model re-derive instead of format: 72,602 characters of
-    # reasoning and the entire 16k budget spent without emitting a character,
-    # on a request whose numbers were already settled. Removing it produced the
-    # Blueprint in ~7.5k tokens. This is the same rule ``propose()`` follows
-    # when it withholds the chain's derivation — a decision shown to a model is
-    # a decision it will reopen.
-    resolved = resolve(iv.family, iv.slots)
-    spec = {"part_family": iv.family, "dimensions_mm": resolved}
+    out = {"family": iv.family, "schema_version": SCHEMA_VERSION}
+    out.update(resolve(iv.family, iv.slots))
     if iv.notes:
-        spec["standards_applied"] = iv.notes
-    # Compact, not pretty-printed. Measured, twice, same spec and seed:
-    # ``json.dumps(spec)`` finishes in 7,532 tokens; ``indent=2`` reasons for
-    # 70,297 characters and exhausts a 16k budget without emitting anything.
-    # Whitespace in the input is not free with a reasoning model.
-    reply = client.chat(
-        [LLMMessage.system(EMIT_SYSTEM), LLMMessage.user(json.dumps(spec))],
-        max_tokens=max_tokens,
-        temperature=0.0,
-    )
-    return _json_of(reply.content), reply.content
+        out["standards_applied"] = list(iv.notes)
+    return out
+
+
+def build(iv: Interview) -> dict:
+    """Complete interview -> Blueprint. Deterministic; no model is called.
+
+    The model used to write this, and measurement said to stop. Given a
+    complete specification the base model failed the static check on every
+    complex part, and the fine-tune returned
+    ``l_bracket_plus_counterbore_set_vent_slot`` — adding a vent slot to a
+    request that had already stated every dimension. One built out of five,
+    either way.
+
+    ``orion.blueprint_gen`` writes the feature tree instead. It cannot add a
+    feature nobody asked for because there is no step at which one could be
+    introduced, and its closed-form volume is derived alongside the geometry
+    rather than predicted about it.
+    """
+    from orion import blueprint_gen
+
+    return blueprint_gen.generate(iv.family, requirements(iv))

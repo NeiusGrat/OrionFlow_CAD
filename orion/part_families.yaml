@@ -1,0 +1,114 @@
+# What each part family cannot be built without.
+#
+# Data, not code, and versioned. Adding a gear, a flange or a sheet-metal
+# bracket is an edit here plus one builder in `orion/blueprint_gen.py` — never a
+# prompt rewrite. The interview prompt is generated FROM this file, so the two
+# cannot drift apart.
+#
+# Field keys:
+#   ask       the question put to the user, verbatim. Not model-generated, so
+#             it cannot drift between runs.
+#   unit      appended when echoing back; "" for counts, names and threads.
+#   diameter  true when the request states a diameter but the Blueprint stores
+#             a radius. Halved in Python — never by the model, because a model
+#             that halves it sometimes is worse than one that never does.
+#   text      true for values that must stay strings (material, thread codes).
+#
+# REQUIRED means the part is not buildable without it, so a gap becomes a
+# question. OPTIONAL means the design is complete without it; asking would be
+# noise. That split is the whole reason this file exists: one global
+# "is anything missing" rule interrogates a plate about corner radii and lets a
+# bearing housing through with no bore.
+
+version: 1
+
+families:
+
+  rect_plate:
+    label: rectangular plate
+    required:
+      length:    {ask: "How long should the plate be?"}
+      width:     {ask: "How wide should the plate be?"}
+      thickness: {ask: "How thick should it be?"}
+    optional:
+      material:      {ask: "Material?", unit: "", text: true}
+      corner_radius: {ask: "Corner radius?"}
+      bore_d:        {ask: "Central bore diameter?", diameter: true}
+      hole_count:    {ask: "How many mounting holes?", unit: ""}
+      hole_d:        {ask: "Mounting hole diameter?", diameter: true}
+      pcd:           {ask: "Bolt circle diameter?", diameter: true}
+      thread:        {ask: "Mounting thread size?", unit: "", text: true}
+      pocket_l:      {ask: "Pocket length?"}
+      pocket_w:      {ask: "Pocket width?"}
+      pocket_depth:  {ask: "Pocket depth?"}
+      slot_length:   {ask: "Mounting slot length?"}
+      slot_width:    {ask: "Mounting slot width?"}
+      fillet:        {ask: "External fillet radius?"}
+      chamfer:       {ask: "Edge chamfer size?"}
+
+  l_bracket:
+    label: L-bracket
+    required:
+      base_length:       {ask: "How long is the base plate?"}
+      base_width:        {ask: "How wide is the base plate?"}
+      base_thickness:    {ask: "How thick is the base plate?"}
+      upright_height:    {ask: "How tall is the vertical plate?"}
+      upright_thickness: {ask: "How thick is the vertical plate?"}
+    optional:
+      material:       {ask: "Material?", unit: "", text: true}
+      upright_width:  {ask: "How wide is the vertical plate?"}
+      inside_fillet:  {ask: "Inside fillet radius at the joint?"}
+      bore_d:         {ask: "Pilot bore diameter on the vertical plate?", diameter: true}
+      hole_d:         {ask: "Mounting hole diameter?", diameter: true}
+      thread:         {ask: "Mounting thread size?", unit: "", text: true}
+      bolt_square:    {ask: "Square bolt pattern spacing?"}
+      cbore_d:        {ask: "Counterbore diameter?", diameter: true}
+      cbore_depth:    {ask: "Counterbore depth?"}
+      slot_length:    {ask: "Mounting slot length?"}
+      slot_width:     {ask: "Mounting slot width?"}
+      slot_count:     {ask: "How many mounting slots?", unit: ""}
+      slot_edge_gap:  {ask: "Slot distance from the plate edge?"}
+      fillet:         {ask: "External fillet radius?"}
+      chamfer:        {ask: "Edge chamfer size?"}
+
+  bearing_housing:
+    label: bearing housing
+    required:
+      length:     {ask: "What is the overall length?"}
+      width:      {ask: "What is the overall width?"}
+      height:     {ask: "What is the overall height?"}
+      bore_d:     {ask: "What is the bearing seat diameter?", diameter: true}
+      seat_depth: {ask: "How deep is the bearing seat?"}
+    optional:
+      material:       {ask: "Material?", unit: "", text: true}
+      bearing_series: {ask: "Which bearing series?", unit: "", text: true}
+      mounting_type:  {ask: "Mounting style (foot or flange)?", unit: "", text: true}
+      shoulder:       {ask: "Locating shoulder width?"}
+      recess_d:       {ask: "Flange recess diameter?", diameter: true}
+      recess_depth:   {ask: "Flange recess depth?"}
+      hole_d:         {ask: "Mounting hole diameter?", diameter: true}
+      thread:         {ask: "Mounting thread size?", unit: "", text: true}
+      hole_pitch_x:   {ask: "Hole spacing along the length?"}
+      hole_pitch_y:   {ask: "Hole spacing across the width?"}
+      fillet:         {ask: "Fillet radius where the feet meet the body?"}
+      chamfer:        {ask: "Edge chamfer size?"}
+
+  manifold:
+    label: valve manifold
+    required:
+      length:    {ask: "What is the overall length?"}
+      width:     {ask: "What is the overall width?"}
+      height:    {ask: "What is the overall height?"}
+      passage_d: {ask: "What diameter is the main passage?", diameter: true}
+    optional:
+      material:      {ask: "Material?", unit: "", text: true}
+      port_count:    {ask: "How many ports?", unit: ""}
+      port_thread:   {ask: "Port thread size?", unit: "", text: true}
+      port_d:        {ask: "Port tapping drill diameter?", diameter: true}
+      inlet_thread:  {ask: "Inlet thread size?", unit: "", text: true}
+      hole_d:        {ask: "Mounting hole diameter?", diameter: true}
+      thread:        {ask: "Mounting thread size?", unit: "", text: true}
+      cbore_d:       {ask: "Counterbore diameter?", diameter: true}
+      cbore_depth:   {ask: "Counterbore depth?"}
+      fillet:        {ask: "External fillet radius?"}
+      chamfer:       {ask: "Edge chamfer size?"}
