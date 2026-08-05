@@ -166,10 +166,39 @@ def from_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def engineering_checks(rows: Optional[list[dict]]) -> list[dict]:
+    """``orion.engineering`` rows as checks that count.
+
+    A row whose ``passed`` is ``None`` ran but was held to no declared bound.
+    It is deliberately **not** returned here: turning it into a green tick would
+    be exactly the "assumed pass" this module refuses. The caller reports those
+    under ``measured``, where a number is an observation rather than a claim.
+    """
+    out = []
+    for r in rows or []:
+        if r.get("passed") is None:
+            continue
+        out.append(
+            _check(
+                f"eng:{r.get('id')}",
+                r.get("label") or "Engineering check",
+                PASS if r.get("passed") else FAIL,
+                r.get("detail") or "",
+                {
+                    "calculator": r.get("calc"),
+                    "expect": r.get("expect"),
+                    "result": r.get("result"),
+                },
+            )
+        )
+    return out
+
+
 def from_assertion_rows(
     rows: list[dict],
     refused: Optional[list[dict]] = None,
     measured: Optional[dict] = None,
+    engineering: Optional[list[dict]] = None,
 ) -> dict[str, Any]:
     """Verification report for the forge path, where a frozen closed form is
     compared against what the kernel measured.
@@ -237,6 +266,7 @@ def from_assertion_rows(
             )
         )
     checks.extend(solid_validity_checks(measured))
+    checks.extend(engineering_checks(engineering))
 
     return {
         "verdict": verdict_for(checks),

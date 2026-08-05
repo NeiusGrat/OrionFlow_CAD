@@ -491,10 +491,41 @@ def _finish(
         "valid": measured.get("valid"),
     }
 
-    from orion import forge
+    from orion import engineering, forge
     from orion_physical_ai import verify
 
     observed = observations(measured, volume, extent)
+
+    # The calculators, run against the part that was actually built. A design
+    # that declares no `engineering` block gets none of this and is byte
+    # identical to before — which is every Blueprint in the existing corpus.
+    bp_dict = bp.to_dict()
+    try:
+        eng_rows = engineering.run_checks(bp_dict, bp.variables, measured)
+        observed.update(engineering.observations(bp_dict, measured))
+    except Exception as exc:  # noqa: BLE001
+        # A crash in the engineering layer must not silently drop the checks a
+        # design declared — that would read as "nothing to prove" when the truth
+        # is "we failed to prove it".
+        logger.warning("blueprint_engineering_failed", error=str(exc))
+        eng_rows = [
+            {
+                "id": "engineering",
+                "label": "Engineering checks ran",
+                "calc": "",
+                "passed": False,
+                "result": {},
+                "expect": {},
+                "detail": f"the engineering checks could not be evaluated: {exc}",
+            }
+        ]
+    bundle["engineering"] = eng_rows
+    # A calculator that ran under no declared bound is not a check (ticking it
+    # green would be the "assumed pass" the verifier refuses) but it is a real
+    # number and must not vanish. It travels as an observation.
+    for r in eng_rows:
+        if r.get("passed") is None:
+            observed[f"{r['id']}"] = r.get("detail") or ""
 
     try:
         rows = forge.check_assertions(bp, measured, analysis)
@@ -511,7 +542,9 @@ def _finish(
             "error": f"assertions could not be checked: {exc}",
         }
     else:
-        bundle["verification"] = verify.from_assertion_rows(rows, measured=observed)
+        bundle["verification"] = verify.from_assertion_rows(
+            rows, measured=observed, engineering=eng_rows
+        )
 
     bundle["assertions"] = rows
     # Success is judged on the exchange formats, not on ``files`` as a whole.

@@ -40,6 +40,15 @@ def _is_structural(value: float) -> bool:
     return float(value) in STRUCTURAL_CONSTANTS
 
 
+def _engineering_checks(bp: Any) -> list[dict]:
+    """Declared engineering checks, defensively. Never raises on a malformed
+    block — the shape is validated where it is run, not here."""
+    plan = getattr(bp, "design_plan", None) or {}
+    block = plan.get("engineering") if isinstance(plan, dict) else None
+    checks = block.get("checks") if isinstance(block, dict) else None
+    return [c for c in checks if isinstance(c, dict)] if isinstance(checks, list) else []
+
+
 def _check_expr(where: str, value: Any, variables: dict,
                 problems: list[str]) -> None:
     if isinstance(value, bool):
@@ -184,6 +193,23 @@ def check_blueprint(bp) -> list[str]:
         if kind == "volume_between" and (a.get("lo") is None
                                          or a.get("hi") is None):
             problems.append(f"assertions.{aid}: volume_between needs lo and hi")
+
+    # Engineering checks reference the same frozen variables the geometry is
+    # built from — that is the point of them, and it means a variable used only
+    # by a calculator is genuinely used. Omitting this scope would report it as
+    # a magic number in disguise and refuse a correct design, which is the same
+    # bug the pattern-count arguments once had.
+    for i, spec in enumerate(_engineering_checks(bp)):
+        cid = spec.get("id") or i
+        for arg, value in (spec.get("args") or {}).items():
+            if not (isinstance(value, str) and value.startswith("=")):
+                continue
+            where = f"design_plan.engineering.{cid}.{arg}"
+            _check_expr(where, value[1:], variables, problems)
+            try:
+                used |= E.names(value[1:])
+            except E.ExprError:
+                pass
 
     dead = set(variables) - used
     if dead:
