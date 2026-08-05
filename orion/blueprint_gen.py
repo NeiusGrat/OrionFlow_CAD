@@ -445,8 +445,16 @@ def l_bracket(req: dict) -> dict:
     if UH <= BT:
         raise GeneratorError("upright height must exceed the base thickness")
 
-    v = {"BL": BL, "BW": BW, "BT": BT, "UH": UH, "UT": UT}
-    volume = "BL*BW*BT + UH*BW*UT - UT*BW*BT"
+    # An upright narrower than the base is a real design; equal is the default
+    # only because most brackets are. Declared either way so the expression
+    # reads the same.
+    UW = _num(req, "upright_width") or BW
+    if UW > BW:
+        raise GeneratorError(
+            f"the upright is {UW} wide and the base only {BW}")
+
+    v = {"BL": BL, "BW": BW, "BT": BT, "UH": UH, "UT": UT, "UW": UW}
+    volume = "BL*BW*BT + UH*UW*UT - UT*UW*BT"
     derivation = [{"step": 1, "eq": f"V = {volume}",
                    "why": "base plate plus upright, less the corner box they "
                           "share"}]
@@ -457,7 +465,7 @@ def l_bracket(req: dict) -> dict:
 
     bore_r = _num(req, "bore_r")
     if bore_r and bore_r > 0:
-        if 2 * bore_r >= min(UH, BW):
+        if 2 * bore_r >= min(UH, UW):
             raise GeneratorError("pilot bore does not fit the upright plate")
         if UH / 2 - bore_r <= BT:
             raise GeneratorError(
@@ -475,7 +483,7 @@ def l_bracket(req: dict) -> dict:
         if UH / 2 - half - hole_r <= BT:
             raise GeneratorError(
                 "bolt pattern runs into the base plate; raise the upright")
-        if half + hole_r >= BW / 2:
+        if half + hole_r >= UW / 2:
             raise GeneratorError("bolt pattern is wider than the upright plate")
         if bore_r and half - hole_r <= bore_r:
             raise GeneratorError(
@@ -520,7 +528,7 @@ def l_bracket(req: dict) -> dict:
             raise GeneratorError(
                 f"counterbore depth {cbore_depth} must be less than the "
                 f"{UT} mm plate it is cut into")
-        if square / 2.0 + cbore_r >= BW / 2:
+        if square / 2.0 + cbore_r >= UW / 2:
             raise GeneratorError("counterbores run off the edge of the upright")
         if UH / 2 - square / 2.0 - cbore_r <= BT:
             low = UH / 2 - square / 2.0 - cbore_r
@@ -542,11 +550,11 @@ def l_bracket(req: dict) -> dict:
         """The upright's section, with its mounting holes at one radius."""
         if not up_holes:
             return {"builder": "rect",
-                    "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0"}}
+                    "args": {"w": "UH", "h": "UW", "cx": "UH/2", "cy": "0"}}
         holes = [h if h[2] != "hole_r" or hole_expr is None
                  else [h[0], h[1], hole_expr] for h in up_holes]
         return {"builder": "rect_with_holes",
-                "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0",
+                "args": {"w": "UH", "h": "UW", "cx": "UH/2", "cy": "0",
                          "holes": holes}}
 
     section = " + ".join(cuts) if cuts else ""
@@ -585,11 +593,11 @@ def l_bracket(req: dict) -> dict:
         deps += [{"source": "s_upright", "target": "upright", "kind": "profile"},
                  {"source": "s_face", "target": "face", "kind": "profile"}]
 
-        back = f"(UH*BW - ({section}))*(UT - cbore_d)" if section \
-            else "UH*BW*(UT - cbore_d)"
-        front = ("(UH*BW - (pi*bore_r**2 + 4*pi*cbore_r**2))*cbore_d"
-                 if bore_r else "(UH*BW - 4*pi*cbore_r**2)*cbore_d")
-        volume = f"BL*BW*BT + {back} + {front} - UT*BW*BT"
+        back = f"(UH*UW - ({section}))*(UT - cbore_d)" if section \
+            else "UH*UW*(UT - cbore_d)"
+        front = ("(UH*UW - (pi*bore_r**2 + 4*pi*cbore_r**2))*cbore_d"
+                 if bore_r else "(UH*UW - 4*pi*cbore_r**2)*cbore_d")
+        volume = f"BL*BW*BT + {back} + {front} - UT*UW*BT"
         derivation = [
             {"step": 1, "eq": f"V = {volume}",
              "why": "base plate, plus the upright as two slabs — the face slab "
@@ -614,6 +622,104 @@ def l_bracket(req: dict) -> dict:
                 "why": "pilot bore and mounting holes through the upright, cut "
                        "in its own profile and clear of the base"})
 
+
+    # ---- gusset fillet at the joint --------------------------------------- #
+    #
+    # This one *adds* material. The concave corner between the base and the
+    # upright is filled by a quarter-cylinder's complement: a square of r^2 less
+    # the quarter disc, so ``(1 - pi/4)*r^2`` per unit run, along the width the
+    # two plates share.
+    inside = _num(req, "inside_fillet")
+    if inside:
+        if inside >= UH - BT:
+            raise GeneratorError(
+                f"a {inside} mm inside fillet is taller than the {UH - BT:g} mm "
+                f"of upright above the base")
+        if inside >= BL - UT:
+            raise GeneratorError(
+                f"a {inside} mm inside fillet is longer than the {BL - UT:g} mm "
+                f"of base in front of the upright")
+        v["in_r"] = inside
+        features.append(
+            {"id": "gusset", "type": "Fillet",
+             "rationale": "strengthening fillet in the internal corner",
+             "parameters": {"Radius": "in_r", "_Edges": "concave"}})
+        volume = f"{volume} + (1 - pi/4)*in_r**2*UW"
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": "the internal corner fillet adds material: a square of r^2 "
+                   "less the quarter disc it rounds away, along the shared width"})
+
+    # ---- base mounting slots ---------------------------------------------- #
+    sl, sw = _num(req, "slot_length"), _num(req, "slot_width")
+    gap = _num(req, "slot_edge_gap")
+    count = req.get("slot_count")
+    if sl and sw:
+        if count is not None and int(count) != 4:
+            raise GeneratorError(
+                f"{int(count)} base slots are not supported; this builder "
+                f"places four, two either side of the base")
+        r = sw / 2.0
+        straight = sl - sw
+        if straight <= 0:
+            raise GeneratorError(
+                f"a {sl} x {sw} slot is not elongated — its length must exceed "
+                f"its width, or it is a {sw} mm hole")
+        # Two rows across the width, two columns along the length, and the near
+        # column clear of the upright's footprint.
+        x_near = UT + gap + sl / 2.0
+        x_far = BL - gap - sl / 2.0
+        cy = BW / 2.0 - gap - r
+        if x_far <= x_near:
+            raise GeneratorError(
+                f"two rows of {sl} mm slots {gap} mm from the edges do not fit "
+                f"in the {BL - UT:g} mm of base clear of the upright")
+        if cy <= 0:
+            raise GeneratorError(
+                f"a {sw} mm slot {gap} mm from the edge does not fit across a "
+                f"{BW} mm base")
+        v.update({"slot_r": r, "slot_straight": straight,
+                  "slot_x1": round(x_near, 6), "slot_x2": round(x_far, 6),
+                  "slot_cy": round(cy, 6)})
+        for i, (xv, sy) in enumerate((("slot_x1", "-"), ("slot_x2", "-"),
+                                      ("slot_x2", "+"), ("slot_x1", "+"))):
+            features += [
+                {"id": f"s_bslot{i}", "type": "Sketch", "parameters": {}},
+                {"id": f"bslot{i}", "type": "Pocket",
+                 "rationale": "base mounting slot",
+                 "parameters": {"Length": "BT", "Type": "ThroughAll"}},
+            ]
+            sketches.append({
+                "id": f"s_bslot{i}", "plane": "XY", "z": "BT",
+                "profile": {"builder": "slot",
+                            "args": {"length": "slot_straight", "r": "slot_r",
+                                     "cx": xv, "cy": f"{sy}slot_cy"}}})
+            deps.append({"source": f"s_bslot{i}", "target": f"bslot{i}",
+                         "kind": "profile"})
+        volume = (f"{volume} - 4*(slot_straight*2*slot_r + pi*slot_r**2)*BT")
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": "four base mounting slots, cut through and clear of the "
+                   "upright's footprint"})
+    elif sl or sw or gap or count:
+        raise GeneratorError(
+            "base slots need both a length and a width before they can be "
+            "placed")
+
+    # ---- edge treatments the L cannot express ----------------------------- #
+    #
+    # Refused rather than approximated. A bracket is not a box: an external
+    # fillet or chamfer runs over an L-shaped outline whose corner count depends
+    # on which edges are meant, and the closed form differs for each reading.
+    # The plate builder can do this because a plate has four sides and no
+    # ambiguity about them.
+    for name, label in (("fillet", "an external fillet"), ("chamfer", "a chamfer")):
+        if _num(req, name):
+            raise GeneratorError(
+                f"{label} on an L-bracket is not supported: the outline is "
+                f"not a rectangle, so which edges are meant changes the volume "
+                f"and there is no single closed form. The bore, bolt pattern, "
+                f"counterbores, gusset and base slots all build without it")
 
     assertions = [
         _extent_assertion("len_extent", "x", "BL"),
@@ -749,6 +855,16 @@ def bearing_housing(req: dict) -> dict:
 
     volume = "L*W*H - (" + " + ".join(terms) + ")"
     derivation.append({"step": 2, "eq": f"V = {volume}", "why": why_seat})
+
+    # The schema asks for this as "fillet radius where the feet meet the body",
+    # and this builder makes a solid block with holes rather than a body with
+    # feet hanging off it. There is no such edge to fillet, so accepting the
+    # number would silently do nothing.
+    if _num(req, "fillet"):
+        raise GeneratorError(
+            "a foot fillet needs feet, and this housing is a solid block whose "
+            "mounting holes go straight through it — there is no joint to "
+            "fillet. Drop the fillet, or the part wanted is a different family")
 
     volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
                                 "L", "W")
@@ -945,16 +1061,72 @@ BUILDERS: dict[str, Callable[[dict], dict]] = {
 }
 
 
+#: Keys that describe the part without shaping it.
+#:
+#: Recorded on the Blueprint rather than consumed by geometry, so a material or
+#: a thread designation survives into the design plan instead of being dropped.
+#: They are the only requirements a builder may legitimately not read.
+INFORMATIONAL = frozenset({
+    "family", "schema_version", "standards_applied",
+    "material", "bearing_series", "mounting_type",
+    "thread", "hole_thread", "port_thread", "inlet_thread",
+})
+
+
+class _Seen(dict):
+    """A requirements dict that remembers which keys were read.
+
+    The guarantee wanted here is that no requested feature is silently dropped,
+    and diligence per field does not give it — a builder that forgets to read
+    ``slot_length`` looks exactly like a plate that has no slots. Recording the
+    reads makes the check structural: whatever a builder never looked at is
+    reported, including in families written later.
+    """
+
+    def __init__(self, data: dict):
+        super().__init__(data)
+        self.seen: set[str] = set()
+
+    def get(self, key, default=None):  # noqa: D102
+        self.seen.add(key)
+        return super().get(key, default)
+
+    def __getitem__(self, key):
+        self.seen.add(key)
+        return super().__getitem__(key)
+
+
 def generate(family: str, requirements: dict) -> dict:
     """Blueprint dict for a family, from resolved requirements.
 
     ``requirements`` must already be resolved — diameters halved into radii by
     ``interview.resolve`` — because a builder that accepted either would have to
     guess which it was given.
+
+    Raises if the builder never read something the interview collected. A
+    parameter a user stated and a part does not carry is the failure this whole
+    architecture exists to prevent; it is worse than a refusal because nothing
+    reports it.
     """
     builder = BUILDERS.get(family)
     if builder is None:
         raise GeneratorError(
             f"no deterministic builder for {family!r}; known: "
             f"{', '.join(sorted(BUILDERS))}")
-    return builder(requirements)
+
+    tracked = _Seen(requirements)
+    payload = builder(tracked)
+
+    ignored = sorted(set(requirements) - tracked.seen - INFORMATIONAL)
+    if ignored:
+        raise GeneratorError(
+            f"{family} does not build: "
+            + ", ".join(ignored)
+            + ". These were asked for and the generator has no rule for them, "
+              "so the part would be missing features you specified")
+
+    stated = {k: requirements[k] for k in INFORMATIONAL
+              if k in requirements and k not in ("family", "schema_version")}
+    if stated:
+        payload["design_plan"]["stated"] = stated
+    return payload

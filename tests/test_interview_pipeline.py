@@ -156,7 +156,10 @@ def test_the_generator_adds_nothing_that_was_not_asked_for():
         )
     )
     assert payload["part_class"] == "l_bracket"
-    assert set(payload["variables"]) == {"BL", "BW", "BT", "UH", "UT"}
+    # UW is the upright's own width, declared even when it equals the base's so
+    # the expression reads the same either way.
+    assert set(payload["variables"]) == {"BL", "BW", "BT", "UH", "UT", "UW"}
+    assert payload["variables"]["UW"] == payload["variables"]["BW"]
 
 
 def test_the_bracket_motor_interface_is_exact():
@@ -570,6 +573,147 @@ def test_a_port_breaking_into_the_passage_is_refused():
     ],
 )
 def test_an_impossible_optional_feature_is_refused(family, base, slots, why):
+    with pytest.raises(blueprint_gen.GeneratorError, match=why):
+        interview.build(iv(family, **base, **slots))
+
+
+# --------------------------------------------------------------------------- #
+# nothing extracted is silently ignored — structurally, not by diligence
+# --------------------------------------------------------------------------- #
+FULL = {
+    "rect_plate": dict(
+        length=300, width=220, thickness=16, corner_radius=8, material="steel"
+    ),
+    "l_bracket": dict(
+        base_length=160,
+        base_width=100,
+        base_thickness=12,
+        upright_height=140,
+        upright_thickness=12,
+        upright_width=100,
+        inside_fillet=10,
+        slot_length=20,
+        slot_width=11,
+        slot_count=4,
+        slot_edge_gap=20,
+        bore_d=47.14,
+        hole_d=5.5,
+        bolt_square=69.6,
+        material="6061-T6",
+    ),
+    "bearing_housing": dict(
+        length=160,
+        width=80,
+        height=60,
+        bore_d=52.0,
+        seat_depth=15,
+        shoulder=4,
+        recess_d=62.0,
+        recess_depth=4,
+        hole_d=11,
+        hole_pitch_x=120,
+        hole_pitch_y=60,
+        chamfer=3,
+        bearing_series="6205",
+        mounting_type="foot_mount",
+    ),
+    "manifold": dict(
+        length=180,
+        width=90,
+        height=45,
+        passage_d=18,
+        hole_d=9.0,
+        hole_edge_gap=12,
+        cbore_d=14.0,
+        cbore_depth=8,
+        chamfer=4,
+        material="aluminium",
+    ),
+}
+
+
+@pytest.mark.parametrize("family", sorted(FULL))
+def test_a_fully_specified_part_consumes_every_parameter(family):
+    """Every geometric field builds; nothing is quietly dropped."""
+    bp = Blueprint.from_dict(interview.build(iv(family, **FULL[family]))).freeze()
+    assert bp.blueprint_hash
+
+
+def test_a_parameter_the_builder_never_reads_is_reported():
+    """The guarantee is structural, not per-field diligence.
+
+    A builder that forgets to read `slot_length` looks exactly like a plate
+    with no slots, so the requirements dict records which keys were read and
+    anything untouched is named. This is what makes the promise survive a
+    family written later.
+    """
+    with pytest.raises(blueprint_gen.GeneratorError, match="unheard_of_flange"):
+        blueprint_gen.generate(
+            "rect_plate",
+            {"length": 100, "width": 60, "thickness": 5, "unheard_of_flange": 3},
+        )
+
+
+def test_informational_values_are_recorded_rather_than_consumed():
+    """A material shapes nothing but must not vanish — the engineering checks
+    read it, and a user who stated it should see it on the part."""
+    payload = interview.build(iv("bearing_housing", **FULL["bearing_housing"]))
+    assert payload["design_plan"]["stated"]["bearing_series"] == "6205"
+
+
+def test_the_gusset_fillet_adds_material():
+    """The one feature here that grows the part: the concave corner is filled
+    by a square of r^2 less the quarter disc it rounds away."""
+    import math
+
+    base = dict(
+        base_length=160,
+        base_width=100,
+        base_thickness=12,
+        upright_height=140,
+        upright_thickness=12,
+    )
+    plain = _body(interview.build(iv("l_bracket", **base)))
+    gusseted = _body(interview.build(iv("l_bracket", **base, inside_fillet=10)))
+    assert gusseted - plain == pytest.approx((1 - math.pi / 4) * 100 * 100)
+
+
+@pytest.mark.parametrize(
+    "family,base,slots,why",
+    [
+        (
+            "l_bracket",
+            dict(
+                base_length=160,
+                base_width=100,
+                base_thickness=12,
+                upright_height=140,
+                upright_thickness=12,
+            ),
+            dict(chamfer=2),
+            "outline is not a rectangle",
+        ),
+        (
+            "l_bracket",
+            dict(
+                base_length=160,
+                base_width=100,
+                base_thickness=12,
+                upright_height=140,
+                upright_thickness=12,
+            ),
+            dict(inside_fillet=200),
+            "taller than",
+        ),
+        (
+            "bearing_housing",
+            dict(length=160, width=80, height=60, bore_d=52.0, seat_depth=15),
+            dict(fillet=6),
+            "needs feet",
+        ),
+    ],
+)
+def test_a_feature_the_shape_cannot_carry_is_refused(family, base, slots, why):
     with pytest.raises(blueprint_gen.GeneratorError, match=why):
         interview.build(iv(family, **base, **slots))
 
