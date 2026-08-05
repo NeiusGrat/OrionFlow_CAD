@@ -478,6 +478,12 @@ def _generation_service():
 # =============================================================================
 
 
+#: Whether the database has ever answered on *this* container. Gates how long
+#: the health probe is willing to wait — see ``_db_ok``. Per-container by
+#: design: it scales to zero, so every cold start has a cold pool again.
+_DB_ANSWERED = False
+
+
 @app.get(
     "/health",
     response_model=HealthResponse,
@@ -495,14 +501,30 @@ async def health_check():
     # must not make the health endpoint itself slow, or platform health
     # checks flap and machines never idle.
     async def _db_ok() -> bool:
+        global _DB_ANSWERED
         if settings.testing:
             return False
         try:
             from app.db.session import check_db_health
 
-            return bool(await asyncio.wait_for(check_db_health(), timeout=2))
+            # The first probe on a container pays for engine creation, a TLS
+            # handshake and auth against a remote Postgres; every later one
+            # reuses a pooled connection. Two seconds does not cover the cold
+            # case, so a perfectly healthy database reported "down" — observed
+            # on 2026-08-05, when two consecutive requests to the same
+            # deployment disagreed while signup and login on that container
+            # both worked. A health endpoint that cries outage over its own
+            # connection setup is worse than one that takes a moment to say so.
+            ok = bool(
+                await asyncio.wait_for(
+                    check_db_health(), timeout=2 if _DB_ANSWERED else 8
+                )
+            )
         except Exception:
             return False
+        if ok:
+            _DB_ANSWERED = True
+        return ok
 
     async def _redis_ok() -> bool:
         # The redis client is synchronous: run it off the event loop with
