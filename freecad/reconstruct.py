@@ -223,6 +223,35 @@ def _select_edges(shape, selector, edge_type=None):
         ranked = sorted(candidates, key=lambda ie: -ie[1].Length)[:int(arg)]
         return ["Edge%d" % (i + 1) for i, _ in sorted(ranked)]
 
+    if kind == "near":
+        # Singular by construction: a person pointed at one edge. Ranked by
+        # distance from the edge's midpoint, and refused outright past the
+        # tolerance so a rebuild that removed the edge fails visibly instead of
+        # chamfering whatever happens to be nearest now.
+        px, py, pz = arg
+        best, best_d = None, None
+        for i, e in candidates:
+            try:
+                m = e.CenterOfMass
+            except Exception:  # noqa: BLE001 - a degenerate edge has no centroid
+                continue
+            d = ((m.x - px) ** 2 + (m.y - py) ** 2 + (m.z - pz) ** 2) ** 0.5
+            # Ties broken by index so the same shape always answers the same.
+            if best_d is None or d < best_d - 1e-9:
+                best, best_d = i, d
+        # Scaled to the part, not fixed. A chamfer on a 500 mm bracket must
+        # survive the owner retuning its length — which legitimately moves the
+        # chamfered edge tens of millimetres — while a 20 mm part must not let
+        # a click drift onto the next edge over.
+        try:
+            span = shape.BoundBox.DiagonalLength
+        except Exception:  # noqa: BLE001
+            span = 0.0
+        limit = max(_selgrammar.NEAR_TOLERANCE_MM, span * 0.05)
+        if best is None or best_d > limit:
+            return []
+        return ["Edge%d" % (best + 1)]
+
     names = []
     for i, e in candidates:
         try:
@@ -237,10 +266,43 @@ def _select_faces(shape, selector):
     """Resolve a semantic face selector into FreeCAD face names on ``shape``.
 
     Vocabulary: all | vertical (planar side walls + walls of vertical
-    cylinders) | horizontal | top | bottom. Used by Draft (faces to taper,
-    neutral plane). Deterministic for a given shape.
+    cylinders) | horizontal | top | bottom | near:<x>,<y>,<z>. Used by Draft
+    (faces to taper, neutral plane), Thickness (faces to open) and by any
+    operation a person aimed at one face. Deterministic for a given shape.
+
+    ``near`` is singular and exists for the same reason it does for edges: a
+    class selector cannot express "the face I clicked", and an OCC index does
+    not survive a rebuild.
     """
     sel = str(selector or "").strip().lower()
+
+    if sel.startswith("near:"):
+        parsed = _selgrammar.parse(sel)
+        if parsed is None:
+            return []
+        px, py, pz = parsed[1]
+        best, best_d = None, None
+        for i, f in enumerate(shape.Faces):
+            try:
+                c = f.CenterOfMass
+            except Exception:  # noqa: BLE001
+                continue
+            d = ((c.x - px) ** 2 + (c.y - py) ** 2 + (c.z - pz) ** 2) ** 0.5
+            if best_d is None or d < best_d - 1e-9:
+                best, best_d = i, d
+        # Faces are larger than edges, so a click lands further from the
+        # centroid than it would on an edge midpoint — a full cylinder's
+        # centroid is not even on its surface. Scaled to the part rather than
+        # fixed for that reason.
+        try:
+            span = shape.BoundBox.DiagonalLength
+        except Exception:  # noqa: BLE001
+            span = 0.0
+        limit = max(_selgrammar.NEAR_TOLERANCE_MM, span * 0.25)
+        if best is None or best_d > limit:
+            return []
+        return ["Face%d" % (best + 1)]
+
     if sel not in ("all", "vertical", "horizontal", "top", "bottom"):
         return []
     tol = 1e-5

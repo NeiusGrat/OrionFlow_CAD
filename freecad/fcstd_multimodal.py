@@ -101,7 +101,6 @@ def _adjacency_normals(shape, target_face):
     """Normals of faces sharing an edge with ``target_face`` (TNP adjacency)."""
     out = []
     try:
-        tcom = target_face.CenterOfMass
         for f in shape.Faces:
             if f.isSame(target_face):
                 continue

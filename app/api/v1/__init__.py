@@ -13,9 +13,11 @@ from app.api.v1 import (
     users,
     designs,
     billing,
+    editing,
     jobs,
     sessions,
     studio,
+    topology,
     waitlist,
 )
 
@@ -42,3 +44,12 @@ api_router.include_router(
 # artifacts.py for why the /ofl/download one can never be withdrawn.
 api_router.include_router(artifacts.router, prefix="/artifacts", tags=["Artifacts"])
 api_router.include_router(artifacts.legacy_router, prefix="/ofl", tags=["Artifacts"])
+
+# Which feature made which face. Separate from /artifacts because these routes
+# read a sidecar and answer questions about it, rather than serving a file.
+api_router.include_router(topology.router, prefix="/topology", tags=["Topology"])
+
+# Click a face, change the feature that made it. Mounted under /studio/edit
+# rather than beside /topology: reading geometry and changing a design are
+# different acts, and only the second one is metered.
+api_router.include_router(editing.router, prefix="/studio/edit", tags=["Editing"])

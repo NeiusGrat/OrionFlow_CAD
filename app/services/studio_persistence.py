@@ -143,6 +143,16 @@ def build_evidence(bundle: dict) -> dict[str, Any]:
         "built_where": log.get("where") or "",
         "artifacts": bundle.get("files") or {},
         "blueprint_hash": (bundle.get("blueprint") or {}).get("blueprint_hash", ""),
+        # What each of those files *was* — sha256 and byte count per kind —
+        # kept beside the URLs rather than inside them, because ``artifacts``
+        # is a flat kind→URL map the UI iterates and the session event lists by
+        # key. A record that says only where a file went cannot tell you later
+        # whether the file still there is the one that was built.
+        "artifact_digests": bundle.get("artifact_digests") or {},
+        # Which build of the service, and which kernel, produced them. Both are
+        # invisible in the geometry and unrecoverable after the fact.
+        "builder": bundle.get("builder") or "",
+        "kernel": bundle.get("kernel") or {},
         # What was known before the kernel ran. Stored beside what it measured
         # so a record says both what the design claimed about itself and what
         # the geometry turned out to be — a pair, not two separate facts.

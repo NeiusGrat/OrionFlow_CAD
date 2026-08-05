@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Viewer from "../Viewer/Viewer";
 import AssistantPanel from "../Panels/AssistantPanel";
 import SessionPanel from "../Panels/SessionPanel";
+import FeatureEditPanel from "../Panels/FeatureEditPanel";
+import { useEditStore } from "../../store/editStore";
 import ModelDock from "../Panels/ModelDock";
 import TitleBar from "./TitleBar";
 import Ribbon from "./Ribbon";
@@ -42,7 +44,13 @@ import { useDesignStore } from "../../store/designStore";
  * approved. It is the better shape for anything load-bearing, but it asks for
  * patience, so it is offered rather than imposed.
  */
-type PanelTab = "chat" | "reviewed";
+/**
+ * `edit` is neither: it is the part answering questions about itself. Clicking
+ * a face opens it on the feature that authored that face, so the tab is
+ * switched to automatically on a pick rather than being somewhere the user has
+ * to go looking after they have already pointed at what they meant.
+ */
+type PanelTab = "chat" | "reviewed" | "edit";
 
 function PanelTabs({
     tab,
@@ -57,6 +65,7 @@ function PanelTabs({
                 [
                     ["chat", "Assistant"],
                     ["reviewed", "Reviewed build"],
+                    ["edit", "Selection"],
                 ] as const
             ).map(([id, text]) => (
                 <button
@@ -89,6 +98,15 @@ function PanelTabs({
 export default function Workspace() {
     const current = useDesignStore((s) => s.current);
     const [tab, setTab] = useState<PanelTab>("chat");
+
+    // A click in the viewport is already the user asking about that feature;
+    // making them find the tab afterwards would put a step between the question
+    // and the answer. Only a new selection pulls focus, so switching back to
+    // the assistant while something is selected sticks.
+    const selectedFace = useEditStore((s) => s.selectedFace?.ref ?? null);
+    useEffect(() => {
+        if (selectedFace) setTab("edit");
+    }, [selectedFace]);
 
     return (
         <div
@@ -144,6 +162,16 @@ export default function Workspace() {
                         }}
                     >
                         <SessionPanel />
+                    </div>
+                    <div
+                        style={{
+                            flex: 1,
+                            minHeight: 0,
+                            display: tab === "edit" ? "block" : "none",
+                            overflowY: "auto",
+                        }}
+                    >
+                        <FeatureEditPanel />
                     </div>
                 </div>
             </div>

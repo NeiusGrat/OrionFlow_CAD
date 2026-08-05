@@ -25,7 +25,6 @@ import argparse
 import json
 import math
 import random
-from pathlib import Path
 from typing import Optional
 
 from .config import PKG_DIR
@@ -264,7 +263,7 @@ def prompts_for(row: dict, roles: dict, rng: random.Random) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 def run(limit: int = 0) -> dict:
-    rows = [json.loads(l) for l in open(ACCEPTED, encoding="utf-8")]
+    rows = [json.loads(line) for line in open(ACCEPTED, encoding="utf-8")]
     if limit:
         rows = rows[:limit]
 

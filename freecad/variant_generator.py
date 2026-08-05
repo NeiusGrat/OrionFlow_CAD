@@ -31,11 +31,10 @@ import glob
 import json
 import math
 import subprocess
-from pathlib import Path
 from typing import Any, Optional
 
 from .config import PKG_DIR, ensure_dirs, find_freecad_python
-from .parameter_mapper import map_parameters, parse_key_parameters
+from .parameter_mapper import map_parameters
 
 TRAINING_DIR = PKG_DIR / "training"
 VARIANTS_DIR = PKG_DIR / "variants"

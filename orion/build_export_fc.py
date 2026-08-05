@@ -79,6 +79,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--step", help="write a STEP export here")
     ap.add_argument("--stl", help="write an STL export here")
+    ap.add_argument("--topology", help="write the topology sidecar here")
     ap.add_argument("--deflection", type=float, default=0.05,
                     help="STL linear deflection in mm (default 0.05)")
     ap.add_argument("--mesh-body", action="store_true",
@@ -117,12 +118,38 @@ def main():
             except Exception as e:  # noqa: BLE001
                 export_errors["stl"] = str(e)[:300]
 
+    # Topology comes off the live document, before it is closed and before the
+    # exports are read back. It has to: the element map that says which feature
+    # authored each face is a property of the document's feature tree, and a
+    # STEP is a finished solid with no tree at all. Reopening the FCStd later
+    # would work but would cost a second FreeCAD startup for data that is
+    # sitting right here.
+    if args.topology:
+        try:
+            topo = _load(os.path.join(here, "topology_fc.py"), "_orion_topology")
+            record = topo.extract(doc, graph)
+            with open(os.path.abspath(args.topology), "w", encoding="utf-8") as fh:
+                json.dump(record, fh)
+            exports["topology"] = os.path.abspath(args.topology)
+        except Exception as e:  # noqa: BLE001
+            export_errors["topology"] = str(e)[:300]
+
     import FreeCAD as App  # noqa: PLC0415
 
     App.closeDocument(doc.Name)
 
     measured = meas.measure_document(os.path.abspath(args.fcstd),
                                      mesh_body=args.mesh_body)
+    # Which kernel produced this, recorded by the kernel itself. The corpus was
+    # verified under FreeCAD 1.1; conda-forge is free to ship something else on
+    # any given image rebuild, and version skew shows up as geometry that
+    # disagrees with frozen predictions for no visible reason. Asking a separate
+    # container what version it has answers a different question than what built
+    # *this* part, so it is stamped here, in the process that did the work.
+    try:
+        measured["kernel"] = {"freecad": ".".join(str(p) for p in App.Version()[:3])}
+    except Exception as e:  # noqa: BLE001
+        measured["kernel"] = {"error": str(e)[:200]}
     measured["build_report"] = {
         "unsupported": report.get("unsupported", []),
         "recompute_errors": report.get("recompute_errors", []),

@@ -188,6 +188,8 @@ def _build_locally(
         os.path.join(workdir, "part.step"),
         "--stl",
         os.path.join(workdir, "part.stl"),
+        "--topology",
+        os.path.join(workdir, "part.topology.json"),
     ]
     if mesh_body:
         cmd.append("--mesh-body")
@@ -300,6 +302,8 @@ def _prepare(payload: dict, request_id: str) -> tuple[Any, Optional[dict], str, 
 
 
 def _empty_bundle(request_id: str) -> dict:
+    from app.services import artifacts as artifacts_mod
+
     return {
         "success": False,
         "request_id": request_id,
@@ -308,6 +312,12 @@ def _empty_bundle(request_id: str) -> dict:
         "part_class": "",
         "variables": {},
         "files": {},
+        # Same keys on the failure path as on the success path: a caller that
+        # reads a bundle should not have to know which one it got.
+        "artifact_digests": {},
+        "builder": artifacts_mod.builder_stamp(),
+        "kernel": {},
+        "topology": {},
         "stats": None,
         "measured": {},
         "verification": {},
@@ -342,6 +352,7 @@ def _finish(
     step = os.path.join(workdir, "part.step")
     stl = os.path.join(workdir, "part.stl")
     fcstd = os.path.join(workdir, "part.FCStd")
+    topology = os.path.join(workdir, "part.topology.json")
 
     returncode = build_log.get("returncode", -1)
     if build_log.get("timeout"):
@@ -377,11 +388,48 @@ def _finish(
     # dead shape.
     from app.services import artifacts
 
+    # Digested here rather than in the kernel worker, and deliberately so. On
+    # the Modal path the artifacts cross a container boundary as bytes and are
+    # rewritten locally; a hash taken before that trip would attest to a file
+    # that is no longer the one being served. Hashing the bytes that landed
+    # covers both builders with one implementation and catches a truncated
+    # transfer as well as a truncated write.
     files: dict[str, str] = {}
-    for kind, path in (("fcstd", fcstd), ("step", step), ("stl", stl), ("glb", glb)):
+    digests: dict[str, dict] = {}
+    for kind, path in (
+        ("fcstd", fcstd),
+        ("step", step),
+        ("stl", stl),
+        ("glb", glb),
+        ("topology", topology),
+    ):
         if path and os.path.exists(path):
             files[kind] = artifacts.artifact_url(request_id, path)
+            entry = artifacts.file_digest(path)
+            if entry:
+                digests[kind] = entry
     bundle["files"] = files
+    bundle["artifact_digests"] = digests
+    bundle["builder"] = artifacts.builder_stamp()
+    bundle["kernel"] = measured.get("kernel") or {}
+
+    # The summary, not the record: the full sidecar is megabytes on a dense
+    # part and every caller of this bundle would pay for it. What belongs in a
+    # build response is how many faces there are and which feature made them;
+    # the elements themselves are a query away under /api/v1/topology.
+    from app.services import topology as topology_reader
+
+    record = topology_reader.load(workdir)
+    bundle["topology"] = topology_reader.summary(record) if record else {}
+
+    manifest = artifacts.new_manifest(
+        request_id,
+        digests,
+        blueprint_hash=str(bundle["blueprint"].get("blueprint_hash") or ""),
+        kernel=bundle["kernel"],
+        built_where=str(build_log.get("where") or ""),
+    )
+    manifest_path = artifacts.write_manifest(workdir, manifest)
 
     # Per-request dirs are ephemeral on scale-to-zero hosts; the existing
     # download route redirects to object storage when the local copy is gone.
@@ -393,7 +441,9 @@ def _finish(
         from app.services.storage import get_storage
 
         storage = get_storage()
-        for path in (fcstd, step, stl, glb):
+        # The manifest goes up with them: an artifact that outlives its
+        # container into object storage keeps no other record of what it is.
+        for path in (fcstd, step, stl, glb, topology, manifest_path):
             if path and os.path.exists(path):
                 try:
                     storage.publish(

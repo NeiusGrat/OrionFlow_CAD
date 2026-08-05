@@ -74,11 +74,13 @@ def build_blueprint(graph: dict, mesh_body: bool = False) -> dict:
     step = os.path.join(workdir, "part.step")
     stl = os.path.join(workdir, "part.stl")
     fcstd = os.path.join(workdir, "part.FCStd")
+    topology = os.path.join(workdir, "part.topology.json")
     mpath = os.path.join(workdir, "measured.json")
 
     cmd = [sys.executable, "/root/orion/build_export_fc.py",
            "--graph", gpath, "--fcstd", fcstd,
-           "--out", mpath, "--step", step, "--stl", stl]
+           "--out", mpath, "--step", step, "--stl", stl,
+           "--topology", topology]
     if mesh_body:
         cmd.append("--mesh-body")
 
@@ -110,9 +112,13 @@ def build_blueprint(graph: dict, mesh_body: bool = False) -> dict:
     # with the container; the STEP was the only thing that survived, so every
     # part this system has ever built lost its history at the container
     # boundary.
+    # The topology sidecar travels with them and can only be made here. It says
+    # which feature authored each face, which is a property of the document's
+    # feature tree — a STEP is a finished solid and has no tree at all, so once
+    # this container exits the mapping is gone for good.
     artifacts = {}
     for name, path in (("part.step", step), ("part.stl", stl),
-                       ("part.FCStd", fcstd)):
+                       ("part.FCStd", fcstd), ("part.topology.json", topology)):
         if os.path.exists(path):
             with open(path, "rb") as fh:
                 artifacts[name] = fh.read()

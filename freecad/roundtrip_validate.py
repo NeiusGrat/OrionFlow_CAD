@@ -17,7 +17,6 @@ import argparse
 import glob
 import json
 import subprocess
-from pathlib import Path
 from typing import Any
 
 from .config import FCSTD_DIR, PKG_DIR, TRAINING_DIR, ensure_dirs, find_freecad_python

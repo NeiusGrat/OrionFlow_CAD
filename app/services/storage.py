@@ -56,6 +56,12 @@ class LocalStorage:
             logger.warning(f"Local artifact delete failed for {key}: {e}")
             return False
 
+    def fetch(self, key: str) -> bytes | None:
+        try:
+            return (settings.output_dir / Path(key).name).read_bytes()
+        except OSError:
+            return None
+
 
 class S3Storage:
     """Upload artifacts to an S3-compatible bucket, serve presigned URLs."""
@@ -110,6 +116,21 @@ class S3Storage:
         except Exception as e:
             logger.warning(f"S3 artifact delete failed for {key}: {e}")
             return False
+
+    def fetch(self, key: str) -> bytes | None:
+        """Read an object back into the process.
+
+        Distinct from ``url_for``, which hands the caller a link and is right
+        for a download. Small sidecars the API has to *read* — the manifest, the
+        topology record — cannot be answered with a redirect, and on a
+        scale-to-zero host the container that built them is usually gone by the
+        time anyone asks.
+        """
+        try:
+            return self._client.get_object(Bucket=self._bucket, Key=key)["Body"].read()
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"S3 artifact fetch failed for {key}: {e}")
+            return None
 
 
 @lru_cache(maxsize=1)

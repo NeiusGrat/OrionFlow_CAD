@@ -612,6 +612,11 @@ async def reconcile(
         rev.verification = bundle.get("verification") or {}
         rev.stats = bundle.get("stats")
         rev.artifacts = bundle.get("files") or {}
+        # The column has existed since this table was created and nothing ever
+        # wrote it, so every revision on record claims an unknown kernel. It is
+        # reported by the container that ran the compile, which is the only
+        # place that knows.
+        rev.freecad_version = (bundle.get("kernel") or {}).get("freecad")
         rev.build_error = (
             str(bundle.get("error"))[:2000] if bundle.get("error") else None
         )
