@@ -249,19 +249,36 @@ def test_corner_slots_are_exact():
     assert body(plain) - body(slotted) == pytest.approx(expected)
 
 
-def test_a_slot_without_a_position_is_refused():
-    """'near each corner' does not fix a position."""
-    with pytest.raises(blueprint_gen.GeneratorError, match="distance from the plate"):
-        interview.build(
-            iv(
-                "rect_plate",
-                length=300,
-                width=220,
-                thickness=16,
-                slot_length=40,
-                slot_width=14,
-            )
-        )
+def test_a_slot_without_a_position_becomes_a_question():
+    """'near each corner' does not fix a position, and the right place to
+    discover that is the interview, not the generator.
+
+    ``slot_edge_gap`` is optional until slots are asked for; the schema's
+    ``requires`` makes it required the moment ``slot_length`` appears. Before
+    that the interview declared itself complete and the generator refused after
+    the fact — the wrong end of the pipeline for a question.
+    """
+    i = iv(
+        "rect_plate",
+        length=300,
+        width=220,
+        thickness=16,
+        slot_length=40,
+        slot_width=14,
+    )
+    assert [s.name for s in interview.missing("rect_plate", i.slots)] == [
+        "slot_edge_gap"
+    ]
+    assert interview.next_question(i) == "How far are the slots from the plate edge?"
+    with pytest.raises(ValueError, match="incomplete"):
+        interview.build(i)
+
+
+def test_a_conditional_requirement_is_silent_until_its_trigger_appears():
+    """A plate with no slots is not interrogated about slot positions."""
+    i = iv("rect_plate", length=300, width=220, thickness=16)
+    assert interview.next_question(i) is None
+    assert i.complete
 
 
 def test_a_slot_that_is_not_elongated_is_refused():
@@ -454,6 +471,107 @@ def test_a_hole_straddling_the_pocket_wall_is_refused_not_approximated():
                 pocket_depth=6,
             )
         )
+
+
+# --------------------------------------------------------------------------- #
+# bearing housing and manifold: nothing extracted is silently ignored
+# --------------------------------------------------------------------------- #
+HOUSING = dict(length=160, width=80, height=60, bore_d=52.0, seat_depth=15)
+MANIFOLD = dict(length=180, width=90, height=45, passage_d=18)
+
+
+def _body(payload):
+    bp = Blueprint.from_dict(payload).freeze()
+    return next(a for a in bp.resolve_assertions() if a["kind"] == "body_volume")[
+        "target_value"
+    ]
+
+
+def test_a_shoulder_defines_the_bore_beneath_the_seat():
+    """A shoulder is the step the bearing seats against, so it fixes the bore
+    below it at seat_r - shoulder. Arithmetic, not a guess."""
+    import math
+
+    plain = _body(interview.build(iv("bearing_housing", **HOUSING)))
+    stepped = _body(interview.build(iv("bearing_housing", **HOUSING, shoulder=4)))
+
+    shaft_r = 26.0 - 4.0
+    # The shaft bore runs right through; the seat then only takes the ring.
+    expected = math.pi * shaft_r**2 * 60 + math.pi * (26.0**2 - shaft_r**2) * 15
+    assert 160 * 80 * 60 - stepped == pytest.approx(expected)
+    assert stepped < plain
+
+
+def test_a_flange_recess_adds_only_the_ring_outside_the_seat():
+    import math
+
+    without = _body(interview.build(iv("bearing_housing", **HOUSING)))
+    with_recess = _body(
+        interview.build(iv("bearing_housing", **HOUSING, recess_d=62.0, recess_depth=4))
+    )
+    assert without - with_recess == pytest.approx(math.pi * (31.0**2 - 26.0**2) * 4)
+
+
+def test_manifold_mounting_holes_and_counterbores_are_exact():
+    import math
+
+    plain = _body(interview.build(iv("manifold", **MANIFOLD)))
+    holed = _body(
+        interview.build(iv("manifold", **MANIFOLD, hole_d=9.0, hole_edge_gap=12))
+    )
+    bored = _body(
+        interview.build(
+            iv(
+                "manifold",
+                **MANIFOLD,
+                hole_d=9.0,
+                hole_edge_gap=12,
+                cbore_d=14.0,
+                cbore_depth=8,
+            )
+        )
+    )
+    assert plain - holed == pytest.approx(4 * math.pi * 4.5**2 * 45)
+    assert holed - bored == pytest.approx(4 * math.pi * (7.0**2 - 4.5**2) * 8)
+
+
+def test_a_port_breaking_into_the_passage_is_refused():
+    """Two perpendicular cylinders intersect in a solid needing elliptic
+    integrals. Stopping the port short builds a manifold that does not flow;
+    subtracting the whole cylinder over-removes by exactly the intersection."""
+    with pytest.raises(blueprint_gen.GeneratorError, match="no closed-form volume"):
+        interview.build(iv("manifold", **MANIFOLD, port_count=6, port_d=13.2))
+    with pytest.raises(blueprint_gen.GeneratorError, match="same reason"):
+        interview.build(iv("manifold", **MANIFOLD, inlet_thread="G3/8"))
+
+
+@pytest.mark.parametrize(
+    "family,base,slots,why",
+    [
+        ("bearing_housing", HOUSING, dict(shoulder=30), "leaves no bore"),
+        (
+            "bearing_housing",
+            HOUSING,
+            dict(recess_d=40.0, recess_depth=4),
+            "no wider than",
+        ),
+        (
+            "bearing_housing",
+            HOUSING,
+            dict(hole_d=11, hole_pitch_x=40, hole_pitch_y=30),
+            "run into the bearing seat",
+        ),
+        (
+            "manifold",
+            MANIFOLD,
+            dict(hole_d=9.0, hole_edge_gap=40),
+            "run into the main passage",
+        ),
+    ],
+)
+def test_an_impossible_optional_feature_is_refused(family, base, slots, why):
+    with pytest.raises(blueprint_gen.GeneratorError, match=why):
+        interview.build(iv(family, **base, **slots))
 
 
 # --------------------------------------------------------------------------- #

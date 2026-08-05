@@ -628,7 +628,21 @@ def l_bracket(req: dict) -> dict:
 # bearing housing
 # --------------------------------------------------------------------------- #
 def bearing_housing(req: dict) -> dict:
-    """Rectangular block with a blind bearing seat bored from the top."""
+    """Block with a bearing seat bored from the top, and what hangs off it.
+
+    Every cut is either a hole in the pad profile or a concentric counterbore
+    from the top face, so each contributes an annulus and nothing overlaps
+    anything ambiguously. The stack, outermost first::
+
+        recess   radius recess_r, depth recess_depth   (flange clearance)
+        seat     radius seat_r,   depth seat_depth     (the bearing)
+        shaft    radius seat_r - shoulder, right through
+
+    A shoulder is the step the bearing seats against, so it *defines* the bore
+    below it: ``seat_r - shoulder``. That is arithmetic, not a guess. The one
+    inference is that the smaller bore runs through, which is what a pillow
+    block is for; it is stated in the derivation rather than left implicit.
+    """
     _assert_positive(req, ("length", "width", "height", "bore_r", "seat_depth"))
     L, W, H = _num(req, "length"), _num(req, "width"), _num(req, "height")
     R, D = _num(req, "bore_r"), _num(req, "seat_depth")
@@ -639,30 +653,106 @@ def bearing_housing(req: dict) -> dict:
         raise GeneratorError(f"seat depth {D} must be less than height {H}")
 
     v = {"L": L, "W": W, "H": H, "seat_r": R, "seat_d": D}
-    volume = "L*W*H - pi*seat_r**2*seat_d"
+    holes: list[list[str]] = []
+    terms: list[str] = []
+    derivation = [{"step": 1, "eq": "V = L*W*H", "why": "housing blank"}]
+
+    shoulder = _num(req, "shoulder")
+    if shoulder:
+        if shoulder >= R:
+            raise GeneratorError(
+                f"a {shoulder} mm shoulder leaves no bore under a {R} mm seat")
+        v["shaft_r"] = R - shoulder
+        holes.append(["0", "0", "shaft_r"])
+        terms.append("pi*shaft_r**2*H")
+        # The seat then only removes the ring outside the shaft bore.
+        terms.append("pi*(seat_r**2 - shaft_r**2)*seat_d")
+        why_seat = ("bearing seat bored to the shoulder, less the shaft bore "
+                    "beneath it which has already gone right through")
+    else:
+        terms.append("pi*seat_r**2*seat_d")
+        why_seat = "blind bearing seat bored from the top face"
+
+    hole_r = _num(req, "hole_r")
+    px, py = _num(req, "hole_pitch_x"), _num(req, "hole_pitch_y")
+    if hole_r and px and py:
+        if px / 2 + hole_r >= L / 2 or py / 2 + hole_r >= W / 2:
+            raise GeneratorError(
+                f"a {px} x {py} hole pattern runs off a {L} x {W} housing")
+        if (px / 2 - hole_r) ** 2 + (py / 2 - hole_r) ** 2 < R * R:
+            raise GeneratorError(
+                "the mounting holes run into the bearing seat; that "
+                "intersection has no closed form here")
+        v["hole_r"] = hole_r
+        v["pitch_x"] = px / 2.0
+        v["pitch_y"] = py / 2.0
+        for sx in ("-", "+"):
+            for sy in ("-", "+"):
+                holes.append([f"{sx}pitch_x", f"{sy}pitch_y", "hole_r"])
+        terms.append("4*pi*hole_r**2*H")
+
+    profile = ({"builder": "rect_with_holes",
+                "args": {"w": "L", "h": "W", "holes": holes}} if holes
+               else {"builder": "rect", "args": {"w": "L", "h": "W"}})
+
     features = [
         {"id": "Body", "type": "Body", "parameters": {}},
         {"id": "s_block", "type": "Sketch", "parameters": {}},
-        {"id": "block", "type": "Pad", "rationale": "housing blank",
+        {"id": "block", "type": "Pad",
+         "rationale": "housing blank with every through-cut in the profile",
          "parameters": {"Length": "H", "Type": "Length"}},
         {"id": "s_seat", "type": "Sketch", "parameters": {}},
         {"id": "seat", "type": "Pocket", "rationale": "bearing seat bore",
          "parameters": {"Length": "seat_d", "Type": "Length"}},
     ]
     sketches = [
-        {"id": "s_block", "plane": "XY",
-         "profile": {"builder": "rect", "args": {"w": "L", "h": "W"}}},
+        {"id": "s_block", "plane": "XY", "profile": profile},
         {"id": "s_seat", "plane": "XY", "z": "H",
          "profile": {"builder": "circle", "args": {"r": "seat_r"}}},
     ]
     deps = [{"source": "s_block", "target": "block", "kind": "profile"},
             {"source": "s_seat", "target": "seat", "kind": "profile"}]
 
-    derivation = [
-        {"step": 1, "eq": "V = L*W*H", "why": "rectangular housing blank"},
-        {"step": 2, "eq": f"V = {volume}",
-         "why": "blind bearing seat bored from the top face"},
-    ]
+    recess_r = _num(req, "recess_r")
+    recess_depth = _num(req, "recess_depth")
+    if recess_r and recess_depth:
+        if recess_r <= R:
+            raise GeneratorError(
+                f"a {2*recess_r} mm recess is no wider than the {2*R} mm seat "
+                f"it surrounds")
+        if 2 * recess_r >= min(L, W):
+            raise GeneratorError(
+                f"a {2*recess_r} mm recess does not fit in {L} x {W}")
+        if recess_depth >= H:
+            raise GeneratorError(
+                f"recess depth {recess_depth} must be less than height {H}")
+        if hole_r and px and py:
+            near = ((px / 2 - hole_r) ** 2 + (py / 2 - hole_r) ** 2) ** 0.5
+            if near < recess_r:
+                raise GeneratorError(
+                    "the flange recess reaches the mounting holes; that "
+                    "intersection has no closed form here")
+        v["recess_r"] = recess_r
+        v["recess_d"] = recess_depth
+        features += [
+            {"id": "s_recess", "type": "Sketch", "parameters": {}},
+            {"id": "recess", "type": "Pocket",
+             "rationale": "clearance recess for the bearing flange",
+             "parameters": {"Length": "recess_d", "Type": "Length"}},
+        ]
+        sketches.append({"id": "s_recess", "plane": "XY", "z": "H",
+                         "profile": {"builder": "circle",
+                                     "args": {"r": "recess_r"}}})
+        deps.append({"source": "s_recess", "target": "recess", "kind": "profile"})
+        # Only the ring outside the seat is new material.
+        terms.append("pi*(recess_r**2 - seat_r**2)*recess_d")
+
+    volume = "L*W*H - (" + " + ".join(terms) + ")"
+    derivation.append({"step": 2, "eq": f"V = {volume}", "why": why_seat})
+
+    volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
+                                "L", "W")
+
     assertions = [
         _extent_assertion("len_extent", "x", "L"),
         _extent_assertion("hgt_extent", "z", "H"),
@@ -728,6 +818,115 @@ def manifold(req: dict) -> dict:
          "why": "W x H section with the main passage as a hole in the profile, "
                 "extruded the full length"},
     ]
+
+    # ---- ports ------------------------------------------------------------ #
+    #
+    # Refused, and this one is not a plumbing problem. A port is only a port if
+    # it breaks into the main passage, and two perpendicular cylinders of
+    # different radii intersect in a solid whose volume needs elliptic
+    # integrals — there is no expression over the variables that states it. The
+    # alternatives are both worse than saying so: stopping the port at the
+    # passage crown builds a manifold that does not flow, and subtracting the
+    # full port cylinder over-removes by exactly the intersection.
+    if _num(req, "port_d") or req.get("port_count") or req.get("port_thread"):
+        raise GeneratorError(
+            "vertical ports breaking into the main passage are not buildable "
+            "here: two perpendicular cylinders intersect in a solid with no "
+            "closed-form volume in this expression language, and a port that "
+            "stops short of the passage is not a port. The block, its passage "
+            "and its mounting holes will build without them")
+    if req.get("inlet_thread"):
+        raise GeneratorError(
+            "an end inlet breaking into the main passage has the same "
+            "cylinder-cylinder intersection as a vertical port and is refused "
+            "for the same reason")
+
+    # ---- corner mounting holes, cut down through the block ---------------- #
+    hole_r = _num(req, "hole_r")
+    gap = _num(req, "hole_edge_gap")
+    if hole_r:
+        if gap is None:
+            raise GeneratorError(
+                'mounting holes need a distance from the block edge — '
+                '"in the corners" does not fix a position')
+        cx = L / 2.0 - gap - hole_r
+        cy = W / 2.0 - gap - hole_r
+        if cx <= 0 or cy <= 0:
+            raise GeneratorError(
+                f"a {2*hole_r} mm hole {gap} mm from the edge does not fit on "
+                f"a {L} x {W} block")
+        if cy - hole_r <= PR:
+            raise GeneratorError(
+                "the mounting holes run into the main passage; that "
+                "intersection has no closed form here")
+        v["hole_r"] = hole_r
+        v["hx"] = round(cx, 6)
+        v["hy"] = round(cy, 6)
+        for i, (sx, sy) in enumerate((("-", "-"), ("+", "-"),
+                                      ("+", "+"), ("-", "+"))):
+            features += [
+                {"id": f"s_mh{i}", "type": "Sketch", "parameters": {}},
+                {"id": f"mh{i}", "type": "Pocket",
+                 "rationale": "corner mounting hole",
+                 "parameters": {"Length": "H", "Type": "ThroughAll"}},
+            ]
+            # The block spans x in [-L, 0], so the pattern is offset to its
+            # centre rather than to the origin.
+            sketches.append({
+                "id": f"s_mh{i}", "plane": "XY", "z": "H/2",
+                "profile": {"builder": "circle",
+                            "args": {"r": "hole_r",
+                                     "cx": f"-L/2 {sx} hx", "cy": f"{sy}hy"}}})
+            deps.append({"source": f"s_mh{i}", "target": f"mh{i}",
+                         "kind": "profile"})
+        volume = f"{volume} - 4*pi*hole_r**2*H"
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": "four corner mounting holes, right through and clear of the "
+                   "passage"})
+
+        cbore_r = _num(req, "cbore_r")
+        cbore_depth = _num(req, "cbore_depth")
+        if cbore_r and cbore_depth:
+            if cbore_r <= hole_r:
+                raise GeneratorError(
+                    f"counterbore diameter {2*cbore_r} must exceed the "
+                    f"{2*hole_r} mm hole it counterbores")
+            if cbore_depth >= H:
+                raise GeneratorError(
+                    f"counterbore depth {cbore_depth} must be less than the "
+                    f"{H} mm block")
+            if cy - cbore_r <= PR:
+                raise GeneratorError(
+                    "the counterbores reach the main passage; that "
+                    "intersection has no closed form here")
+            v["cbore_r"] = cbore_r
+            v["cbore_d"] = cbore_depth
+            for i, (sx, sy) in enumerate((("-", "-"), ("+", "-"),
+                                          ("+", "+"), ("-", "+"))):
+                features += [
+                    {"id": f"s_cb{i}", "type": "Sketch", "parameters": {}},
+                    {"id": f"cb{i}", "type": "Pocket",
+                     "rationale": "counterbore from the top face",
+                     "parameters": {"Length": "cbore_d", "Type": "Length"}},
+                ]
+                sketches.append({
+                    "id": f"s_cb{i}", "plane": "XY", "z": "H/2",
+                    "profile": {"builder": "circle",
+                                "args": {"r": "cbore_r",
+                                         "cx": f"-L/2 {sx} hx",
+                                         "cy": f"{sy}hy"}}})
+                deps.append({"source": f"s_cb{i}", "target": f"cb{i}",
+                             "kind": "profile"})
+            volume = (f"{volume} - 4*pi*(cbore_r**2 - hole_r**2)*cbore_d")
+            derivation.append({
+                "step": len(derivation) + 1, "eq": f"V = {volume}",
+                "why": "counterbores, counting only the annulus each adds "
+                       "because the through-hole already removed the centre"})
+
+    volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
+                                "L", "W")
+
     assertions = [
         _extent_assertion("len_extent", "x", "L"),
         {"id": "wall", "kind": "precondition", "tier": 1,

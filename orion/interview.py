@@ -80,6 +80,15 @@ class Slot:
     diameter: bool = False
     #: A value that must stay a string — a material, a thread designation.
     text: bool = False
+    #: Fields that become required once this one is given.
+    #:
+    #: A slot length is optional — plenty of plates have no slots — but a plate
+    #: that *has* slots and no stated distance from the edge is under-specified,
+    #: and "near each corner" does not fix a position. Without this the gap
+    #: surfaced as a generator refusal after the interview had already declared
+    #: itself complete, which is the wrong end of the pipeline to discover a
+    #: question at.
+    requires: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -106,6 +115,7 @@ def _slots_of(block: dict) -> tuple[Slot, ...]:
             unit=spec.get("unit", "mm"),
             diameter=bool(spec.get("diameter")),
             text=bool(spec.get("text")),
+            requires=tuple(spec.get("requires") or ()),
         ))
     return tuple(out)
 
@@ -176,8 +186,22 @@ def missing(family: str, slots: dict) -> list[Slot]:
     fam = FAMILIES.get(family)
     if fam is None:
         return []
-    return [s for s in fam.required
-            if slots.get(s.name) is None or slots.get(s.name) == ""]
+
+    def absent(name: str) -> bool:
+        return slots.get(name) is None or slots.get(name) == ""
+
+    gaps = [s for s in fam.required if absent(s.name)]
+    # Conditionally required: a field only becomes necessary once the thing it
+    # qualifies has been asked for. Ordered after the unconditional ones so the
+    # interview establishes the envelope before the detail.
+    for s in fam.required + fam.optional:
+        if absent(s.name):
+            continue
+        for name in s.requires:
+            dep = fam.slot(name)
+            if dep is not None and absent(name) and dep not in gaps:
+                gaps.append(dep)
+    return gaps
 
 
 def question_for(slot: Slot) -> str:

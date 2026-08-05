@@ -20,7 +20,7 @@
 # "is anything missing" rule interrogates a plate about corner radii and lets a
 # bearing housing through with no bore.
 
-version: 1
+version: 2
 
 families:
 
@@ -38,10 +38,10 @@ families:
       hole_d:        {ask: "Mounting hole diameter?", diameter: true}
       pcd:           {ask: "Bolt circle diameter?", diameter: true}
       thread:        {ask: "Mounting thread size?", unit: "", text: true}
-      pocket_l:      {ask: "Pocket length?"}
+      pocket_l:      {ask: "Pocket length?", requires: [pocket_w, pocket_depth]}
       pocket_w:      {ask: "Pocket width?"}
       pocket_depth:  {ask: "Pocket depth?"}
-      slot_length:   {ask: "Mounting slot length?"}
+      slot_length:   {ask: "Mounting slot length?", requires: [slot_width, slot_edge_gap]}
       slot_width:    {ask: "Mounting slot width?"}
       slot_edge_gap: {ask: "How far are the slots from the plate edge?"}
       fillet:        {ask: "External fillet radius?"}
@@ -63,7 +63,7 @@ families:
       hole_d:         {ask: "Mounting hole diameter?", diameter: true}
       thread:         {ask: "Mounting thread size?", unit: "", text: true}
       bolt_square:    {ask: "Square bolt pattern spacing?"}
-      cbore_d:        {ask: "Counterbore diameter?", diameter: true}
+      cbore_d:        {ask: "Counterbore diameter?", diameter: true, requires: [cbore_depth]}
       cbore_depth:    {ask: "Counterbore depth?"}
       slot_length:    {ask: "Mounting slot length?"}
       slot_width:     {ask: "Mounting slot width?"}
@@ -85,7 +85,7 @@ families:
       bearing_series: {ask: "Which bearing series?", unit: "", text: true}
       mounting_type:  {ask: "Mounting style (foot or flange)?", unit: "", text: true}
       shoulder:       {ask: "Locating shoulder width?"}
-      recess_d:       {ask: "Flange recess diameter?", diameter: true}
+      recess_d:       {ask: "Flange recess diameter?", diameter: true, requires: [recess_depth]}
       recess_depth:   {ask: "Flange recess depth?"}
       hole_d:         {ask: "Mounting hole diameter?", diameter: true}
       thread:         {ask: "Mounting thread size?", unit: "", text: true}
@@ -107,9 +107,10 @@ families:
       port_thread:   {ask: "Port thread size?", unit: "", text: true}
       port_d:        {ask: "Port tapping drill diameter?", diameter: true}
       inlet_thread:  {ask: "Inlet thread size?", unit: "", text: true}
-      hole_d:        {ask: "Mounting hole diameter?", diameter: true}
+      hole_d:        {ask: "Mounting hole diameter?", diameter: true, requires: [hole_edge_gap]}
+      hole_edge_gap: {ask: "How far are the mounting holes from the block edge?"}
       thread:        {ask: "Mounting thread size?", unit: "", text: true}
-      cbore_d:       {ask: "Counterbore diameter?", diameter: true}
+      cbore_d:       {ask: "Counterbore diameter?", diameter: true, requires: [cbore_depth]}
       cbore_depth:   {ask: "Counterbore depth?"}
       fillet:        {ask: "External fillet radius?"}
       chamfer:       {ask: "Edge chamfer size?"}
