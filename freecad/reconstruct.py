@@ -1021,6 +1021,27 @@ def compile_graph(graph, doc_name="rebuilt", doc=None):
                         setattr(op, prop, params[prop])
                     except Exception:  # noqa: BLE001 - unknown enum member
                         pass
+            # Which way the extrusion goes. A sketch plane fixes an axis but
+            # not a sign, and FreeCAD picks the sign from the sketch normal —
+            # an XZ pad grows in -Y, a YZ pad in -X. A blind cut aimed at the
+            # wrong face therefore lands outside the solid and removes nothing,
+            # while the feature still recomputes clean and the build reports
+            # success: the failure is invisible except in the volume.
+            #
+            # ``Midplane`` splits the extrusion either side of the plane, which
+            # is the honest way to express a symmetric feature rather than
+            # offsetting the sketch by half and hoping.
+            #
+            # Both are read only when authored. A Blueprint that does not carry
+            # them is untouched by this, so every record in the corpus compiles
+            # to the same geometry as before.
+            for prop in ("Reversed", "Midplane"):
+                if prop in params:
+                    try:
+                        setattr(op, prop, bool(params[prop]))
+                    except Exception:  # noqa: BLE001 - property absent in this build
+                        report.setdefault("ignored", []).append(
+                            {"id": fid, "property": prop})
         elif ftype == "Hole":
             for prop in ("Diameter", "Depth", "DepthType", "DrillPoint",
                          "DrillPointAngle", "ThreadType", "Tapered"):

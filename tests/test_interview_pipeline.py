@@ -190,9 +190,78 @@ def test_the_bracket_motor_interface_is_exact():
     assert body["target_value"] == pytest.approx(envelope - cuts)
 
 
+def test_counterbores_are_a_thickness_split_not_a_cut():
+    """A counterbored plate is two slabs: a thin one at the face carrying the
+    large holes and the rest carrying the small ones.
+
+    Built as a blind Pocket it removed 56.65 mm3 against an expected 797.18 —
+    and that 56.65 was not counterbore at all, it was the two lower circles
+    clipping the top edge of the base plate. Stacked pads with holes in-profile
+    are exact and have no direction to get wrong.
+    """
+    import math
+
+    tall = dict(
+        base_length=160,
+        base_width=100,
+        base_thickness=12,
+        upright_height=140,
+        upright_thickness=12,
+        bore_d=47.14,
+        hole_d=5.5,
+        bolt_square=69.6,
+    )
+    plain = Blueprint.from_dict(interview.build(iv("l_bracket", **tall))).freeze()
+    bored = Blueprint.from_dict(
+        interview.build(iv("l_bracket", **tall, cbore_d=9.0, cbore_depth=5))
+    ).freeze()
+
+    def body(bp):
+        return next(a for a in bp.resolve_assertions() if a["kind"] == "body_volume")[
+            "target_value"
+        ]
+
+    annulus = 4 * math.pi * (4.5**2 - 2.75**2) * 5
+    assert body(plain) - body(bored) == pytest.approx(annulus)
+
+
+def test_a_counterbore_that_would_break_into_the_base_is_refused():
+    """The servo bracket as specified: bolt square 69.6 on a 100 tall upright
+    puts the lower counterbores at z=10.7, under a 12 mm base plate. The void
+    and the base would overlap and the volume has no closed form."""
+    with pytest.raises(blueprint_gen.GeneratorError, match="break into it"):
+        interview.build(
+            iv(
+                "l_bracket",
+                base_length=160,
+                base_width=100,
+                base_thickness=12,
+                upright_height=100,
+                upright_thickness=12,
+                bore_d=47.14,
+                hole_d=5.5,
+                bolt_square=69.6,
+                cbore_d=9.0,
+                cbore_depth=5,
+            )
+        )
+
+
 @pytest.mark.parametrize(
     "slots,why",
     [
+        # A counterbore with no hole to counterbore.
+        (dict(cbore_d=9.0, cbore_depth=5), "needs the hole it counterbores"),
+        # Deeper than the plate it is cut into.
+        (
+            dict(hole_d=5.5, bolt_square=69.6, cbore_d=9.0, cbore_depth=20),
+            "must be less than",
+        ),
+        # No larger than the hole, so it is not a counterbore at all.
+        (
+            dict(hole_d=5.5, bolt_square=69.6, cbore_d=5.5, cbore_depth=5),
+            "must exceed",
+        ),
         # Wider than the plate it is drilled in.
         (dict(bore_d=120.0), "does not fit the upright"),
         # Fits the plate, but reaches down into the base: the cylinders are no

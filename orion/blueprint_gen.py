@@ -323,38 +323,131 @@ def l_bracket(req: dict) -> dict:
                                  f"0 {sv} bolt_half", "hole_r"])
         cuts.append("4*pi*hole_r**2")
 
-    if up_holes:
-        up_profile = {"builder": "rect_with_holes",
-                      "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0",
-                               "holes": up_holes}}
-        volume = f"{volume} - ({' + '.join(cuts)})*UT"
-        derivation.append({
-            "step": len(derivation) + 1, "eq": f"V = {volume}",
-            "why": "pilot bore and mounting holes through the upright, cut in "
-                   "its own profile and clear of the base"})
-    else:
-        up_profile = {"builder": "rect",
-                      "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0"}}
+    # ---- counterbores, as a thickness split rather than a cut ------------- #
+    #
+    # A counterbored plate is two plates: a thin one at the face carrying the
+    # large holes, and the rest carrying the small ones. Built that way it is
+    # exact and uses only pads with holes in-profile, which is the one pattern
+    # that has never mis-cut here.
+    #
+    # It is not built as a blind Pocket because a blind Pocket does not reach
+    # this face. Measured, with the sketch on the mounting face and the cut
+    # aimed both ways: 56.65 mm3 removed against an expected 797.18, and that
+    # 56.65 was not counterbore at all — it was the two lower circles clipping
+    # the top edge of the base plate (a 5.70 mm2 segment, twice, 5 deep). The
+    # same sketch with ``ThroughAll`` removed 679.79, so the profile and its
+    # position are right and it is the blind depth that does not land.
+    # Approximating around that would put invisible error in the volume.
+    cbore_r = _num(req, "cbore_r")
+    cbore_depth = _num(req, "cbore_depth")
+    counterbored = False
+    if cbore_r and cbore_depth:
+        if not (hole_r and square):
+            raise GeneratorError(
+                "a counterbore needs the hole it counterbores; give the "
+                "mounting hole diameter and bolt pattern")
+        if cbore_r <= hole_r:
+            raise GeneratorError(
+                f"counterbore diameter {2*cbore_r} must exceed the "
+                f"{2*hole_r} mm hole it counterbores")
+        if cbore_depth >= UT:
+            raise GeneratorError(
+                f"counterbore depth {cbore_depth} must be less than the "
+                f"{UT} mm plate it is cut into")
+        if square / 2.0 + cbore_r >= BW / 2:
+            raise GeneratorError("counterbores run off the edge of the upright")
+        if UH / 2 - square / 2.0 - cbore_r <= BT:
+            low = UH / 2 - square / 2.0 - cbore_r
+            raise GeneratorError(
+                f"the lower counterbores reach down to z={low:.4g} and the "
+                f"base plate is {BT:g} thick, so they would break into it — "
+                f"the void and the base would overlap and the volume has no "
+                f"closed form. Raise the upright, tighten the bolt pattern, or "
+                f"reduce the counterbore diameter")
+        if bore_r and square / 2.0 - cbore_r <= bore_r:
+            raise GeneratorError(
+                "counterbores break into the pilot bore; that intersection has "
+                "no closed form here")
+        v["cbore_r"] = cbore_r
+        v["cbore_d"] = cbore_depth
+        counterbored = True
 
+    def _profile(hole_expr: Optional[str]) -> dict:
+        """The upright's section, with its mounting holes at one radius."""
+        if not up_holes:
+            return {"builder": "rect",
+                    "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0"}}
+        holes = [h if h[2] != "hole_r" or hole_expr is None
+                 else [h[0], h[1], hole_expr] for h in up_holes]
+        return {"builder": "rect_with_holes",
+                "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0",
+                         "holes": holes}}
+
+    section = " + ".join(cuts) if cuts else ""
     features = [
         {"id": "Body", "type": "Body", "parameters": {}},
         {"id": "s_base", "type": "Sketch", "parameters": {}},
         {"id": "base", "type": "Pad", "rationale": "base plate",
          "parameters": {"Length": "BT", "Type": "Length"}},
-        {"id": "s_upright", "type": "Sketch", "parameters": {}},
-        {"id": "upright", "type": "Pad",
-         "rationale": "vertical plate with the motor interface in-profile",
-         "parameters": {"Length": "UT", "Type": "Length"}},
     ]
     sketches = [
         {"id": "s_base", "plane": "XY",
          "profile": {"builder": "rect",
                      "args": {"w": "BL", "h": "BW", "cx": "BL/2", "cy": "0"}}},
-        # Placed at x = UT so the -X extrusion lands on x in [0, UT].
-        {"id": "s_upright", "plane": "YZ", "z": "UT", "profile": up_profile},
     ]
-    deps = [{"source": "s_base", "target": "base", "kind": "profile"},
-            {"source": "s_upright", "target": "upright", "kind": "profile"}]
+    deps = [{"source": "s_base", "target": "base", "kind": "profile"}]
+
+    if counterbored:
+        # Two stacked pads. Each YZ sketch sits at the far face of its own slab
+        # because a YZ pad grows in -X.
+        features += [
+            {"id": "s_upright", "type": "Sketch", "parameters": {}},
+            {"id": "upright", "type": "Pad",
+             "rationale": "vertical plate behind the counterbores",
+             "parameters": {"Length": "UT - cbore_d", "Type": "Length"}},
+            {"id": "s_face", "type": "Sketch", "parameters": {}},
+            {"id": "face", "type": "Pad",
+             "rationale": "the counterbored thickness at the motor face",
+             "parameters": {"Length": "cbore_d", "Type": "Length"}},
+        ]
+        sketches += [
+            {"id": "s_upright", "plane": "YZ", "z": "UT",
+             "profile": _profile("hole_r")},
+            {"id": "s_face", "plane": "YZ", "z": "cbore_d",
+             "profile": _profile("cbore_r")},
+        ]
+        deps += [{"source": "s_upright", "target": "upright", "kind": "profile"},
+                 {"source": "s_face", "target": "face", "kind": "profile"}]
+
+        back = f"(UH*BW - ({section}))*(UT - cbore_d)" if section \
+            else "UH*BW*(UT - cbore_d)"
+        front = ("(UH*BW - (pi*bore_r**2 + 4*pi*cbore_r**2))*cbore_d"
+                 if bore_r else "(UH*BW - 4*pi*cbore_r**2)*cbore_d")
+        volume = f"BL*BW*BT + {back} + {front} - UT*BW*BT"
+        derivation = [
+            {"step": 1, "eq": f"V = {volume}",
+             "why": "base plate, plus the upright as two slabs — the face slab "
+                    "carrying the counterbore diameter and the rest the hole "
+                    "diameter — less the corner box the base and upright share"},
+        ]
+    else:
+        features += [
+            {"id": "s_upright", "type": "Sketch", "parameters": {}},
+            {"id": "upright", "type": "Pad",
+             "rationale": "vertical plate with the motor interface in-profile",
+             "parameters": {"Length": "UT", "Type": "Length"}},
+        ]
+        sketches.append({"id": "s_upright", "plane": "YZ", "z": "UT",
+                         "profile": _profile("hole_r")})
+        deps.append({"source": "s_upright", "target": "upright",
+                     "kind": "profile"})
+        if section:
+            volume = f"{volume} - ({section})*UT"
+            derivation.append({
+                "step": len(derivation) + 1, "eq": f"V = {volume}",
+                "why": "pilot bore and mounting holes through the upright, cut "
+                       "in its own profile and clear of the base"})
+
 
     assertions = [
         _extent_assertion("len_extent", "x", "BL"),
