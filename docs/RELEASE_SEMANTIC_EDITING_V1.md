@@ -1,6 +1,7 @@
 # Semantic Editing V1 — Release Baseline
 
-Status: **backend shipped, frontend held pending visual QA. Not yet tagged.**
+Status: **RELEASED.** Backend and frontend both in production, tagged
+`semantic-editing-v1` at commit `9f72473`.
 Date: 2026-08-04.
 
 Depth on any section below: `docs/SEMANTIC_CAD_ARCHITECTURE.md`.
@@ -98,9 +99,14 @@ Tests: **1035 passing**, 1 skipped. Ruff, black, tsc, eslint all clean.
 |---|---|---|
 | `orionflow-builder` (Modal) | **deployed** | topology sidecar + `near:` selector live |
 | `orionflow-api` (Modal) | **deployed** | `build: 6e048fa-dirty`, 57 routes, 9 new |
-| Frontend (Vercel) | **held** | pending visual QA |
+| Frontend (Vercel) | **deployed** | `app.orionflow.in`, all new capabilities verified in the served bundle |
 | Database | healthy | `database_connected: true` |
 | Redis | **not connected** | pre-existing; unrelated to this release |
+
+Visual QA before the frontend shipped: **28 checks, 0 failed, 0 console errors**
+— face highlighting, hover, selection persistence, materials, camera, panel, and
+the Chamfer / Fillet / Draft / Thickness workflows each selecting, previewing,
+committing and rebuilding with a volume change matching the operation.
 
 Production smoke test: **24 checks, 0 failed.** Login → build (`verdict:
 verified`, `solids: 1`, `valid: true`) → topology → inspect → plan → commit
@@ -171,6 +177,7 @@ Ordered by impact, not difficulty. **No new CAD operations until these land.**
 - [x] Backend deployed — builder + API
 - [x] Production health verified
 - [x] Production smoke test — 24/24
-- [ ] **Visual QA** — blocked: Chrome extension not connected
-- [ ] Frontend deployed — gated on visual QA
-- [ ] Tagged `semantic-editing-v1` — gated on the above
+- [x] Visual QA — 28/28, headless Chromium via Playwright
+- [x] Frontend deployed — `app.orionflow.in`
+- [x] Tagged `semantic-editing-v1` — commit `9f72473`
+- [ ] Commit pushed to `origin/main` — **held, awaiting your go-ahead**
