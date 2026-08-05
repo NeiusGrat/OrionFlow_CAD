@@ -324,31 +324,122 @@ def test_the_perimeter_chamfer_corner_correction():
     )
 
 
-@pytest.mark.parametrize(
-    "extra",
-    [
-        dict(pocket_l=180, pocket_w=120, pocket_depth=6),
-        dict(slot_length=40, slot_width=14, slot_edge_gap=20),
-    ],
-)
-def test_a_chamfer_that_cannot_be_named_separately_is_refused(extra):
-    """A pocket and a slot carry straight horizontal edges of their own; the
-    selector would take them too and a chamfered slot flank has no closed form
-    here. Refused rather than applied to the wrong edges."""
-    with pytest.raises(
-        blueprint_gen.GeneratorError, match="cannot be named separately"
-    ):
-        interview.build(
-            iv("rect_plate", length=300, width=220, thickness=16, chamfer=3, **extra)
-        )
+TIER2 = [
+    # A chamfer whose selector also takes the straight edges of a pocket or a
+    # slot: more is chamfered than any closed form describes.
+    (
+        "rect_plate",
+        dict(
+            length=300,
+            width=220,
+            thickness=16,
+            chamfer=3,
+            pocket_l=180,
+            pocket_w=120,
+            pocket_depth=6,
+        ),
+        "pocket",
+    ),
+    (
+        "rect_plate",
+        dict(
+            length=300,
+            width=220,
+            thickness=16,
+            chamfer=3,
+            slot_length=40,
+            slot_width=14,
+            slot_edge_gap=20,
+        ),
+        "slot",
+    ),
+    # Bolt holes crossing the pocket wall share a region bounded by a circle
+    # and a straight edge.
+    (
+        "rect_plate",
+        dict(
+            length=300,
+            width=220,
+            thickness=16,
+            bore_d=90,
+            hole_count=8,
+            hole_d=11,
+            pcd=160,
+            pocket_l=180,
+            pocket_w=120,
+            pocket_depth=6,
+        ),
+        "cross the pocket wall",
+    ),
+    # An external fillet: each rounded corner is exact, the corner count is not.
+    ("rect_plate", dict(length=300, width=220, thickness=16, fillet=8), "fillet"),
+    # The servo bracket as specified — counterbores clipped by the base plate.
+    (
+        "l_bracket",
+        dict(
+            base_length=160,
+            base_width=100,
+            base_thickness=12,
+            upright_height=100,
+            upright_thickness=12,
+            bore_d=47.14,
+            hole_d=5.5,
+            bolt_square=69.6,
+            cbore_d=9.0,
+            cbore_depth=5,
+        ),
+        "circular segment",
+    ),
+    # Ports breaking into the passage: two perpendicular cylinders.
+    (
+        "manifold",
+        dict(length=180, width=90, height=45, passage_d=18, port_count=6, port_d=13.2),
+        "perpendicular cylinders",
+    ),
+]
 
 
-def test_an_external_fillet_on_a_plate_is_a_corner_radius():
-    """The same feature under two names. Accepting both would let a design
-    declare two different radii for one corner."""
-    with pytest.raises(blueprint_gen.GeneratorError, match="is a corner radius"):
-        interview.build(iv("rect_plate", length=300, width=220, thickness=16, fillet=8))
-    with pytest.raises(blueprint_gen.GeneratorError, match="give one"):
+@pytest.mark.parametrize("family,slots,reason", TIER2, ids=[t[2] for t in TIER2])
+def test_geometry_without_a_closed_form_drops_a_tier_rather_than_being_refused(
+    family, slots, reason
+):
+    """The part is right; only the prediction cannot be written.
+
+    Tier 1 is a closed form checked at 1e-6. Where the geometry admits none —
+    two perpendicular cylinders need elliptic integrals, a counterbore clipped
+    by a base plate leaves a segment whose analytic area was 0.32 mm3 out — the
+    volume claim becomes `body_mesh_converged`, which proves the tessellation
+    converges to OCC's own volume without claiming it matches a prediction.
+    Refusing these would reject buildable parts; inventing a nearly-right
+    closed form is what this module exists to prevent.
+    """
+    payload = interview.build(iv(family, **slots))
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+
+    assert body["kind"] == "body_mesh_converged"
+    assert body["tier"] == 2
+    assert "target" not in body, "a mesh claim must not also assert a value"
+    why = " ".join(payload["design_plan"]["no_closed_form"])
+    assert reason in why, f"the reason should name {reason!r}: {why}"
+
+    # The extents stay exact whatever happens to the volume.
+    assert any(
+        a["kind"] == "bbox_extent" and a["tier"] == 1 for a in payload["assertions"]
+    )
+
+
+def test_a_plain_part_keeps_the_stronger_claim():
+    """Dropping a tier must be the exception, not a general loosening."""
+    payload = interview.build(iv("rect_plate", length=300, width=220, thickness=16))
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+    assert body["kind"] == "body_volume" and body["tier"] == 1
+    assert "no_closed_form" not in payload["design_plan"]
+
+
+def test_a_corner_radius_and_an_external_fillet_are_not_both_accepted():
+    """One rounds the outline in the sketch where the area is exact; the other
+    rounds the same edges afterwards where it is not."""
+    with pytest.raises(blueprint_gen.GeneratorError, match="Give one"):
         interview.build(
             iv(
                 "rect_plate",
@@ -357,28 +448,6 @@ def test_an_external_fillet_on_a_plate_is_a_corner_radius():
                 thickness=16,
                 fillet=8,
                 corner_radius=8,
-            )
-        )
-
-
-def test_a_counterbore_that_would_break_into_the_base_is_refused():
-    """The servo bracket as specified: bolt square 69.6 on a 100 tall upright
-    puts the lower counterbores at z=10.7, under a 12 mm base plate. The void
-    and the base would overlap and the volume has no closed form."""
-    with pytest.raises(blueprint_gen.GeneratorError, match="break into it"):
-        interview.build(
-            iv(
-                "l_bracket",
-                base_length=160,
-                base_width=100,
-                base_thickness=12,
-                upright_height=100,
-                upright_thickness=12,
-                bore_d=47.14,
-                hole_d=5.5,
-                bolt_square=69.6,
-                cbore_d=9.0,
-                cbore_depth=5,
             )
         )
 
@@ -460,22 +529,6 @@ def test_a_pocket_over_a_through_hole_is_not_counted_twice():
     assert body["target_value"] == pytest.approx(plate - bore - pocket)
 
 
-def test_a_hole_straddling_the_pocket_wall_is_refused_not_approximated():
-    with pytest.raises(blueprint_gen.GeneratorError, match="straddles"):
-        interview.build(
-            iv(
-                "rect_plate",
-                length=300,
-                width=220,
-                thickness=16,
-                bore_d=190.0,
-                pocket_l=180,
-                pocket_w=120,
-                pocket_depth=6,
-            )
-        )
-
-
 # --------------------------------------------------------------------------- #
 # bearing housing and manifold: nothing extracted is silently ignored
 # --------------------------------------------------------------------------- #
@@ -536,16 +589,6 @@ def test_manifold_mounting_holes_and_counterbores_are_exact():
     )
     assert plain - holed == pytest.approx(4 * math.pi * 4.5**2 * 45)
     assert holed - bored == pytest.approx(4 * math.pi * (7.0**2 - 4.5**2) * 8)
-
-
-def test_a_port_breaking_into_the_passage_is_refused():
-    """Two perpendicular cylinders intersect in a solid needing elliptic
-    integrals. Stopping the port short builds a manifold that does not flow;
-    subtracting the whole cylinder over-removes by exactly the intersection."""
-    with pytest.raises(blueprint_gen.GeneratorError, match="no closed-form volume"):
-        interview.build(iv("manifold", **MANIFOLD, port_count=6, port_d=13.2))
-    with pytest.raises(blueprint_gen.GeneratorError, match="same reason"):
-        interview.build(iv("manifold", **MANIFOLD, inlet_thread="G3/8"))
 
 
 @pytest.mark.parametrize(
@@ -690,26 +733,8 @@ def test_the_gusset_fillet_adds_material():
                 upright_height=140,
                 upright_thickness=12,
             ),
-            dict(chamfer=2),
-            "outline is not a rectangle",
-        ),
-        (
-            "l_bracket",
-            dict(
-                base_length=160,
-                base_width=100,
-                base_thickness=12,
-                upright_height=140,
-                upright_thickness=12,
-            ),
             dict(inside_fillet=200),
             "taller than",
-        ),
-        (
-            "bearing_housing",
-            dict(length=160, width=80, height=60, bore_d=52.0, seat_depth=15),
-            dict(fillet=6),
-            "needs feet",
         ),
     ],
 )

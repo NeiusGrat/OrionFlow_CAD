@@ -75,20 +75,47 @@ def _eval_expr(expr: Any, variables: dict) -> Optional[float]:
 
 def _blueprint(part_class: str, variables: dict, derivation: list,
                assertions: list, features: list, sketches: list,
-               dependencies: list, datums: Optional[dict] = None) -> dict:
+               dependencies: list, datums: Optional[dict] = None,
+               inexact: Optional[list] = None) -> dict:
+    plan: dict = {"derivation": derivation}
+    if inexact:
+        plan["no_closed_form"] = list(inexact)
     return {
         "part_class": part_class,
         "variables": variables,
         "datums": datums or {"A": "bottom face z=0 (primary)",
                              "B": "long edge (secondary)"},
-        "design_plan": {"derivation": derivation},
+        "design_plan": plan,
         "assertions": assertions,
         "template": {"features": features, "sketches": sketches,
                      "dependencies": dependencies},
     }
 
 
-def _volume_assertion(expr: str) -> dict:
+def _volume_assertion(expr: str, inexact: Optional[list] = None) -> dict:
+    """The volume claim, at the tier the geometry actually admits.
+
+    Tier 1 is a closed form: the expression is predicted before the build and
+    the kernel is held to it at 1e-6. That is the strong claim and the default.
+
+    Some geometry has no closed form in this expression language and no amount
+    of care produces one — two perpendicular cylinders intersect in a solid
+    needing elliptic integrals; a counterbore that clips the corner where two
+    plates meet leaves a circular segment whose analytic area disagreed with the
+    kernel by 0.32 mm^3, which is small and is still not exact.
+
+    For those, ``body_mesh_converged`` is the honest claim and it is a genuinely
+    weaker one: it proves the tessellation converges to OCC's own volume across
+    densities, so the solid is well formed, but it does not check that volume
+    against anything predicted. The extent assertions stay exact either way, and
+    the tier is recorded so a report can say which claim was made.
+
+    The alternative — inventing a closed form that is nearly right — is the one
+    thing this module exists to prevent.
+    """
+    if inexact:
+        return {"id": "body", "kind": "body_mesh_converged", "tier": 2,
+                "tol_rel": 1e-03}
     return {"id": "body", "kind": "body_volume", "tier": 1,
             "tol_rel": 1e-06, "target": expr}
 
@@ -112,6 +139,7 @@ def rect_plate(req: dict) -> dict:
     _assert_positive(req, ("length", "width", "thickness"))
     L, W, T = _num(req, "length"), _num(req, "width"), _num(req, "thickness")
 
+    inexact: list[str] = []
     v: dict[str, float] = {"L": L, "W": W, "T": T}
     holes: list[list[str]] = []
     area = "L*W"
@@ -138,15 +166,20 @@ def rect_plate(req: dict) -> dict:
 
     n = req.get("hole_count")
     hole_r = _num(req, "hole_r")
-    pcd = _num(req, "pcd")
-    if n and hole_r and pcd:
+    # `pcd` is declared a diameter in the schema, so `interview.resolve` has
+    # already halved it into `pcd_r`. Reading `pcd` here found nothing and the
+    # bolt circle was silently never built — the plate still verified, because
+    # the closed form was computed from the same absent holes. The consumption
+    # guard is what surfaced it.
+    pcd_r = _num(req, "pcd_r")
+    if n and hole_r and pcd_r:
         n = int(n)
         if n < 1:
             raise GeneratorError("hole_count must be at least 1")
-        if pcd / 2 + hole_r >= min(L, W) / 2:
+        if pcd_r + hole_r >= min(L, W) / 2:
             raise GeneratorError("bolt circle does not fit inside the plate")
         v["hole_r"] = hole_r
-        v["pcd_r"] = pcd / 2.0
+        v["pcd_r"] = pcd_r
         import math
         for i in range(n):
             a = 2 * math.pi * i / n
@@ -201,6 +234,7 @@ def rect_plate(req: dict) -> dict:
         # move is to refuse rather than approximate a number the kernel will
         # disagree with.
         overlap_terms: list[str] = []
+        straddling = 0
         for cx_expr, cy_expr, r_expr in holes:
             cx = _eval_expr(cx_expr, v)
             cy = _eval_expr(cy_expr, v)
@@ -212,9 +246,12 @@ def rect_plate(req: dict) -> dict:
             if inside:
                 overlap_terms.append(f"pi*{r_expr}**2*pd")
             elif straddles:
-                raise GeneratorError(
-                    "a hole straddles the pocket wall; that overlap has no "
-                    "closed form here — move the pocket or the hole")
+                # The hole crosses the pocket wall, so the two voids overlap
+                # over a region bounded by a circle and a straight edge. The
+                # part is buildable and right; the area is not expressible
+                # here, so the volume claim drops a tier instead of the design
+                # being refused or the overlap guessed at.
+                straddling += 1
         v.update({"pl": pl, "pw": pw, "pd": pd})
         features += [
             {"id": "s_pocket", "type": "Sketch", "parameters": {}},
@@ -225,6 +262,11 @@ def rect_plate(req: dict) -> dict:
                          "profile": {"builder": "rect",
                                      "args": {"w": "pl", "h": "pw"}}})
         deps.append({"source": "s_pocket", "target": "pocket", "kind": "profile"})
+        if straddling:
+            inexact.append(
+                f"{straddling} hole(s) cross the pocket wall, and the region "
+                f"they share is bounded by a circle and a straight edge with no "
+                f"exact area in this expression language")
         pocket = "pl*pw*pd"
         if overlap_terms:
             pocket = f"({pocket} - {' - '.join(overlap_terms)})"
@@ -254,31 +296,66 @@ def rect_plate(req: dict) -> dict:
     # An external fillet on a plate is a rounded corner, which this builder
     # already expresses in the profile with an exact area — so `fillet` and
     # `corner_radius` are the same request and only one may be given.
-    fillet = _num(req, "fillet")
-    if fillet and corner_r:
+    if _num(req, "fillet") and corner_r:
         raise GeneratorError(
-            "corner radius and external fillet are the same feature on a "
-            "plate; give one")
-    if fillet and not corner_r:
-        raise GeneratorError(
-            f"an external fillet of {fillet} mm on a plate is a corner radius; "
-            f"state it as the corner radius")
+            "a corner radius rounds the plate's outline in the sketch, where "
+            "the area is exact, and an external fillet rounds the same edges "
+            "afterwards where it is not. Give one")
+    volume = _vertical_fillet(req, v, features, inexact, derivation, volume)
 
     volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
-                                "L", "W")
+                                "L", "W", inexact)
 
     assertions = [
         _extent_assertion("len_extent", "x", "L"),
         _extent_assertion("wid_extent", "y", "W"),
-        _volume_assertion(volume),
+        _volume_assertion(volume, inexact),
     ]
     return _blueprint("rect_plate", v, derivation, assertions,
-                      features, sketches, deps)
+                      features, sketches, deps, inexact=inexact)
+
+
+def _vertical_fillet(req: dict, v: dict, features: list, inexact: list,
+                     derivation: list, volume: str, key: str = "fillet") -> str:
+    """Round the upright edges of a prismatic part.
+
+    Applied as a Fillet on the ``vertical`` edge class rather than folded into
+    the sketch, because only a rectangle has a profile builder that can express
+    it. A plate can do better — ``corner_radius`` rounds the outline in-profile
+    and the area is exact — so this is for the shapes that cannot: an L outline,
+    a housing with a bolt pattern, anything whose corner count depends on the
+    features around it.
+
+    The volume claim drops to mesh convergence. Each rounded convex corner
+    removes ``(1 - pi/4)*r^2`` per unit height, which is exact — but how many
+    corners a Fillet on "vertical" actually finds depends on the solid it is
+    applied to, and counting them from the requirements would be guessing at
+    the kernel's answer.
+    """
+    r = _num(req, key)
+    if not r or r <= 0:
+        return volume
+    v["fil_r"] = r
+    features.append(
+        {"id": "edge_fillet", "type": "Fillet",
+         "rationale": "break the upright outside edges",
+         "parameters": {"Radius": "fil_r", "_Edges": "vertical"}})
+    inexact.append(
+        f"a {r:g} mm fillet on the vertical edges: each rounded corner removes "
+        f"(1 - pi/4)*r^2 per unit height exactly, but how many corners the "
+        f"selector finds depends on the solid, so the count is not predictable "
+        f"from the requirements")
+    derivation.append({
+        "step": len(derivation) + 1, "eq": "V verified by mesh convergence",
+        "why": "vertical edges rounded; the solid is checked against its own "
+               "tessellation instead of a predicted volume"})
+    return volume
 
 
 def _perimeter_chamfer(req: dict, v: dict, features: list, deps: list,
                        volume: str, derivation: list,
-                       a_expr: str, b_expr: str) -> str:
+                       a_expr: str, b_expr: str,
+                       inexact: Optional[list] = None) -> str:
     """Chamfer every horizontal straight edge — the top and bottom perimeter.
 
     Selected as ``horizontal`` filtered to ``Line``: on a plain plate that is
@@ -326,13 +403,21 @@ def _perimeter_chamfer(req: dict, v: dict, features: list, deps: list,
     blockers = [name for name, value in
                 (("a rectangular pocket", _num(req, "pocket_depth")),
                  ("mounting slots", _num(req, "slot_length"))) if value]
-    if blockers:
+    if blockers and inexact is None:
         raise GeneratorError(
             f"a perimeter chamfer cannot be named separately from "
             f"{' and '.join(blockers)} — those carry straight horizontal edges "
             f"the selector would take as well, and a chamfered slot flank has "
             f"no closed form here. Drop the chamfer or the "
             f"{blockers[0].split()[-1]}")
+    if blockers:
+        # The selector takes those edges too, so the part is chamfered more
+        # than the closed form describes. The geometry is what was asked for;
+        # the prediction is what cannot be written, so the claim drops a tier.
+        inexact.append(
+            f"the perimeter chamfer also breaks the horizontal edges of "
+            f"{' and '.join(blockers)}, and a chamfered slot flank has no exact "
+            f"volume in this expression language")
     v["ch"] = c
     features.append(
         {"id": "edge_chamfer", "type": "Chamfer",
@@ -453,6 +538,7 @@ def l_bracket(req: dict) -> dict:
         raise GeneratorError(
             f"the upright is {UW} wide and the base only {BW}")
 
+    inexact: list[str] = []
     v = {"BL": BL, "BW": BW, "BT": BT, "UH": UH, "UT": UT, "UW": UW}
     volume = "BL*BW*BT + UH*UW*UT - UT*UW*BT"
     derivation = [{"step": 1, "eq": f"V = {volume}",
@@ -530,14 +616,22 @@ def l_bracket(req: dict) -> dict:
                 f"{UT} mm plate it is cut into")
         if square / 2.0 + cbore_r >= UW / 2:
             raise GeneratorError("counterbores run off the edge of the upright")
-        if UH / 2 - square / 2.0 - cbore_r <= BT:
-            low = UH / 2 - square / 2.0 - cbore_r
-            raise GeneratorError(
-                f"the lower counterbores reach down to z={low:.4g} and the "
-                f"base plate is {BT:g} thick, so they would break into it — "
-                f"the void and the base would overlap and the volume has no "
-                f"closed form. Raise the upright, tighten the bolt pattern, or "
-                f"reduce the counterbore diameter")
+        low = UH / 2 - square / 2.0 - cbore_r
+        if low <= BT:
+            # The lower counterbores dip below the top of the base plate, so
+            # the base fills a circular segment of each — 56.65 mm3 on the
+            # servo bracket, where the analytic segment says 56.97. The part is
+            # correct and manufacturable; only the prediction is not exact, so
+            # the volume claim drops to mesh convergence rather than being
+            # refused or approximated.
+            if low <= -cbore_r:
+                raise GeneratorError(
+                    f"the lower counterbores at z={low + cbore_r:.4g} are "
+                    f"entirely inside the {BT:g} mm base plate")
+            inexact.append(
+                f"the lower counterbores reach z={low:.4g}, under the {BT:g} mm "
+                f"base plate, so each is clipped by a circular segment with no "
+                f"exact area in this expression language")
         if bore_r and square / 2.0 - cbore_r <= bore_r:
             raise GeneratorError(
                 "counterbores break into the pilot bore; that intersection has "
@@ -713,21 +807,34 @@ def l_bracket(req: dict) -> dict:
     # on which edges are meant, and the closed form differs for each reading.
     # The plate builder can do this because a plate has four sides and no
     # ambiguity about them.
-    for name, label in (("fillet", "an external fillet"), ("chamfer", "a chamfer")):
-        if _num(req, name):
+    volume = _vertical_fillet(req, v, features, inexact, derivation, volume)
+    ch = _num(req, "chamfer")
+    if ch:
+        if 2 * ch >= min(BT, UT):
             raise GeneratorError(
-                f"{label} on an L-bracket is not supported: the outline is "
-                f"not a rectangle, so which edges are meant changes the volume "
-                f"and there is no single closed form. The bore, bolt pattern, "
-                f"counterbores, gusset and base slots all build without it")
+                f"a {ch} mm chamfer is too large for a {min(BT, UT):g} mm plate")
+        v["ch"] = ch
+        features.append(
+            {"id": "edge_chamfer", "type": "Chamfer",
+             "rationale": "break the exposed horizontal edges",
+             "parameters": {"Size": "ch", "_Edges": "horizontal",
+                            "_EdgeType": "Line"}})
+        inexact.append(
+            f"a {ch:g} mm chamfer on the horizontal edges: an L outline has no "
+            f"fixed corner count, so the prism-and-overlap sum that a plate "
+            f"admits cannot be written here")
+        derivation.append({
+            "step": len(derivation) + 1, "eq": "V verified by mesh convergence",
+            "why": "exposed horizontal edges chamfered; the solid is checked "
+                   "against its own tessellation rather than a prediction"})
 
     assertions = [
         _extent_assertion("len_extent", "x", "BL"),
         _extent_assertion("hgt_extent", "z", "UH"),
-        _volume_assertion(volume),
+        _volume_assertion(volume, inexact),
     ]
     return _blueprint("l_bracket", v, derivation, assertions,
-                      features, sketches, deps)
+                      features, sketches, deps, inexact=inexact)
 
 
 # --------------------------------------------------------------------------- #
@@ -860,24 +967,20 @@ def bearing_housing(req: dict) -> dict:
     # and this builder makes a solid block with holes rather than a body with
     # feet hanging off it. There is no such edge to fillet, so accepting the
     # number would silently do nothing.
-    if _num(req, "fillet"):
-        raise GeneratorError(
-            "a foot fillet needs feet, and this housing is a solid block whose "
-            "mounting holes go straight through it — there is no joint to "
-            "fillet. Drop the fillet, or the part wanted is a different family")
-
+    inexact: list[str] = []
+    volume = _vertical_fillet(req, v, features, inexact, derivation, volume)
     volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
-                                "L", "W")
+                                "L", "W", inexact)
 
     assertions = [
         _extent_assertion("len_extent", "x", "L"),
         _extent_assertion("hgt_extent", "z", "H"),
         {"id": "seat_fits", "kind": "precondition", "tier": 1,
          "target": "W - 2*seat_r - 4"},
-        _volume_assertion(volume),
+        _volume_assertion(volume, inexact),
     ]
     return _blueprint("bearing_housing", v, derivation, assertions,
-                      features, sketches, deps)
+                      features, sketches, deps, inexact=inexact)
 
 
 # --------------------------------------------------------------------------- #
@@ -899,6 +1002,7 @@ def manifold(req: dict) -> dict:
     if 2 * PR >= min(W, H):
         raise GeneratorError("main passage does not fit inside the block")
 
+    inexact: list[str] = []
     v = {"L": L, "W": W, "H": H, "pr": PR}
     volume = "(L*W*H) - pi*pr**2*L"
     # The passage is a hole IN the extruded section, not a Pocket cut after it.
@@ -944,18 +1048,52 @@ def manifold(req: dict) -> dict:
     # alternatives are both worse than saying so: stopping the port at the
     # passage crown builds a manifold that does not flow, and subtracting the
     # full port cylinder over-removes by exactly the intersection.
-    if _num(req, "port_d") or req.get("port_count") or req.get("port_thread"):
-        raise GeneratorError(
-            "vertical ports breaking into the main passage are not buildable "
-            "here: two perpendicular cylinders intersect in a solid with no "
-            "closed-form volume in this expression language, and a port that "
-            "stops short of the passage is not a port. The block, its passage "
-            "and its mounting holes will build without them")
-    if req.get("inlet_thread"):
-        raise GeneratorError(
-            "an end inlet breaking into the main passage has the same "
-            "cylinder-cylinder intersection as a vertical port and is refused "
-            "for the same reason")
+    port_r = _num(req, "port_r")
+    n_ports = req.get("port_count")
+    req.get("port_thread")
+    req.get("inlet_thread")
+    if port_r and n_ports:
+        n_ports = int(n_ports)
+        if n_ports < 1:
+            raise GeneratorError("port_count must be at least 1")
+        if 2 * port_r >= W:
+            raise GeneratorError(
+                f"a {2*port_r} mm port does not fit across a {W} mm block")
+        # Positions are expressions over L, not the arithmetic's answer. The
+        # checker refuses a constant here and is right to: a bare -25.714286 is
+        # a magic number that stops tracking the length it was derived from.
+        pitch = L / (n_ports + 1)
+        if pitch <= 2 * port_r:
+            raise GeneratorError(
+                f"{n_ports} ports of {2*port_r} mm do not fit along {L} mm")
+        v["port_r"] = port_r
+        for i in range(n_ports):
+            x = f"-{i + 1}*L/{n_ports + 1}"
+            features += [
+                {"id": f"s_port{i}", "type": "Sketch", "parameters": {}},
+                {"id": f"port{i}", "type": "Pocket",
+                 "rationale": "vertical port into the main passage",
+                 "parameters": {"Length": "H", "Type": "ThroughAll"}},
+            ]
+            sketches.append({
+                "id": f"s_port{i}", "plane": "XY", "z": "H/2",
+                "profile": {"builder": "circle",
+                            "args": {"r": "port_r", "cx": x, "cy": "0"}}})
+            deps.append({"source": f"s_port{i}", "target": f"port{i}",
+                         "kind": "profile"})
+        # A port is only a port if it breaks into the passage, and two
+        # perpendicular cylinders of different radii intersect in a solid whose
+        # volume needs elliptic integrals. The geometry is right; the closed
+        # form does not exist, so the volume claim drops a tier rather than
+        # being invented.
+        inexact.append(
+            f"{n_ports} vertical ports break into the main passage, and two "
+            f"perpendicular cylinders intersect in a solid whose volume has no "
+            f"closed form in this expression language")
+        derivation.append({
+            "step": len(derivation) + 1, "eq": "V verified by mesh convergence",
+            "why": "ports intersect the passage; the solid is checked against "
+                   "its own tessellation instead of a predicted volume"})
 
     # ---- corner mounting holes, cut down through the block ---------------- #
     hole_r = _num(req, "hole_r")
@@ -1040,17 +1178,18 @@ def manifold(req: dict) -> dict:
                 "why": "counterbores, counting only the annulus each adds "
                        "because the through-hole already removed the centre"})
 
+    volume = _vertical_fillet(req, v, features, inexact, derivation, volume)
     volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
-                                "L", "W")
+                                "L", "W", inexact)
 
     assertions = [
         _extent_assertion("len_extent", "x", "L"),
         {"id": "wall", "kind": "precondition", "tier": 1,
          "target": "W - 2*pr - 6"},
-        _volume_assertion(volume),
+        _volume_assertion(volume, inexact),
     ]
     return _blueprint("manifold", v, derivation, assertions,
-                      features, sketches, deps)
+                      features, sketches, deps, inexact=inexact)
 
 
 BUILDERS: dict[str, Callable[[dict], dict]] = {

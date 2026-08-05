@@ -229,23 +229,34 @@ def resolve(family: str, slots: dict) -> dict:
     return out
 
 
-def apply_standards(slots: dict) -> tuple[dict, list[str]]:
+def apply_standards(slots: dict, family: str = "") -> tuple[dict, list[str]]:
     """Turn named threads into dimensions from the tables above.
 
     Returns the slots plus a note for every substitution, so a user can see
     that 9.0 mm came from ISO 273 and not from a model's recollection.
+
+    Only fills fields the family actually declares. Naming M10 in a request
+    otherwise handed a counterbore diameter to a bearing housing that has no
+    counterbore, and the generator then reported a feature the user never asked
+    for as unbuildable — a standards lookup inventing work.
     """
+    fam = FAMILIES.get(family) if family else None
+
+    def wanted(name: str) -> bool:
+        return fam is None or fam.slot(name) is not None
+
     out = dict(slots)
     notes: list[str] = []
     thread = str(out.get("thread") or out.get("hole_thread") or "").upper()
-    if thread in CLEARANCE and out.get("hole_d") is None:
+    if thread in CLEARANCE and out.get("hole_d") is None and wanted("hole_d"):
         out["hole_d"] = CLEARANCE[thread]
         notes.append(f"{thread} clearance hole = {CLEARANCE[thread]} mm (ISO 273 medium)")
-    if thread in COUNTERBORE and out.get("cbore_d") is None:
+    if (thread in COUNTERBORE and out.get("cbore_d") is None
+            and wanted("cbore_d")):
         out["cbore_d"] = COUNTERBORE[thread]
         notes.append(f"{thread} counterbore = {COUNTERBORE[thread]} mm (ISO 7046)")
     port = str(out.get("port_thread") or "").upper().replace(" ", "")
-    if port in TAPPING and out.get("port_d") is None:
+    if port in TAPPING and out.get("port_d") is None and wanted("port_d"):
         out["port_d"] = TAPPING[port]
         notes.append(f"{port} tapping drill = {TAPPING[port]} mm (ISO 228)")
     return out, notes
@@ -408,7 +419,7 @@ def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Intervi
     )
     raw = _json_of(got.content) or {}
     slots = _known_slots(family, raw if isinstance(raw, dict) else {})
-    slots, notes = apply_standards(slots)
+    slots, notes = apply_standards(slots, family)
     return Interview(request=request, family=family, slots=slots, notes=notes)
 
 
@@ -432,7 +443,7 @@ def answer(iv: Interview, slot_name: str, value: Any) -> Interview:
     a part that satisfies neither.
     """
     iv.slots[slot_name] = value
-    iv.slots, notes = apply_standards(iv.slots)
+    iv.slots, notes = apply_standards(iv.slots, iv.family)
     for n in notes:
         if n not in iv.notes:
             iv.notes.append(n)
