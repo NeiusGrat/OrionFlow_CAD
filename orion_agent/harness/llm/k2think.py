@@ -14,6 +14,7 @@ this adapter without touching the loop.
 from __future__ import annotations
 
 import json
+import os
 from typing import Optional
 
 from orion_agent.shared.config import get_config
@@ -26,15 +27,53 @@ _USER_AGENT = (
 )
 
 
+def _usage_of(body: dict) -> dict:
+    usage = body.get("usage", {}) or {}
+    return {
+        "prompt_tokens": usage.get("prompt_tokens", 0),
+        "completion_tokens": usage.get("completion_tokens", 0),
+        "total_tokens": usage.get("total_tokens", 0),
+    }
+
+
 class K2ThinkClient(LLMClient):
     supports_vision = False            # text-only reasoning model
     supports_native_tools = False      # tool calls via prompt protocol
 
+    #: This vendor's own settings, used when it is not the configured provider.
+    #:
+    #: Reading ``cfg.llm.*`` unconditionally is what broke the fallback. Those
+    #: fields describe *the configured provider* — with vLLM primary they hold
+    #: the self-hosted endpoint and the model name ``orionflow``. So the
+    #: fallback posted a request for our fine-tune to the very GPU whose being
+    #: unreachable is the only reason a fallback runs at all, and the studio had
+    #: no working model the moment that box went down.
+    #:
+    #: When k2think *is* the configured provider the generic names still win, so
+    #: an existing deployment that points ORION_LLM_BASE_URL at k2think is
+    #: unaffected.
+    _ENDPOINT = "https://api.k2think.ai/v1/chat/completions"
+    _MODEL = "MBZUAI-IFM/K2-Think-v2"
+
     def __init__(self, config=None):
         cfg = (config or get_config()).llm
-        self.base_url = cfg.base_url
-        self.api_key = cfg.api_key
-        self.model = cfg.model
+        own = cfg.provider == "k2think"
+
+        def _own(name: str, default: str) -> str:
+            return os.environ.get(name) or default
+
+        self.base_url = (
+            cfg.base_url if own and cfg.base_url
+            else _own("K2THINK_BASE_URL", self._ENDPOINT)
+        )
+        self.api_key = (
+            cfg.api_key if own and cfg.api_key
+            else _own("K2THINK_API_KEY", cfg.api_key)
+        )
+        self.model = (
+            cfg.model if own and cfg.model
+            else _own("K2THINK_MODEL", self._MODEL)
+        )
         self.default_temperature = cfg.temperature
         self.default_max_tokens = cfg.max_tokens
         self.timeout = cfg.request_timeout
@@ -169,26 +208,45 @@ class K2ThinkClient(LLMClient):
     def _parse(self, body: dict) -> LLMResponse:
         try:
             choice = body["choices"][0]
-            raw_content = choice["message"]["content"] or ""
+            message = choice["message"]
             finish = choice.get("finish_reason", "stop")
         except (KeyError, IndexError, TypeError):
-            return LLMResponse(content="[k2think: malformed response]", finish_reason="error", raw=body)
+            return LLMResponse(
+                content="[k2think: malformed response]", finish_reason="error", raw=body
+            )
 
-        thinking, answer = self._split_reasoning(raw_content)
+        # K2-Think v2 returns the derivation in its own ``reasoning`` field and
+        # omits ``content`` entirely when the token budget ran out mid-thought.
+        # Requiring ``content`` therefore reported a working endpoint as
+        # malformed, which reads as "the vendor is broken" rather than "ask for
+        # more tokens". v1 inlined the reasoning in ``content``, so both shapes
+        # are accepted: an explicit field wins, otherwise fall back to splitting.
+        raw_content = message.get("content") or ""
+        field_reasoning = (message.get("reasoning") or "").strip()
+        if field_reasoning:
+            thinking, answer = field_reasoning, raw_content.strip()
+        else:
+            thinking, answer = self._split_reasoning(raw_content)
+
+        if not answer and thinking and finish == "length":
+            # All budget went to the derivation. Say so — an empty string here
+            # is indistinguishable from a model that had nothing to add.
+            return LLMResponse(
+                content="",
+                thinking=thinking,
+                finish_reason="length",
+                raw=body,
+                usage=_usage_of(body),
+            )
         tool_calls = tool_protocol.parse_tool_calls(answer)
         clean = tool_protocol.strip_tool_calls(answer)
-        usage = body.get("usage", {}) or {}
         return LLMResponse(
             content=clean,
             thinking=thinking,
             tool_calls=tool_calls,
             finish_reason="tool_calls" if tool_calls else finish,
             raw=body,
-            usage={
-                "prompt_tokens": usage.get("prompt_tokens", 0),
-                "completion_tokens": usage.get("completion_tokens", 0),
-                "total_tokens": usage.get("total_tokens", 0),
-            },
+            usage=_usage_of(body),
         )
 
     @staticmethod
