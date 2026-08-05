@@ -250,22 +250,30 @@ Face count is not the driver of attribution quality — **operation mix is**. A
 
 ## 8. Known limitations
 
-### Solid validity and solid count gate nothing (open — highest priority)
+### ~~Solid validity and solid count gate nothing~~ (CLOSED 2026-08-05)
 
-`measured` records `valid` (OCC's `isValid()`) and `solids`. Neither counts
-towards the verdict. The mechanism to change that exists —
-`orion_physical_ai/verify.py::solid_validity_checks`, behind
-`COUNT_SOLID_VALIDITY = False` — and is deliberately off, because turning it on
-changes what VERIFIED means and every published number (the live 88%, the
-fine-tune's 95.3% and 94.0%) was measured under the current definition.
+`measured` records `valid` (OCC's `isValid()`) and `solids`. Both now count
+towards the verdict via `orion_physical_ai/verify.py::solid_validity_checks`,
+which emits `solid:valid` and `solid:count` on every build, authored assertions
+or not. `None` still means unknown, never failure.
 
-**This is not theoretical and it has now cost real time.** A benchmark enclosure
-built fillet-then-shell came back `solids: 14, valid: false`, with no recompute
-errors, and was used as a legitimate result — producing a documented "limitation"
-that did not exist. The panel now *displays* solids and kernel validity so the
-failure is visible, but nothing refuses on it.
+**It was not theoretical and it cost real time.** A benchmark enclosure built
+fillet-then-shell came back `solids: 14, valid: false`, with no recompute
+errors, and was used as a legitimate result — producing a documented
+"limitation" that did not exist.
 
-Deciding this needs a re-measurement of the published figures, not a flag flip.
+**`COUNT_SOLID_VALIDITY = True` was not the fix.** `solid_validity_checks`
+grades out of the dict it is handed, and `blueprint_service` passed it
+`{volume_cm3, bbox_mm}` — a missing key reads as "never measured", so the checks
+returned `[]`. The flag could have been flipped and the gate would have stayed
+open, with no test failing to say so, because every integration test mocks the
+build out. The observations are now built by `blueprint_service.observations()`
+and a test drives that function directly.
+
+Re-measured before enabling: **200/200 on the pinned production kernel**, zero
+reclassified (`python deploy/verify_builder.py --n 200`). That harness also
+scored assertions alone and would have reported the old definition while
+production served the new one; it now applies the same solid checks.
 
 ### `Thickness` on a filleted solid produces an invalid shape
 
@@ -352,9 +360,10 @@ enter the history the user steps back through. A commit crosses over via
 
 Ordered by what unblocks the most:
 
-1. **Decide what VERIFIED means.** Re-measure the published figures with
-   `COUNT_SOLID_VALIDITY = True`, then turn it on. Until then a part can be
-   invalid, or in fourteen pieces, and still be VERIFIED.
+1. **Wire the engineering calculators into verification.** VERIFIED is now a
+   sound *geometric* claim; it is still not an engineering one. `orion/calc.py`
+   exposes ten calculators behind a `run()` dispatcher and none are reachable
+   from the live build path.
 2. **Delete / reorder features.** Add is done; removing a feature that later
    ones depend on is the hard half and is not started.
 3. **Editable profile geometry.** Expose `polyline` points so revolved and

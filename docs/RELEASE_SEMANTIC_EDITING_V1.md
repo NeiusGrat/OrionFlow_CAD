@@ -113,9 +113,12 @@ verified`, `solids: 1`, `valid: true`) → topology → inspect → plan → com
 (volume matched the closed form to 0.1 mm³) → chamfer → all five artifacts
 downloaded → manifest verified with builder SHA and kernel version.
 
-**Kernel skew noted:** production FreeCAD is **1.1.0** (conda-forge), local is
-**1.1.1**. Everything measured locally was on 1.1.1. The manifest records which
-built each part — this is what that field is for.
+**Kernel skew — pinned 2026-08-05.** The container install was unversioned;
+conda-forge resolved it to **1.1.0** at first build and now resolves to 1.1.3,
+so any rebuild would have moved the kernel silently. Now pinned to `1.1.0` in
+`deploy/modal_builder.py`, asserted by `verify_builder.py`. Local remains
+**1.1.1**, which conda-forge does not ship at all — so the authoritative
+benchmark runs against the container, not the laptop.
 
 Test account left in the production database:
 `smoke+1785861469@orionflow-qa.com`.
@@ -124,20 +127,16 @@ Test account left in the production database:
 
 ## 5. Known limitations
 
-**Solid validity gates nothing — highest priority.** `measured.valid` and
-`measured.solids` are recorded and count towards no verdict. A part can be
-invalid, or in fourteen disconnected pieces, and be VERIFIED. The mechanism
-exists (`COUNT_SOLID_VALIDITY`, off) but enabling it redefines VERIFIED and
-invalidates every published figure (live 88%, fine-tune 95.3% / 94.0%). Treat as
-a milestone with a full benchmark re-run, not a config change. Interim: the
-panel now displays `solids` and `kernel check`.
+**~~Solid validity gates nothing~~ — FIXED 2026-08-05** (`b0772da`).
+`solid:valid` and `solid:count` now run on every build and count towards the
+verdict; re-measured at 200/200 on the pinned production kernel first, with no
+sample reclassified. Note the flag was not the fix — the live path handed the
+grader a dict without those keys, so enabling it alone was a no-op. See
+`tests/test_solid_validity.py`.
 
 **`Thickness` after `Fillet` produces an invalid solid.** Bisected on 1.1.1.
-Shell first, then fillet. The compiler does not warn about order.
-
-**Frontend visually unverified.** The viewer overhaul, per-face highlighting and
-panel rewrite have never been rendered in a browser. This is why the frontend is
-not deployed.
+Shell first, then fillet. The compiler does not warn about order. Now *caught*
+rather than silently passed, but still not prevented.
 
 **Not implemented:** delete / reorder features; Hole, Pocket, Boss, Rib,
 Pattern, Mirror; assemblies (the `#o1` occurrence level exists and is unused);
@@ -152,12 +151,14 @@ that is buildable regardless of model quality.
 
 Ordered by impact, not difficulty. **No new CAD operations until these land.**
 
-1. **Wire the engineering calculators into verification.** 17 calculators are
-   currently unreachable. This converts VERIFIED from a geometric claim into an
-   engineering one, which is the whole product promise — and is the cheapest
-   item here because the calculators already exist.
-2. **Decide what VERIFIED means.** Re-measure with `COUNT_SOLID_VALIDITY = True`,
-   then enable it. Pairs naturally with item 1.
+1. **Wire the engineering calculators into verification.** `orion/calc.py`
+   exposes ten behind a `run()` dispatcher and the graph audit found none
+   reachable from the live build path. This converts VERIFIED from a geometric
+   claim into an engineering one, which is the whole product promise — and is
+   the cheapest item here because the calculators already exist.
+2. ~~**Decide what VERIFIED means.**~~ Done 2026-08-05: solid soundness counts,
+   re-measured at 200/200 on the production kernel first. VERIFIED is still a
+   *geometric* claim — item 1 is what makes it an engineering one.
 3. **Structural editing.** Delete and reorder, with dependency analysis and
    honest contract-impact reporting. Add is done; removing a feature that later
    ones depend on is the hard half.
@@ -180,4 +181,12 @@ Ordered by impact, not difficulty. **No new CAD operations until these land.**
 - [x] Visual QA — 28/28, headless Chromium via Playwright
 - [x] Frontend deployed — `app.orionflow.in`
 - [x] Tagged `semantic-editing-v1` — commit `9f72473`
-- [ ] Commit pushed to `origin/main` — **held, awaiting your go-ahead**
+- [x] Commit pushed to `origin/main` — 2026-08-05, with the tag
+
+### Post-release, 2026-08-05
+
+- [x] Kernel pinned — `freecad=1.1.0`, container asserted to match
+- [x] Solid soundness gates the verdict — `solid:valid` + `solid:count`
+- [x] Re-measured on the production kernel — **200/200**, 0 unsound, 0 regressed
+- [x] `/health` no longer reports a healthy database as down on a cold pool
+- [x] Backend 1040 tests + OFL/pipeline 77; production smoke **26/26**
