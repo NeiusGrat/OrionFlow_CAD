@@ -520,10 +520,24 @@ async def health_check():
                     check_db_health(), timeout=2 if _DB_ANSWERED else 8
                 )
             )
-        except Exception:
+        except asyncio.TimeoutError:
+            logger.warning("health_db_probe_timeout", first_probe=not _DB_ANSWERED)
+            return False
+        except Exception as exc:  # noqa: BLE001 - health checks never raise
+            logger.warning("health_db_probe_error", error=str(exc))
             return False
         if ok:
             _DB_ANSWERED = True
+        else:
+            # Logged, never returned: the reason can carry the DSN, and this
+            # endpoint is public and unauthenticated.
+            from app.db import session as _sess
+
+            logger.warning(
+                "health_db_unreachable",
+                reason=_sess.last_db_error or "unknown",
+                first_probe=not _DB_ANSWERED,
+            )
         return ok
 
     async def _redis_ok() -> bool:

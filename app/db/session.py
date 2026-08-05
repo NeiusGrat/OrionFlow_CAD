@@ -158,6 +158,18 @@ async def close_db() -> None:
     await async_engine.dispose()
 
 
+#: Why the last health probe failed, for ``GET /health`` to report.
+#:
+#: The bare ``except`` below is correct — a health check must not raise — but it
+#: also threw away the only evidence of *why* the database looked unreachable.
+#: That cost a wrong diagnosis on 2026-08-05: production reported
+#: ``database_connected: false`` while signup, login and metered builds were all
+#: succeeding against the same database, and the first attempt at a fix assumed
+#: a timeout it turned out not to be. A swallowed exception is a check that
+#: cannot be debugged from outside.
+last_db_error: str = ""
+
+
 async def check_db_health() -> bool:
     """
     Check database connectivity.
@@ -165,9 +177,12 @@ async def check_db_health() -> bool:
     Returns:
         True if database is reachable, False otherwise
     """
+    global last_db_error
     try:
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
-            return True
-    except Exception:
+        last_db_error = ""
+        return True
+    except Exception as exc:  # noqa: BLE001 - health checks never raise
+        last_db_error = f"{type(exc).__name__}: {exc}"
         return False
