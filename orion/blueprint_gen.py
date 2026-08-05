@@ -235,6 +235,38 @@ def rect_plate(req: dict) -> dict:
                     f"whose material the holes already removed")
         derivation.append({"step": 2, "eq": f"V = {volume}", "why": why})
 
+    # ---- corner mounting slots -------------------------------------------- #
+    sl, sw = _num(req, "slot_length"), _num(req, "slot_width")
+    gap = _num(req, "slot_edge_gap")
+    if sl and sw:
+        if gap is None:
+            raise GeneratorError(
+                "mounting slots need a distance from the plate edge — "
+                '"near each corner" does not fix a position')
+        volume, why_slots = _corner_slots(
+            v, features, sketches, deps, sl, sw, gap, L, W, "T", holes,
+            volume, pocket=(pl, pw) if (pl and pw and pd) else None)
+        derivation.append({"step": len(derivation) + 1, "eq": f"V = {volume}",
+                           "why": why_slots})
+
+    # ---- outer edge treatments -------------------------------------------- #
+    #
+    # An external fillet on a plate is a rounded corner, which this builder
+    # already expresses in the profile with an exact area — so `fillet` and
+    # `corner_radius` are the same request and only one may be given.
+    fillet = _num(req, "fillet")
+    if fillet and corner_r:
+        raise GeneratorError(
+            "corner radius and external fillet are the same feature on a "
+            "plate; give one")
+    if fillet and not corner_r:
+        raise GeneratorError(
+            f"an external fillet of {fillet} mm on a plate is a corner radius; "
+            f"state it as the corner radius")
+
+    volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
+                                "L", "W")
+
     assertions = [
         _extent_assertion("len_extent", "x", "L"),
         _extent_assertion("wid_extent", "y", "W"),
@@ -242,6 +274,140 @@ def rect_plate(req: dict) -> dict:
     ]
     return _blueprint("rect_plate", v, derivation, assertions,
                       features, sketches, deps)
+
+
+def _perimeter_chamfer(req: dict, v: dict, features: list, deps: list,
+                       volume: str, derivation: list,
+                       a_expr: str, b_expr: str) -> str:
+    """Chamfer every horizontal straight edge — the top and bottom perimeter.
+
+    Selected as ``horizontal`` filtered to ``Line``: on a plain plate that is
+    exactly the eight perimeter runs, excluding the four vertical corners
+    (whose chamfer is a different volume) and every circular hole rim.
+
+    It is refused, not approximated, when the plate carries a rectangular
+    pocket or a slot. Those have straight horizontal edges of their own, the
+    selector would take them too, and a chamfered obround flank has no closed
+    form here. ``largest:8`` looked like the way to separate them by length and
+    matches nothing at all, so the honest move is to say which feature is in
+    the way.
+
+    Two traps met on the way. ``_EdgeType`` filters on the *curve class* —
+    "Line" or "Circle" — not on the selector grammar, whose ``straight``
+    keyword looks like it belongs there and matches nothing. And a dressup
+    whose ``_Base`` names an earlier feature does not reach the tip; omitting
+    it dresses the tip, which is what "break the outer edges" means.
+
+    The closed form has a correction most people forget. Each chamfered edge
+    removes a triangular prism of section ``c^2/2``, so the eight edges give
+    ``(a + b)*c^2`` per face — but at each corner two prisms overlap and the
+    sum counts that overlap twice.
+
+    The overlap is not a pyramid. With ``w`` measured down from the face and
+    ``u``, ``v`` in from the two side walls, one prism removes ``u + w < c`` and
+    the other ``v + w < c``; both hold over ``∫₀^c (c-w)^2 dw = c^3/3``. So::
+
+        removed = 2*((a + b)*c^2 - 4*c^3/3)
+
+    Taking it for a pyramid (``c^3/6``) predicts 9324 mm^3 on a 300x220 plate
+    chamfered 3 mm where the kernel removes 9288 — high by exactly ``4*c^3/3``,
+    and wrong in a way no drawing would show.
+    """
+    c = _num(req, "chamfer")
+    if not c or c <= 0:
+        return volume
+    a = _eval_expr(a_expr, v)
+    b = _eval_expr(b_expr, v)
+    if a is None or b is None:
+        return volume
+    if 2 * c >= min(a, b):
+        raise GeneratorError(
+            f"a {c} mm chamfer is too large for a {a:g} x {b:g} face")
+    blockers = [name for name, value in
+                (("a rectangular pocket", _num(req, "pocket_depth")),
+                 ("mounting slots", _num(req, "slot_length"))) if value]
+    if blockers:
+        raise GeneratorError(
+            f"a perimeter chamfer cannot be named separately from "
+            f"{' and '.join(blockers)} — those carry straight horizontal edges "
+            f"the selector would take as well, and a chamfered slot flank has "
+            f"no closed form here. Drop the chamfer or the "
+            f"{blockers[0].split()[-1]}")
+    v["ch"] = c
+    features.append(
+        {"id": "edge_chamfer", "type": "Chamfer",
+         "rationale": "break the top and bottom perimeter edges",
+         "parameters": {"Size": "ch", "_Edges": "horizontal",
+                        "_EdgeType": "Line"}})
+    volume = f"{volume} - 2*(({a_expr} + {b_expr})*ch**2 - 4*ch**3/3)"
+    derivation.append({
+        "step": len(derivation) + 1, "eq": f"V = {volume}",
+        "why": "chamfer on both perimeters: a triangular prism along each edge, "
+               "less the pyramid two prisms share at every corner"})
+    return volume
+
+
+def _corner_slots(v: dict, features: list, sketches: list, deps: list,
+                  sl: float, sw: float, gap: float, L: float, W: float,
+                  depth_expr: str, holes: list, volume: str,
+                  pocket: Optional[tuple] = None) -> tuple[str, str]:
+    """Four obround slots inset from the corners, cut right through.
+
+    A slot is not a circle, so it cannot ride in a ``rect_with_holes`` profile
+    the way the bores do — it needs its own sketch and a through cut. The
+    stadium area is exact: ``straight * 2r + pi*r^2``, where the straight run is
+    the overall length less the two end caps.
+    """
+    r = sw / 2.0
+    straight = sl - sw
+    if straight <= 0:
+        raise GeneratorError(
+            f"a {sl} x {sw} slot is not elongated — its length must exceed its "
+            f"width, or it is a {sw} mm hole")
+    cx = L / 2.0 - gap - sl / 2.0
+    cy = W / 2.0 - gap - sw / 2.0
+    if cx <= 0 or cy <= 0:
+        raise GeneratorError(
+            f"a {sl} x {sw} slot {gap} mm from the edge does not fit on a "
+            f"{L} x {W} plate")
+    if pocket is not None:
+        pl, pw = pocket
+        if abs(cx) - sl / 2.0 < pl / 2.0 and abs(cy) - sw / 2.0 < pw / 2.0:
+            raise GeneratorError(
+                "the corner slots overlap the pocket; that intersection has no "
+                "closed form here")
+    for hx, hy, hr in holes:
+        x = _eval_expr(hx, v)
+        y = _eval_expr(hy, v)
+        rr = _eval_expr(hr, v)
+        if x is None or y is None or rr is None:
+            continue
+        if (abs(abs(x) - cx) < sl / 2.0 + rr
+                and abs(abs(y) - cy) < sw / 2.0 + rr):
+            raise GeneratorError(
+                "a mounting slot overlaps a hole; that intersection has no "
+                "closed form here")
+
+    v.update({"slot_r": r, "slot_straight": straight,
+              "slot_cx": round(cx, 6), "slot_cy": round(cy, 6)})
+    for i, (sx, sy) in enumerate((("-", "-"), ("+", "-"), ("+", "+"), ("-", "+"))):
+        features += [
+            {"id": f"s_slot{i}", "type": "Sketch", "parameters": {}},
+            {"id": f"slot{i}", "type": "Pocket",
+             "rationale": "corner mounting slot",
+             "parameters": {"Length": depth_expr, "Type": "ThroughAll"}},
+        ]
+        sketches.append({
+            "id": f"s_slot{i}", "plane": "XY", "z": depth_expr,
+            "profile": {"builder": "slot",
+                        "args": {"length": "slot_straight", "r": "slot_r",
+                                 "cx": f"{sx}slot_cx", "cy": f"{sy}slot_cy"}}})
+        deps.append({"source": f"s_slot{i}", "target": f"slot{i}",
+                     "kind": "profile"})
+
+    return (f"{volume} - 4*(slot_straight*2*slot_r + pi*slot_r**2)*{depth_expr}",
+            "four corner mounting slots, cut through; a stadium is a rectangle "
+            "between two semicircular caps so its area is exact")
 
 
 # --------------------------------------------------------------------------- #

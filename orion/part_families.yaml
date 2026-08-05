@@ -43,6 +43,7 @@ families:
       pocket_depth:  {ask: "Pocket depth?"}
       slot_length:   {ask: "Mounting slot length?"}
       slot_width:    {ask: "Mounting slot width?"}
+      slot_edge_gap: {ask: "How far are the slots from the plate edge?"}
       fillet:        {ask: "External fillet radius?"}
       chamfer:       {ask: "Edge chamfer size?"}
 

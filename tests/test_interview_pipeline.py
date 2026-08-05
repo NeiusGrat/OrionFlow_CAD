@@ -225,6 +225,122 @@ def test_counterbores_are_a_thickness_split_not_a_cut():
     assert body(plain) - body(bored) == pytest.approx(annulus)
 
 
+def test_corner_slots_are_exact():
+    """A stadium is a rectangle between two semicircular caps, so its area is
+    exact — but it is not a circle, so it cannot ride in the pad profile the
+    way the bores do and needs its own through cut."""
+    import math
+
+    plate = dict(length=300, width=220, thickness=16)
+    plain = Blueprint.from_dict(interview.build(iv("rect_plate", **plate))).freeze()
+    slotted = Blueprint.from_dict(
+        interview.build(
+            iv("rect_plate", **plate, slot_length=40, slot_width=14, slot_edge_gap=20)
+        )
+    ).freeze()
+
+    def body(bp):
+        return next(a for a in bp.resolve_assertions() if a["kind"] == "body_volume")[
+            "target_value"
+        ]
+
+    # Four stadiums, 40 overall by 14 wide, through 16.
+    expected = 4 * ((40 - 14) * 14 + math.pi * 7**2) * 16
+    assert body(plain) - body(slotted) == pytest.approx(expected)
+
+
+def test_a_slot_without_a_position_is_refused():
+    """'near each corner' does not fix a position."""
+    with pytest.raises(blueprint_gen.GeneratorError, match="distance from the plate"):
+        interview.build(
+            iv(
+                "rect_plate",
+                length=300,
+                width=220,
+                thickness=16,
+                slot_length=40,
+                slot_width=14,
+            )
+        )
+
+
+def test_a_slot_that_is_not_elongated_is_refused():
+    with pytest.raises(blueprint_gen.GeneratorError, match="not elongated"):
+        interview.build(
+            iv(
+                "rect_plate",
+                length=300,
+                width=220,
+                thickness=16,
+                slot_length=14,
+                slot_width=14,
+                slot_edge_gap=20,
+            )
+        )
+
+
+def test_the_perimeter_chamfer_corner_correction():
+    """Two prisms overlap at each corner and the sum counts it twice.
+
+    The overlap is not a pyramid: with w down from the face and u, v in from
+    the walls, both prisms hold over the integral of (c-w)^2, which is c^3/3.
+    Taking it for c^3/6 predicted 9324 mm3 on this plate where the kernel
+    removes 9288 — high by exactly 4*c^3/3.
+    """
+    plate = dict(length=300, width=220, thickness=16)
+    plain = Blueprint.from_dict(interview.build(iv("rect_plate", **plate))).freeze()
+    chamfered = Blueprint.from_dict(
+        interview.build(iv("rect_plate", **plate, chamfer=3))
+    ).freeze()
+
+    def body(bp):
+        return next(a for a in bp.resolve_assertions() if a["kind"] == "body_volume")[
+            "target_value"
+        ]
+
+    c = 3
+    assert body(plain) - body(chamfered) == pytest.approx(
+        2 * ((300 + 220) * c**2 - 4 * c**3 / 3)
+    )
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        dict(pocket_l=180, pocket_w=120, pocket_depth=6),
+        dict(slot_length=40, slot_width=14, slot_edge_gap=20),
+    ],
+)
+def test_a_chamfer_that_cannot_be_named_separately_is_refused(extra):
+    """A pocket and a slot carry straight horizontal edges of their own; the
+    selector would take them too and a chamfered slot flank has no closed form
+    here. Refused rather than applied to the wrong edges."""
+    with pytest.raises(
+        blueprint_gen.GeneratorError, match="cannot be named separately"
+    ):
+        interview.build(
+            iv("rect_plate", length=300, width=220, thickness=16, chamfer=3, **extra)
+        )
+
+
+def test_an_external_fillet_on_a_plate_is_a_corner_radius():
+    """The same feature under two names. Accepting both would let a design
+    declare two different radii for one corner."""
+    with pytest.raises(blueprint_gen.GeneratorError, match="is a corner radius"):
+        interview.build(iv("rect_plate", length=300, width=220, thickness=16, fillet=8))
+    with pytest.raises(blueprint_gen.GeneratorError, match="give one"):
+        interview.build(
+            iv(
+                "rect_plate",
+                length=300,
+                width=220,
+                thickness=16,
+                fillet=8,
+                corner_radius=8,
+            )
+        )
+
+
 def test_a_counterbore_that_would_break_into_the_base_is_refused():
     """The servo bracket as specified: bolt square 69.6 on a 100 tall upright
     puts the lower counterbores at z=10.7, under a 12 mm base plate. The void
