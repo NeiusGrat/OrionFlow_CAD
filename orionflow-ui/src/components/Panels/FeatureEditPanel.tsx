@@ -96,16 +96,14 @@ function VerdictBadge({
 /**
  * What the kernel thinks of the solid, beside what the assertions think.
  *
- * These two numbers are recorded on every build and, today, count towards no
- * verdict — a part can satisfy every assertion to sixteen decimal places and
- * still be an invalid shape, or fourteen disjoint solids. That is not
- * hypothetical: a shelled enclosure in the benchmark set was `solids: 14,
- * valid: false` and was reported as a legitimate result for a day, because
- * nothing surfaced it.
+ * Since 2026-08-05 these two numbers gate the verdict: an invalid shape, or one
+ * in disconnected pieces, is refused however well its volume agrees. Before
+ * that they were recorded and counted towards nothing, and a shelled enclosure
+ * in the benchmark set that was `solids: 14, valid: false` read as a legitimate
+ * result for a day because nothing surfaced it.
  *
- * Showing them does not change what VERIFIED means — every published number was
- * measured under the current definition. It just stops the failure being
- * invisible.
+ * They are still shown rather than folded into the badge, because "refused" on
+ * its own does not say which half failed — the assertions or the geometry.
  */
 function SolidHealth({ stats }: { stats?: { solids?: number | null; valid?: boolean | null } | null }) {
     if (!stats) return null;

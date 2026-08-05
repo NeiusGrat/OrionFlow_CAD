@@ -32,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from orion.blueprint import Blueprint, BlueprintError  # noqa: E402
 from orion.eval_blueprint import extract_blueprint  # noqa: E402
 from orion import forge  # noqa: E402
+from orion_physical_ai import verify  # noqa: E402
 from app.services.blueprint_service import needs_mesh_body  # noqa: E402
 
 DEFAULT_DATA = "data/forge/sft_v1/val.jsonl"
@@ -79,13 +80,26 @@ def main() -> int:
             print(f"container FreeCAD version: {v}")
         except Exception as exc:  # noqa: BLE001
             print(f"WARNING: could not read the container FreeCAD version: {exc}")
+        else:
+            # A pin that is never read is a comment. The image declares a
+            # version; this asserts the container actually has it, so a resolver
+            # change or a stale image surfaces here rather than as unexplained
+            # geometry drift in the numbers this script produces.
+            from deploy.modal_builder import FREECAD_VERSION
+
+            got = ".".join(str(p) for p in (v.get("version") or [])[:3])
+            if got != FREECAD_VERSION:
+                print(f"WARNING: container runs FreeCAD {got}, but the image "
+                      f"pins {FREECAD_VERSION} — results are not comparable "
+                      f"with anything measured on the pinned kernel")
 
     rows = load_rows(args.data, args.n)
     print(f"replaying {len(rows)} verified blueprints "
           f"({'local' if args.local else 'modal'})\n")
 
-    ok = failed = errored = 0
+    ok = failed = errored = kernel_only = 0
     regressions: list[str] = []
+    reclassified: list[str] = []
     t0 = time.time()
 
     for i, row in enumerate(rows):
@@ -116,6 +130,14 @@ def main() -> int:
 
         rows_checked = forge.check_assertions(bp, measured, analysis)
         bad = [r for r in rows_checked if not r.get("passed")]
+        # The assertions are only half of what VERIFIED now means. Since
+        # 2026-08-05 the kernel's own opinion of the shape counts too, so a
+        # harness that scored assertions alone would report the old definition
+        # while production served the new one.
+        bad_kernel = [
+            c for c in verify.solid_validity_checks(measured)
+            if c["status"] == verify.FAIL
+        ]
         if bad:
             failed += 1
             regressions.append(bp.part_class)
@@ -124,18 +146,37 @@ def main() -> int:
                 print(f"        {r.get('id')} ({r.get('kind')}): "
                       f"target={r.get('target')} measured={r.get('measured')} "
                       f"rel_err={r.get('rel_err')}")
+        elif bad_kernel:
+            # Passed every assertion it was graded on and still is not a sound
+            # solid. This is the population the stricter gate reclassifies, and
+            # it is counted apart from a genuine kernel regression because the
+            # cause is different: the corpus accepted these, the gate no longer
+            # does.
+            kernel_only += 1
+            reclassified.append(bp.part_class)
+            print(f"[{i:3}] SOLID  {bp.part_class} — "
+                  + "; ".join(c["detail"] for c in bad_kernel))
         else:
             ok += 1
             print(f"[{i:3}] ok     {bp.part_class} "
-                  f"({len(rows_checked)} assertions)")
+                  f"({len(rows_checked)} assertions"
+                  f"{', solid sound' if measured.get('valid') is not None else ''})")
 
     total = len(rows)
     dt = time.time() - t0
     print(f"\n{'=' * 58}")
-    print(f"agreed   : {ok}/{total}")
-    print(f"regressed: {failed}")
-    print(f"errored  : {errored}")
-    print(f"elapsed  : {dt:.1f}s ({dt / max(total, 1):.1f}s/part)")
+    print(f"verified   : {ok}/{total}      (assertions AND a sound solid)")
+    print(f"unsound    : {kernel_only}"
+          f"       (assertions agreed, the solid did not)")
+    print(f"regressed  : {failed}")
+    print(f"errored    : {errored}")
+    print(f"elapsed    : {dt:.1f}s ({dt / max(total, 1):.1f}s/part)")
+    print(f"\nunder the pre-2026-08-05 definition this sample would score "
+          f"{ok + kernel_only}/{total}.")
+    if reclassified:
+        print("\nRECLASSIFIED BY THE SOLID GATE (these were VERIFIED before):")
+        for c in sorted(set(reclassified)):
+            print(f"  - {c}")
     if regressions:
         print("\nREGRESSED PART CLASSES (cloud kernel disagrees with the corpus):")
         for c in sorted(set(regressions)):

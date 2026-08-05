@@ -125,6 +125,33 @@ def _extent(bbox: Optional[list]) -> Optional[list]:
     return [round(bbox[i + 3] - bbox[i], 4) for i in range(3)]
 
 
+def observations(
+    measured: dict, volume: Optional[float], extent: Optional[list]
+) -> dict:
+    """What the kernel reported, in the shape the grader reads.
+
+    Separate from the caller because it is load-bearing and was silently wrong.
+    ``verify.solid_validity_checks`` grades ``valid`` and ``solids`` out of this
+    dict and treats a *missing* key as "never measured" rather than as a
+    failure — so passing only the volume and extent, as this once did, made
+    those checks return nothing on the live path. The flag could be on and the
+    gate would still be open, with no test failing to say so.
+
+    Absent stays absent on purpose: a build predating the measurement pass
+    carries no opinion, and inventing ``False`` for it would refuse parts nobody
+    checked.
+    """
+    obs: dict = {}
+    if volume:
+        obs["volume_cm3"] = round(volume / 1000.0, 3)
+    if extent:
+        obs["bbox_mm"] = extent
+    for key in ("valid", "solids", "watertight"):
+        if measured.get(key) is not None:
+            obs[key] = measured[key]
+    return obs
+
+
 #: Where the FreeCAD compile actually happens. "local" runs it as a subprocess
 #: of this process; "modal" hands it to a container that has FreeCAD installed,
 #: because the API image deliberately does not (FreeCAD would add ~1.5 GB and
@@ -467,11 +494,7 @@ def _finish(
     from orion import forge
     from orion_physical_ai import verify
 
-    observed = {}
-    if volume:
-        observed["volume_cm3"] = round(volume / 1000.0, 3)
-    if extent:
-        observed["bbox_mm"] = extent
+    observed = observations(measured, volume, extent)
 
     try:
         rows = forge.check_assertions(bp, measured, analysis)

@@ -246,55 +246,91 @@ def from_assertion_rows(
     }
 
 
-#: Whether OCC's own opinion of the solid counts towards the verdict.
+#: Whether the kernel's own opinion of the solid counts towards the verdict.
 #:
-#: PROPOSED, and off. See ``solid_validity_checks`` for what turning it on would
-#: mean. Nothing reads this but that function, and with it False the report is
-#: byte-identical to before.
-COUNT_SOLID_VALIDITY = False
+#: **On.** Enabled 2026-08-05 together with a re-measurement of every published
+#: figure — see ``solid_validity_checks`` for what it gates and why flipping it
+#: alone was not enough.
+COUNT_SOLID_VALIDITY = True
 
 
 def solid_validity_checks(measured: Optional[dict]) -> list[dict]:
-    """OCC's ``isValid()`` as a check — currently reported, never counted.
+    """The kernel's own opinion of the shape, as checks that count.
 
-    **The gap.** ``check_assertions`` grades the closed form against the
-    measurement: volume, extent, the guards the model authored. None of it asks
-    the kernel whether the solid it produced is geometrically sound.
-    ``measured["valid"]`` carries exactly that and nothing consumes it, so a
-    part can satisfy every assertion to 1e-16 and still be invalid.
+    **The gap this closes.** ``check_assertions`` grades the closed form against
+    the measurement: volume, extent, the guards the model authored. None of it
+    asks the kernel whether the solid it produced is geometrically sound, or
+    whether it is even one object. ``measured["valid"]`` and
+    ``measured["solids"]`` carry exactly that, and until now nothing consumed
+    them — so a part could satisfy every assertion to 1e-16 and still be
+    invalid, or in fourteen disconnected pieces, and be reported VERIFIED.
 
-    That is not theoretical. A Blueprint with two overlapping holes built, came
+    Neither is theoretical. A Blueprint with two overlapping holes built, came
     back ``watertight: true``, ``solids: 1``, volume matching the closed form to
-    ten decimal places — and ``valid: false``. OCC had removed two full disks
+    ten decimal places — and ``valid: false``: OCC had removed two full disks
     rather than merging the overlapping wires, so the arithmetic agreed while
-    the topology did not. It was reported VERIFIED.
+    the topology did not. Separately, a shelled enclosure built fillet-then-
+    shell came back as 14 solids with a face of negative area, and passed.
 
-    **Why it is off.** Turning it on changes what VERIFIED means, and every
-    published number was measured under the current definition — the live 88%,
-    the fine-tune's 95.3% and 94.0%. Flipping the flag without re-measuring
-    would silently invalidate all of them.
+    **Two checks, not one.** ``watertight`` and a ``solids`` *assertion* are the
+    existing checks that look closest to these and neither substitutes:
+    watertight was true for both invalid solids above, and a ``solids``
+    assertion only runs when the model happened to author one. These run on
+    every build, authored or not.
 
     **``None`` is not failure.** A measurement that never ran is unknown, not
-    bad. Of 182 local build records, 179 are valid, 2 invalid and 1 unmeasured;
-    treating that last as a failure would refuse a part nobody checked, which is
-    the exact error this codebase treats as unacceptable elsewhere.
+    bad — the same rule the rest of this module follows ("a check that did not
+    run is not a check that passed"; equally, it is not one that failed).
+    Records predating the measurement pass carry ``None`` and must not be
+    retroactively refused.
     """
-    if not COUNT_SOLID_VALIDITY:
+    if not COUNT_SOLID_VALIDITY or not measured:
         return []
-    if not measured or measured.get("valid") is None:
-        return []
-    ok = bool(measured["valid"])
-    return [
-        _check(
-            "solid:valid",
-            "Solid is geometrically valid",
-            PASS if ok else FAIL,
-            (
-                "OCC reports the shape as valid"
-                if ok
-                else "OCC reports the shape as invalid — the assertions can still "
-                "agree, because a wrong topology can have a right volume"
-            ),
-            {"measured": measured["valid"]},
+
+    checks: list[dict] = []
+
+    if measured.get("valid") is not None:
+        ok = bool(measured["valid"])
+        checks.append(
+            _check(
+                "solid:valid",
+                "Solid is geometrically valid",
+                PASS if ok else FAIL,
+                (
+                    "OCC reports the shape as valid"
+                    if ok
+                    else "OCC reports the shape as invalid — the assertions can "
+                    "still agree, because a wrong topology can have a right volume"
+                ),
+                {"measured": measured["valid"]},
+            )
         )
-    ]
+
+    n = measured.get("solids")
+    if n is not None:
+        # A PartDesign Body is one contiguous solid by definition. More than one
+        # means an operation shattered it; zero means nothing survived. Either
+        # way the part is not the thing the design plan described, however well
+        # the volume happens to agree. Assemblies would legitimately have many —
+        # they are not on this path, and the occurrence level that would carry
+        # them (``#o1``) is defined and unused.
+        ok = n == 1
+        checks.append(
+            _check(
+                "solid:count",
+                "Part is a single connected solid",
+                PASS if ok else FAIL,
+                (
+                    "the body is one connected solid"
+                    if ok
+                    else (
+                        f"the body is in {n} disconnected pieces"
+                        if n > 1
+                        else "the body contains no solid"
+                    )
+                ),
+                {"measured": n, "expected": 1},
+            )
+        )
+
+    return checks

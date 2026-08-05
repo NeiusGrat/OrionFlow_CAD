@@ -23,9 +23,25 @@ The API reaches this by name; see ``app/services/blueprint_service.py``
 
 import modal
 
+#: The kernel every published number is measured against.
+#:
+#: Pinned 2026-08-05. This install was previously unversioned, which is not a
+#: stable build: conda-forge resolved it to 1.1.0 when the image was first
+#: built, and now resolves to 1.1.3 — so the next rebuild for any unrelated
+#: reason would have silently changed the kernel under production, and the
+#: manifest would have faithfully recorded a version nobody chose.
+#:
+#: 1.1.0 rather than the newest, and rather than the 1.1.1 running locally:
+#: conda-forge does not ship 1.1.1 at all (it is a FreeCAD-provided Windows
+#: build), and moving production to 1.1.3 in the same change that tightened the
+#: verification gate would confound the two — a drop in the verified rate could
+#: not be attributed to either. Upgrade deliberately, on its own, re-measuring
+#: after.
+FREECAD_VERSION = "1.1.0"
+
 freecad_image = (
     modal.Image.micromamba(python_version="3.11")
-    .micromamba_install("freecad", channels=["conda-forge"])
+    .micromamba_install(f"freecad={FREECAD_VERSION}", channels=["conda-forge"])
     # conda-forge ships the bindings as /opt/conda/lib/FreeCAD.so rather than
     # into site-packages, so a plain `import FreeCAD` fails with a bare
     # ModuleNotFoundError even though FreeCAD is fully installed. The lib dir
