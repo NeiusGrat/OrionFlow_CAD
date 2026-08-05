@@ -248,13 +248,24 @@ def rect_plate(req: dict) -> dict:
 # L bracket
 # --------------------------------------------------------------------------- #
 def l_bracket(req: dict) -> dict:
-    """Base plate plus an upright, as one L-shaped profile extruded sideways.
+    """Base plate plus an upright, as two pads that share a corner.
 
-    Built from a single polyline rather than two pads joined, because the L is
-    then one solid by construction and its area is exact. Two overlapping pads
-    would need the shared corner subtracted, which is the kind of bookkeeping
-    that produces a volume prediction disagreeing with the kernel in the fourth
-    decimal for no visible reason.
+    Two pads rather than one L-shaped polyline, because the upright then has a
+    *profile* of its own and the motor bore and bolt holes can be cut into it
+    in-profile. That matters more than it sounds: every attempt to machine
+    those holes with a Pocket removed either nothing at all or a sliver, while
+    the build reported success each time.
+
+    The overlap the two pads share is a known box, ``UT*BW*BT``, subtracted
+    once — the one piece of bookkeeping a single polyline would have avoided.
+
+    Frames, established by probing rather than derived (getting any of them
+    wrong produces a cut that removes nothing and a build that says it worked):
+
+      * an XY pad grows in **+Z**, a YZ pad in **-X**
+      * on a YZ sketch the builder's own x runs along world **Z** and its y
+        along world **Y**, so centres read (height, width)
+      * profiles are centred on the sketch origin, so ``cx``/``cy`` place them
     """
     _assert_positive(req, ("base_length", "base_width", "base_thickness",
                            "upright_height", "upright_thickness"))
@@ -269,30 +280,87 @@ def l_bracket(req: dict) -> dict:
         raise GeneratorError("upright height must exceed the base thickness")
 
     v = {"BL": BL, "BW": BW, "BT": BT, "UH": UH, "UT": UT}
-    # Profile in XZ: the L lying in the length/height plane, extruded across BW.
-    points = [["0", "0"], ["BL", "0"], ["BL", "BT"],
-              ["UT", "BT"], ["UT", "UH"], ["0", "UH"]]
-    area = "(BL*BT + UT*(UH - BT))"
-    volume = f"{area}*BW"
+    volume = "BL*BW*BT + UH*BW*UT - UT*BW*BT"
+    derivation = [{"step": 1, "eq": f"V = {volume}",
+                   "why": "base plate plus upright, less the corner box they "
+                          "share"}]
+
+    # The upright's own profile, so its holes are cut in-profile.
+    up_holes: list[list[str]] = []
+    cuts: list[str] = []
+
+    bore_r = _num(req, "bore_r")
+    if bore_r and bore_r > 0:
+        if 2 * bore_r >= min(UH, BW):
+            raise GeneratorError("pilot bore does not fit the upright plate")
+        if UH / 2 - bore_r <= BT:
+            raise GeneratorError(
+                "pilot bore runs into the base plate; raise the upright")
+        v["bore_r"] = bore_r
+        up_holes.append(["UH/2", "0", "bore_r"])
+        cuts.append("pi*bore_r**2")
+
+    hole_r = _num(req, "hole_r")
+    square = _num(req, "bolt_square")
+    if hole_r and square:
+        half = square / 2.0
+        if hole_r <= 0:
+            raise GeneratorError("mounting hole radius must be positive")
+        if UH / 2 - half - hole_r <= BT:
+            raise GeneratorError(
+                "bolt pattern runs into the base plate; raise the upright")
+        if half + hole_r >= BW / 2:
+            raise GeneratorError("bolt pattern is wider than the upright plate")
+        if bore_r and half - hole_r <= bore_r:
+            raise GeneratorError(
+                "bolt holes overlap the pilot bore; that intersection has no "
+                "closed form here")
+        v["bolt_half"] = half
+        v["hole_r"] = hole_r
+        for su in ("-", "+"):
+            for sv in ("-", "+"):
+                up_holes.append([f"UH/2 {su} bolt_half",
+                                 f"0 {sv} bolt_half", "hole_r"])
+        cuts.append("4*pi*hole_r**2")
+
+    if up_holes:
+        up_profile = {"builder": "rect_with_holes",
+                      "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0",
+                               "holes": up_holes}}
+        volume = f"{volume} - ({' + '.join(cuts)})*UT"
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": "pilot bore and mounting holes through the upright, cut in "
+                   "its own profile and clear of the base"})
+    else:
+        up_profile = {"builder": "rect",
+                      "args": {"w": "UH", "h": "BW", "cx": "UH/2", "cy": "0"}}
 
     features = [
         {"id": "Body", "type": "Body", "parameters": {}},
-        {"id": "s_l", "type": "Sketch", "parameters": {}},
-        {"id": "bracket", "type": "Pad", "rationale": "L profile extruded across the width",
-         "parameters": {"Length": "BW", "Type": "Length"}},
+        {"id": "s_base", "type": "Sketch", "parameters": {}},
+        {"id": "base", "type": "Pad", "rationale": "base plate",
+         "parameters": {"Length": "BT", "Type": "Length"}},
+        {"id": "s_upright", "type": "Sketch", "parameters": {}},
+        {"id": "upright", "type": "Pad",
+         "rationale": "vertical plate with the motor interface in-profile",
+         "parameters": {"Length": "UT", "Type": "Length"}},
     ]
-    sketches = [{"id": "s_l", "plane": "XZ",
-                 "profile": {"builder": "polyline", "args": {"points": points}}}]
-    deps = [{"source": "s_l", "target": "bracket", "kind": "profile"}]
+    sketches = [
+        {"id": "s_base", "plane": "XY",
+         "profile": {"builder": "rect",
+                     "args": {"w": "BL", "h": "BW", "cx": "BL/2", "cy": "0"}}},
+        # Placed at x = UT so the -X extrusion lands on x in [0, UT].
+        {"id": "s_upright", "plane": "YZ", "z": "UT", "profile": up_profile},
+    ]
+    deps = [{"source": "s_base", "target": "base", "kind": "profile"},
+            {"source": "s_upright", "target": "upright", "kind": "profile"}]
 
     assertions = [
         _extent_assertion("len_extent", "x", "BL"),
         _extent_assertion("hgt_extent", "z", "UH"),
         _volume_assertion(volume),
     ]
-    derivation = [{"step": 1, "eq": f"V = {volume}",
-                   "why": "L section (base plus upright above it, disjoint) "
-                          "extruded across the width"}]
     return _blueprint("l_bracket", v, derivation, assertions,
                       features, sketches, deps)
 

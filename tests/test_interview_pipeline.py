@@ -159,6 +159,68 @@ def test_the_generator_adds_nothing_that_was_not_asked_for():
     assert set(payload["variables"]) == {"BL", "BW", "BT", "UH", "UT"}
 
 
+def test_the_bracket_motor_interface_is_exact():
+    """Bore and bolt holes are cut in the upright's own profile.
+
+    Every attempt to machine them with a Pocket removed either nothing or a
+    sliver, while the build reported success each time — the frames are not
+    what you would guess (an XZ pad grows in -Y, a YZ pad in -X, and on YZ the
+    builder's x runs along world Z).
+    """
+    import math
+
+    payload = interview.build(
+        iv(
+            "l_bracket",
+            base_length=160,
+            base_width=100,
+            base_thickness=12,
+            upright_height=100,
+            upright_thickness=12,
+            bore_d=47.14,
+            hole_d=5.5,
+            bolt_square=69.6,
+        )
+    )
+    bp = Blueprint.from_dict(payload).freeze()
+    body = next(a for a in bp.resolve_assertions() if a["kind"] == "body_volume")
+
+    envelope = 160 * 100 * 12 + 100 * 100 * 12 - 12 * 100 * 12
+    cuts = (math.pi * 23.57**2 + 4 * math.pi * 2.75**2) * 12
+    assert body["target_value"] == pytest.approx(envelope - cuts)
+
+
+@pytest.mark.parametrize(
+    "slots,why",
+    [
+        # Wider than the plate it is drilled in.
+        (dict(bore_d=120.0), "does not fit the upright"),
+        # Fits the plate, but reaches down into the base: the cylinders are no
+        # longer disjoint and the closed form would overstate what was removed.
+        (dict(bore_d=80.0), "runs into the base"),
+        # Bolt circle wider than the plate. Needs a tall upright, or the
+        # runs-into-the-base guard catches it first — which it should.
+        (
+            dict(upright_height=200, hole_d=5.5, bolt_square=96.0),
+            "wider than the upright",
+        ),
+        # Bolt holes breaking into the pilot bore.
+        (dict(bore_d=60.0, hole_d=5.5, bolt_square=62.0), "overlap the pilot bore"),
+    ],
+)
+def test_an_unbuildable_motor_interface_is_refused(slots, why):
+    base = dict(
+        base_length=160,
+        base_width=100,
+        base_thickness=12,
+        upright_height=100,
+        upright_thickness=12,
+    )
+    base.update(slots)
+    with pytest.raises(blueprint_gen.GeneratorError, match=why):
+        interview.build(iv("l_bracket", **base))
+
+
 def test_the_closed_form_matches_the_geometry_for_a_plain_plate():
     payload = interview.build(iv("rect_plate", length=100, width=60, thickness=5))
     bp = Blueprint.from_dict(payload).freeze()
