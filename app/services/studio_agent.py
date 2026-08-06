@@ -744,6 +744,23 @@ class StudioAgent:
         # A request that states a duty is not a description of a part, it is a
         # question about one, and the answer is arithmetic over catalogues and
         # standards rather than anything a model should be sampling.
+        # The deterministic path first, wherever it applies.
+        #
+        # Measured on four industrial requests and a terse plate: with Python
+        # writing the Blueprint, five of five froze, built, verified and were
+        # faithful to what was asked. With a model writing it, one of five —
+        # the base model failed the static check on every complex part, and the
+        # LoRA returned l_bracket_plus_counterbore_set_vent_slot for a request
+        # that had already stated every dimension. The prior that adds features
+        # is in the weights and no prompt reaches it.
+        #
+        # The LoRA still answers everything this has no builder for, which is
+        # most of the vocabulary. It is no longer the default for the part
+        # classes we can construct.
+        det = self._deterministic(prompt, on_event)
+        if det is not None:
+            return det
+
         route = design_router.resolve(prompt)
         model_prompt = prompt
         chain = route.chain
@@ -801,6 +818,144 @@ class StudioAgent:
         # like the repair records at all.
         base = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(model_prompt)]
         return self._draw(base, base, route, chain, 1, on_event)
+
+    def _deterministic(
+        self, prompt: str, on_event: EventSink = None
+    ) -> Optional[Proposal]:
+        """Interview, then compile in Python. ``None`` to fall through.
+
+        Three outcomes, and none of them is a model writing geometry:
+
+        * a frozen Blueprint, built from a schema and arithmetic;
+        * a question, when the request left a required field open — which is
+          the honest answer to "four slots near each corner", a size with no
+          position;
+        * a refusal naming the number that is wrong, when the geometry cannot
+          exist.
+
+        A refusal is returned rather than handed to the LoRA. Falling back would
+        answer "your counterbores break into the base plate" with a part that
+        quietly did something else, which is the failure mode this replaces.
+        """
+        from app.services import design_router
+        from orion import blueprint_gen, interview
+        from orion.blueprint import Blueprint, BlueprintError
+
+        # The base adapter reads the request. ``_client`` is keyed by *provider*
+        # — the model is a separate field on the client, and passing a model id
+        # where a provider belongs fails as "unknown LLM provider", which reads
+        # like a misconfigured deployment rather than a wrong argument.
+        primary, fallback = _providers()
+        client = None
+        for provider in (primary, fallback):
+            if not provider:
+                continue
+            try:
+                client = self._client(provider)
+                client.model = CONVERSATION_MODEL if provider in OURS else client.model
+                break
+            except Exception as exc:  # noqa: BLE001 - try the fallback
+                logger.warning(
+                    "interview_provider_failed", provider=provider, error=str(exc)
+                )
+        if client is None:
+            return None
+
+        try:
+            iv = interview.read_request(
+                client, prompt, max_tokens=interview.READ_TOKENS
+            )
+        except Exception as exc:  # noqa: BLE001 - a dead endpoint is not a refusal
+            logger.warning("interview_failed", error=str(exc))
+            return None
+
+        if iv.family not in blueprint_gen.BUILDERS:
+            return None
+
+        _emit_step(
+            on_event,
+            "understand",
+            "Understanding the request",
+            "done",
+            f"{interview.FAMILIES[iv.family].label}, "
+            f"{len(iv.slots)} dimensions read",
+            [f"{k} = {v}" for k, v in sorted(iv.slots.items())],
+        )
+
+        if not iv.complete:
+            asks = [
+                interview.question_for(s)
+                for s in interview.missing(iv.family, iv.slots)
+            ]
+            _emit_step(
+                on_event,
+                "understand",
+                "Understanding the request",
+                "fail",
+                "the request does not say enough yet",
+                asks,
+            )
+            return Proposal(
+                failure="questions",
+                error="; ".join(asks),
+                questions=asks,
+                reasoning=iv.to_dict(),
+            )
+
+        try:
+            payload = interview.build(iv)
+        except blueprint_gen.GeneratorError as exc:
+            _emit_step(
+                on_event,
+                "specify",
+                "Specifying the design",
+                "fail",
+                _short(str(exc)),
+                [str(exc)],
+            )
+            return Proposal(
+                failure="questions",
+                error=str(exc),
+                questions=[str(exc)],
+                reasoning=iv.to_dict(),
+            )
+
+        try:
+            bp = Blueprint.from_dict(payload).freeze()
+        except (BlueprintError, ValueError, KeyError, TypeError) as exc:
+            # The generator wrote something the static check rejects, which is a
+            # bug here rather than anything the user did. Fall through to the
+            # model rather than dead-end a request we could still serve.
+            logger.warning(
+                "generator_blueprint_rejected", error=str(exc), family=iv.family
+            )
+            return None
+
+        _emit_step(
+            on_event,
+            "specify",
+            "Specifying the design",
+            "done",
+            f"{len(bp.variables)} variables, "
+            f"{len(payload['template']['features'])} features "
+            f"— compiled, not generated",
+            [f"{k} = {v:g}" for k, v in sorted(bp.variables.items())],
+        )
+
+        return Proposal(
+            ok=True,
+            payload=payload,
+            blueprint_hash=bp.blueprint_hash,
+            part_class=bp.part_class,
+            variables=dict(bp.variables),
+            features=list(payload["template"]["features"]),
+            design_plan=payload.get("design_plan", {}),
+            assertions=list(bp.assertions),
+            reasoning=iv.to_dict(),
+            route=design_router.Route(
+                design_router.DIRECT, "compiled deterministically from the interview"
+            ).to_dict(),
+        )
 
     def repropose(
         self, previous: Proposal, diagnosis: str, on_event: EventSink = None

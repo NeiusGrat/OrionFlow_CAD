@@ -146,6 +146,20 @@ def direct_route(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def no_deterministic_path(monkeypatch):
+    """These tests are about the model path; the compiler has its own file.
+
+    Not merely tidiness. The stubs here replace ``_complete``, and the
+    deterministic branch reaches the endpoint through ``_client`` instead — so
+    without this the suite makes live network calls and a request for a "plate"
+    comes back as a compiled ``rect_plate``, failing on a name.
+    """
+    from app.services.studio_agent import StudioAgent
+
+    monkeypatch.setattr(StudioAgent, "_deterministic", lambda self, p, e=None: None)
+
+
 # --------------------------------------------------------------------------- #
 # propose: a design that exists before it is a solid
 # --------------------------------------------------------------------------- #

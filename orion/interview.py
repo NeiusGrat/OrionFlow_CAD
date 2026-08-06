@@ -265,12 +265,23 @@ def apply_standards(slots: dict, family: str = "") -> tuple[dict, list[str]]:
 # --------------------------------------------------------------------------- #
 # the model's two jobs
 # --------------------------------------------------------------------------- #
+#: ``other`` is not decoration.
+#:
+#: A closed list with no way out forces every request into it: a helical
+#: compression spring came back as a bearing housing, and the interview then
+#: asked for its overall length and width. Downstream that is worse than not
+#: matching at all, because a request nothing here can build must reach the
+#: path that can. Offering the escape costs one line and restores it.
 IDENTIFY_SYSTEM = """You are OrionFlow's Engineering Requirements Interpreter.
 
 Read the request and name the part family. Nothing else.
 
+Choose "other" unless the request is clearly one of the listed families. A wrong
+match is worse than no match: it sends the request down a path that cannot build
+it. Springs, gears, shafts, pipes, castings and anything not listed are "other".
+
 Reply with ONE JSON object and nothing else:
-{"family": "<one of: %s>"}
+{"family": "<one of: %s, other>"}
 """ % ", ".join(FAMILY_NAMES)
 
 
@@ -408,6 +419,14 @@ def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Intervi
         max_tokens=max_tokens,
         temperature=0.0,
     )
+    # A transport failure is not a classification. Adapters return it as
+    # content rather than raising, so without this an unreachable endpoint
+    # became "rect_plate with no dimensions" and the interview asked the user
+    # how long their plate was — an outage reported as a question about their
+    # request.
+    if getattr(ident, "finish_reason", "") == "error" or not (ident.content or "").strip():
+        return Interview(request=request)
+
     family = str((_json_of(ident.content) or {}).get("family") or "")
     if family not in FAMILIES:
         return Interview(request=request)
