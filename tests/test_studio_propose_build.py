@@ -154,10 +154,21 @@ def no_deterministic_path(monkeypatch):
     deterministic branch reaches the endpoint through ``_client`` instead — so
     without this the suite makes live network calls and a request for a "plate"
     comes back as a compiled ``rect_plate``, failing on a name.
+
+    ``_providers`` is stubbed for the same reason. ``propose`` refuses to attempt
+    a model-authored Blueprint when nothing serving our own weights is
+    reachable, and it read that from the ambient environment — so editing
+    ``.env`` to name a fallback as primary turned eleven of these tests into
+    assertions about the refusal instead of about the path they were written
+    for. A suite that reports on the deployment's config rather than on the code
+    is worse than a failing one, because it passes for the wrong reason too.
     """
+    from app.services import studio_agent
     from app.services.studio_agent import StudioAgent
 
     monkeypatch.setattr(StudioAgent, "_deterministic", lambda self, p, e=None: None)
+    monkeypatch.setattr(studio_agent, "_providers", lambda: ("vllm", ""))
+    studio_agent._DOWN.clear()
 
 
 # --------------------------------------------------------------------------- #

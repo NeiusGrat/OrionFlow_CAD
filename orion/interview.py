@@ -165,6 +165,14 @@ class Interview:
     asked: list[str] = field(default_factory=list)
     answers: list[tuple[str, str]] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    #: Why the model could not be reached, when that is what happened.
+    #:
+    #: An empty family means two very different things — "this is a spring and
+    #: nothing here builds springs" or "the endpoint is down" — and the caller
+    #: must not treat them alike. Without this the second silently became the
+    #: first, so an outage routed the request to the model path instead of the
+    #: reachable provider next in line.
+    transport_error: str = ""
 
     @property
     def complete(self) -> bool:
@@ -251,8 +259,18 @@ def apply_standards(slots: dict, family: str = "") -> tuple[dict, list[str]]:
     if thread in CLEARANCE and out.get("hole_d") is None and wanted("hole_d"):
         out["hole_d"] = CLEARANCE[thread]
         notes.append(f"{thread} clearance hole = {CLEARANCE[thread]} mm (ISO 273 medium)")
+    # A counterbore is only looked up for a counterbore the request asked for.
+    #
+    # Naming a thread implies a clearance hole — that is what the table above
+    # is for — but it does not imply a counterbore, which is a design choice.
+    # Filling one in from the thread alone invented a feature: "L bracket ...
+    # M8 holes" acquired an ISO 7046 counterbore, and because ``cbore_d``
+    # requires ``cbore_depth`` the interview then refused to build anything
+    # until the user answered "Counterbore depth?" about a feature they had
+    # never mentioned. A stated depth is the signal that they want one; the
+    # standard then supplies its diameter, which is a lookup rather than a guess.
     if (thread in COUNTERBORE and out.get("cbore_d") is None
-            and wanted("cbore_d")):
+            and out.get("cbore_depth") is not None and wanted("cbore_d")):
         out["cbore_d"] = COUNTERBORE[thread]
         notes.append(f"{thread} counterbore = {COUNTERBORE[thread]} mm (ISO 7046)")
     port = str(out.get("port_thread") or "").upper().replace(" ", "")
@@ -292,6 +310,17 @@ Reply with ONE JSON object and nothing else:
 #: {length: 300, thickness: 16}`` rather than ``length``/``thickness``. Measured
 #: 0/17 on the first run purely for that reason, with zero wrong values. Asking
 #: a model to guess your schema is not extraction, it is a riddle.
+#:
+#: The last two rules exist because a *reasoning* model does not fail an
+#: ambiguous mapping — it deliberates about it, unboundedly. K2-Think-v2 given
+#: "L bracket 80 x 60 legs, 50 wide, 6 thick" spent 63,219 characters and the
+#: entire 16,384-token cap arguing with itself over which number was the base,
+#: and emitted no answer at all; raising the budget only bought more argument.
+#: Naming the dimension-order convention settles the common case, and licensing
+#: omission settles the rest — the interview asking one question is the correct
+#: outcome for a genuinely ambiguous request, and it is the outcome the rest of
+#: this module is built around. Measured across eight requests: 7 complete, 1
+#: asking, none looping, and the worst case fell from 29.2s to 7.3s.
 EXTRACT_SYSTEM = """You are OrionFlow's Engineering Requirements Interpreter.
 
 Read the request and report ONLY the values it actually states, using EXACTLY \
@@ -307,6 +336,13 @@ tolerance, load or standard.
 - For a thread designation (M8, G1/4), put the designation itself in `thread` \
 or `port_thread`. Do NOT convert it to a drill size — that is looked up from a \
 standard, not recalled.
+- Dimensions written as "A x B x C" are given in the order length x width x \
+height (height being thickness for a flat plate). Read them in that order; do \
+not deliberate about which is which.
+- Do not deliberate. Read the request once and report what it plainly states. \
+If a field could plausibly take more than one of the stated numbers and no rule \
+above settles it, OMIT it: an omitted field becomes a question the user answers, \
+which is correct, while a guessed one becomes a part they did not ask for.
 - Numbers must be plain numbers, not strings and not expressions.
 
 Fields for a %s:
@@ -401,7 +437,55 @@ def _known_slots(family: str, raw: dict) -> dict:
 #: and vLLM rejects the request outright, which surfaced as an empty reply and
 #: read exactly like a model that had nothing to say. Leave room for the prompt.
 READ_TOKENS = 2048
+
+#: The budget a *reasoning* model needs to reach an answer at all.
+#:
+#: A model that derives before it replies spends the budget on the derivation
+#: and emits the JSON last. Measured on K2-Think-v2: extracting six fields from
+#: one plate request costs ~2,460 completion tokens, of which ~9,800 characters
+#: are reasoning and 120 are the answer. At :data:`READ_TOKENS` the reply is cut
+#: off mid-thought and comes back empty, which is indistinguishable from a model
+#: that read the request and found nothing in it — so a fully specified plate
+#: was reported as missing its length, width and thickness.
+#:
+#: Used only for the retry, so a tuned model that answers immediately still
+#: costs one small call, and only a model that needs the room asks for it.
+REASONING_TOKENS = int(os.environ.get("ORION_INTERVIEW_TOKENS", "8192"))
+
 EMIT_TOKENS = 4096
+
+
+def _ask(client, system: str, request: str, max_tokens: int):
+    """One extraction call. ``(response, transport_error)``.
+
+    Retries once with :data:`REASONING_TOKENS` when the reply is empty, which is
+    what a reasoning model returns when the whole budget went to the derivation.
+    The retry is conditional rather than the default because it is the expensive
+    call, and a model fine-tuned to answer directly never needs it.
+    """
+    from orion_agent.harness.llm.base import LLMMessage
+
+    msgs = [LLMMessage.system(system), LLMMessage.user(request)]
+
+    def once(budget: int):
+        resp = client.chat(msgs, max_tokens=budget, temperature=0.0)
+        # A transport failure is not a classification. Adapters return it as
+        # content rather than raising, so without this an unreachable endpoint
+        # became "rect_plate with no dimensions" and the interview asked the
+        # user how long their plate was — an outage reported as a question
+        # about their request.
+        if getattr(resp, "finish_reason", "") == "error":
+            return resp, (resp.content or "the model could not be reached")
+        return resp, ""
+
+    resp, dead = once(max_tokens)
+    if dead:
+        return resp, dead
+    if not (resp.content or "").strip() and max_tokens < REASONING_TOKENS:
+        resp, dead = once(REASONING_TOKENS)
+        if dead:
+            return resp, dead
+    return resp, ""
 
 
 def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Interview:
@@ -412,30 +496,20 @@ def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Intervi
     them; naming the family first means the extraction prompt contains only the
     fields that can apply.
     """
-    from orion_agent.harness.llm.base import LLMMessage
-
-    ident = client.chat(
-        [LLMMessage.system(IDENTIFY_SYSTEM), LLMMessage.user(request)],
-        max_tokens=max_tokens,
-        temperature=0.0,
-    )
-    # A transport failure is not a classification. Adapters return it as
-    # content rather than raising, so without this an unreachable endpoint
-    # became "rect_plate with no dimensions" and the interview asked the user
-    # how long their plate was — an outage reported as a question about their
-    # request.
-    if getattr(ident, "finish_reason", "") == "error" or not (ident.content or "").strip():
+    ident, dead = _ask(client, IDENTIFY_SYSTEM, request, max_tokens)
+    if dead:
+        return Interview(request=request, transport_error=dead)
+    if not (ident.content or "").strip():
         return Interview(request=request)
 
     family = str((_json_of(ident.content) or {}).get("family") or "")
     if family not in FAMILIES:
         return Interview(request=request)
 
-    got = client.chat(
-        [LLMMessage.system(extract_prompt(family)), LLMMessage.user(request)],
-        max_tokens=max_tokens,
-        temperature=0.0,
-    )
+    got, dead = _ask(client, extract_prompt(family), request, max_tokens)
+    if dead:
+        return Interview(request=request, transport_error=dead)
+
     raw = _json_of(got.content) or {}
     slots = _known_slots(family, raw if isinstance(raw, dict) else {})
     slots, notes = apply_standards(slots, family)

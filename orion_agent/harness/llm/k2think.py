@@ -119,7 +119,12 @@ class K2ThinkClient(LLMClient):
         try:
             choice = body["choices"][0]
             finish = choice.get("finish_reason", "")
-            raw = choice["message"]["content"] or ""
+            # ``.get``, not ``[...]``: K2-Think omits ``content`` entirely when
+            # the budget dies mid-thought — see ``_parse``. Subscripting raised
+            # KeyError, which was caught below as "not truncated", so the retry
+            # never fired in the one case it exists for. The caller then saw an
+            # empty reply and read it as a model with nothing to say.
+            raw = (choice.get("message") or {}).get("content") or ""
         except (KeyError, IndexError, TypeError):
             return False
         if finish == "length":

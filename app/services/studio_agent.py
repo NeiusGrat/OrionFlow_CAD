@@ -25,6 +25,7 @@ nobody can tell which system produced the result.
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
@@ -106,6 +107,45 @@ def _providers() -> tuple[str, str]:
 def model_label(provider: str) -> str:
     """What to call this model in the UI. Never flatters a fallback."""
     return "orionflow" if provider in OURS else f"fallback:{provider}"
+
+
+#: Providers that just failed at the transport, and when to trust them again.
+#:
+#: Rediscovering a dead endpoint costs a full connect timeout — measured 21.4s
+#: against the torn-down GPU — and the interview's two calls plus every design
+#: draw each pay it, on every request. That is a minute of silence per turn,
+#: which reads as a hung product rather than as a failed provider.
+#:
+#: A provider on cooldown is moved to the *back* of the queue rather than
+#: removed from it. If a blip marks the only reachable model down, trying it and
+#: failing is still better than reporting that no model exists.
+_DOWN: dict[str, float] = {}
+PROVIDER_COOLDOWN = float(os.environ.get("ORION_PROVIDER_COOLDOWN", "120"))
+
+
+def _is_down(provider: str) -> bool:
+    return _DOWN.get(provider, 0.0) > time.time()
+
+
+def _mark_down(provider: str, why: str = "") -> None:
+    _DOWN[provider] = time.time() + PROVIDER_COOLDOWN
+    logger.warning(
+        "provider_marked_down",
+        provider=provider,
+        cooldown_s=PROVIDER_COOLDOWN,
+        error=why[:200],
+    )
+
+
+def _mark_up(provider: str) -> None:
+    if _DOWN.pop(provider, None) is not None:
+        logger.info("provider_recovered", provider=provider)
+
+
+def _in_health_order(providers) -> list[str]:
+    """Reachable providers first, then those on cooldown. Never empty-handed."""
+    named = [p for p in providers if p]
+    return [p for p in named if not _is_down(p)] + [p for p in named if _is_down(p)]
 
 
 CONVERSATION_SYSTEM = """You are OrionFlow, a mechanical design engineer talking \
@@ -215,6 +255,18 @@ def lens_system(lens: Optional[str], has_part: bool = True) -> str:
 #: Three is enough to look something up, follow one cross-reference, and reply;
 #: more usually means the model is circling rather than converging.
 KNOWLEDGE_TOOL_ROUNDS = max(1, int(os.environ.get("ORION_KNOWLEDGE_ROUNDS", "3")))
+
+#: Completion budget for an answer.
+#:
+#: Sized for a model that derives before it replies. This was 1024, which a
+#: reasoning model spends entirely on the derivation: measured on K2-Think-v2,
+#: scoping a NEMA 23 mounting plate cost 2,048 tokens of thinking and returned
+#: an empty answer, which ``_strip_blueprint`` then could not distinguish from a
+#: Blueprint and reported as "the model returned a design instead of an answer"
+#: — a truncation diagnosed as the wrong failure entirely. At 4096 the same
+#: question answers in 8.8s. A model that replies directly is unaffected: this
+#: is a ceiling, not a target.
+ANSWER_TOKENS = int(os.environ.get("ORION_ANSWER_TOKENS", "4096"))
 
 _KNOWLEDGE_REGISTRY: Any = None
 _KNOWLEDGE_TRIED = False
@@ -685,9 +737,7 @@ class StudioAgent:
             if on_event and text and channel:
                 on_event(kind if kind == "thinking" else channel, {"text": text})
 
-        for provider in _providers():
-            if not provider:
-                continue
+        for provider in _in_health_order(_providers()):
             label = model_label(provider)
             try:
                 client = self._client(provider)
@@ -699,7 +749,17 @@ class StudioAgent:
 
             if on_event:
                 on_event("model", {"model": label, "provider": provider})
-            kw = {"model": model} if model else {}
+            # ``model`` names an adapter on OUR endpoint — "orionflow" and
+            # "orionflow-base" are the LoRA and its base, served side by side.
+            # It is a vLLM extension: ``LLMClient.chat`` does not declare it and
+            # a vendor adapter does not accept it, so passing it to a fallback
+            # raised TypeError out of ``chat_stream`` and took the whole turn
+            # with it. Every design draw and every conversation turn sets it, so
+            # with the GPU down the model path and the assistant panel both
+            # crashed on the fallback that exists to keep them working. Sending
+            # our adapter's name to somebody else's API would be meaningless
+            # even where it did not crash: that endpoint serves one model.
+            kw = {"model": model} if model and provider in OURS else {}
             if tools:
                 kw["tools"] = tools
             resp = client.chat_stream(
@@ -711,7 +771,9 @@ class StudioAgent:
                 "[vllm transport error"
             )
             if not failed:
+                _mark_up(provider)
                 return resp, label
+            _mark_down(provider, resp.content)
             logger.warning(
                 "studio_provider_failed", provider=provider, detail=resp.content[:200]
             )
@@ -760,6 +822,39 @@ class StudioAgent:
         det = self._deterministic(prompt, on_event)
         if det is not None:
             return det
+
+        # Past this line the Blueprint is authored by a model, and only our own
+        # weights were ever trained to author one. When none is reachable, say
+        # so now: a general model spends two sampling rounds arriving at "no
+        # Blueprint JSON in completion" — measured 22-49s for a spur gear — and
+        # a stated limit is a better answer than a slow parse error, especially
+        # since the four compiled families above are unaffected by the outage.
+        if not any(p in OURS and not _is_down(p) for p in _providers()):
+            from orion import blueprint_gen, interview
+
+            buildable = ", ".join(
+                interview.FAMILIES[f].label if f in interview.FAMILIES else f
+                for f in sorted(blueprint_gen.BUILDERS)
+            )
+            _emit_step(
+                on_event,
+                "understand",
+                "Understanding the request",
+                "fail",
+                "no builder for this part, and the design model is offline",
+            )
+            return Proposal(
+                failure="model",
+                error=(
+                    "This part has no deterministic builder, and the fine-tuned "
+                    "model that authors everything else is not currently being "
+                    f"served. I can still build these exactly: {buildable}."
+                ),
+                route=design_router.Route(
+                    design_router.DIRECT,
+                    "no builder for this family and no fine-tuned model to author one",
+                ).to_dict(),
+            )
 
         route = design_router.resolve(prompt)
         model_prompt = prompt
@@ -837,7 +932,7 @@ class StudioAgent:
         answer "your counterbores break into the base plate" with a part that
         quietly did something else, which is the failure mode this replaces.
         """
-        from app.services import design_router
+        from app.services import design_router, mechanical_plan
         from orion import blueprint_gen, interview
         from orion.blueprint import Blueprint, BlueprintError
 
@@ -845,31 +940,46 @@ class StudioAgent:
         # — the model is a separate field on the client, and passing a model id
         # where a provider belongs fails as "unknown LLM provider", which reads
         # like a misconfigured deployment rather than a wrong argument.
-        primary, fallback = _providers()
-        client = None
-        for provider in (primary, fallback):
-            if not provider:
-                continue
+        #
+        # Every provider is tried, and the fallback is reached when the *call*
+        # fails rather than only when the client cannot be constructed.
+        # Constructing a client against a dead endpoint succeeds — nothing
+        # connects until the first request — so the old loop bound to the
+        # primary, took a transport error from it, and returned None. With the
+        # GPU down that skipped this whole path for every request and handed
+        # each one to a general model asked to author Blueprint JSON, which is
+        # the 1-of-5 outcome this module was written to replace. The
+        # architecture was intact and unreachable.
+        iv = None
+        read_by = ""
+        for provider in _in_health_order(_providers()):
             try:
                 client = self._client(provider)
                 client.model = CONVERSATION_MODEL if provider in OURS else client.model
-                break
             except Exception as exc:  # noqa: BLE001 - try the fallback
                 logger.warning(
                     "interview_provider_failed", provider=provider, error=str(exc)
                 )
-        if client is None:
-            return None
+                continue
 
-        try:
-            iv = interview.read_request(
-                client, prompt, max_tokens=interview.READ_TOKENS
-            )
-        except Exception as exc:  # noqa: BLE001 - a dead endpoint is not a refusal
-            logger.warning("interview_failed", error=str(exc))
-            return None
+            try:
+                candidate = interview.read_request(
+                    client, prompt, max_tokens=interview.READ_TOKENS
+                )
+            except Exception as exc:  # noqa: BLE001 - a dead endpoint is not a refusal
+                logger.warning("interview_failed", provider=provider, error=str(exc))
+                _mark_down(provider, str(exc))
+                continue
 
-        if iv.family not in blueprint_gen.BUILDERS:
+            if candidate.transport_error:
+                _mark_down(provider, candidate.transport_error)
+                continue
+
+            _mark_up(provider)
+            iv, read_by = candidate, provider
+            break
+
+        if iv is None or iv.family not in blueprint_gen.BUILDERS:
             return None
 
         _emit_step(
@@ -952,6 +1062,24 @@ class StudioAgent:
             design_plan=payload.get("design_plan", {}),
             assertions=list(bp.assertions),
             reasoning=iv.to_dict(),
+            # Named, because this path produced no model-authored geometry and
+            # the badge hides itself when the label is empty. A compiled part
+            # was therefore the one result in the studio with no provenance at
+            # all — indistinguishable, to anyone watching, from our fine-tune
+            # having produced it. The label states what actually happened: the
+            # geometry was compiled in Python, and this provider only read the
+            # request into slots.
+            model=f"compiled:{read_by}",
+            # Compiled Blueprints are graded by the same two reviews as authored
+            # ones. Not because the generator is expected to fail them — its
+            # volume is derived alongside the geometry rather than predicted
+            # about it — but because a proposal that carries no checks renders
+            # as a part nobody examined, and "compiled deterministically" is a
+            # claim about provenance, not evidence that the numbers work. A
+            # violated guard is now named here rather than after a container has
+            # started, exactly as on the model path.
+            critique=critique(bp, payload),
+            mechanical=mechanical_plan.review_blueprint(bp),
             route=design_router.Route(
                 design_router.DIRECT, "compiled deterministically from the interview"
             ).to_dict(),
@@ -1269,6 +1397,23 @@ class StudioAgent:
                 # ``best`` above is for.
                 break
 
+            if not proposal.base_messages:
+                # A compiled Blueprint has no conversation to repair from, and
+                # must not acquire one. ``_deterministic`` authors no messages,
+                # so the repair turn was built from an empty base and reached
+                # the model as two turns — an empty assistant reply and a
+                # diagnosis — with no system prompt and no original request:
+                # the model asked to author a Blueprint out of nothing. Worse
+                # than the wasted round trip, a reply that happened to parse and
+                # verify would outrank the compiled attempt and silently replace
+                # deterministic geometry with a model's guess, which is the one
+                # substitution this architecture exists to prevent.
+                #
+                # A compiled part that fails is a generator or kernel defect.
+                # Resampling cannot fix it, and the failure belongs in the
+                # report where someone will see it.
+                break
+
             blocking = (proposal.mechanical or {}).get("blocking", 0)
             if proposal.ok and blocking and bundle.get("error"):
                 # The kernel failed *and* the deterministic review had already
@@ -1485,7 +1630,7 @@ class StudioAgent:
                 messages,
                 on_event,
                 "answer",
-                max_tokens=1024,
+                max_tokens=ANSWER_TOKENS,
                 model=CONVERSATION_MODEL,
                 tools=schemas,
             )
@@ -1521,7 +1666,11 @@ class StudioAgent:
             # Budget spent and still calling tools — answer with what it has
             # rather than looping.
             resp, label = self._complete(
-                messages, on_event, "answer", max_tokens=1024, model=CONVERSATION_MODEL
+                messages,
+                on_event,
+                "answer",
+                max_tokens=ANSWER_TOKENS,
+                model=CONVERSATION_MODEL,
             )
             if resp is None:
                 return {
@@ -1533,6 +1682,19 @@ class StudioAgent:
 
         answer = _strip_blueprint(resp.content)
         if not answer:
+            # Two different failures, and they were reported as one. A reply
+            # cut off mid-derivation arrives with no content at all, which is
+            # indistinguishable here from a Blueprint that was stripped — so a
+            # truncated answer told the user to rephrase a question that was
+            # never the problem. Name the one that actually happened.
+            if resp.finish_reason == "length":
+                return {
+                    "success": False,
+                    "model": label,
+                    "answer": "",
+                    "error": "the model ran out of room before it answered — "
+                    "raise ORION_ANSWER_TOKENS or ask something narrower",
+                }
             # The model answered with a Blueprint instead of prose. Say so
             # rather than pasting JSON into the conversation.
             return {

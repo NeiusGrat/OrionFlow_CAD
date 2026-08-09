@@ -48,10 +48,22 @@ function AgentAvatar({ size = 22 }: { size?: number }) {
  *  can tell which system produced the result. */
 function ModelBadge({ model }: { model: string }) {
     if (!model) return null;
-    const ours = model === "orionflow";
+    // Three states, not two. A compiled part is not a fallback: no model
+    // authored its geometry, so labelling it "Fallback" understates it and
+    // labelling it "OrionFlow" claims weights that never ran. It names the
+    // provider that only read the request into slots.
+    const compiled = model.startsWith("compiled:");
+    const readBy = compiled ? model.slice("compiled:".length) : "";
+    const ours = model === "orionflow" || compiled;
     return (
         <span
-            title={ours ? "OrionFlow fine-tuned model" : `Fallback model: ${model}`}
+            title={
+                compiled
+                    ? `Blueprint compiled deterministically in Python — ${readBy} only read the request into named fields, and authored no geometry`
+                    : ours
+                      ? "OrionFlow fine-tuned model"
+                      : `Fallback model: ${model}`
+            }
             style={{
                 fontSize: "9px",
                 fontWeight: 700,
@@ -64,7 +76,7 @@ function ModelBadge({ model }: { model: string }) {
                 border: `1px solid ${ours ? "var(--st-blue-edge)" : "rgba(217,164,65,0.3)"}`,
             }}
         >
-            {ours ? "OrionFlow" : "Fallback"}
+            {compiled ? "Compiled" : ours ? "OrionFlow" : "Fallback"}
         </span>
     );
 }

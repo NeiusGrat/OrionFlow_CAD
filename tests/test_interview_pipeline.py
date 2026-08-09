@@ -90,13 +90,113 @@ def test_diameters_become_radii():
 def test_a_thread_designation_is_looked_up_not_recalled():
     slots, notes = interview.apply_standards({"thread": "M8"})
     assert slots["hole_d"] == 9.0  # ISO 273 medium
-    assert slots["cbore_d"] == 15.0  # ISO 7046
     assert any("ISO 273" in n for n in notes)
+
+
+def test_naming_a_thread_does_not_invent_a_counterbore():
+    """A thread implies a clearance hole. A counterbore is a design choice.
+
+    This asserted the opposite, and the opposite was a bug: "L bracket ... M8
+    holes" acquired an ISO 7046 counterbore nobody asked for, and since
+    ``cbore_d`` requires ``cbore_depth`` the interview then refused to build
+    until the user answered "Counterbore depth?" about a feature they had never
+    mentioned. A standards lookup must not create work.
+    """
+    slots, _ = interview.apply_standards({"thread": "M8"})
+    assert "cbore_d" not in slots
+
+
+def test_a_counterbore_that_was_asked_for_is_still_dimensioned_by_the_standard():
+    slots, notes = interview.apply_standards({"thread": "M8", "cbore_depth": 9.0})
+    assert slots["cbore_d"] == 15.0  # ISO 7046
+    assert any("ISO 7046" in n for n in notes)
 
 
 def test_a_stated_diameter_is_not_overridden_by_the_table():
     slots, _ = interview.apply_standards({"thread": "M8", "hole_d": 8.5})
     assert slots["hole_d"] == 8.5
+
+
+# --------------------------------------------------------------------------- #
+# reading the request: a reasoning model, and a dead one
+# --------------------------------------------------------------------------- #
+class _Budgeted:
+    """A model that answers only when given room to think first.
+
+    K2-Think-v2 spends the budget deriving and emits the JSON last: measured
+    ~2,460 completion tokens to extract six fields, against a 2,048 default. It
+    returns an empty string, which is indistinguishable from a model that read
+    the request and found nothing — so a fully dimensioned plate came back with
+    no slots at all and the user was asked for the numbers they had just given.
+    """
+
+    model = "reasoner"
+
+    def __init__(self, needs: int, replies: list[str]):
+        self._needs = needs
+        self._replies = replies
+        self.budgets: list[int] = []
+
+    def chat(self, messages, max_tokens=None, **kw):
+        self.budgets.append(max_tokens)
+        body = "" if (max_tokens or 0) < self._needs else self._replies.pop(0)
+        return type(
+            "R",
+            (),
+            {
+                "content": body,
+                "thinking": "...",
+                "tool_calls": [],
+                "finish_reason": "length" if not body else "stop",
+                "usage": {},
+            },
+        )()
+
+
+def test_a_reasoning_model_that_needs_room_is_given_it():
+    client = _Budgeted(
+        needs=4096,
+        replies=['{"family": "rect_plate"}',
+                 '{"length": 100, "width": 60, "thickness": 5}'],
+    )
+
+    got = interview.read_request(client, "plate 100 x 60 x 5", max_tokens=2048)
+
+    assert got.family == "rect_plate"
+    assert got.slots == {"length": 100, "width": 60, "thickness": 5}
+    assert got.complete
+    # Small ask first, so a model that answers directly never pays for the big one.
+    assert client.budgets[0] == 2048
+    assert interview.REASONING_TOKENS in client.budgets
+
+
+class _Unreachable:
+    model = "gone"
+
+    def chat(self, messages, **kw):
+        return type(
+            "R",
+            (),
+            {
+                "content": "[transport error: connection refused]",
+                "thinking": "",
+                "tool_calls": [],
+                "finish_reason": "error",
+                "usage": {},
+            },
+        )()
+
+
+def test_an_outage_is_reported_as_an_outage_not_as_an_unknown_part():
+    """An empty family means two different things and the caller must be able
+    to tell them apart: "nothing here builds springs" is about the request,
+    "the endpoint is down" is about us, and only the second should be retried
+    against another provider."""
+    got = interview.read_request(_Unreachable(), "plate 100 x 60 x 5")
+
+    assert got.family == ""
+    assert got.transport_error
+    assert not got.complete
 
 
 def test_requirements_records_the_schema_version():
