@@ -154,9 +154,38 @@ def fulfillment_rows(design_plan: Optional[dict], topology: Optional[dict],
     # A path that cannot derive obligations must say so rather than emit none.
     # An empty obligation list and "no way to know what was asked for" look
     # identical downstream, and only one of them is evidence of anything.
+    rows: list[dict] = []
+
+    # Features the request named that this system has no vocabulary for. First,
+    # because they are the least recoverable: nothing downstream will ever
+    # mention them again.
+    for entry in (design_plan or {}).get("unsupported") or []:
+        name = entry.get("feature", "?")
+        rows.append({
+            "check_id": f"unsupported:{name}",
+            "id": name,
+            "kind": "unsupported",
+            "label": f"{name} is a supported capability",
+            "requested": True,
+            "represented": False,
+            "instantiated": False,
+            "observed": False,
+            "verified": False,
+            "status": "warn",
+            "detail": (
+                f"the request asked for {name}"
+                + (f" = {entry['requested']}" if entry.get("requested") is not None
+                   else "")
+                + f", and {entry.get('reason') or 'this system does not support it'}"
+                + ". It is not in the part, and nothing here can put it there."
+            ),
+            "evidence": {"source": entry.get("source"), "reason": "unsupported",
+                         "requested": entry.get("requested")},
+        })
+
     declared = (design_plan or {}).get("feature_verification")
     if isinstance(declared, dict) and declared.get("available") is False:
-        return [
+        return rows + [
             {
                 "id": "feature_verification",
                 "kind": "unavailable",
@@ -176,11 +205,11 @@ def fulfillment_rows(design_plan: Optional[dict], topology: Optional[dict],
 
     obligations = ((design_plan or {}).get("obligations")) or []
     if not obligations:
-        return []
+        return rows
 
     from orion import fulfillment as F
 
-    return F.check(obligations, topology, template=template)
+    return rows + F.check(obligations, topology, template=template)
 
 
 def fulfillment_checks(rows: Optional[list[dict]]) -> list[dict]:
@@ -201,7 +230,7 @@ def fulfillment_checks(rows: Optional[list[dict]]) -> list[dict]:
         status = row.get("status") or WARN
         out.append(
             _check(
-                f"feature:{row.get('id')}",
+                row.get("check_id") or f"feature:{row.get('id')}",
                 f"{row.get('label') or row.get('id')} exists in the built solid",
                 status if status in (PASS, FAIL, WARN) else WARN,
                 row.get("detail") or "",

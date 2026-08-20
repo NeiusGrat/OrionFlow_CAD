@@ -173,6 +173,10 @@ class Interview:
     #: how an invented dimension came to be graded exactly as convincingly as a
     #: stated one.
     provenance: dict[str, dict] = field(default_factory=dict)
+    #: Features the request asked for that this system has no slot for. Kept
+    #: rather than dropped: "unsupported" and "never requested" are different
+    #: facts, and losing the difference is the last silent-omission path.
+    unsupported: list[dict] = field(default_factory=list)
     #: Why the model could not be reached, when that is what happened.
     #:
     #: An empty family means two very different things — "this is a spring and
@@ -190,6 +194,7 @@ class Interview:
         return {"request": self.request, "family": self.family,
                 "slots": dict(self.slots), "asked": list(self.asked),
                 "complete": self.complete, "notes": list(self.notes),
+                "unsupported": list(self.unsupported),
                 "provenance": dict(self.provenance)}
 
     def classify(self) -> dict[str, dict]:
@@ -430,18 +435,57 @@ def _json_of(text: str) -> Optional[dict]:
     return None
 
 
-def _known_slots(family: str, raw: dict) -> dict:
-    """Keep what the schema declares; drop the rest.
+#: Keys a model sometimes returns that describe the *request* rather than the
+#: part. Reporting these as unsupported features would bury the real ones.
+_NOT_A_FEATURE = frozenset({
+    "family", "part", "part_type", "type", "name", "label", "notes", "note",
+    "description", "summary", "reasoning", "rationale", "units", "unit",
+    "quantity", "confidence", "assumptions", "comment",
+})
 
-    A value under a name no family declares cannot reach a template, so keeping
-    it would only make the interview look more complete than it is.
+#: Longer than this and the value is prose, not a dimension a builder could
+#: ever have consumed.
+_MAX_FEATURE_VALUE = 40
+
+
+def _known_slots(family: str, raw: dict) -> tuple[dict, list[dict]]:
+    """``(slots the schema declares, features it does not)``.
+
+    A value under a name no family declares cannot reach a template — but
+    dropping it silently was the last way for a requested feature to vanish
+    without trace. "unsupported" and "never asked for" are different facts and
+    downstream they looked identical, which is precisely the confusion the
+    obligation layer exists to prevent.
+
+    So the unrecognised ones are *returned*, not discarded, and travel into the
+    frozen contract as an explicit unsupported-capability record. No obligation
+    is derived from them: this system has no builder and no observer for a
+    draft angle, and inventing either would be worse than saying so.
+
+    Metadata the model volunteers about the request itself is filtered out —
+    reporting ``notes`` as an unsupported CAD feature would bury the one that
+    matters.
     """
     fam = FAMILIES[family]
     names = {s.name for s in fam.required + fam.optional} | {
         "thread", "hole_thread", "port_thread"}
-    out = {}
+    out: dict = {}
+    unsupported: list[dict] = []
     for k, v in raw.items():
-        if k not in names or v is None or v == "":
+        if v is None or v == "":
+            continue
+        if k not in names:
+            if k.lower() in _NOT_A_FEATURE:
+                continue
+            if isinstance(v, str) and len(v) > _MAX_FEATURE_VALUE:
+                continue
+            unsupported.append({
+                "feature": k,
+                "requested": v,
+                "source": "interview",
+                "reason": "no slot in part_families.yaml, so no builder and no "
+                          "observer — this system cannot make or check it",
+            })
             continue
         if isinstance(v, str) and k not in ("material", "thread", "hole_thread",
                                             "port_thread", "port_count",
@@ -451,7 +495,7 @@ def _known_slots(family: str, raw: dict) -> dict:
             except ValueError:
                 continue
         out[k] = v
-    return out
+    return out, unsupported
 
 
 #: Completion budget per call.
@@ -535,9 +579,10 @@ def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Intervi
         return Interview(request=request, transport_error=dead)
 
     raw = _json_of(got.content) or {}
-    slots = _known_slots(family, raw if isinstance(raw, dict) else {})
+    slots, unsupported = _known_slots(family, raw if isinstance(raw, dict) else {})
     slots, notes = apply_standards(slots, family)
-    iv = Interview(request=request, family=family, slots=slots, notes=notes)
+    iv = Interview(request=request, family=family, slots=slots, notes=notes,
+                   unsupported=unsupported)
     # Classified here, against the request the model was actually shown. This
     # is the only place both are in hand: after this the slots travel on and the
     # request does not, and "did the user say 120?" stops being answerable.
@@ -594,6 +639,8 @@ def requirements(iv: Interview) -> dict:
     # behind, it would be unrecoverable: a radius in a Blueprint carries no
     # record of the diameter somebody typed, or of whether anybody typed one.
     out["provenance"] = _resolved_provenance(iv)
+    if iv.unsupported:
+        out["unsupported"] = list(iv.unsupported)
     return out
 
 

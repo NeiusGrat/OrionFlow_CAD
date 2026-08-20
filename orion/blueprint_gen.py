@@ -1207,6 +1207,7 @@ BUILDERS: dict[str, Callable[[dict], dict]] = {
 #: They are the only requirements a builder may legitimately not read.
 INFORMATIONAL = frozenset({
     "family", "schema_version", "standards_applied", "provenance",
+    "unsupported",
     "material", "bearing_series", "mounting_type",
     "thread", "hole_thread", "port_thread", "inlet_thread",
 })
@@ -1266,7 +1267,7 @@ def generate(family: str, requirements: dict) -> dict:
 
     stated = {k: requirements[k] for k in INFORMATIONAL
               if k in requirements and k not in ("family", "schema_version",
-                                                 "provenance")}
+                                                 "provenance", "unsupported")}
     if stated:
         payload["design_plan"]["stated"] = stated
 
@@ -1294,6 +1295,14 @@ def generate(family: str, requirements: dict) -> dict:
     payload["design_plan"]["obligations"] = OB.to_dicts(
         OB.derive(family, requirements)
     )
+
+    # Features the request asked for that this system has no slot, builder or
+    # observer for. Carried, not dropped: an unrecognised request and an absent
+    # one are different facts, and until now they were the same downstream.
+    # Written only when there is something to say, so a design that asked for
+    # nothing unsupported hashes exactly as it did before.
+    if requirements.get("unsupported"):
+        payload["design_plan"]["unsupported"] = list(requirements["unsupported"])
 
     payload["design_plan"]["provenance"] = P.extend(
         requirements.get("provenance") or {},

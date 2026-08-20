@@ -746,3 +746,207 @@ def test_the_compiled_path_makes_no_such_declaration():
     ).freeze()
     assert "feature_verification" not in bp.design_plan
     assert bp.design_plan["obligations"] == []
+
+
+# --------------------------------------------------------------------------- #
+# unsupported: asked for, not in the vocabulary, and never silently gone
+# --------------------------------------------------------------------------- #
+#
+# The last silent-loss path. ``_known_slots`` dropped anything the schema does
+# not declare, so a requested draft angle or shell thickness vanished between
+# the model's reply and the contract — and downstream "unsupported" looked
+# exactly like "nobody asked for anything".
+#
+# Three states that must stay distinct:
+#     unsupported  the request named it, and this system has no way to make it
+#     omitted      the request named it, a builder exists, and it is not there
+#     absent       nobody asked
+
+UNSUPPORTED_DRAFT = [
+    {
+        "feature": "draft_angle",
+        "requested": 3,
+        "source": "interview",
+        "reason": "no slot in part_families.yaml, so no builder and no observer",
+    }
+]
+
+
+def test_an_unrecognised_feature_is_returned_not_discarded():
+    from orion import interview
+
+    slots, unsupported = interview._known_slots(
+        "rect_plate",
+        {"length": 120, "width": 80, "thickness": 10,
+         "draft_angle": 3, "shell": 2},
+    )
+    assert slots == {"length": 120, "width": 80, "thickness": 10}
+    assert [u["feature"] for u in unsupported] == ["draft_angle", "shell"]
+    assert all(u["reason"] for u in unsupported)
+    assert all(u["requested"] is not None for u in unsupported)
+
+
+def test_request_metadata_is_not_reported_as_a_missing_capability():
+    """Rule 4: do not manufacture capability reports out of model chatter.
+
+    A ``notes`` field is a remark about the request, not a feature nobody can
+    build, and burying the real one under it would be its own failure.
+    """
+    from orion import interview
+
+    _slots, unsupported = interview._known_slots(
+        "rect_plate",
+        {"length": 120, "width": 80, "thickness": 10,
+         "notes": "customer prefers anodised", "confidence": "high",
+         "description": "a long sentence of prose about the part in question"},
+    )
+    assert unsupported == []
+
+
+def test_a_supported_feature_is_never_reported_as_unsupported():
+    """Rule 4, the other direction: chamfer has a slot, so it is not this."""
+    from orion import interview
+
+    slots, unsupported = interview._known_slots(
+        "rect_plate", {"length": 120, "width": 80, "thickness": 10, "chamfer": 2}
+    )
+    assert slots["chamfer"] == 2
+    assert unsupported == []
+
+
+# ---- A: it survives into the frozen contract ------------------------------ #
+def test_an_unsupported_feature_survives_into_the_frozen_blueprint():
+    from orion import blueprint_gen, interview
+    from orion.blueprint import Blueprint
+
+    iv = interview.Interview(request="a plate with a 3 degree draft",
+                             family="rect_plate")
+    iv.slots = {"length": 120, "width": 80, "thickness": 10}
+    iv.unsupported = list(UNSUPPORTED_DRAFT)
+    iv.classify()
+
+    bp = Blueprint.from_dict(
+        blueprint_gen.generate("rect_plate", interview.requirements(iv))
+    ).freeze()
+
+    recorded = bp.design_plan["unsupported"]
+    assert [u["feature"] for u in recorded] == ["draft_angle"]
+    assert recorded[0]["requested"] == 3
+    assert bp.verify_hash()
+
+
+# ---- C: and cannot be removed afterwards ---------------------------------- #
+def test_the_unsupported_record_cannot_be_dropped_after_the_freeze():
+    from orion import blueprint_gen, interview
+    from orion.blueprint import Blueprint
+
+    iv = interview.Interview(request="a plate with a 3 degree draft",
+                             family="rect_plate")
+    iv.slots = {"length": 120, "width": 80, "thickness": 10}
+    iv.unsupported = list(UNSUPPORTED_DRAFT)
+    iv.classify()
+    bp = Blueprint.from_dict(
+        blueprint_gen.generate("rect_plate", interview.requirements(iv))
+    ).freeze()
+
+    tampered = copy.deepcopy(bp.to_dict())
+    tampered["design_plan"].pop("unsupported")
+    assert not Blueprint.from_dict(tampered).verify_hash()
+
+
+# ---- B: otherwise perfect geometry still cannot be VERIFIED --------------- #
+def test_an_unsupported_feature_prevents_verified_on_perfect_geometry():
+    """Extents pass, solid valid, volume passes, ledger clean — and one thing
+    the user asked for is not in the part and never could be."""
+    plan = {"provenance": CLEAN_LEDGER, "unsupported": list(UNSUPPORTED_DRAFT)}
+    report = verify.from_assertion_rows(
+        PASSING_ROWS,
+        measured={"valid": True, "solids": 1, "watertight": True},
+        design_plan=plan,
+        topology=CORRECT,
+    )
+    assert report["verdict"] == verify.UNSOURCED
+    # Not a refusal: the geometry is not wrong, the capability is missing.
+    assert report["failed"] == []
+    row = next(c for c in report["checks"] if c["id"] == "unsupported:draft_angle")
+    assert row["status"] == verify.WARN
+    assert row["evidence"]["reason"] == "unsupported"
+    assert row["evidence"]["requested"] == 3
+
+
+def test_unsupported_is_distinguishable_from_no_request_at_all():
+    """The whole point. Same geometry, same ledger, different claim."""
+    clean = verify.from_assertion_rows(
+        PASSING_ROWS,
+        measured={"valid": True, "solids": 1},
+        design_plan={"provenance": CLEAN_LEDGER},
+        topology=CORRECT,
+    )
+    asked = verify.from_assertion_rows(
+        PASSING_ROWS,
+        measured={"valid": True, "solids": 1},
+        design_plan={"provenance": CLEAN_LEDGER,
+                     "unsupported": list(UNSUPPORTED_DRAFT)},
+        topology=CORRECT,
+    )
+    assert clean["verdict"] == verify.VERIFIED
+    assert asked["verdict"] == verify.UNSOURCED
+    assert not any(c["id"].startswith("unsupported:") for c in clean["checks"])
+
+
+def test_unsupported_is_distinguishable_from_omitted():
+    """An omission refuses; an unsupported capability warns. Different facts,
+    different verdicts, and neither is silence."""
+    omitted = _report(BLANK, obligations=O.to_dicts(_obligation()))
+    unsupported = verify.from_assertion_rows(
+        PASSING_ROWS,
+        measured={"valid": True, "solids": 1},
+        design_plan={"provenance": CLEAN_LEDGER,
+                     "unsupported": list(UNSUPPORTED_DRAFT)},
+        topology=CORRECT,
+    )
+    assert omitted["verdict"] == verify.REFUSED
+    assert unsupported["verdict"] == verify.UNSOURCED
+
+
+def test_no_obligation_is_invented_for_an_unsupported_feature():
+    """It has no builder and no observer; manufacturing either would be worse
+    than saying so."""
+    from orion import obligations as OB
+
+    assert OB.derive("rect_plate", {"draft_angle": 3, "shell": 2}) == []
+
+
+# ---- D: supported semantics unchanged ------------------------------------- #
+@pytest.mark.parametrize(
+    "kind,obligations,topology,expected_status",
+    [
+        ("hole_pattern", _obligation(), CORRECT, "pass"),
+        ("hole_pattern", _obligation(), BLANK, "fail"),
+        ("bore", [O.Obligation(id="central_bore", kind=O.BORE, label="central bore",
+                               count=1, radius=HOLE_R,
+                               placement={"form": O.CENTRED},
+                               source=("bore_r",))],
+         _dressed(HOLE_R, [(0, 0, 0)]), "pass"),
+        ("round", _round_obligation(), CORNERS_8, "pass"),
+        ("round", _round_obligation(), NO_CORNERS, "fail"),
+        ("chamfer", _dressing_obligation(), CHAMFERED, "warn"),
+        ("chamfer", _dressing_obligation(), UNCHAMFERED, "fail"),
+    ],
+)
+def test_supported_feature_semantics_are_unchanged(
+    kind, obligations, topology, expected_status
+):
+    assert F.check(obligations, topology)[0]["status"] == expected_status, kind
+
+
+def test_pocket_and_slot_semantics_are_unchanged():
+    pocket = [O.Obligation(id="pocket", kind=O.POCKET, label="pocket",
+                           source=("pocket_l",),
+                           expect_feature=("Pocket", "Groove"))]
+    with_pocket = _with_features(
+        CORRECT, {"pocket": {"type": "PartDesign::Pocket", "label": "pocket",
+                             "build_index": 1, "faces": ["#o1.s1.f40"],
+                             "edges": [], "vertices": []}})
+    assert F.check(pocket, with_pocket)[0]["status"] == "warn"
+    assert F.check(pocket, CORRECT)[0]["status"] == "fail"
