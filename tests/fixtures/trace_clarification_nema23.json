@@ -1,0 +1,38 @@
+{
+  "schema": "orionflow-trace-v1",
+  "captured_at": "2026-08-20T12:00:45Z",
+  "commit": "b156d19",
+  "request": "A mounting plate for a NEMA 23 stepper",
+  "route": null,
+  "model": "",
+  "attempts": null,
+  "questions": [
+    "How long should the plate be?",
+    "How wide should the plate be?",
+    "How thick should it be?"
+  ],
+  "part_class": null,
+  "variables": null,
+  "blueprint_hash": null,
+  "blueprint": null,
+  "requirements": null,
+  "provenance": null,
+  "build_ok": false,
+  "build_error": "How long should the plate be?; How wide should the plate be?; How thick should it be?",
+  "measurements": null,
+  "assertions": null,
+  "engineering": null,
+  "verification": {},
+  "narrative": null,
+  "files": {},
+  "request_id": null,
+  "design_ms": 4029.6,
+  "design_events": [
+    "step",
+    "step"
+  ],
+  "inspection": {
+    "skipped": "no geometry was produced"
+  },
+  "total_ms": 4029.6
+}
