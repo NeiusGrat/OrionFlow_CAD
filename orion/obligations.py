@@ -44,6 +44,17 @@ BORE = "bore"
 HOLE_PATTERN = "hole_pattern"
 POCKET = "pocket"
 SLOT = "slot"
+#: A rounded edge that leaves cylindrical faces of the requested radius — a
+#: plate's corner radius or external fillet, an L-bracket's inside fillet, a
+#: housing's locating shoulder. Measured exactly like a hole, because that is
+#: what it leaves behind: measured on four families, a corner radius of 8 mm is
+#: four cylinders of radius 8.0 with their axes at the corner offsets.
+ROUND = "round"
+#: A feature whose *existence* is checkable through FreeCAD's own feature
+#: attribution but whose size this system cannot yet recover from the solid —
+#: a chamfer leaves oblique planes whose width is a function of the edge it ate
+#: into. Existence is real evidence; a size claim would not be.
+DRESSING = "dressing"
 
 #: Placement forms an obligation can carry. ``None`` means the request fixed a
 #: size and a count but not a position, which is a real state: the count and the
@@ -71,6 +82,9 @@ class Obligation:
     #: The requirement keys that created this obligation. Kept so a failure can
     #: name what the user said rather than what the schema calls it.
     source: tuple[str, ...] = ()
+    #: FreeCAD feature type suffixes that would satisfy this obligation, for
+    #: kinds checked by attribution rather than by measurement.
+    expect_feature: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         out = {k: v for k, v in asdict(self).items() if v not in (None, (), [])}
@@ -91,6 +105,9 @@ class Rule:
     #: quiet exactly when the builder does.
     triggers: tuple[str, ...]
     build: Callable[[dict], dict] = field(repr=False, default=lambda _r: {})
+    #: FreeCAD feature type suffixes that satisfy this obligation, for kinds
+    #: checked by attribution rather than measurement.
+    expect_feature: tuple[str, ...] = ()
 
 
 def _f(req: dict, key: str) -> Optional[float]:
@@ -170,6 +187,37 @@ def _sized(key: str) -> Callable[[dict], dict]:
     return build
 
 
+def _corner_round(key: str) -> Callable[[dict], dict]:
+    """A plate's rounded corners: four cylinders inset by their own radius.
+
+    Measured, not assumed. A 160 x 120 plate with an 8 mm corner radius leaves
+    four cylinders of radius 8.0 with axes at (+/-72, +/-52) — that is
+    (L/2 - r, W/2 - r), so the four axes span (L - 2r) by (W - 2r) and the
+    existing grid check measures it without a new placement form.
+    """
+
+    def build(req: dict) -> dict:
+        r = _f(req, key)
+        L, W = _f(req, "length"), _f(req, "width")
+        placement = None
+        if r is not None and L is not None and W is not None:
+            placement = {"form": GRID, "pitch": [L - 2 * r, W - 2 * r]}
+        return {"count": 4 if r is not None else None, "radius": r,
+                "placement": placement}
+
+    return build
+
+
+def _shoulder(req: dict) -> dict:
+    """A locating shoulder is a step down from the seat, so what it leaves is a
+    cylinder of ``seat_r - shoulder``. Derived from the requirements alone."""
+    seat_r, shoulder = _f(req, "bore_r"), _f(req, "shoulder")
+    radius = None
+    if seat_r is not None and shoulder is not None:
+        radius = seat_r - shoulder
+    return {"count": 1, "radius": radius, "placement": None}
+
+
 #: Per family, every feature the request can ask for.
 #:
 #: Kept beside the schema it reads rather than inside the builders, because the
@@ -181,9 +229,17 @@ RULES: dict[str, tuple[Rule, ...]] = {
         Rule("bolt_circle", HOLE_PATTERN, "mounting hole pattern",
              ("hole_count", "hole_r", "pcd_r"), _bolt_circle),
         Rule("pocket", POCKET, "pocket",
-             ("pocket_l", "pocket_w", "pocket_depth")),
+             ("pocket_l", "pocket_w", "pocket_depth"),
+             expect_feature=("Pocket", "Groove")),
         Rule("slots", SLOT, "mounting slots",
-             ("slot_length", "slot_width", "slot_edge_gap")),
+             ("slot_length", "slot_width", "slot_edge_gap"),
+             expect_feature=("Pocket", "Groove")),
+        Rule("corner_radius", ROUND, "rounded corners",
+             ("corner_radius",), _corner_round("corner_radius")),
+        Rule("fillet", ROUND, "external fillet",
+             ("fillet",), _corner_round("fillet")),
+        Rule("chamfer", DRESSING, "edge chamfer", ("chamfer",),
+             expect_feature=("Chamfer",)),
     ),
     "l_bracket": (
         Rule("pilot_bore", BORE, "pilot bore", ("bore_r",), _centred("bore_r")),
@@ -192,7 +248,16 @@ RULES: dict[str, tuple[Rule, ...]] = {
         Rule("counterbore", HOLE_PATTERN, "counterbore",
              ("cbore_r", "cbore_depth"), _sized("cbore_r")),
         Rule("slots", SLOT, "mounting slots",
-             ("slot_length", "slot_width", "slot_count", "slot_edge_gap")),
+             ("slot_length", "slot_width", "slot_count", "slot_edge_gap"),
+             expect_feature=("Pocket", "Groove")),
+        # Measured: a 6 mm inside fillet leaves exactly one cylinder of radius
+        # 6.0 with its axis along the bracket's width, plus a `gusset` feature.
+        Rule("inside_fillet", ROUND, "inside fillet at the joint",
+             ("inside_fillet",), _sized("inside_fillet")),
+        Rule("fillet", DRESSING, "external fillet", ("fillet",),
+             expect_feature=("Fillet",)),
+        Rule("chamfer", DRESSING, "edge chamfer", ("chamfer",),
+             expect_feature=("Chamfer",)),
     ),
     "bearing_housing": (
         Rule("bearing_seat", BORE, "bearing seat", ("bore_r",), _centred("bore_r")),
@@ -200,6 +265,11 @@ RULES: dict[str, tuple[Rule, ...]] = {
              ("recess_r", "recess_depth"), _sized("recess_r")),
         Rule("mounting_holes", HOLE_PATTERN, "mounting hole pattern",
              ("hole_r", "hole_pitch_x", "hole_pitch_y"), _grid_pattern),
+        Rule("shoulder", ROUND, "locating shoulder", ("shoulder",), _shoulder),
+        Rule("fillet", DRESSING, "fillet at the feet", ("fillet",),
+             expect_feature=("Fillet",)),
+        Rule("chamfer", DRESSING, "edge chamfer", ("chamfer",),
+             expect_feature=("Chamfer",)),
     ),
     "manifold": (
         Rule("main_passage", BORE, "main passage", ("passage_r",),
@@ -209,6 +279,10 @@ RULES: dict[str, tuple[Rule, ...]] = {
              ("hole_r", "hole_edge_gap"), _sized("hole_r")),
         Rule("counterbore", HOLE_PATTERN, "counterbore",
              ("cbore_r", "cbore_depth"), _sized("cbore_r")),
+        Rule("fillet", DRESSING, "external fillet", ("fillet",),
+             expect_feature=("Fillet",)),
+        Rule("chamfer", DRESSING, "edge chamfer", ("chamfer",),
+             expect_feature=("Chamfer",)),
     ),
 }
 
@@ -233,7 +307,10 @@ def derive(family: str, requirements: dict) -> list[Obligation]:
                 count=spec.get("count"),
                 radius=spec.get("radius"),
                 placement=spec.get("placement"),
-                source=tuple(t for t in rule.triggers if requirements.get(t) is not None),
+                source=tuple(
+                    t for t in rule.triggers if requirements.get(t) is not None
+                ),
+                expect_feature=rule.expect_feature,
             )
         )
     return out
@@ -258,6 +335,7 @@ def from_dicts(rows: Optional[list]) -> list[Obligation]:
                 radius=row.get("radius"),
                 placement=row.get("placement"),
                 source=tuple(row.get("source") or ()),
+                expect_feature=tuple(row.get("expect_feature") or ()),
             )
         )
     return out

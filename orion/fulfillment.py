@@ -328,7 +328,7 @@ def _represented(obligation: O.Obligation, template: Optional[dict]) -> bool:
     """
     if template is None:
         return False
-    if obligation.kind in (O.BORE, O.HOLE_PATTERN):
+    if obligation.kind in (O.BORE, O.HOLE_PATTERN, O.ROUND):
         # Cylindrical voids in these families are cut in the pad profile, so
         # the evidence in the contract is a hole entry in a sketch profile, not
         # a feature of its own.
@@ -340,13 +340,10 @@ def _represented(obligation: O.Obligation, template: Optional[dict]) -> bool:
             f.get("type") in ("Pocket", "Hole", "Groove")
             for f in _template_features(template)
         )
-    if obligation.kind == O.POCKET:
-        return any(f.get("type") == "Pocket" for f in _template_features(template))
-    if obligation.kind == O.SLOT:
-        return any(
-            f.get("type") in ("Pocket", "Groove") for f in _template_features(template)
-        )
-    return False
+    wanted = obligation.expect_feature or ("Pocket", "Groove")
+    return any(
+        str(f.get("type", "")).endswith(wanted) for f in _template_features(template)
+    )
 
 
 def _instantiated(topology: Optional[dict]) -> bool:
@@ -432,10 +429,11 @@ def _check_solid_feature(o: O.Obligation, topology: Optional[dict],
     result = Fulfillment(obligation=o.to_dict())
     result.represented = _represented(o, template)
     features = (topology or {}).get("features") or {}
+    wanted = o.expect_feature or ("Pocket", "Groove")
     cutters = {
         name: entry
         for name, entry in features.items()
-        if str(entry.get("type", "")).endswith(("Pocket", "Groove"))
+        if str(entry.get("type", "")).endswith(wanted)
         and (entry.get("faces") or entry.get("edges"))
     }
     result.instantiated = bool(cutters)
@@ -448,9 +446,9 @@ def _check_solid_feature(o: O.Obligation, topology: Optional[dict],
     if not result.represented and not result.instantiated:
         result.status = "fail"
         result.detail = (
-            f"{o.label} was requested and the built solid contains no feature "
-            "that removes material — it was dropped between the request and "
-            "the part"
+            f"{o.label} was requested and the built solid contains no "
+            + " or ".join(wanted)
+            + " feature — it was dropped between the request and the part"
         )
         return result
 
@@ -465,8 +463,8 @@ def _check_solid_feature(o: O.Obligation, topology: Optional[dict],
     result.status = "warn"
     result.detail = (
         f"{o.label} exists in the built solid ({', '.join(sorted(cutters))}), "
-        "but this system cannot independently measure a "
-        f"{o.kind} — its size is not verified"
+        f"but this system cannot independently measure a {o.kind} — it is "
+        "present, and its size is not verified"
     )
     return result
 
@@ -504,7 +502,9 @@ def check(obligations: list, topology: Optional[dict],
 
     out = []
     for o in items:
-        if o.kind in (O.BORE, O.HOLE_PATTERN):
+        if o.kind in (O.BORE, O.HOLE_PATTERN, O.ROUND):
+            # A round leaves cylindrical faces of the requested radius exactly
+            # as a hole does, so it is measured rather than merely located.
             out.append(_check_cylindrical(o, topology, template).to_dict())
         else:
             out.append(_check_solid_feature(o, topology, template).to_dict())

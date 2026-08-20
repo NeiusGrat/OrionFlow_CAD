@@ -397,6 +397,25 @@ def _with_provenance(payload: dict, request: str, chain: Any = None) -> dict:
 
     plan = dict(payload.get("design_plan") or {})
     plan["provenance"] = P.classify(request, variables, derived=derived)
+
+    # Feature obligations cannot be derived on this path, and the honest move is
+    # to say so rather than to emit an empty list — which downstream is
+    # indistinguishable from "the request asked for nothing".
+    #
+    # The compiled path derives obligations from typed requirements; a model
+    # authoring a Blueprint from prose produces no requirements dict, so there
+    # is nothing to compare the built solid against. It also authors its own
+    # volume assertion, so a feature it silently dropped is missing from both
+    # the geometry and the prediction and the two still agree — the exact shape
+    # of the defect obligations exist to catch. Declared here, before the
+    # freeze, so it is inside the hash like every other claim.
+    plan["feature_verification"] = {
+        "available": False,
+        "path": "model_authored",
+        "reason": "this design was authored by a model from prose rather than "
+        "compiled from typed requirements, so no feature obligations exist and "
+        "nothing here can confirm that the features you asked for are present",
+    }
     payload["design_plan"] = plan
     return payload
 

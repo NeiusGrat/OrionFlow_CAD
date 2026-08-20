@@ -151,6 +151,29 @@ def fulfillment_rows(design_plan: Optional[dict], topology: Optional[dict],
     the feature was, so an absent hole makes the prediction and the measurement
     agree with each other.
     """
+    # A path that cannot derive obligations must say so rather than emit none.
+    # An empty obligation list and "no way to know what was asked for" look
+    # identical downstream, and only one of them is evidence of anything.
+    declared = (design_plan or {}).get("feature_verification")
+    if isinstance(declared, dict) and declared.get("available") is False:
+        return [
+            {
+                "id": "feature_verification",
+                "kind": "unavailable",
+                "label": "Requested features can be checked",
+                "requested": True,
+                "represented": False,
+                "instantiated": False,
+                "observed": False,
+                "verified": False,
+                "status": "warn",
+                "detail": declared.get("reason")
+                or "no typed requirements exist for this design, so nothing "
+                "here can confirm the features that were asked for are present",
+                "evidence": {"path": declared.get("path") or "unknown"},
+            }
+        ]
+
     obligations = ((design_plan or {}).get("obligations")) or []
     if not obligations:
         return []

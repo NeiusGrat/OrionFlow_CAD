@@ -299,6 +299,217 @@ def test_count_and_diameter_still_bind_when_no_placement_was_stated():
 
 
 # --------------------------------------------------------------------------- #
+# the dressings: silent until obligations reached them
+# --------------------------------------------------------------------------- #
+#
+# Every geometric signature below was read off a real FreeCAD 1.1.3 build, not
+# assumed. A 160 x 120 plate with an 8 mm corner radius leaves four cylinders of
+# radius 8.0 at (+/-72, +/-52); a 6 mm inside fillet on an L-bracket leaves
+# exactly one cylinder of radius 6.0 with its axis along the width; a 2 mm
+# chamfer leaves eight oblique planes and an `edge_chamfer` feature whose *size*
+# this system cannot recover — so it warns rather than claiming.
+
+
+def _dressed(radius: float, points: list, axis=(0.0, 0.0, -1.0)) -> dict:
+    """A plate carrying rounds of ``radius`` at the given axis anchors."""
+    topology = _topology([])
+    faces = list(topology["faces"])
+    for i, (x, y, z) in enumerate(points, start=len(faces) + 1):
+        faces.append(
+            _cyl(i, radius, x, y) | {"axis": list(axis), "position": [x, y, z]}
+        )
+    topology["faces"] = faces
+    return topology
+
+
+#: L=160, W=120, r=8 -> axes at (+/-72, +/-52), spanning 144 x 104.
+CORNERS_8 = _dressed(8.0, [(72, -52, 0), (72, 52, 0), (-72, 52, 0), (-72, -52, 0)])
+NO_CORNERS = _topology([])
+
+
+def _round_obligation(oid="corner_radius", label="rounded corners", radius=8.0,
+                      count=4, pitch=(144.0, 104.0)):
+    placement = {"form": O.GRID, "pitch": list(pitch)} if pitch else None
+    return [
+        O.Obligation(id=oid, kind=O.ROUND, label=label, count=count,
+                     radius=radius, placement=placement,
+                     source=("corner_radius",))
+    ]
+
+
+def _dressing_obligation(oid="chamfer", label="edge chamfer",
+                         expect=("Chamfer",)):
+    return [
+        O.Obligation(id=oid, kind=O.DRESSING, label=label, source=("chamfer",),
+                     expect_feature=expect)
+    ]
+
+
+def _with_features(topology: dict, features: dict) -> dict:
+    out = copy.deepcopy(topology)
+    out["features"] = {**out.get("features", {}), **features}
+    return out
+
+
+CHAMFERED = _with_features(
+    CORRECT,
+    {"edge_chamfer": {"type": "PartDesign::Chamfer", "label": "edge_chamfer",
+                      "build_index": 1, "faces": ["#o1.s1.f20"], "edges": [],
+                      "vertices": []}},
+)
+UNCHAMFERED = CORRECT
+
+
+# ---- corner radius / external fillet: measurable, so omission is a FAIL ---- #
+def test_a_corner_radius_that_was_built_verifies():
+    row = F.check(_round_obligation(), CORNERS_8)[0]
+    assert row["status"] == "pass" and row["verified"] is True
+
+
+def test_a_corner_radius_the_builder_dropped_fails():
+    """The silent path this closes: requested, absent, and until now invisible."""
+    row = F.check(_round_obligation(), NO_CORNERS)[0]
+    assert row["status"] == "fail"
+    assert row["observed"] is False and row["verified"] is False
+
+
+def test_a_corner_radius_built_at_the_wrong_size_fails():
+    wrong = _dressed(5.0, [(75, -55, 0), (75, 55, 0), (-75, 55, 0), (-75, -55, 0)])
+    assert F.check(_round_obligation(), wrong)[0]["status"] == "fail"
+
+
+def test_a_corner_radius_on_the_wrong_footprint_fails():
+    """Right radius, wrong inset — a rounded corner in the wrong place."""
+    shifted = _dressed(8.0, [(50, -30, 0), (50, 30, 0), (-50, 30, 0), (-50, -30, 0)])
+    assert F.check(_round_obligation(), shifted)[0]["status"] == "fail"
+
+
+def test_an_inside_fillet_is_measured_on_its_own_axis():
+    """One cylinder, axis along Y — the geometry a real l_bracket produces."""
+    bracket = _topology([])
+    bracket["faces"] = [
+        _cyl(1, 6.0, 0, 0) | {"axis": [0.0, 1.0, 0.0],
+                              "position": [16.0, -40.0, 16.0]}
+    ]
+    obligation = [
+        O.Obligation(id="inside_fillet", kind=O.ROUND,
+                     label="inside fillet at the joint", count=1, radius=6.0,
+                     source=("inside_fillet",))
+    ]
+    assert F.check(obligation, bracket)[0]["status"] == "pass"
+    assert F.check(obligation, _topology([]))[0]["status"] == "fail"
+
+
+def test_a_shoulder_is_measured_as_the_step_it_leaves():
+    """A 4 mm shoulder on a 26 mm seat leaves a 22 mm cylinder."""
+    stepped = _dressed(22.0, [(0, 0, 0)])
+    obligation = [
+        O.Obligation(id="shoulder", kind=O.ROUND, label="locating shoulder",
+                     count=1, radius=22.0, source=("shoulder",))
+    ]
+    assert F.check(obligation, stepped)[0]["status"] == "pass"
+    assert F.check(obligation, _topology([]))[0]["status"] == "fail"
+
+
+# ---- chamfer: existence checkable, size not — WARN, never PASS ------------- #
+def test_a_chamfer_that_exists_warns_rather_than_verifying():
+    """Rule B: attribution is not measurement, and must not be dressed as it."""
+    row = F.check(_dressing_obligation(), CHAMFERED)[0]
+    assert row["status"] == "warn"
+    assert row["instantiated"] is True and row["observed"] is True
+    assert row["verified"] is False
+    assert "cannot independently measure" in row["detail"]
+
+
+def test_a_chamfer_the_builder_dropped_fails():
+    row = F.check(_dressing_obligation(), UNCHAMFERED)[0]
+    assert row["status"] == "fail"
+    assert row["instantiated"] is False
+
+
+def test_a_present_chamfer_still_prevents_verified():
+    """Rule C: the boundary stops VERIFIED without calling the geometry wrong."""
+    report = _report(CHAMFERED, obligations=O.to_dicts(_dressing_obligation()))
+    assert report["verdict"] == verify.UNSOURCED
+    assert report["failed"] == []
+
+
+def test_a_dropped_chamfer_refuses():
+    report = _report(UNCHAMFERED, obligations=O.to_dicts(_dressing_obligation()))
+    assert report["verdict"] == verify.REFUSED
+
+
+def test_a_fillet_feature_is_matched_by_its_own_type_not_a_pocket():
+    """The dispatcher once sent every non-cylindrical obligation looking for a
+    Pocket, so a real fillet read as "dropped". Types are matched explicitly."""
+    filleted = _with_features(
+        CORRECT,
+        {"edge_fillet": {"type": "PartDesign::Fillet", "label": "edge_fillet",
+                         "build_index": 1, "faces": ["#o1.s1.f30"], "edges": [],
+                         "vertices": []}},
+    )
+    obligation = _dressing_obligation("fillet", "external fillet", ("Fillet",))
+    assert F.check(obligation, filleted)[0]["status"] == "warn"
+    assert F.check(obligation, CORRECT)[0]["status"] == "fail"
+
+
+# ---- every dressing is in the contract BEFORE the builder runs ------------- #
+@pytest.mark.parametrize(
+    "family,slots,expected_ids",
+    [
+        ("rect_plate", {"length": 160, "width": 120, "thickness": 16,
+                        "corner_radius": 8}, ["corner_radius"]),
+        ("rect_plate", {"length": 160, "width": 120, "thickness": 16,
+                        "fillet": 6}, ["fillet"]),
+        ("rect_plate", {"length": 160, "width": 120, "thickness": 16,
+                        "chamfer": 2}, ["chamfer"]),
+        ("l_bracket", {"base_length": 120, "base_width": 80,
+                       "base_thickness": 10, "upright_height": 90,
+                       "upright_thickness": 10, "inside_fillet": 6},
+         ["inside_fillet"]),
+        ("l_bracket", {"base_length": 120, "base_width": 80,
+                       "base_thickness": 10, "upright_height": 90,
+                       "upright_thickness": 10, "chamfer": 2}, ["chamfer"]),
+        ("bearing_housing", {"length": 160, "width": 110, "height": 70,
+                             "bore_d": 52, "seat_depth": 20, "shoulder": 4},
+         ["bearing_seat", "shoulder"]),
+        ("bearing_housing", {"length": 160, "width": 110, "height": 70,
+                             "bore_d": 52, "seat_depth": 20, "chamfer": 2},
+         ["bearing_seat", "chamfer"]),
+        ("manifold", {"length": 120, "width": 60, "height": 40,
+                      "passage_d": 16, "chamfer": 2},
+         ["main_passage", "chamfer"]),
+    ],
+)
+def test_the_obligation_exists_in_the_frozen_blueprint_before_any_build(
+    family, slots, expected_ids
+):
+    """Rule A: derived from the requirement, present before the builder runs.
+
+    Nothing here touches a kernel — the assertion is that the contract already
+    names the feature at the moment it is hashed, which is what makes a later
+    omission detectable at all.
+    """
+    from orion import blueprint_gen, interview
+    from orion.blueprint import Blueprint
+
+    iv = interview.Interview(request="x", family=family)
+    iv.slots, iv.notes = interview.apply_standards(dict(slots), family)
+    iv.classify()
+    bp = Blueprint.from_dict(
+        blueprint_gen.generate(family, interview.requirements(iv))
+    ).freeze()
+
+    ids = [o["id"] for o in bp.design_plan["obligations"]]
+    assert ids == expected_ids
+    assert bp.verify_hash()
+
+    tampered = copy.deepcopy(bp.to_dict())
+    tampered["design_plan"]["obligations"] = []
+    assert not Blueprint.from_dict(tampered).verify_hash()
+
+
+# --------------------------------------------------------------------------- #
 # 5. the verdict gate — geometry otherwise perfect
 # --------------------------------------------------------------------------- #
 PASSING_ROWS = [
@@ -449,3 +660,89 @@ def test_the_fulfillment_records_travel_with_the_report():
     assert record["instantiated"] is True  # the solid exists…
     assert record["observed"] is False  # …without the feature
     assert record["verified"] is False
+
+
+# --------------------------------------------------------------------------- #
+# the model-authored path declares that it cannot check features
+# --------------------------------------------------------------------------- #
+def test_a_model_authored_design_cannot_reach_verified_on_features():
+    """An empty obligation list and "no way to know" are not the same claim.
+
+    The compiled path derives obligations from typed requirements. A model
+    authoring a Blueprint from prose produces none — and it also authors its own
+    volume assertion, so a feature it silently dropped is missing from the
+    geometry *and* from the prediction, and the two still agree. That is the
+    exact shape of the defect obligations exist to catch, so the path says so
+    instead of grading as though it had been checked.
+    """
+    plan = {
+        "provenance": CLEAN_LEDGER,
+        "feature_verification": {
+            "available": False,
+            "path": "model_authored",
+            "reason": "authored by a model from prose, so no feature "
+            "obligations exist",
+        },
+    }
+    report = verify.from_assertion_rows(
+        PASSING_ROWS,
+        measured={"valid": True, "solids": 1, "watertight": True},
+        design_plan=plan,
+        topology=CORRECT,
+    )
+    assert report["verdict"] != verify.VERIFIED
+    assert report["verdict"] == verify.UNSOURCED
+    # Not a refusal — the geometry is sound, it is the feature claim that is
+    # unavailable.
+    assert report["failed"] == []
+    row = next(c for c in report["checks"] if c["id"] == "feature:feature_verification")
+    assert row["status"] == verify.WARN
+
+
+def test_the_declaration_is_frozen_with_the_rest_of_the_contract():
+    from app.services.studio_agent import _with_provenance
+    from orion.blueprint import Blueprint
+
+    payload = {
+        "part_class": "widget",
+        "variables": {"L": 40.0},
+        "datums": {},
+        "design_plan": {},
+        "assertions": [{"id": "x", "kind": "bbox_extent", "axis": "x",
+                        "tier": 1, "tol_rel": 1e-6, "target": "L"}],
+        "template": {
+            "features": [
+                {"id": "Body", "type": "Body", "parameters": {}},
+                {"id": "s", "type": "Sketch", "parameters": {}},
+                {"id": "pad", "type": "Pad", "parameters": {"Length": "L"}},
+            ],
+            "sketches": [{"id": "s", "plane": "XY",
+                          "profile": {"builder": "rect",
+                                      "args": {"w": "L", "h": "L"}}}],
+            "dependencies": [{"source": "s", "target": "pad", "kind": "profile"}],
+        },
+    }
+    stamped = _with_provenance(payload, "a 40 mm widget")
+    assert stamped["design_plan"]["feature_verification"]["available"] is False
+
+    bp = Blueprint.from_dict(stamped).freeze()
+    assert bp.verify_hash()
+
+    tampered = copy.deepcopy(bp.to_dict())
+    tampered["design_plan"].pop("feature_verification")
+    assert not Blueprint.from_dict(tampered).verify_hash()
+
+
+def test_the_compiled_path_makes_no_such_declaration():
+    """It has typed requirements, so it derives real obligations instead."""
+    from orion import blueprint_gen, interview
+    from orion.blueprint import Blueprint
+
+    iv = interview.Interview(request="a plate 120 x 80 x 10 mm", family="rect_plate")
+    iv.slots = {"length": 120, "width": 80, "thickness": 10}
+    iv.classify()
+    bp = Blueprint.from_dict(
+        blueprint_gen.generate("rect_plate", interview.requirements(iv))
+    ).freeze()
+    assert "feature_verification" not in bp.design_plan
+    assert bp.design_plan["obligations"] == []
