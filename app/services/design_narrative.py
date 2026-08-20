@@ -209,6 +209,19 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
             }
         )
 
+    # ---- 3b. which numbers nobody accounted for -------------------------- #
+    #
+    # The assumption ledger, in prose. A part can be geometrically perfect and
+    # still rest on dimensions that were chosen rather than derived, and that
+    # difference was previously invisible — the numbers all look the same once
+    # they are floats in a Blueprint. Named here so the engineer knows which
+    # ones to check before anything gets cut.
+    ledger = report.get("provenance") or plan.get("provenance") or {}
+    if ledger:
+        section = _assumptions(ledger, variables)
+        if section:
+            sections.append(section)
+
     # ---- 4. what was actually proved ------------------------------------- #
     checks = report.get("checks") or []
     failed = report.get("failed") or []
@@ -221,7 +234,7 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
         if phrase and phrase not in kinds:
             kinds.append(phrase)
 
-    if verdict == "verified" and kinds:
+    if verdict in ("verified", "unsourced") and kinds:
         body = (
             "Before any geometry existed, the design committed to what it "
             "should measure. It was then built and measured, and " + _join(kinds) + "."
@@ -231,6 +244,15 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
                 f", envelope {'×'.join(str(round(v)) for v in stats['bbox_mm'])} mm."
                 if stats.get("bbox_mm")
                 else "."
+            )
+        if verdict == "unsourced":
+            # Said here as well as in its own section, because this paragraph
+            # is the one people read as the verdict, and a reader who stops
+            # after it would otherwise take "measured and matched" for "right".
+            body += (
+                " That proves the geometry matches the numbers it was built "
+                "from. It does not establish that those numbers are the right "
+                "ones — see the assumptions above."
             )
     elif failed:
         body = (
@@ -268,6 +290,65 @@ def _headline(part_class: str, stats: dict, verdict: str) -> str:
         bits.append(f"{stats['volume_mm3'] / 1000:.2f} cm³")
     line = " · ".join(bits)
     return line if verdict == "verified" else f"{line} — {verdict}"
+
+
+#: How each provenance source reads to an engineer.
+_SOURCE_PROSE = {
+    "stated": "you gave it",
+    "standard": "a standard decided it",
+    "derived": "it was calculated",
+    "default": "a documented default applied",
+    "unsourced": "**nobody accounted for it**",
+}
+
+
+def _assumptions(ledger: dict, variables: dict) -> Optional[dict]:
+    """The assumption ledger as a section, or None when there is nothing to say.
+
+    Leads with what was *not* accounted for, because that is the actionable
+    half. The rest is summarised in a line rather than enumerated: a reader
+    scanning for the risk should not have to walk past twelve rows of "you gave
+    it" to find the one that says otherwise.
+    """
+    from orion import provenance as P
+
+    missing = P.unsourced(ledger)
+    counts = P.summary(ledger)
+    accounted = sum(n for source, n in counts.items() if source != "unsourced")
+
+    if not missing:
+        if not accounted:
+            return None
+        return {
+            "title": "Where the numbers came from",
+            "body": f"All {accounted} dimensions are accounted for: "
+            + _join(
+                [
+                    f"{n} because {_SOURCE_PROSE.get(source, source)}"
+                    for source, n in sorted(counts.items(), key=lambda kv: -kv[1])
+                ]
+            )
+            + ".",
+        }
+
+    def row(name: str) -> str:
+        value = variables.get(name)
+        shown = f"{value:g}" if isinstance(value, (int, float)) else str(value)
+        return f"**{name} = {shown}** — chosen, not derived"
+
+    return {
+        "title": "Assumptions",
+        "body": f"{len(missing)} of the {len(ledger)} dimensions in this part "
+        "came from neither your request, a standard, nor a calculation. The "
+        "geometry is built correctly around them, but they are the numbers to "
+        "check first — and to tell me, if any of them is wrong."
+        + (
+            f" The other {accounted} are accounted for."
+            if accounted
+            else ""
+        ),
+        "items": [row(n) for n in missing],
+    }
 
 
 def _join(items: list[str]) -> str:

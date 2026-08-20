@@ -142,7 +142,9 @@ def direct_route(monkeypatch):
     monkeypatch.setattr(
         design_router,
         "resolve",
-        lambda _p: design_router.Route(design_router.DIRECT, "no load was stated"),
+        lambda _p, **_kw: design_router.Route(
+            design_router.DIRECT, "no load was stated"
+        ),
     )
 
 
@@ -241,7 +243,7 @@ def test_a_request_that_cannot_be_specified_asks_instead_of_guessing(
     monkeypatch.setattr(
         design_router,
         "resolve",
-        lambda _p: design_router.Route(
+        lambda _p, **_kw: design_router.Route(
             design_router.CHAIN, "the request states a load", chain=_Chain()
         ),
     )

@@ -27,13 +27,9 @@ TARGET = "83ca2dab2e"
 
 
 def _freecad_python() -> str:
-    for cand in (r"C:/Program Files/FreeCAD 1.1/bin/python.exe",):
-        if os.path.exists(cand):
-            return cand
-    env = os.environ.get("ORION_FREECAD_PYTHON")
-    if env and os.path.exists(env):
-        return env
-    raise RuntimeError("no FreeCAD python found")
+    from .freecad_python import freecad_python  # noqa: PLC0415
+
+    return freecad_python()
 
 
 def _load_master() -> dict:

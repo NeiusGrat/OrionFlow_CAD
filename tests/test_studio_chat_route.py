@@ -100,6 +100,19 @@ def _events(response) -> list[str]:
     ]
 
 
+def _payload(response, event: str) -> dict:
+    """The JSON body of the first frame with this event name."""
+    import json
+
+    name = None
+    for line in response.text.splitlines():
+        if line.startswith("event: "):
+            name = line.split(": ", 1)[1]
+        elif line.startswith("data: ") and name == event:
+            return json.loads(line.split(": ", 1)[1])
+    raise AssertionError(f"no {event!r} event in the stream")
+
+
 def test_a_signed_in_design_turn_streams_and_is_recorded(client):
     tc, state, _ = client
     response = tc.post("/api/v1/studio/chat", json={"message": "a 10mm plate"})
@@ -167,13 +180,18 @@ def test_an_over_quota_user_can_still_ask_about_the_open_part(client):
 
     explained: dict = {}
 
-    def _explain(prompt, part=None, history=None, lens=None, on_event=None):
+    def _explain(
+        prompt, part=None, history=None, lens=None, request_id="", on_event=None
+    ):
         explained["prompt"] = prompt
         explained["lens"] = lens
+        explained["request_id"] = request_id
         return {
             "success": True,
             "answer": "because it is 10 mm thick",
             "model": "orionflow",
+            "tools_used": ["inspect_topology"],
+            "inspected": True,
             "error": None,
         }
 
@@ -184,13 +202,23 @@ def test_an_over_quota_user_can_still_ask_about_the_open_part(client):
         json={
             "message": "why is it 10mm?",
             "part": {"part_class": "plate"},
+            "request_id": "build-7",
         },
     )
 
     assert response.status_code == 200
     assert explained["prompt"] == "why is it 10mm?"
+    # Which build the question is about has to reach the agent, or it can only
+    # paraphrase the summary the client pasted in instead of measuring the part.
+    assert explained["request_id"] == "build-7"
     # An explain turn is not a build: nothing recorded, nothing charged.
     assert state["recorded"] == []
+
+    # What the answer was checked against travels to the client, so a grounded
+    # reply is visibly different from an unaided one.
+    done = _payload(response, "done")
+    assert done["tools_used"] == ["inspect_topology"]
+    assert done["inspected"] is True
 
 
 def test_a_failed_build_is_still_recorded(client):

@@ -27,10 +27,27 @@ from typing import Any, Optional
 
 PASS = "pass"
 FAIL = "fail"
+#: A check that ran, found something real, and does not make the geometry wrong.
+#:
+#: Introduced for provenance. "Three of your dimensions came from nowhere" is
+#: not a failure of the part — it compiles, it is a single valid solid, its
+#: volume matches its closed form. It is a failure of the *claim*, and folding
+#: it into FAIL would tell users their geometry is broken when it is not, which
+#: is the fastest way to teach them to ignore the verdict.
+WARN = "warn"
 
 VERIFIED = "verified"  # every check that ran, passed
 REFUSED = "refused"  # at least one check failed
 UNPROVEN = "unproven"  # nothing failed, but nothing was provable either
+#: The geometry is proved and the dimensions are not.
+#:
+#: The verdict that was missing. A part whose numbers a model supplied passes
+#: its volume assertion exactly as convincingly as one whose numbers the user
+#: gave — because the assertion is derived from those same numbers. VERIFIED
+#: was therefore true and misread: it says "the geometry matches the numbers",
+#: and it was heard as "the numbers are right". This says the difference out
+#: loud instead of leaving the reader to know it.
+UNSOURCED = "unsourced"
 
 
 def _check(
@@ -48,7 +65,65 @@ def _check(
 def verdict_for(checks: list[dict]) -> str:
     if any(c["status"] == FAIL for c in checks):
         return REFUSED
-    return VERIFIED if checks else UNPROVEN
+    if any(c["status"] == WARN for c in checks):
+        return UNSOURCED
+    # Provenance is deliberately not counted here. It says where the numbers
+    # came from, never whether the geometry matches them, so a part with a
+    # clean ledger and no geometry check has still proved nothing — and
+    # UNPROVEN has to keep meaning exactly that.
+    graded = [c for c in checks if not c["id"].startswith("provenance")]
+    return VERIFIED if graded else UNPROVEN
+
+
+def provenance_checks(design_plan: Optional[dict]) -> list[dict]:
+    """Whether every dimension in the design is accounted for.
+
+    Reads the ledger ``orion.provenance`` froze into ``design_plan`` — not the
+    request, and not the variables, because either would let this be recomputed
+    after the fact against whatever story suits the result. The record is inside
+    ``blueprint_hash``; if it disagrees with the design, the hash check catches
+    it first.
+
+    A part with no ledger gets no row. That is a build from before this existed,
+    and inventing a verdict about it either way would be the "assumed pass" the
+    rest of this module refuses.
+    """
+    ledger = ((design_plan or {}).get("provenance")) or {}
+    if not ledger:
+        return []
+
+    from orion import provenance as P
+
+    missing = P.unsourced(ledger)
+    counts = P.summary(ledger)
+    evidence = {"unsourced": missing, "sources": counts, "total": len(ledger)}
+    if missing:
+        return [
+            _check(
+                "provenance:sourced",
+                "Every dimension is accounted for",
+                WARN,
+                f"{len(missing)} of {len(ledger)} values came from neither the "
+                f"request, a standard, nor a calculation: "
+                + ", ".join(missing[:8])
+                + ("…" if len(missing) > 8 else "")
+                + ". The geometry is still what it claims to be; these "
+                "particular numbers were chosen, not derived.",
+                evidence,
+            )
+        ]
+    accounted = ", ".join(
+        f"{n} {source}" for source, n in sorted(counts.items(), key=lambda kv: -kv[1])
+    )
+    return [
+        _check(
+            "provenance:sourced",
+            "Every dimension is accounted for",
+            PASS,
+            f"all {len(ledger)} values traced: {accounted}",
+            evidence,
+        )
+    ]
 
 
 def from_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -199,6 +274,7 @@ def from_assertion_rows(
     refused: Optional[list[dict]] = None,
     measured: Optional[dict] = None,
     engineering: Optional[list[dict]] = None,
+    design_plan: Optional[dict] = None,
 ) -> dict[str, Any]:
     """Verification report for the forge path, where a frozen closed form is
     compared against what the kernel measured.
@@ -267,12 +343,17 @@ def from_assertion_rows(
         )
     checks.extend(solid_validity_checks(measured))
     checks.extend(engineering_checks(engineering))
+    checks.extend(provenance_checks(design_plan))
 
     return {
         "verdict": verdict_for(checks),
         "checks": checks,
         "failed": [c for c in checks if c["status"] == FAIL],
         "measured": dict(measured or {}),
+        # The ledger itself, not just the verdict on it. A user told their
+        # part is UNSOURCED needs to see *which* numbers, and where the rest
+        # came from — otherwise the label is an accusation with no detail.
+        "provenance": ((design_plan or {}).get("provenance")) or {},
     }
 
 

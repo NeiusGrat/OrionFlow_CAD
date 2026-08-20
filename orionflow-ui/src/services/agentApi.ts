@@ -63,16 +63,28 @@ export interface AnalysisReport {
 export interface VerificationCheck {
   id: string;
   label: string;
-  status: 'pass' | 'fail';
+  /** `warn` = the check ran and found something real that does not make the
+   *  geometry wrong. Used by provenance: "three of your dimensions came from
+   *  nowhere" is a failure of the claim, not of the part. */
+  status: 'pass' | 'fail' | 'warn';
   detail: string;
   evidence?: Record<string, unknown>;
+}
+
+/** Where one dimension came from. See `orion/provenance.py`. */
+export interface ProvenanceEntry {
+  source: 'stated' | 'standard' | 'derived' | 'default' | 'unsourced';
+  basis: string;
 }
 
 export interface VerificationReport {
   /** `verified` = every check that ran passed. `refused` = at least one
    *  failed, so the geometry must not be presented as correct. `unproven` =
-   *  nothing failed but nothing was provable either. */
-  verdict: 'verified' | 'refused' | 'unproven';
+   *  nothing failed but nothing was provable either. `unsourced` = the
+   *  geometry is proved and the dimensions are not — it matches the numbers it
+   *  was built from, but some of those numbers were chosen rather than
+   *  derived. */
+  verdict: 'verified' | 'refused' | 'unproven' | 'unsourced';
   checks: VerificationCheck[];
   failed: VerificationCheck[];
   /** Observations, not claims of correctness. */
@@ -82,6 +94,9 @@ export interface VerificationReport {
     bbox_mm?: number[];
     center_of_mass_mm?: number[];
   };
+  /** The assumption ledger: every variable, and what accounts for it. Frozen
+   *  into `blueprint_hash`, so it cannot have been written to suit the result. */
+  provenance?: Record<string, ProvenanceEntry>;
 }
 
 export interface TraceStep {

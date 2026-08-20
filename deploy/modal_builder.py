@@ -25,19 +25,23 @@ import modal
 
 #: The kernel every published number is measured against.
 #:
-#: Pinned 2026-08-05. This install was previously unversioned, which is not a
-#: stable build: conda-forge resolved it to 1.1.0 when the image was first
-#: built, and now resolves to 1.1.3 — so the next rebuild for any unrelated
-#: reason would have silently changed the kernel under production, and the
-#: manifest would have faithfully recorded a version nobody chose.
+#: Pinned 2026-08-05 at 1.1.0, deliberately behind conda-forge's newest so that
+#: tightening the verification gate and moving the kernel could not be
+#: confounded. That upgrade is now taken, on its own, as that note asked:
 #:
-#: 1.1.0 rather than the newest, and rather than the 1.1.1 running locally:
-#: conda-forge does not ship 1.1.1 at all (it is a FreeCAD-provided Windows
-#: build), and moving production to 1.1.3 in the same change that tightened the
-#: verification gate would confound the two — a drop in the verified rate could
-#: not be attributed to either. Upgrade deliberately, on its own, re-measuring
-#: after.
-FREECAD_VERSION = "1.1.0"
+#: 1.1.3 (conda-forge's latest stable) since 2026-08-19. The move was gated on
+#: the corpus itself rather than on the version string — ``deploy/verify_builder.py``
+#: replays frozen Blueprints whose closed-form predictions were confirmed under
+#: the old kernel, so a change in how OCC resolves a Pocket or a fillet shows up
+#: as a failed assertion rather than as unexplained drift. 1.1.0 and 1.1.3 were
+#: each measured over the same 30 records: 30/30 verified on both, no part class
+#: regressed, and the reported volumes agree. Re-measure the same way before
+#: moving it again.
+#:
+#: Not the 1.1.1 that may be running on a dev box: conda-forge does not ship
+#: 1.1.1 at all (it is a FreeCAD-provided Windows build), so it is not a
+#: candidate for this image.
+FREECAD_VERSION = "1.1.3"
 
 freecad_image = (
     modal.Image.micromamba(python_version="3.11")

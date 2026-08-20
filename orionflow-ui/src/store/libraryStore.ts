@@ -37,6 +37,10 @@ function packChat(messages: StudioMessage[]): Partial<StudioMessage>[] {
         role: m.role,
         content: m.content,
         narrative: m.narrative,
+        // Kept, unlike `steps`. Progress is transient; what an answer was
+        // checked against is a property of the answer, and a reopened session
+        // that dropped it would present a grounded reply as an unaided one.
+        checks: m.checks,
         model: m.model,
         error: m.error,
         timestamp: m.timestamp,
@@ -52,6 +56,7 @@ function unpackChat(stored: Partial<StudioMessage>[] | undefined): StudioMessage
         role: m.role === 'user' ? 'user' : 'assistant',
         content: m.content ?? '',
         steps: [],
+        checks: m.checks ?? [],
         narrative: m.narrative ?? null,
         thinking: '',
         model: m.model ?? '',

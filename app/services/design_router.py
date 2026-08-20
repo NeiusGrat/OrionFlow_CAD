@@ -30,6 +30,17 @@ model costs the derivation that would have made it checkable. Sending a
 geometry request to the chain costs the user their part and replaces it with a
 question about a load they never mentioned. The second is worse, so the gate
 requires positive evidence before diverting anything.
+
+**What changed, and what did not.** The duty used to be read by regular
+expression alone, and measured over eight ordinary ways of stating a load, six
+read as nothing — "50 kg", "three kilonewtons", "200 lb", "1750 revolutions per
+minute", and every pressure ever written, since ``pressure_bar`` is branched on
+here and was never extracted at all. ``orion.duty`` now offers a second reading
+from a model, and that reading is admitted only where a number in the request
+supports it after a declared unit conversion. So the model can read a sentence
+and it cannot invent a load — which is precisely the failure this gate exists to
+prevent. The patterns still win wherever they fired, so nothing that routes
+correctly today routes differently.
 """
 
 from __future__ import annotations
@@ -41,11 +52,29 @@ from app.logging_config import get_logger
 
 logger = get_logger(__name__)
 
-#: Duty fields that justify diverting a request to the reasoning chain. Kept in
-#: step with ``orion.reasoning._LOAD_FIELDS``: the chain refuses to select
-#: without one, so routing on anything weaker sends requests to a stage that can
-#: only turn them away.
-LOAD_FIELDS = ("radial_load_N", "axial_load_N", "torque_Nm", "pressure_bar")
+#: Duty fields that justify diverting a request to the reasoning chain.
+#:
+#: A subset of ``orion.reasoning._LOAD_FIELDS``, and the difference is
+#: deliberate. The chain refuses to select without one of those, so routing on
+#: anything weaker sends requests to a stage that can only turn them away — but
+#: the converse does not follow, and ``pressure_bar`` is the case that proves
+#: it. The chain has no function for a stated pressure: it stops at INTENT with
+#: "what must the part do?", which is a worse answer than the part the model
+#: would have built.
+#:
+#: It was harmless while nothing extracted a pressure. Now that ``orion.duty``
+#: reads one, listing it here would divert every pressure request into a dead
+#: end. It is read and reported (see ``ADVISORY_FIELDS``) and it does not route.
+LOAD_FIELDS = ("radial_load_N", "axial_load_N", "torque_Nm")
+
+#: Duty this system can read but cannot yet size anything against.
+#:
+#: Reported rather than dropped. A user who states a working pressure has said
+#: something load-bearing about their part, and silently ignoring it is how a
+#: 250 bar manifold comes back with walls chosen for no reason at all. Saying
+#: "you stated this and nothing here sizes to it" is a smaller lie than saying
+#: nothing.
+ADVISORY_FIELDS = ("pressure_bar",)
 
 #: Route names, so callers do not compare strings they invented.
 CHAIN = "chain"  # orion.reasoning — sized against a duty
@@ -76,6 +105,10 @@ class Route:
     #: Computed here so the studio does not have to know which branch owns
     #: which ``design_prompt``.
     design_prompt: str = ""
+    #: How the duty was read, field by field — including anything a second
+    #: reading proposed and the gate refused. On the record because a routing
+    #: decision nobody can audit is indistinguishable from a guess.
+    duty_notes: list[str] = field(default_factory=list)
 
     @property
     def to_branch(self) -> bool:
@@ -83,15 +116,26 @@ class Route:
         return self.route in _BRANCHES
 
     def to_dict(self) -> dict:
-        return {"route": self.route, "why": self.why, "duty": self.duty}
+        return {
+            "route": self.route,
+            "why": self.why,
+            "duty": self.duty,
+            "duty_notes": self.duty_notes,
+        }
 
 
 def _stated_loads(duty: dict) -> list[str]:
     return [f for f in LOAD_FIELDS if duty.get(f)]
 
 
-def decide(request: str) -> Route:
-    """Read the request, decide the path. No model is consulted.
+def decide(request: str, client: Any = None) -> Route:
+    """Read the request, decide the path. The *decision* consults no model.
+
+    ``client``, when given, buys a second reading of the duty from
+    ``orion.duty`` — typed fields, each admitted only if a number in the request
+    supports it. The branch rule below is unchanged and still runs on the
+    resulting dict: what the model can do is help read a sentence, never choose
+    a path.
 
     Falls back to the direct route if the extractor itself raises: a router that
     can break the product when its own heuristics fail is worse than no router.
@@ -107,6 +151,30 @@ def decide(request: str) -> Route:
             "the duty could not be read, so the request goes " "to the model unchanged",
         )
 
+    notes: list[str] = []
+    if client is not None:
+        try:
+            from orion import duty as D
+
+            proposed = D.read(client, request)
+            if proposed.transport_error:
+                # An unreachable endpoint reads as "no duty", which would
+                # quietly route every request to the model. Say so instead.
+                logger.warning(
+                    "design_router_duty_unreachable", error=proposed.transport_error
+                )
+            else:
+                duty, notes = D.merge(duty, proposed)
+        except Exception as exc:  # noqa: BLE001 — the patterns still stand
+            logger.warning("design_router_duty_failed", error=repr(exc))
+
+    for name in ADVISORY_FIELDS:
+        if duty.get(name):
+            notes.append(
+                f"the request states {_readable(name, duty[name])}, and nothing "
+                "here sizes a part against a pressure — it is recorded, not used"
+            )
+
     loads = _stated_loads(duty)
     if loads:
         return Route(
@@ -116,6 +184,7 @@ def decide(request: str) -> Route:
             + ", so the dimensions are derived before the model is asked for "
             "anything",
             duty=duty,
+            duty_notes=notes,
         )
 
     # No duty. A prismatic part that states its own size is still worth routing:
@@ -131,13 +200,14 @@ def decide(request: str) -> Route:
         ok, why = False, "the prismatic branch could not read the request"
 
     if ok:
-        return Route(PRISMATIC, why, duty=duty)
+        return Route(PRISMATIC, why, duty=duty, duty_notes=notes)
 
     return Route(
         DIRECT,
         "no load was stated and " + why + ", so the request goes to the model "
         "as written",
         duty=duty,
+        duty_notes=notes,
     )
 
 
@@ -154,14 +224,14 @@ def _readable(field_name: str, value: float) -> str:
     return f"{lead} {value:g} {unit}".strip()
 
 
-def resolve(request: str) -> Route:
+def resolve(request: str, client: Any = None) -> Route:
     """Decide, and on the chain route run the chain to whatever it can reach.
 
     A chain that stops short is still the right answer — it stopped because the
     request did not say enough, and the questions it attached are worth more
     than a part built on a number nobody supplied.
     """
-    route = decide(request)
+    route = decide(request, client=client)
     if not route.to_branch:
         return route
 
@@ -169,7 +239,12 @@ def resolve(request: str) -> Route:
         if route.route == CHAIN:
             from orion import reasoning as R
 
-            route.chain = R.reason(request)
+            # The duty this router read is handed to the chain rather than left
+            # for it to re-derive. Without this a request diverted on a reading
+            # only ``orion.duty`` could make — "50 kg", "250 bar" — would reach
+            # a chain whose own patterns find nothing, and stop by asking the
+            # user for the load they had just given. Worse than not diverting.
+            route.chain = R.reason(request, duty=route.duty)
             if route.chain.complete:
                 route.design_prompt = R.design_prompt(route.chain)
         else:

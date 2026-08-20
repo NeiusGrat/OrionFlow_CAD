@@ -122,6 +122,21 @@ KNOWLEDGE_TOOLS = frozenset({
     "validate_assembly_spec",
 })
 
+#: The tools that ask a shape questions and change nothing. They were only ever
+#: coupled to a live FreeCAD document by ``build_registry``'s signature — what
+#: they actually read (element topology, feature parameters, the FeatureGraph)
+#: a finished build already leaves on disk. Split out so a read-only bridge over
+#: an artifact can serve them without a kernel; see ``app/services/part_bridge``.
+INSPECTION_TOOLS = frozenset({
+    "list_objects",
+    "inspect_topology",
+    "expand_topology",
+    "get_parameters",
+    "measure",
+    "get_featuregraph",
+    "get_model_tier",
+})
+
 
 class _AbsentBridge:
     """Stands in for a BridgeClient where there is none.
@@ -257,6 +272,23 @@ def build_knowledge_registry() -> ToolRegistry:
     the ones that never touch geometry.
     """
     reg = build_registry(_AbsentBridge(), None).subset(KNOWLEDGE_TOOLS)
+    return register_skills(register_design_tool(reg))
+
+
+def build_part_registry(bridge) -> ToolRegistry:
+    """Knowledge plus inspection, bound to a read-only bridge over one build.
+
+    The half of the tool surface that a cloud session can honestly offer: the
+    model can look a standard up *and* go and check what was actually built,
+    but it cannot edit — a change to a graded part has to go back through
+    freeze, build and verify, and a tool call would bypass all three.
+
+    ``bridge`` only has to answer the inspection calls (``list_objects``,
+    ``inspect_topology``, ``get_object_parameters``, ``measure``,
+    ``extract_featuregraph``, ``get_model_tier``). Anything else it is asked for
+    should raise; the registry turns that into an observation the model can read.
+    """
+    reg = build_registry(bridge, None).subset(KNOWLEDGE_TOOLS | INSPECTION_TOOLS)
     return register_skills(register_design_tool(reg))
 
 
@@ -889,12 +921,32 @@ def build_registry(bridge, sandbox) -> ToolRegistry:
 
     def measure(args):
         raw = bridge.measure(args.get("a", {}), args.get("b", {}))
-        return _ok(f"distance = {raw.get('distance')} mm", raw=raw)
+        distance = raw.get("distance")
+        # A bridge that knows how it reached the number says so, and the model
+        # is told in the observation rather than in the raw dict it never sees.
+        # An estimate reported as a measurement is worse than no measurement:
+        # it is a number nobody thinks to question. The live-document bridge
+        # returns a true minimum and no method, and reads exactly as before.
+        method = raw.get("method")
+        if method and raw.get("exact") is False:
+            text = (f"distance ~= {distance} mm — this is NOT an exact minimum "
+                    f"distance. Method: {method}.")
+            if raw.get("lower_bound") is not None:
+                text += f" Proved lower bound {raw['lower_bound']} mm."
+            if raw.get("centroid_distance") is not None:
+                text += f" Centroid separation {raw['centroid_distance']} mm."
+            text += " Report it as a bound, not as the distance."
+        elif method:
+            text = f"distance = {distance} mm (exact — {method})"
+        else:
+            text = f"distance = {distance} mm"
+        return _ok(text, raw=raw)
 
     reg.register(Tool(
         "measure",
         "Measure the minimum distance between two sub-elements. Each ref is "
-        "{name, sub} where sub is e.g. 'Face3', 'Edge5', 'Vertex2'.",
+        "{name, sub} where sub is e.g. 'Face3', 'Edge5', 'Vertex2'. The answer "
+        "says whether it is exact or an estimate — quote it the way it comes back.",
         {
             "type": "object",
             "properties": {

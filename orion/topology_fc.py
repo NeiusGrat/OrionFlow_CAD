@@ -117,16 +117,22 @@ def _surface_of(face):
 def _normal_at_middle(face):
     """The outward normal at the face's parametric centre, or None.
 
-    Orientation is applied rather than ignored: OCC stores a face's natural
-    normal and a flag saying the solid uses it reversed, and a viewer given the
-    unflipped vector lights half the part inside out.
+    Orientation is deliberately NOT applied. It used to be, on the reasoning
+    that OCC stores a face's natural normal plus a flag saying the solid uses
+    it reversed — true of raw OCC, but FreeCAD's ``Face.normalAt`` has already
+    applied that flag by the time we see the vector. Flipping it a second time
+    turned it back inward.
+
+    Measured rather than argued: step ``EPS`` off the face along each candidate
+    and ask ``Shape.isInside``. Over four built parts, ``normalAt`` pointed
+    outward on 34 of 34 faces and the orientation-applied vector on 13 — every
+    ``Reversed`` face carried a normal pointing into the solid. That is most of
+    a typical part, because PartDesign leaves the majority of a pad's faces
+    reversed.
     """
     try:
         u0, u1, v0, v1 = face.ParameterRange
-        n = face.normalAt((u0 + u1) / 2.0, (v0 + v1) / 2.0)
-        if face.Orientation == "Reversed":
-            n = n.negative()
-        return _xyz(n)
+        return _xyz(face.normalAt((u0 + u1) / 2.0, (v0 + v1) / 2.0))
     except Exception:  # noqa: BLE001 - a degenerate face has no usable normal
         return None
 

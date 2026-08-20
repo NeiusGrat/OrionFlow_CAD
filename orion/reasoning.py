@@ -736,12 +736,19 @@ def write_specification(selection: Step) -> Step:
 
 
 # --------------------------------------------------------------------------- #
-def reason(request: str) -> Chain:
+def reason(request: str, duty: Optional[dict] = None) -> Chain:
     """Run the chain as far as the request allows.
 
     Stops at the first stage that cannot proceed, with its question attached.
     That is the design: a chain that runs to completion on a request missing the
     load has not been robust, it has invented one.
+
+    ``duty`` is a reading of the same request made elsewhere — see
+    ``orion.duty``, where a model proposes typed fields and only those a number
+    in the request supports are kept. It is merged *over* what the patterns
+    here read, never under: the caller has already gated it, and a field the
+    patterns could not see is exactly what it is for. Nothing is defaulted; an
+    empty dict changes nothing.
     """
     F.load_all()
     chain = Chain(request=request)
@@ -750,7 +757,18 @@ def reason(request: str) -> Chain:
         chain.steps.append(step)
         return not step.asks
 
-    if not add(read_intent(request)):
+    intent = read_intent(request)
+    if duty:
+        merged = dict(intent.detail.get("duty") or {})
+        added = {k: v for k, v in duty.items() if k not in merged}
+        merged.update(duty)
+        intent.detail["duty"] = merged
+        if added:
+            intent.finding += " (plus " + ", ".join(
+                f"{k}={v:g}" if isinstance(v, (int, float)) else f"{k}={v}"
+                for k, v in sorted(added.items())
+            ) + " read from the wording)"
+    if not add(intent):
         return chain
     if not add(name_functions(chain.steps[-1])):
         return chain

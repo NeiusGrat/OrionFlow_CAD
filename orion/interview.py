@@ -165,6 +165,14 @@ class Interview:
     asked: list[str] = field(default_factory=list)
     answers: list[tuple[str, str]] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    #: Where each slot's value came from — see :mod:`orion.provenance`.
+    #:
+    #: Recorded here because this is the last point at which the answer is
+    #: knowable. Downstream every value is a float in ``variables`` and a number
+    #: the user gave is indistinguishable from one the model supplied, which is
+    #: how an invented dimension came to be graded exactly as convincingly as a
+    #: stated one.
+    provenance: dict[str, dict] = field(default_factory=dict)
     #: Why the model could not be reached, when that is what happened.
     #:
     #: An empty family means two very different things — "this is a spring and
@@ -181,7 +189,23 @@ class Interview:
     def to_dict(self) -> dict:
         return {"request": self.request, "family": self.family,
                 "slots": dict(self.slots), "asked": list(self.asked),
-                "complete": self.complete, "notes": list(self.notes)}
+                "complete": self.complete, "notes": list(self.notes),
+                "provenance": dict(self.provenance)}
+
+    def classify(self) -> dict[str, dict]:
+        """Recompute the provenance of the current slots.
+
+        Called after every change to ``slots`` rather than once at the end: an
+        answer the user typed is *stated* on the strength of that answer, and a
+        classification computed only against the original request would report
+        it as unsourced.
+        """
+        from . import provenance as P
+
+        text = self.request + "\n" + "\n".join(
+            f"{name}: {value}" for name, value in self.answers)
+        self.provenance = P.classify(text, self.slots, notes=self.notes)
+        return self.provenance
 
 
 def missing(family: str, slots: dict) -> list[Slot]:
@@ -513,7 +537,12 @@ def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Intervi
     raw = _json_of(got.content) or {}
     slots = _known_slots(family, raw if isinstance(raw, dict) else {})
     slots, notes = apply_standards(slots, family)
-    return Interview(request=request, family=family, slots=slots, notes=notes)
+    iv = Interview(request=request, family=family, slots=slots, notes=notes)
+    # Classified here, against the request the model was actually shown. This
+    # is the only place both are in hand: after this the slots travel on and the
+    # request does not, and "did the user say 120?" stops being answerable.
+    iv.classify()
+    return iv
 
 
 def next_question(iv: Interview) -> Optional[str]:
@@ -541,6 +570,7 @@ def answer(iv: Interview, slot_name: str, value: Any) -> Interview:
         if n not in iv.notes:
             iv.notes.append(n)
     iv.answers.append((slot_name, str(value)))
+    iv.classify()
     return iv
 
 
@@ -560,6 +590,23 @@ def requirements(iv: Interview) -> dict:
     out.update(resolve(iv.family, iv.slots))
     if iv.notes:
         out["standards_applied"] = list(iv.notes)
+    # Travels with the numbers, under the names the numbers now have. Left
+    # behind, it would be unrecoverable: a radius in a Blueprint carries no
+    # record of the diameter somebody typed, or of whether anybody typed one.
+    out["provenance"] = _resolved_provenance(iv)
+    return out
+
+
+def _resolved_provenance(iv: Interview) -> dict:
+    """Slot provenance re-keyed the way :func:`resolve` re-keys the slots."""
+    fam = FAMILIES.get(iv.family)
+    out: dict[str, Any] = {}
+    for name, entry in (iv.provenance or {}).items():
+        s = fam.slot(name) if fam else None
+        value = iv.slots.get(name)
+        renamed = (s is not None and s.diameter
+                   and isinstance(value, (int, float)) and not isinstance(value, bool))
+        out[name.removesuffix("_d") + "_r" if renamed else name] = entry
     return out
 
 

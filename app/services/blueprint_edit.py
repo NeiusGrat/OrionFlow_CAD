@@ -91,6 +91,22 @@ def retune(blueprint: dict, overrides: dict[str, Any]) -> dict:
 
     edited = dict(blueprint)
     edited["variables"] = variables
+
+    # A hand-set variable *is* sourced: the user typed it. Leaving the ledger
+    # alone would mean correcting a dimension the model invented did not clear
+    # the warning about it, so the part stayed UNSOURCED however many numbers
+    # the engineer fixed — which teaches people to ignore the label.
+    plan = dict(edited.get("design_plan") or {})
+    ledger = dict(plan.get("provenance") or {})
+    if ledger:
+        for name in overrides:
+            ledger[name] = {
+                "source": "stated",
+                "basis": "set by hand in the workbench",
+            }
+        plan["provenance"] = ledger
+        edited["design_plan"] = plan
+
     # freeze() recomputes the digest, but clearing it makes the intent explicit:
     # what comes out of here is not the thing that was hashed on the way in.
     edited["blueprint_hash"] = ""
@@ -217,6 +233,22 @@ def append_feature(
     edited = dict(blueprint)
     edited["template"] = template
     edited["variables"] = declared
+
+    # Same rule as ``retune``: a dimension the engineer typed into the tool
+    # dialog is stated. Recorded so a hand-built feature does not arrive
+    # carrying dimensions with no entry in the ledger at all, which reads as
+    # unsourced and is the opposite of what happened.
+    plan = dict(edited.get("design_plan") or {})
+    ledger = dict(plan.get("provenance") or {})
+    if ledger:
+        for name in variables or {}:
+            ledger[name] = {
+                "source": "stated",
+                "basis": "entered by hand in the workbench",
+            }
+        plan["provenance"] = ledger
+        edited["design_plan"] = plan
+
     edited["blueprint_hash"] = ""
     return edited
 

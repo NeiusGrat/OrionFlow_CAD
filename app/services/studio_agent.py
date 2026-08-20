@@ -164,6 +164,30 @@ part as if it were fine.
 - Be brief. Two or three short paragraphs unless asked for more."""
 
 
+#: Appended when the part's own geometry is reachable as tools.
+#:
+#: The summary in the context is a précis — counts, a bounding box, a verdict.
+#: The tools reach the build itself: every face and its surface type, every
+#: feature's parameters and the expression that produced them, real distances
+#: between named elements. Without this paragraph the model answers from the
+#: précis and never calls them, which is the same as not having them.
+INSPECTION_BRIEF = """
+You can inspect the built part directly rather than reasoning from the summary \
+above. Use `list_objects` to see what it is made of, `inspect_topology` for real \
+face/edge counts, surface types and the bounding box (of the whole body, or of \
+one named feature), `get_parameters` for a feature's dimensions together with \
+the expression each one was derived from, `get_featuregraph` for how it was \
+built, and `measure` for the distance between two named elements.
+
+Check before you claim. A quantitative statement about this part — how many \
+holes, how thick a wall, how far apart two faces are — should come from a tool \
+call, not from the summary and not from memory.
+
+`measure` tells you whether its answer is exact or an estimate. When it says \
+the result is a bounding-box lower bound, report it as a bound, not as the \
+distance."""
+
+
 #: What the assistant is being asked to look at.
 #:
 #: A lens is appended to the *conversation* system prompt only. The design role
@@ -240,13 +264,20 @@ When the specification is firm enough to build, say so plainly in one short \
 sentence at the end."""
 
 
-def lens_system(lens: Optional[str], has_part: bool = True) -> str:
+def lens_system(
+    lens: Optional[str], has_part: bool = True, can_inspect: bool = False
+) -> str:
     """The conversation system prompt for a lens.
 
     ``has_part`` picks the base: an open part is discussed against its own
     verification report, an empty studio is scoped from nothing.
+    ``can_inspect`` says whether this turn can actually reach the geometry, and
+    is claimed only when a bridge was built — promising tools that are not in
+    the schema list is how a model ends up describing a call it never made.
     """
     base = CONVERSATION_SYSTEM if has_part else SCOPING_SYSTEM
+    if can_inspect:
+        base += "\n" + INSPECTION_BRIEF.strip()
     brief = LENS_BRIEFS.get((lens or "modeling").strip().lower(), "")
     return base + ("\n" + brief.strip() if brief.strip() else "")
 
@@ -255,6 +286,15 @@ def lens_system(lens: Optional[str], has_part: bool = True) -> str:
 #: Three is enough to look something up, follow one cross-reference, and reply;
 #: more usually means the model is circling rather than converging.
 KNOWLEDGE_TOOL_ROUNDS = max(1, int(os.environ.get("ORION_KNOWLEDGE_ROUNDS", "3")))
+
+#: The same budget when the part's own geometry is reachable.
+#:
+#: Higher because inspection is inherently sequential: orient with
+#: ``list_objects``, read the shape with ``inspect_topology``, then measure the
+#: two elements that answer the question. That is already three rounds before a
+#: word of the answer exists, so the knowledge budget would cut the model off
+#: exactly when it was doing the checking it was asked to do.
+INSPECTION_TOOL_ROUNDS = max(1, int(os.environ.get("ORION_INSPECTION_ROUNDS", "6")))
 
 #: Completion budget for an answer.
 #:
@@ -297,17 +337,91 @@ def _knowledge_registry():
     return _KNOWLEDGE_REGISTRY
 
 
+def _part_registry(request_id: str, part: Optional[dict]):
+    """Knowledge tools *plus* inspection of the part actually open, or None.
+
+    This is the boundary the studio never crossed: the harness' geometry tools
+    were written against a live FreeCAD desktop, so a cloud session could look
+    up a standard but could not go and look at its own part. It never needed a
+    kernel — the build already wrote the topology record, and the Blueprint
+    resolves without one. ``PartBridge`` serves both.
+
+    Built per turn, never cached: the bridge is bound to one build, and a cached
+    registry would answer one session's question with another session's
+    geometry. Construction is a few dozen closures — the knowledge JSON is read
+    inside the executors, not here.
+    """
+    from app.services.part_bridge import for_part
+
+    bridge = for_part(request_id, part)
+    if bridge is None:
+        return None
+    try:
+        from orion_agent.harness.tools.registry import build_part_registry
+
+        return build_part_registry(bridge)
+    except Exception as exc:  # noqa: BLE001 — fall back to knowledge-only
+        logger.warning("studio_part_tools_unavailable", error=str(exc))
+        return None
+
+
+def _with_provenance(payload: dict, request: str, chain: Any = None) -> dict:
+    """Stamp the ledger into a model-authored payload, before it is frozen.
+
+    The compiled path gets this from ``blueprint_gen``, which knows exactly
+    which requirement produced which variable. Here nothing knows: the model
+    emitted a dict of floats, and the only evidence available is whether the
+    request contains the number. That is a weaker test and it is the honest one
+    — see ``orion.provenance`` for what it will and will not credit.
+
+    A reasoning chain, when one ran, overrides that test for the variables it
+    derived. Those numbers came from a standard or a calculation and are
+    genuinely accounted for even though the user never typed them; testing them
+    against the request would report the derivation itself as an invention.
+    """
+    from orion import provenance as P
+
+    variables = payload.get("variables")
+    if not isinstance(variables, dict) or not variables:
+        return payload
+
+    derived: dict[str, str] = {}
+    if chain is not None:
+        rationale = getattr(chain, "rationale", {}) or {}
+        for name in getattr(chain, "variables", {}) or {}:
+            if name in variables:
+                derived[name] = (
+                    rationale.get(name)
+                    or "derived by the reasoning chain from the stated duty"
+                )
+
+    plan = dict(payload.get("design_plan") or {})
+    plan["provenance"] = P.classify(request, variables, derived=derived)
+    payload["design_plan"] = plan
+    return payload
+
+
 #: Outcome ranking, worst to best. A repair round can make things worse (a
 #: second attempt that fails to parse), so the loop keeps the best result rather
 #: than whatever came last.
-_NOTHING, _BUILT_UNVERIFIED, _VERIFIED = 1, 2, 3
+#:
+#: ``_UNSOURCED`` sits below ``_VERIFIED`` because a part whose dimensions
+#: nobody accounted for is a weaker result — but above ``_BUILT_UNVERIFIED``,
+#: and terminal, because resampling cannot fix it. A dimension the request never
+#: gave will not be given by drawing again; the second draw would simply invent
+#: a different number, and might invent one that happens to match a numeral in
+#: the request and grade better for it.
+_NOTHING, _BUILT_UNVERIFIED, _UNSOURCED, _VERIFIED = 1, 2, 3, 4
 
 
 def _rank(bundle: dict) -> int:
     if not bundle:
         return 0
-    if (bundle.get("verification") or {}).get("verdict") == "verified":
+    verdict = (bundle.get("verification") or {}).get("verdict")
+    if verdict == "verified":
         return _VERIFIED
+    if verdict == "unsourced":
+        return _UNSOURCED
     if bundle.get("success"):
         return _BUILT_UNVERIFIED
     return _NOTHING
@@ -617,6 +731,12 @@ class Proposal:
     #: The reasoning chain, when one ran. Held as the object so the caller can
     #: still ask it to explain itself.
     chain: Any = None
+    #: The user's own words. Carried because provenance is a claim about *this*
+    #: request — "did they say 120?" is unanswerable once only the Blueprint is
+    #: left — and a repair turn has to classify against the same text the first
+    #: draw did, or a repaired part would grade its dimensions differently from
+    #: the one it replaced.
+    request: str = ""
 
     def to_dict(self) -> dict:
         """What a client is shown before anything is built or approved."""
@@ -670,6 +790,28 @@ class StudioAgent:
             cfg = get_config()
             self._clients[provider] = get_llm_client(provider, config=cfg)
         return self._clients[provider]
+
+    def _reader(self):
+        """The first reachable provider, for reading a request. ``None`` if none.
+
+        Deliberately not the design model. Extraction is a comprehension task
+        any competent model does, and the fine-tune's job is authoring geometry;
+        binding this to ``DESIGN_MODEL`` would mean an outage on our weights
+        also cost the request its duty, when the fallback could have read it
+        perfectly well.
+        """
+        for provider in _in_health_order(_providers()):
+            try:
+                client = self._client(provider)
+            except Exception as exc:  # noqa: BLE001 — try the next one
+                logger.warning(
+                    "duty_reader_unavailable", provider=provider, error=str(exc)
+                )
+                continue
+            if provider in OURS:
+                client.model = CONVERSATION_MODEL
+            return client
+        return None
 
     def health(self) -> dict:
         from app.services.blueprint_service import BUILDER_MODE, freecad_available
@@ -856,9 +998,23 @@ class StudioAgent:
                 ).to_dict(),
             )
 
-        route = design_router.resolve(prompt)
+        # A client for the duty read, not for the routing decision — see
+        # ``design_router.decide``. Reached only here, past the deterministic
+        # builders, so a request a builder handles never pays for it. A dead
+        # provider costs the second reading and nothing else: the patterns
+        # still run and the branch rule is unchanged.
+        route = design_router.resolve(prompt, client=self._reader())
         model_prompt = prompt
         chain = route.chain
+        if route.duty_notes:
+            _emit_step(
+                on_event,
+                "understand",
+                "Understanding the request",
+                "done",
+                "duty read",
+                list(route.duty_notes),
+            )
 
         if route.to_branch:
             _emit_step(
@@ -912,7 +1068,7 @@ class StudioAgent:
         # second user turn in front of the model on attempt 3 and stop looking
         # like the repair records at all.
         base = [LLMMessage.system(SYSTEM_PROMPT), LLMMessage.user(model_prompt)]
-        return self._draw(base, base, route, chain, 1, on_event)
+        return self._draw(base, base, route, chain, 1, on_event, request=prompt)
 
     def _deterministic(
         self, prompt: str, on_event: EventSink = None
@@ -1083,6 +1239,7 @@ class StudioAgent:
             route=design_router.Route(
                 design_router.DIRECT, "compiled deterministically from the interview"
             ).to_dict(),
+            request=prompt,
         )
 
     def repropose(
@@ -1103,6 +1260,7 @@ class StudioAgent:
             previous.chain,
             previous.attempt + 1,
             on_event,
+            request=previous.request,
         )
 
     def redesign(
@@ -1154,6 +1312,7 @@ class StudioAgent:
         chain: Any,
         attempt: int,
         on_event: EventSink,
+        request: str = "",
     ) -> Proposal:
         """One model draw, parsed, frozen and critiqued. The half that costs tokens."""
         from app.services import blueprint_service, design_narrative, mechanical_plan
@@ -1174,6 +1333,7 @@ class StudioAgent:
                 route=route_dict,
                 chain=chain,
                 base_messages=base_messages,
+                request=request,
             )
 
         _emit_step(
@@ -1219,6 +1379,12 @@ class StudioAgent:
                 "the model did not return a Blueprint",
             )
             return failed("parse", str(exc), completion, label)
+
+        # Stamped before the freeze, deliberately. The ledger says where each
+        # of these numbers came from, and a record added after the part was
+        # measured would prove nothing — the same reason the assertions are
+        # frozen. Inside the hash it is a commitment; outside it is a caption.
+        payload = _with_provenance(payload, request, chain)
 
         # Frozen here rather than at build time, which is the whole point of
         # the split: the hash covers every number the model authored, so from
@@ -1289,6 +1455,7 @@ class StudioAgent:
             attempt=attempt,
             base_messages=base_messages,
             chain=chain,
+            request=request,
         )
 
         if on_event:
@@ -1387,7 +1554,7 @@ class StudioAgent:
             if _rank(bundle) > _rank(best):
                 best, best_proposal = bundle, proposal
 
-            if _rank(bundle) == _VERIFIED or proposal.attempt >= DESIGN_ATTEMPTS:
+            if _rank(bundle) >= _UNSOURCED or proposal.attempt >= DESIGN_ATTEMPTS:
                 break
             if proposal.failure == "model":
                 # Nothing to repair — the endpoint is down, and asking it again
@@ -1545,11 +1712,15 @@ class StudioAgent:
 
         report = bundle.get("verification") or {}
         checks = report.get("checks") or []
+        # Keyed on whether anything actually failed, not on the verdict being
+        # exactly "verified". An UNSOURCED part passed every geometry check it
+        # ran; marking the stage red would say the build broke, when what
+        # happened is that some of its dimensions are unaccounted for.
         _emit_step(
             on_event,
             "verify",
             "Running verification",
-            "done" if report.get("verdict") == "verified" else "fail",
+            "fail" if report.get("failed") else "done",
             f"{len(checks)} checks",
             [c.get("label", "") for c in checks],
         )
@@ -1592,12 +1763,24 @@ class StudioAgent:
         part: Optional[dict] = None,
         history: Optional[list[dict]] = None,
         lens: Optional[str] = None,
+        request_id: str = "",
         on_event: EventSink = None,
     ) -> dict:
         """Answer a question about the current part, grounded in its report."""
         from orion_agent.harness.llm.base import LLMMessage
 
-        messages = [LLMMessage.system(lens_system(lens, has_part=bool(part)))]
+        # Tools first: the system prompt has to know whether the geometry is
+        # actually reachable this turn before it tells the model to go and look.
+        registry = _part_registry(request_id, part)
+        can_inspect = registry is not None
+        if registry is None:
+            registry = _knowledge_registry()
+
+        messages = [
+            LLMMessage.system(
+                lens_system(lens, has_part=bool(part), can_inspect=can_inspect)
+            )
+        ]
 
         if part:
             messages.append(LLMMessage.user(_part_context(part)))
@@ -1616,16 +1799,17 @@ class StudioAgent:
 
         messages.append(LLMMessage.user(prompt))
 
-        # Knowledge tools, conversation side only. These are the twelve that
-        # touch no geometry — ISO/DIN lookups, the NASA requirement graph,
-        # materials, sheet-metal DFM — so they need no FreeCAD and can run in
-        # the cloud. Quoting a real clause beats paraphrasing one from memory,
-        # and the citation is checkable.
-        registry = _knowledge_registry()
+        # Two tool surfaces, chosen above. Knowledge alone — ISO/DIN lookups,
+        # the NASA requirement graph, materials, sheet-metal DFM — when there is
+        # no build to point at; knowledge plus this build's own topology,
+        # feature parameters and measurements when there is. Quoting a real
+        # clause beats paraphrasing one from memory, and reading a real face
+        # beats inferring one from a summary. Both are checkable.
         schemas = registry.schemas() if registry else None
 
         used: list[str] = []
-        for _round in range(KNOWLEDGE_TOOL_ROUNDS):
+        rounds = INSPECTION_TOOL_ROUNDS if can_inspect else KNOWLEDGE_TOOL_ROUNDS
+        for _round in range(rounds):
             resp, label = self._complete(
                 messages,
                 on_event,
@@ -1710,6 +1894,10 @@ class StudioAgent:
             "answer": answer,
             "thinking": resp.thinking,
             "tools_used": used,
+            # Whether the geometry was reachable at all this turn — distinct
+            # from whether the model chose to look. Both matter to a reader
+            # deciding how much weight a number in the answer carries.
+            "inspected": can_inspect,
             "error": None,
         }
 

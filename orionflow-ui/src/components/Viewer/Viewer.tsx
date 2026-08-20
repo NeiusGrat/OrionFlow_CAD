@@ -9,6 +9,14 @@ import {
     ContactShadows,
 } from "@react-three/drei";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import {
+    CAD_EDGE,
+    CAD_Z_UP_TO_Y_UP,
+    CAD_LIGHTS,
+    applyCadToneMapping,
+    createEdgeMaterial,
+    createPartMaterial,
+} from "../../lib/cadAppearance";
 import { useDesignStore } from "../../store/designStore";
 import { useUIStore } from "../../store/uiStore";
 import { useEditStore } from "../../store/editStore";
@@ -32,23 +40,17 @@ function token(name: string, fallback: string): string {
 
 /** Machined-aluminium PBR set — the "real CAD" read.
  *
- *  Metalness sits at 0.72 rather than 0.9: a fully metallic surface takes its
- *  entire colour from the environment, so on a plain studio map it reads as a
- *  grey mirror with no form. Slightly dielectric keeps the diffuse term that
- *  makes a machined face look machined. */
-const MAT_BASE = new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#c2c7cf"),
-    metalness: 0.72,
-    roughness: 0.29,
-    envMapIntensity: 1.15,
-});
-const MAT_HOVER = new THREE.MeshStandardMaterial({
+ *  The base surface and the edge treatment live in `lib/cadAppearance` so that
+ *  every renderer in the app (this viewport, the thumbnail grid) shows one
+ *  material. The interaction states below are this viewport's alone and are
+ *  derived from that base rather than restating it. */
+const MAT_BASE = createPartMaterial();
+const MAT_HOVER = createPartMaterial({
     color: new THREE.Color("#c9ced6"),
-    metalness: 0.72,
     roughness: 0.26,
     envMapIntensity: 1.2,
 });
-const MAT_SELECTED = new THREE.MeshStandardMaterial({
+const MAT_SELECTED = createPartMaterial({
     color: new THREE.Color("#A8BDEE"),
     metalness: 0.65,
     roughness: 0.3,
@@ -62,7 +64,7 @@ const MAT_SELECTED = new THREE.MeshStandardMaterial({
  *  Deliberately faint. Professional CAD lights the *face* you picked and gives
  *  its feature only a wash, because a bright feature and a bright face read as
  *  the same state and the user loses track of what is actually selected. */
-const MAT_FEATURE_CONTEXT = new THREE.MeshStandardMaterial({
+const MAT_FEATURE_CONTEXT = createPartMaterial({
     color: new THREE.Color("#b6c2dc"),
     metalness: 0.68,
     roughness: 0.3,
@@ -72,7 +74,7 @@ const MAT_FEATURE_CONTEXT = new THREE.MeshStandardMaterial({
 });
 
 /** The face under the cursor. Warm, so hover never reads as selection. */
-const MAT_FACE_HOVER = new THREE.MeshStandardMaterial({
+const MAT_FACE_HOVER = createPartMaterial({
     color: new THREE.Color("#E8D9AE"),
     metalness: 0.55,
     roughness: 0.28,
@@ -87,7 +89,7 @@ const MAT_FACE_HOVER = new THREE.MeshStandardMaterial({
 });
 
 /** The selected face. The one thing on screen that must be unmistakable. */
-const MAT_FACE_SELECTED = new THREE.MeshStandardMaterial({
+const MAT_FACE_SELECTED = createPartMaterial({
     color: new THREE.Color("#8FB0F5"),
     metalness: 0.45,
     roughness: 0.24,
@@ -99,14 +101,9 @@ const MAT_FACE_SELECTED = new THREE.MeshStandardMaterial({
     polygonOffsetUnits: -3,
 });
 
-const EDGE_MAT = new THREE.LineBasicMaterial({
-    color: new THREE.Color("#191b1e"),
-    transparent: true,
-    opacity: 0.55,
-});
-const EDGE_MAT_SELECTED = new THREE.LineBasicMaterial({
+const EDGE_MAT = createEdgeMaterial();
+const EDGE_MAT_SELECTED = createEdgeMaterial({
     color: new THREE.Color("#5B7FD4"),
-    transparent: true,
     opacity: 0.95,
 });
 
@@ -128,21 +125,12 @@ const EDGE_MAT_HOVERED = new THREE.LineBasicMaterial({
 
 export type SceneBounds = { minY: number; radius: number; center: THREE.Vector3 };
 
-/** FreeCAD is Z-up; three.js is Y-up, and `stl_to_glb` writes an identity
- *  transform. So a part arrives with its height along three's Z and renders
- *  standing on edge — a plate looks like a wall. Rotating -90 degrees about X
- *  puts it on the ground plane, which is what every CAD package shows.
- *
- *  Picking is unaffected *because* it is done in local space: `worldToLocal`
- *  undoes this before any coordinate reaches the topology sidecar, which is
- *  recorded in FreeCAD's frame. Change this and picking still works. */
-const Z_UP_TO_Y_UP: [number, number, number] = [-Math.PI / 2, 0, 0];
 
 /** Attach crisp CAD edge lines to a mesh exactly once. */
 function ensureEdges(mesh: THREE.Mesh) {
     if (mesh.userData.__edgesAdded) return;
     const edges = new THREE.LineSegments(
-        new THREE.EdgesGeometry(mesh.geometry, 28),
+        new THREE.EdgesGeometry(mesh.geometry, CAD_EDGE.thresholdDeg),
         EDGE_MAT
     );
     edges.name = "__edges";
@@ -419,7 +407,7 @@ function Model({ url, onBounds }: { url: string; onBounds: (b: SceneBounds) => v
 
     return (
         <group
-            rotation={Z_UP_TO_Y_UP}
+            rotation={CAD_Z_UP_TO_Y_UP}
             onPointerOver={handlePointerOver}
             onPointerMove={handlePointerMove}
             onPointerOut={handlePointerOut}
@@ -640,10 +628,7 @@ export default function Viewer({ url }: { url: string }) {
                 // ACES filmic keeps metal highlights from clipping to flat
                 // white, which is what makes an untonemapped metallic part read
                 // as plastic. Without it the whole PBR set is wasted.
-                onCreated={({ gl }) => {
-                    gl.toneMapping = THREE.ACESFilmicToneMapping;
-                    gl.toneMappingExposure = 1.05;
-                }}
+                onCreated={({ gl }) => applyCadToneMapping(gl)}
                 style={{
                     background:
                         "radial-gradient(120% 90% at 50% 32%, var(--studio-viewport-hi) 0%, var(--studio-viewport-lo) 72%)",
@@ -654,15 +639,23 @@ export default function Viewer({ url }: { url: string }) {
                     a cool fill that keeps shadowed faces readable, and a rim
                     that separates the silhouette from the background. */}
                 <directionalLight
-                    position={[8, 16, 10]}
-                    intensity={1.5}
+                    position={CAD_LIGHTS.key.position}
+                    intensity={CAD_LIGHTS.key.intensity}
                     castShadow
                     shadow-mapSize={[1024, 1024]}
                     shadow-bias={-0.0004}
                 />
-                <directionalLight position={[-12, 7, -6]} intensity={0.45} color="#c9d6ea" />
-                <directionalLight position={[0, -8, -12]} intensity={0.25} color="#dfe6f2" />
-                <ambientLight intensity={0.12} />
+                <directionalLight
+                    position={CAD_LIGHTS.fill.position}
+                    intensity={CAD_LIGHTS.fill.intensity}
+                    color={CAD_LIGHTS.fill.color}
+                />
+                <directionalLight
+                    position={CAD_LIGHTS.rim.position}
+                    intensity={CAD_LIGHTS.rim.intensity}
+                    color={CAD_LIGHTS.rim.color}
+                />
+                <ambientLight intensity={CAD_LIGHTS.ambient.intensity} />
 
                 {/* WASM parametric preview */}
                 {showPreview && <PreviewMesh geometry={previewMesh} />}

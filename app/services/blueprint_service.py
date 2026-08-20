@@ -22,9 +22,7 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
-import sys
 import time
 import uuid
 from typing import Any, Optional
@@ -52,31 +50,12 @@ def _freecad_python() -> str:
     deployment: in the cloud container FreeCAD is installed into the running
     interpreter's own environment, on the dev box it is a separate install.
     """
-    env = os.environ.get("ORION_FREECAD_PYTHON")
-    if env:
-        return env
+    from orion.freecad_python import freecad_python  # noqa: PLC0415
 
-    # Container case: FreeCAD importable right here.
     try:
-        import FreeCAD  # noqa: F401,PLC0415
-
-        return sys.executable
-    except ImportError:
-        pass
-
-    for cand in (
-        r"C:/Program Files/FreeCAD 1.1/bin/python.exe",
-        r"C:/Program Files/FreeCAD 1.0/bin/python.exe",
-    ):
-        if os.path.exists(cand):
-            return cand
-
-    for exe in ("freecadcmd", "FreeCADCmd"):
-        found = shutil.which(exe)
-        if found:
-            return found
-
-    raise BlueprintBuildError("no FreeCAD interpreter found; set ORION_FREECAD_PYTHON")
+        return freecad_python()
+    except RuntimeError as exc:
+        raise BlueprintBuildError(str(exc)) from exc
 
 
 def freecad_available() -> bool:
@@ -543,7 +522,13 @@ def _finish(
         }
     else:
         bundle["verification"] = verify.from_assertion_rows(
-            rows, measured=observed, engineering=eng_rows
+            rows,
+            measured=observed,
+            engineering=eng_rows,
+            # From the frozen Blueprint, never from the request: the ledger is
+            # inside ``blueprint_hash``, so it cannot be rewritten to suit a
+            # measurement that has already happened.
+            design_plan=bp.design_plan,
         )
 
     bundle["assertions"] = rows

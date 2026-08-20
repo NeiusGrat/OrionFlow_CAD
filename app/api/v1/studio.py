@@ -52,6 +52,10 @@ class StudioChatRequest(BaseModel):
     #: report. Sent by the client so a stateless worker can still talk about
     #: "this part".
     part: Optional[dict[str, Any]] = None
+    #: The build that produced ``part``. Without it the assistant can only read
+    #: the summary the client pasted in; with it, it can open that build's
+    #: topology record and measure the real thing.
+    request_id: str = Field("", max_length=128)
     history: list[dict[str, Any]] = Field(default_factory=list)
     #: Force a route instead of inferring one: "design" | "explain".
     intent: Optional[str] = None
@@ -188,6 +192,7 @@ def studio_chat(
                     part=request.part,
                     history=request.history,
                     lens=request.lens,
+                    request_id=request.request_id,
                     on_event=on_event,
                 )
                 events.put(
@@ -198,6 +203,11 @@ def studio_chat(
                             "success": result.get("success", False),
                             "answer": result.get("answer", ""),
                             "model": result.get("model", ""),
+                            # What the answer was actually checked against.
+                            # Carried to the client so a grounded reply is
+                            # visibly different from an unaided one.
+                            "tools_used": result.get("tools_used") or [],
+                            "inspected": result.get("inspected", False),
                             "error": result.get("error"),
                         },
                     )

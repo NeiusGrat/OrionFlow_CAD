@@ -81,13 +81,17 @@ def _param_vector(params):
 
 
 def _face_anchor(face):
-    """Stable geometric identity for a face: COM + outward normal + extent."""
+    """Stable geometric identity for a face: COM + outward normal + extent.
+
+    ``Orientation`` is not applied — FreeCAD's ``Face.normalAt`` has already
+    applied it, and flipping again points the normal into the solid. Same fix,
+    same reasoning as ``orion/topology_fc.py:_normal_at_middle``, where it is
+    measured against ``Shape.isInside``.
+    """
     try:
         com = face.CenterOfMass
         u, v = face.Surface.parameter(com)
         n = face.normalAt(u, v)
-        if str(face.Orientation) == "Reversed":
-            n = n.negative()
         return {
             "center_of_mass": [round(com.x, 6), round(com.y, 6), round(com.z, 6)],
             "normal": [round(n.x, 6), round(n.y, 6), round(n.z, 6)],

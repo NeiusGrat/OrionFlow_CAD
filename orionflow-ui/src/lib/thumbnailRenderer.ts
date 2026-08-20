@@ -5,7 +5,15 @@
  */
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import {
+    CAD_Z_UP_TO_Y_UP,
+    addCadLights,
+    applyCadToneMapping,
+    attachCadEdges,
+    createEdgeMaterial,
+    createPartMaterial,
+    createStudioEnvironment,
+} from "./cadAppearance";
 
 const THUMB_W = 320;
 const THUMB_H = 240;
@@ -25,41 +33,45 @@ function getRenderer(): THREE.WebGLRenderer {
         renderer.setSize(THUMB_W, THUMB_H);
         renderer.setPixelRatio(1);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
+        // Same filmic response the viewer uses. Without it a thumbnail's metal
+        // highlights clip to white and the part reads as plastic — the single
+        // biggest reason thumbnails used to look unlike the viewport.
+        applyCadToneMapping(renderer);
         // Metal needs an environment to read; RoomEnvironment is built-in/offline.
-        const pmrem = new THREE.PMREMGenerator(renderer);
-        envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        envMap = createStudioEnvironment(renderer).texture;
     }
     return renderer;
 }
 
 const loader = new GLTFLoader();
 
-const PART_MATERIAL = new THREE.MeshStandardMaterial({
-    color: new THREE.Color("#b9bec6"),
-    metalness: 0.85,
-    roughness: 0.34,
-});
+const PART_MATERIAL = createPartMaterial();
+const EDGE_MATERIAL = createEdgeMaterial();
 
 async function renderOne(url: string): Promise<string> {
     const gltf = await loader.loadAsync(url);
     const model = gltf.scene;
 
+    getRenderer(); // ensure envMap and tone mapping exist
+
     model.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-            (child as THREE.Mesh).material = PART_MATERIAL;
-        }
+        const mesh = child as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.material = PART_MATERIAL;
+        // Edges are what make a thumbnail read as a machined part rather than
+        // a smooth blob: a fillet and a sharp corner are indistinguishable
+        // under shading alone at 320x240.
+        attachCadEdges(mesh, EDGE_MATERIAL);
     });
 
+    // Orient exactly as the viewport does, before the bounding box is taken —
+    // the camera is framed from that box, so rotating afterwards would frame
+    // the part in a pose it is not rendered in.
+    model.rotation.set(...CAD_Z_UP_TO_Y_UP);
+
     const scene = new THREE.Scene();
-    getRenderer(); // ensure envMap exists
     scene.environment = envMap;
-    scene.add(new THREE.HemisphereLight(0xf1f5f9, 0x334155, 1.2));
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(4, 6, 5);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0x93c5fd, 0.5);
-    fill.position.set(-5, -2, -4);
-    scene.add(fill);
+    addCadLights(scene);
     scene.add(model);
 
     const box = new THREE.Box3().setFromObject(model);
@@ -81,6 +93,8 @@ async function renderOne(url: string): Promise<string> {
     model.traverse((child) => {
         const mesh = child as THREE.Mesh;
         if (mesh.isMesh) mesh.geometry?.dispose();
+        const line = child as THREE.LineSegments;
+        if (line.isLineSegments) line.geometry?.dispose();
     });
 
     return dataUrl;

@@ -39,12 +39,28 @@ export interface DesignOutcome {
     contractBroken?: boolean;
 }
 
+/** One thing the assistant went and checked before it answered.
+ *
+ *  A lookup against a standard, or a reading taken off the built geometry.
+ *  Kept per message because it is the difference between an answer that was
+ *  verified and one that was recalled, and the reader is entitled to see which
+ *  they were given.
+ */
+export interface ToolCheck {
+    name: string;
+    ok: boolean;
+    /** What it was asked — a face name, a bearing designation. */
+    arguments?: Record<string, unknown>;
+}
+
 export interface StudioMessage {
     id: string;
     role: 'user' | 'assistant';
     content: string;
     /** Stages that actually happened, in order, as they happened. */
     steps: StudioStep[];
+    /** Tool calls this turn actually made. Empty means the answer is unaided. */
+    checks: ToolCheck[];
     /** The engineering account of the design, derived from the Blueprint. */
     narrative: DesignNarrative | null;
     /** The model's raw derivation. Working notes — kept for inspection, never
@@ -80,6 +96,7 @@ function blank(
         role,
         content,
         steps: [],
+        checks: [],
         narrative: null,
         thinking: '',
         model: '',
@@ -275,6 +292,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
                               verification: part.verification,
                           }
                         : null,
+                    // Which build the summary above came from. With it the
+                    // server can open that build's topology record and let the
+                    // assistant measure the real part rather than paraphrase
+                    // the summary we just pasted in.
+                    request_id: part?.requestId || undefined,
                 },
                 (e) => {
                     switch (e.type) {
@@ -296,6 +318,18 @@ export const useStudioStore = create<StudioState>((set, get) => ({
                                         : m.steps.map((s, j) => (j === i ? e.step : s));
                                 return { ...m, steps };
                             });
+                            break;
+                        case 'tool':
+                            // Appended, never deduplicated: asking the same
+                            // question twice is a fact about how the answer was
+                            // reached, and collapsing it would hide a loop.
+                            patch((m) => ({
+                                ...m,
+                                checks: [
+                                    ...m.checks,
+                                    { name: e.name, ok: e.ok, arguments: e.arguments },
+                                ],
+                            }));
                             break;
                         case 'narrative':
                             patch((m) => ({ ...m, narrative: e.narrative }));

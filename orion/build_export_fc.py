@@ -96,12 +96,29 @@ def main():
         graph, os.path.splitext(os.path.basename(args.fcstd))[0])
     doc.saveAs(os.path.abspath(args.fcstd))
 
+    exports, export_errors = {}, {}
+    body = _body_of(doc)
+
+    # Give the saved document its appearance. A headless FreeCAD writes no view
+    # state at all, so until this ran every part opened in whatever colours the
+    # opening machine preferred — and none of them matched the studio viewport.
+    # It rewrites the archive, so it happens after the save and before anything
+    # reads the file back. The bounding box comes from the live shape and only
+    # frames the saved camera; it never affects geometry.
+    bbox = None
+    if body is not None:
+        try:
+            bb = body.Shape.BoundBox
+            bbox = [bb.XMin, bb.YMin, bb.ZMin, bb.XMax, bb.YMax, bb.ZMax]
+        except Exception:  # noqa: BLE001 - framing is cosmetic
+            bbox = None
+    view = _load(os.path.join(repo, "freecad", "view_state.py"), "_orion_viewstate")
+    styled = view.apply(os.path.abspath(args.fcstd), bbox)
+
     # Export from the live document, before it is closed. Each export is
     # individually guarded: a part that measures correctly but cannot be
     # tessellated is still a real result, and losing the measurement because
     # STL writing failed would turn a partial success into a total one.
-    exports, export_errors = {}, {}
-    body = _body_of(doc)
     if body is None:
         export_errors["body"] = "no PartDesign::Body with a valid shape"
     else:
@@ -156,6 +173,7 @@ def main():
         "built": report.get("built", []),
     }
     measured["exports"] = exports
+    measured["view_state"] = bool(styled)
     if export_errors:
         measured["export_errors"] = export_errors
     with open(args.out, "w", encoding="utf-8") as fh:

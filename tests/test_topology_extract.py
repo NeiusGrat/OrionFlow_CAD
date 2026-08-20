@@ -293,14 +293,25 @@ def test_stable_ordinals_are_numbered_per_feature(document):
     ]
 
 
-def test_a_reversed_face_reports_the_normal_the_solid_actually_uses(document):
-    """OCC stores a natural normal plus a flag; a viewer given the unflipped
-    vector lights half the part inside out."""
+def test_orientation_is_not_applied_a_second_time(document):
+    """``normalAt`` is already outward; flipping on ``Reversed`` points it in.
+
+    This assertion used to say the opposite, on the reasoning that OCC stores a
+    natural normal plus a flag the consumer must apply. True of raw OCC — but
+    FreeCAD's ``Face.normalAt`` has applied it before we see the vector, so the
+    extra flip inverted it.
+
+    Settled by measurement, not by argument: stepping off each face along both
+    candidates and asking ``Shape.isInside``, ``normalAt`` pointed outward on
+    34 of 34 faces across four built parts, and the flipped vector on 13. Every
+    ``Reversed`` face carried a normal pointing into the solid, which is most of
+    a PartDesign pad.
+    """
     document.Objects[0].Shape.Faces[0].Orientation = "Reversed"
 
     record = tf.extract(document)
 
-    assert record["faces"][0]["normal"] == [0.0, 0.0, -1.0]
+    assert record["faces"][0]["normal"] == [0.0, 0.0, 1.0]
 
 
 def test_coordinates_are_rounded_so_the_sidecar_is_byte_stable(document):

@@ -110,6 +110,11 @@ export interface StudioExplainResult {
     success: boolean;
     answer: string;
     model: string;
+    /** Tools the turn actually called, in order. */
+    tools_used?: string[];
+    /** Whether this build's geometry was reachable at all — distinct from
+     *  whether the model chose to look at it. */
+    inspected?: boolean;
     error?: string | null;
 }
 
@@ -151,7 +156,7 @@ export type StudioEvent =
     | { type: 'verification'; report: VerificationReport }
     | { type: 'repair'; attempt: number; error: string; diagnosis: string }
     | { type: 'reasoning'; explain: string; citations: string[]; warnings: string[]; part_class: string; variables: Record<string, number> }
-    | { type: 'tool'; name: string; ok: boolean }
+    | { type: 'tool'; name: string; ok: boolean; arguments?: Record<string, unknown> }
     | { type: 'done'; result: StudioDesignResult | StudioExplainResult }
     | { type: 'error'; error: string; raw_completion?: string; model?: string };
 
@@ -180,6 +185,10 @@ export const LENSES: { id: Lens; label: string; hint: string }[] = [
 export interface StudioChatRequest {
     message: string;
     part?: Record<string, unknown> | null;
+    /** The build `part` came from. Lets the server reach that build's topology
+     *  record, so the assistant can measure the part instead of paraphrasing
+     *  the summary the client sent. */
+    request_id?: string;
     history?: { role: string; content: string }[];
     intent?: 'design' | 'explain';
     lens?: Lens;
@@ -298,7 +307,7 @@ function toEvent(event: string, d: any): StudioEvent | null {
                 variables: d.variables ?? {},
             };
         case 'tool':
-            return { type: 'tool', name: d.name ?? '', ok: !!d.ok };
+            return { type: 'tool', name: d.name ?? '', ok: !!d.ok, arguments: d.arguments ?? undefined };
         case 'done':
             return { type: 'done', result: d };
         case 'error':

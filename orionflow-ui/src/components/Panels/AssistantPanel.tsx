@@ -11,7 +11,13 @@ import {
 } from "lucide-react";
 import OrionFlowLogo from "../OrionFlowLogo";
 import VerificationCard from "./VerificationCard";
-import { useStudioStore, type StudioMessage, type DesignOutcome, type StudioMode } from "../../store/studioStore";
+import {
+    useStudioStore,
+    type StudioMessage,
+    type DesignOutcome,
+    type StudioMode,
+    type ToolCheck,
+} from "../../store/studioStore";
 import {
     fetchStudioHealth,
     fullUrl,
@@ -164,6 +170,95 @@ function Steps({ steps }: { steps: StudioStep[] }) {
                                     </div>
                                 ))}
                             </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+/** What each tool call means in plain words.
+ *
+ *  The raw names are the model's vocabulary, not the reader's. Anything not
+ *  listed falls back to its own name rather than to a vague "checked
+ *  something" — an unfamiliar tool name is still a true statement.
+ */
+const CHECK_LABELS: Record<string, string> = {
+    list_objects: "Listed what the part is made of",
+    inspect_topology: "Read the built topology",
+    expand_topology: "Expanded one shape in full",
+    get_parameters: "Read a feature's dimensions",
+    get_featuregraph: "Read how the part was built",
+    get_model_tier: "Checked how the part can be edited",
+    measure: "Measured the built geometry",
+    lookup_standard: "Looked up a standard",
+    lookup_mechanical_knowledge: "Looked up mechanical data",
+    lookup_nasa_requirement: "Looked up a NASA requirement",
+    resolve_design_context: "Resolved the design context",
+    calculate_sheet_metal_bend: "Calculated a bend allowance",
+    check_sheet_metal_dfm: "Ran sheet-metal DFM checks",
+    lookup_robotics_knowledge: "Looked up robotics data",
+};
+
+/** The one argument worth showing next to a check — which face, which part. */
+function checkDetail(args?: Record<string, unknown>): string {
+    if (!args) return "";
+    for (const key of ["name", "query", "designation", "sub", "selector"]) {
+        const v = args[key];
+        if (typeof v === "string" && v) return v;
+    }
+    const a = args.a as Record<string, unknown> | undefined;
+    const b = args.b as Record<string, unknown> | undefined;
+    if (a?.sub && b?.sub) return `${a.sub} → ${b.sub}`;
+    return "";
+}
+
+/** What the assistant went and checked before answering.
+ *
+ *  Shown rather than summarised away: an answer that measured the part and one
+ *  that recalled a number look identical in prose, and only this tells them
+ *  apart. A failed call stays on the list — a lookup that found nothing is a
+ *  reason to trust the answer less, not something to hide.
+ */
+function Checks({ checks }: { checks: ToolCheck[] }) {
+    if (!checks.length) return null;
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: "3px", margin: "6px 0 2px" }}>
+            {checks.map((c, i) => {
+                const detail = checkDetail(c.arguments);
+                return (
+                    <div
+                        key={i}
+                        style={{ display: "flex", alignItems: "center", gap: "7px", fontSize: "11.5px" }}
+                    >
+                        <span
+                            style={{
+                                color: c.ok ? "var(--st-verify)" : "var(--st-redline)",
+                                fontSize: "11px",
+                                width: "11px",
+                                textAlign: "center",
+                            }}
+                        >
+                            {c.ok ? "✓" : "✕"}
+                        </span>
+                        <span style={{ color: "var(--st-graphite)" }}>
+                            {CHECK_LABELS[c.name] ?? c.name}
+                        </span>
+                        {detail && (
+                            <span
+                                className="of-num"
+                                style={{
+                                    fontSize: "10px",
+                                    color: "var(--st-pencil)",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    maxWidth: "45%",
+                                }}
+                            >
+                                {detail}
+                            </span>
                         )}
                     </div>
                 );
@@ -415,6 +510,7 @@ function Message({ msg, priorUser }: { msg: StudioMessage; priorUser: string }) 
 
             <div style={{ paddingLeft: "29px" }}>
                 <Steps steps={msg.steps} />
+                <Checks checks={msg.checks} />
 
                 {msg.narrative && (
                     <>

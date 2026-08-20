@@ -1,5 +1,5 @@
-import { CheckCircle2, AlertTriangle, HelpCircle } from "lucide-react";
-import type { VerificationReport } from "../../services/agentApi";
+import { CheckCircle2, AlertTriangle, HelpCircle, FileQuestion } from "lucide-react";
+import type { ProvenanceEntry, VerificationReport } from "../../services/agentApi";
 
 /**
  * The verdict panel.
@@ -30,7 +30,86 @@ const VERDICT = {
         sub: "nothing failed, but nothing was proved",
         Icon: HelpCircle,
     },
+    // The verdict that separates "the geometry matches its numbers" from "the
+    // numbers are right". Both were VERIFIED before, and only the first was
+    // ever true of a part whose dimensions nobody supplied.
+    unsourced: {
+        color: "var(--studio-warn)",
+        text: "Unsourced",
+        sub: "the geometry is proved; some of its dimensions are not",
+        Icon: FileQuestion,
+    },
 } as const;
+
+/** Which colour a single check row gets. */
+const STATUS_COLOR: Record<string, string> = {
+    pass: "var(--studio-ok)",
+    warn: "var(--studio-warn)",
+    fail: "var(--studio-err)",
+};
+
+const STATUS_MARK: Record<string, string> = { pass: "✓", warn: "!", fail: "✕" };
+
+/** How each provenance source reads to an engineer. */
+const SOURCE_LABEL: Record<string, string> = {
+    stated: "you gave it",
+    standard: "from a standard",
+    derived: "calculated",
+    default: "a documented default",
+    unsourced: "chosen, not derived",
+};
+
+/** The assumption ledger.
+ *
+ *  Unsourced rows first and in full; everything else collapses to a count.
+ *  A reader looking for what to double-check should not have to scan past a
+ *  dozen rows of "you gave it" to find the one that says nobody did.
+ */
+function Ledger({ provenance }: { provenance: Record<string, ProvenanceEntry> }) {
+    const entries = Object.entries(provenance);
+    if (!entries.length) return null;
+    const missing = entries.filter(([, e]) => e.source === "unsourced");
+    const counts = new Map<string, number>();
+    for (const [, e] of entries) {
+        if (e.source !== "unsourced") counts.set(e.source, (counts.get(e.source) ?? 0) + 1);
+    }
+
+    return (
+        <div
+            style={{
+                borderTop: "1px solid var(--studio-border)",
+                paddingTop: "6px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "3px",
+                fontSize: "10.5px",
+            }}
+        >
+            <div style={{ color: "var(--studio-text-faint)" }}>
+                where the numbers came from
+            </div>
+            {missing.map(([name]) => (
+                <div key={name} style={{ display: "flex", gap: "6px" }}>
+                    <span style={{ color: "var(--studio-warn)", lineHeight: "14px" }}>!</span>
+                    <span style={{ color: "var(--studio-text)", fontFamily: "var(--font-mono)" }}>
+                        {name}
+                    </span>
+                    <span style={{ color: "var(--studio-warn)", marginLeft: "auto" }}>
+                        {SOURCE_LABEL.unsourced}
+                    </span>
+                </div>
+            ))}
+            {counts.size > 0 && (
+                <div style={{ color: "var(--studio-text-faint)", paddingLeft: "17px" }}>
+                    {[...counts.entries()]
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([source, n]) => `${n} ${SOURCE_LABEL[source] ?? source}`)
+                        .join(" · ")}
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function VerificationCard({
     report,
@@ -136,14 +215,11 @@ export default function VerificationCard({
                         >
                             <span
                                 style={{
-                                    color:
-                                        c.status === "pass"
-                                            ? "var(--studio-ok)"
-                                            : VERDICT.refused.color,
+                                    color: STATUS_COLOR[c.status] ?? VERDICT.refused.color,
                                     lineHeight: "15px",
                                 }}
                             >
-                                {c.status === "pass" ? "✓" : "✕"}
+                                {STATUS_MARK[c.status] ?? "✕"}
                             </span>
                             <span style={{ color: "var(--studio-text)" }}>{c.label}</span>
                             <span
@@ -162,6 +238,8 @@ export default function VerificationCard({
                     ))}
                 </div>
             )}
+
+            {!compact && report.provenance && <Ledger provenance={report.provenance} />}
 
             {/* Observations, explicitly not claims of correctness. */}
             {(m.volume_cm3 != null || m.bbox_mm) && (

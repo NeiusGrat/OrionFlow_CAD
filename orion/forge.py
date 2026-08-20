@@ -35,13 +35,9 @@ MESH_BUILD_TIMEOUT_S = 300
 
 
 def _freecad_python() -> str:
-    env = os.environ.get("ORION_FREECAD_PYTHON")
-    if env and os.path.exists(env):
-        return env
-    cand = r"C:/Program Files/FreeCAD 1.1/bin/python.exe"
-    if os.path.exists(cand):
-        return cand
-    raise RuntimeError("no FreeCAD python; set ORION_FREECAD_PYTHON")
+    from .freecad_python import freecad_python  # noqa: PLC0415
+
+    return freecad_python()
 
 
 def build_and_measure(graph: dict, workdir: str, tag: str,

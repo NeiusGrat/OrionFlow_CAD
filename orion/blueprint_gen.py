@@ -1206,7 +1206,7 @@ BUILDERS: dict[str, Callable[[dict], dict]] = {
 #: a thread designation survives into the design plan instead of being dropped.
 #: They are the only requirements a builder may legitimately not read.
 INFORMATIONAL = frozenset({
-    "family", "schema_version", "standards_applied",
+    "family", "schema_version", "standards_applied", "provenance",
     "material", "bearing_series", "mounting_type",
     "thread", "hole_thread", "port_thread", "inlet_thread",
 })
@@ -1265,7 +1265,25 @@ def generate(family: str, requirements: dict) -> dict:
               "so the part would be missing features you specified")
 
     stated = {k: requirements[k] for k in INFORMATIONAL
-              if k in requirements and k not in ("family", "schema_version")}
+              if k in requirements and k not in ("family", "schema_version",
+                                                 "provenance")}
     if stated:
         payload["design_plan"]["stated"] = stated
+
+    # Where every variable came from, carried onto the names the builder gave
+    # them. Written into ``design_plan`` because that is inside the hash: a
+    # record of provenance that could be added after the part was measured
+    # would prove nothing, for exactly the reason the assertions are frozen.
+    #
+    # Whatever the builder introduced that no requirement named is derived by
+    # construction — every expression in this module is written here, so there
+    # is no step at which a free number could enter.
+    from . import provenance as P
+
+    payload["design_plan"]["provenance"] = P.extend(
+        requirements.get("provenance") or {},
+        payload.get("variables") or {},
+        f"computed by blueprint_gen.{family} from the collected dimensions",
+        source_values=requirements,
+    )
     return payload

@@ -85,16 +85,35 @@ def test_any_load_kind_diverts(request_text, expected_field):
     assert route.duty[expected_field]
 
 
-def test_the_gate_matches_what_the_chain_will_accept():
+def test_the_gate_never_diverts_on_a_signal_the_chain_refuses():
     """Routing on a signal the chain then refuses would only produce questions.
 
-    The chain will not select without one of these fields, so the router must
-    not divert on anything weaker. Pinned against the chain's own constant so
-    the two cannot drift apart silently.
+    The chain will not select without one of its load fields, so the router
+    must not divert on anything weaker. Pinned against the chain's own constant
+    so the two cannot drift apart silently.
     """
     from orion.reasoning import _LOAD_FIELDS
 
-    assert set(DR.LOAD_FIELDS) == set(_LOAD_FIELDS)
+    assert set(DR.LOAD_FIELDS) <= set(_LOAD_FIELDS)
+
+
+def test_a_stated_pressure_is_read_and_still_does_not_divert():
+    """The converse does not hold, and pressure is the case that proves it.
+
+    ``pressure_bar`` satisfies the chain's selection gate but no function in the
+    chain acts on it, so a diverted pressure request stops at INTENT asking
+    "what must the part do?" — worse than the part the model would have built.
+    It was harmless while nothing extracted a pressure; now that ``orion.duty``
+    reads one it has to be excluded explicitly.
+    """
+    from orion.reasoning import _LOAD_FIELDS
+
+    assert "pressure_bar" in _LOAD_FIELDS
+    assert "pressure_bar" not in DR.LOAD_FIELDS
+    assert "pressure_bar" in DR.ADVISORY_FIELDS
+
+    route = DR.decide("a manifold rated to 250 bar")
+    assert route.route == DR.DIRECT
 
 
 # --------------------------------------------------------------------------- #
