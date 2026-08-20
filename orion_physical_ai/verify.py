@@ -63,6 +63,20 @@ def _check(
 
 
 def verdict_for(checks: list[dict]) -> str:
+    """VERIFIED requires every dimension of evidence to agree.
+
+    Three now, and they are independent of one another:
+
+    * the geometry matches the frozen contract (assertion and solid rows)
+    * every number is accounted for (``provenance:``)
+    * every feature the request obliged is present and measures right
+      (``feature:``)
+
+    The third was missing, and the first cannot substitute for it: a volume
+    assertion is derived from the same requirements the feature is, so a plate
+    that dropped four holes predicted its own hole-less volume and matched it
+    exactly. Nothing failed and the part was wrong.
+    """
     if any(c["status"] == FAIL for c in checks):
         return REFUSED
     if any(c["status"] == WARN for c in checks):
@@ -124,6 +138,61 @@ def provenance_checks(design_plan: Optional[dict]) -> list[dict]:
             evidence,
         )
     ]
+
+
+def fulfillment_rows(design_plan: Optional[dict], topology: Optional[dict],
+                     template: Optional[dict] = None) -> list[dict]:
+    """Feature-fulfillment records for the obligations in the frozen contract.
+
+    ``design_plan["obligations"]`` is what the *request* obliged the part to
+    contain, frozen before the kernel ran. ``topology`` is what OCC says the
+    solid actually has. Comparing them is a verification dimension the assertion
+    rows cannot reach: a volume assertion is derived from the same requirements
+    the feature was, so an absent hole makes the prediction and the measurement
+    agree with each other.
+    """
+    obligations = ((design_plan or {}).get("obligations")) or []
+    if not obligations:
+        return []
+
+    from orion import fulfillment as F
+
+    return F.check(obligations, topology, template=template)
+
+
+def fulfillment_checks(rows: Optional[list[dict]]) -> list[dict]:
+    """Turn fulfillment records into checks. One row per obligation.
+
+    A contradicted obligation is a **FAIL**, not a warning. A part missing a
+    feature the user asked for is not a part with a caveat — it is the wrong
+    part, however sound its solid and however exactly its volume matches a
+    closed form computed from the same absent feature.
+
+    An obligation that could not be established either way is a WARN, which
+    stops VERIFIED without claiming the geometry is wrong. That is the rule
+    "no fulfillment evidence, no VERIFIED" — absence of evidence is reported as
+    absence of evidence rather than resolved in either direction.
+    """
+    out = []
+    for row in rows or []:
+        status = row.get("status") or WARN
+        out.append(
+            _check(
+                f"feature:{row.get('id')}",
+                f"{row.get('label') or row.get('id')} exists in the built solid",
+                status if status in (PASS, FAIL, WARN) else WARN,
+                row.get("detail") or "",
+                {
+                    "requested": row.get("requested"),
+                    "represented": row.get("represented"),
+                    "instantiated": row.get("instantiated"),
+                    "observed": row.get("observed"),
+                    "verified": row.get("verified"),
+                    **(row.get("evidence") or {}),
+                },
+            )
+        )
+    return out
 
 
 def from_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -275,6 +344,8 @@ def from_assertion_rows(
     measured: Optional[dict] = None,
     engineering: Optional[list[dict]] = None,
     design_plan: Optional[dict] = None,
+    topology: Optional[dict] = None,
+    template: Optional[dict] = None,
 ) -> dict[str, Any]:
     """Verification report for the forge path, where a frozen closed form is
     compared against what the kernel measured.
@@ -344,11 +415,14 @@ def from_assertion_rows(
     checks.extend(solid_validity_checks(measured))
     checks.extend(engineering_checks(engineering))
     checks.extend(provenance_checks(design_plan))
+    fulfillment = fulfillment_rows(design_plan, topology, template)
+    checks.extend(fulfillment_checks(fulfillment))
 
     return {
         "verdict": verdict_for(checks),
         "checks": checks,
         "failed": [c for c in checks if c["status"] == FAIL],
+        "fulfillment": fulfillment,
         "measured": dict(measured or {}),
         # The ledger itself, not just the verdict on it. A user told their
         # part is UNSOURCED needs to see *which* numbers, and where the rest

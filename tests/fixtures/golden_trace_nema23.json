@@ -1,7 +1,7 @@
 {
   "schema": "orionflow-trace-v1",
-  "captured_at": "2026-08-20T12:06:20Z",
-  "commit": "b156d19",
+  "captured_at": "2026-08-20T12:33:35Z",
+  "commit": "9a19389",
   "request": "A mounting plate for a NEMA 23 stepper, 120 x 80 x 10 mm aluminium, four M5 clearance holes on a 47.14 mm bolt circle",
   "route": {
     "route": "direct",
@@ -20,7 +20,7 @@
     "hole_r": 2.75,
     "pcd_r": 23.57
   },
-  "blueprint_hash": "e7089605cb32054acc0a621c3173227d105effb8b5cfe74421c9c093c2e92da8",
+  "blueprint_hash": "3d981e430f7d61857b87cf6da50de0591157084d2349a5c8cd611000810d4a68",
   "blueprint": {
     "version": "orion-blueprint-v1",
     "part_class": "rect_plate",
@@ -50,6 +50,24 @@
           "M5 clearance hole = 5.5 mm (ISO 273 medium)"
         ]
       },
+      "obligations": [
+        {
+          "id": "bolt_circle",
+          "kind": "hole_pattern",
+          "label": "mounting hole pattern",
+          "count": 4,
+          "radius": 2.75,
+          "placement": {
+            "form": "bolt_circle",
+            "radius": 23.57
+          },
+          "source": [
+            "hole_count",
+            "hole_r",
+            "pcd_r"
+          ]
+        }
+      ],
       "provenance": {
         "L": {
           "source": "stated",
@@ -163,7 +181,7 @@
         }
       ]
     },
-    "blueprint_hash": "e7089605cb32054acc0a621c3173227d105effb8b5cfe74421c9c093c2e92da8"
+    "blueprint_hash": "3d981e430f7d61857b87cf6da50de0591157084d2349a5c8cd611000810d4a68"
   },
   "requirements": {
     "thread": "M5",
@@ -308,9 +326,92 @@
           },
           "total": 5
         }
+      },
+      {
+        "id": "feature:bolt_circle",
+        "label": "mounting hole pattern exists in the built solid",
+        "status": "pass",
+        "detail": "mounting hole pattern: 4 feature(s) of radius 2.75 mm, measured bolt circle radius 23.5700\u201323.5700 mm against 23.5700 mm",
+        "evidence": {
+          "requested": true,
+          "represented": true,
+          "instantiated": true,
+          "observed": true,
+          "verified": true,
+          "expected_radius_mm": 23.57,
+          "expected_count": 4,
+          "found_axes": 4,
+          "axes_xy": [
+            [
+              -23.57,
+              0.0
+            ],
+            [
+              0.0,
+              -23.57
+            ],
+            [
+              0.0,
+              23.57
+            ],
+            [
+              23.57,
+              0.0
+            ]
+          ],
+          "measured_radii_mm": [
+            23.57,
+            23.57,
+            23.57,
+            23.57
+          ]
+        }
       }
     ],
     "failed": [],
+    "fulfillment": [
+      {
+        "id": "bolt_circle",
+        "kind": "hole_pattern",
+        "label": "mounting hole pattern",
+        "requested": true,
+        "represented": true,
+        "instantiated": true,
+        "observed": true,
+        "verified": true,
+        "status": "pass",
+        "detail": "mounting hole pattern: 4 feature(s) of radius 2.75 mm, measured bolt circle radius 23.5700\u201323.5700 mm against 23.5700 mm",
+        "evidence": {
+          "expected_radius_mm": 23.57,
+          "expected_count": 4,
+          "found_axes": 4,
+          "axes_xy": [
+            [
+              -23.57,
+              0.0
+            ],
+            [
+              0.0,
+              -23.57
+            ],
+            [
+              0.0,
+              23.57
+            ],
+            [
+              23.57,
+              0.0
+            ]
+          ],
+          "measured_radii_mm": [
+            23.57,
+            23.57,
+            23.57,
+            23.57
+          ]
+        }
+      }
+    ],
     "measured": {
       "volume_cm3": 95.05,
       "bbox_mm": [
@@ -384,8 +485,8 @@
     "glb": "part.glb",
     "topology": "part.topology.json"
   },
-  "request_id": "efd4e183a5c1",
-  "design_ms": 14168.6,
+  "request_id": "0cea8cd57b01",
+  "design_ms": 15841.1,
   "design_events": [
     "step",
     "step",
@@ -400,7 +501,7 @@
   "inspection": {
     "question": "How thick is this plate, how many holes does it have, and how far apart are the two nearest ones?",
     "answered": true,
-    "answer": "The plate thickness is defined by the variable **T** in the Blueprint, which is set to **10.0\u202fmm** (see `get_parameters` for the Pad feature).  \n\nThe sketch that drives the Pad contains **4 Circle** features, so the part has **four M5 clearance holes** (four cylindrical faces reported by `inspect_topology`).  \n\nThe distance between the two closest holes was measured between two cylindrical faces (Face7 and Face8). The tool returned a centroid separation of **33.333014\u202fmm**, which is the center\u2011to\u2011center spacing of the nearest holes.",
+    "answer": "The plate thickness is **10\u202fmm** \u2013 that is the value of the variable\u202f`T` in the Blueprint.\n\nIt contains **four** M5 clearance holes. The verification report confirms a \u201cmounting hole pattern: 4 feature(s) of radius\u202f2.75\u202fmm\u201d and the design plan lists a bolt\u2011circle radius of\u202f23.57\u202fmm.\n\nThe distance between the two nearest holes is about **33.33\u202fmm**. The `measure` call reported a centroid separation of\u202f33.333014\u202fmm between two of the cylindrical faces, which corresponds to the chord length\u202f\\(2\u202f\u00b7\u202fpcd_r\u202f\u00b7\u202f\\sin(\u03c0/4)=\\sqrt{2}\u00b723.57\u224833.33\\)\u202fmm derived from the bolt\u2011circle radius.",
     "error": null,
     "model": "fallback:k2think",
     "inspected": true,
@@ -408,7 +509,6 @@
       "list_objects",
       "get_featuregraph",
       "inspect_topology",
-      "measure",
       "expand_topology",
       "measure"
     ],
@@ -418,7 +518,7 @@
         "arguments": {},
         "ok": true,
         "observation": "- Body (PartDesign::Body) parametric, 10 faces\n- plate (PartDesign::Pad) parametric, 10 faces",
-        "duration_ms": 2.0,
+        "duration_ms": 0.0,
         "raw_keys": [
           "objects"
         ]
@@ -428,7 +528,7 @@
         "arguments": {},
         "ok": true,
         "observation": "FeatureGraph: 3 feature(s)\n  s_plate (Sketch on XY): 4 Circle, 4 LineSegment\n  plate (Pad, Length=10.0) <- profile s_plate",
-        "duration_ms": 3.3,
+        "duration_ms": 0.0,
         "raw_keys": [
           "graph"
         ]
@@ -447,40 +547,13 @@
         ]
       },
       {
-        "tool": "measure",
-        "arguments": {
-          "a": {
-            "name": "plate",
-            "sub": "Face1"
-          },
-          "b": {
-            "name": "plate",
-            "sub": "Face2"
-          }
-        },
-        "ok": true,
-        "observation": "distance ~= 0.0 mm \u2014 this is NOT an exact minimum distance. Method: bounding-box lower bound (planar to planar). Proved lower bound 0.0 mm. Centroid separation 72.111026 mm. Report it as a bound, not as the distance.",
-        "duration_ms": 0.0,
-        "raw_keys": [
-          "a",
-          "a_feature",
-          "b",
-          "b_feature",
-          "centroid_distance",
-          "distance",
-          "exact",
-          "lower_bound",
-          "method"
-        ]
-      },
-      {
         "tool": "expand_topology",
         "arguments": {
           "name": "plate"
         },
         "ok": true,
         "observation": "plate: None solid(s), 10 faces / 24 edges / 16 verts | surfaces[Plane x6, Cylinder x4] | cylindrical_faces=4 | bbox=120.0x80.0x10.0\n  curves: Line x16, Circle x8\n  bbox min=[-60.0, -40.0, 0.0] max=[60.0, 40.0, 10.0]",
-        "duration_ms": 0.0,
+        "duration_ms": 0.7,
         "raw_keys": [
           "request_id",
           "shapes"
@@ -514,10 +587,10 @@
         ]
       }
     ],
-    "rounds": 6,
-    "explain_ms": 18810.7
+    "rounds": 5,
+    "explain_ms": 19569.6
   },
-  "total_ms": 32979.3,
+  "total_ms": 35410.7,
   "topology": {
     "schema": "orionflow-topology-v1",
     "occurrences": [

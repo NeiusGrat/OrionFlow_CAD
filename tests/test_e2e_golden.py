@@ -48,6 +48,18 @@ def clarification() -> dict:
     return _load("trace_clarification_nema23.json")
 
 
+@pytest.fixture(scope="module")
+def dropped() -> dict:
+    """A turn where a stated feature never reached the geometry.
+
+    "four M5 clearance holes on the standard NEMA 23 bolt circle" — the bolt
+    circle diameter is never stated, the builder discards the holes, and the
+    plate comes out blank. This graded VERIFIED until feature fulfillment
+    became a check.
+    """
+    return _load("trace_dropped_holes.json")
+
+
 # --------------------------------------------------------------------------- #
 # 1. the Blueprint was frozen before anything ran
 # --------------------------------------------------------------------------- #
@@ -94,7 +106,20 @@ def test_the_frozen_contract_holds_expressions_not_measurements(trace):
 # --------------------------------------------------------------------------- #
 # 2. the verdict is derived from evidence
 # --------------------------------------------------------------------------- #
-def _regrade(trace: dict, rows=None, measured=None, design_plan=None):
+#: Sentinel: "use the trace's own topology". Distinct from ``None``, which is
+#: the deliberate evidence-removed case.
+_KEEP = object()
+
+
+def _regrade(trace: dict, rows=None, measured=None, design_plan=None,
+             topology=_KEEP):
+    """Re-derive the verdict from the trace's own evidence, with one fact changed.
+
+    ``topology`` defaults to the record the fixture carries. Passing ``None``
+    explicitly is the "evidence removed" case, and it is a different test —
+    without a topology record no feature obligation can be checked, and the
+    verdict must fall short of VERIFIED rather than sail past it.
+    """
     from orion_physical_ai import verify
 
     merged = dict(trace["verification"]["measured"])
@@ -108,6 +133,8 @@ def _regrade(trace: dict, rows=None, measured=None, design_plan=None):
             if design_plan is not None
             else trace["blueprint"]["design_plan"]
         ),
+        topology=trace["topology"] if topology is _KEEP else topology,
+        template=trace["blueprint"]["template"],
     )
 
 
@@ -143,6 +170,61 @@ def test_an_unsound_solid_moves_the_verdict(trace):
 # --------------------------------------------------------------------------- #
 # 3. an unaccounted dimension cannot produce VERIFIED
 # --------------------------------------------------------------------------- #
+def test_the_golden_part_fulfils_every_feature_it_owed(trace):
+    """All four states reached, and reached separately."""
+    obligations = trace["blueprint"]["design_plan"]["obligations"]
+    assert [o["id"] for o in obligations] == ["bolt_circle"]
+    assert obligations[0]["count"] == 4
+
+    record = trace["verification"]["fulfillment"][0]
+    assert record["requested"] and record["represented"]
+    assert record["instantiated"] and record["observed"] and record["verified"]
+
+    row = next(
+        c for c in trace["verification"]["checks"] if c["id"] == "feature:bolt_circle"
+    )
+    assert row["status"] == "pass"
+
+
+def test_a_dropped_feature_refuses_the_part(dropped):
+    """The defect, as it now behaves in the product.
+
+    Every other check still passes — extents, volume, solid validity, the whole
+    ledger — because all of them were derived from the same requirements the
+    holes were. Only the geometry disagrees, and only fulfillment asks it.
+    """
+    assert dropped["build_ok"] is True
+    assert dropped["verification"]["verdict"] == "refused"
+    assert [c["id"] for c in dropped["verification"]["failed"]] == [
+        "feature:bolt_circle"
+    ]
+    others = [
+        c
+        for c in dropped["verification"]["checks"]
+        if not c["id"].startswith("feature:")
+    ]
+    assert others and all(c["status"] == "pass" for c in others)
+
+    record = dropped["verification"]["fulfillment"][0]
+    assert record["requested"] is True
+    assert record["observed"] is False
+    assert record["verified"] is False
+
+
+def test_the_dropped_feature_verdict_recomputes_from_its_own_evidence(dropped):
+    """Not a stored label — recomputed from the frozen contract and the solid."""
+    from orion_physical_ai import verify
+
+    report = verify.from_assertion_rows(
+        dropped["assertions"],
+        measured=dropped["verification"]["measured"],
+        design_plan=dropped["blueprint"]["design_plan"],
+        topology=dropped["topology"],
+        template=dropped["blueprint"]["template"],
+    )
+    assert report["verdict"] == "refused"
+
+
 def test_the_golden_part_is_fully_accounted_for(trace):
     from orion import provenance as P
 
@@ -166,6 +248,8 @@ def test_one_unsourced_dimension_takes_verified_away(trace):
     assert report["verdict"] == "unsourced"
     # Not a refusal: the part is real and every geometry check still passed.
     assert report["failed"] == []
+    # Everything else still passes, including the feature check: the holes are
+    # really there, it is only the *source* of one dimension that is unaccounted.
     assert all(
         c["status"] == "pass"
         for c in report["checks"]
@@ -186,6 +270,30 @@ def test_the_ledger_cannot_be_rewritten_after_the_freeze(trace):
         "basis": "given in the request",
     }
     assert not Blueprint.from_dict(tampered).verify_hash()
+
+
+def test_the_obligations_cannot_be_dropped_after_the_freeze(trace):
+    """Deleting an obligation would be the cleanest way to launder a missing
+    feature, so it has to be inside the hash like everything else."""
+    from orion.blueprint import Blueprint
+
+    tampered = copy.deepcopy(trace["blueprint"])
+    tampered["design_plan"]["obligations"] = []
+    assert not Blueprint.from_dict(tampered).verify_hash()
+
+
+def test_removing_the_topology_evidence_prevents_verified(trace):
+    """No fulfillment evidence, no VERIFIED — even with the ledger untouched."""
+    from orion_physical_ai import verify
+
+    report = verify.from_assertion_rows(
+        trace["assertions"],
+        measured=trace["verification"]["measured"],
+        design_plan=trace["blueprint"]["design_plan"],
+        topology=None,
+        template=trace["blueprint"]["template"],
+    )
+    assert report["verdict"] != "verified"
 
 
 # --------------------------------------------------------------------------- #

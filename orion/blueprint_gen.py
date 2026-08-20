@@ -1278,7 +1278,22 @@ def generate(family: str, requirements: dict) -> dict:
     # Whatever the builder introduced that no requirement named is derived by
     # construction — every expression in this module is written here, so there
     # is no step at which a free number could enter.
+    from . import obligations as OB
     from . import provenance as P
+
+    # What the part is now *obliged to contain*, derived from the requirements
+    # and not from the template above. That direction is the point: a builder
+    # that drops a feature would also drop an obligation derived from its own
+    # output, and the check would agree with the bug. Frozen with everything
+    # else, so an obligation cannot be dropped after the part is measured.
+    #
+    # ``_Seen`` cannot serve here. It records that a requirement was *read*,
+    # and every one of the eleven conditional blocks above reads its inputs
+    # before deciding whether it can place them — which is exactly how
+    # hole_count=4 became a blank plate that verified.
+    payload["design_plan"]["obligations"] = OB.to_dicts(
+        OB.derive(family, requirements)
+    )
 
     payload["design_plan"]["provenance"] = P.extend(
         requirements.get("provenance") or {},

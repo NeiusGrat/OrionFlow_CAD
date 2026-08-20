@@ -1,7 +1,7 @@
 {
   "schema": "orionflow-trace-v1",
-  "captured_at": "2026-08-20T12:03:40Z",
-  "commit": "b156d19",
+  "captured_at": "2026-08-20T12:34:55Z",
+  "commit": "9a19389",
   "request": "A mounting plate for a NEMA 23 stepper, 120 x 80 x 10 mm, with four M5 clearance holes on the standard NEMA 23 bolt circle",
   "route": {
     "route": "direct",
@@ -18,7 +18,7 @@
     "W": 80.0,
     "T": 10.0
   },
-  "blueprint_hash": "c641e9ae86d4be6db5bc04e5fe9f485d9f857f8e3c1ddf9cd0e304df92689f95",
+  "blueprint_hash": "3eaa67f147b019da8a03b0a4eaa9b4b215abf4fa63388e7ba58ecdf226a301b0",
   "blueprint": {
     "version": "orion-blueprint-v1",
     "part_class": "rect_plate",
@@ -37,6 +37,19 @@
           "step": 1,
           "eq": "V = (L*W)*T",
           "why": "plate blank with every through-cut in the pad profile"
+        }
+      ],
+      "obligations": [
+        {
+          "id": "bolt_circle",
+          "kind": "hole_pattern",
+          "label": "mounting hole pattern",
+          "count": 4,
+          "radius": 2.5,
+          "source": [
+            "hole_count",
+            "hole_r"
+          ]
         }
       ],
       "provenance": {
@@ -122,7 +135,7 @@
         }
       ]
     },
-    "blueprint_hash": "c641e9ae86d4be6db5bc04e5fe9f485d9f857f8e3c1ddf9cd0e304df92689f95"
+    "blueprint_hash": "3eaa67f147b019da8a03b0a4eaa9b4b215abf4fa63388e7ba58ecdf226a301b0"
   },
   "requirements": null,
   "provenance": {
@@ -183,7 +196,7 @@
   ],
   "engineering": [],
   "verification": {
-    "verdict": "verified",
+    "verdict": "refused",
     "checks": [
       {
         "id": "bbox_extent:len_extent",
@@ -252,9 +265,67 @@
           },
           "total": 3
         }
+      },
+      {
+        "id": "feature:bolt_circle",
+        "label": "mounting hole pattern exists in the built solid",
+        "status": "fail",
+        "detail": "mounting hole pattern: the request asks for 4 cylindrical feature(s) of radius 2.5 mm and the built solid contains none. The solid has no cylindrical faces at all.",
+        "evidence": {
+          "requested": true,
+          "represented": false,
+          "instantiated": true,
+          "observed": false,
+          "verified": false,
+          "expected_radius_mm": 2.5,
+          "expected_count": 4,
+          "found_axes": 0,
+          "axes_xy": [],
+          "cylindrical_radii_present_mm": []
+        }
       }
     ],
-    "failed": [],
+    "failed": [
+      {
+        "id": "feature:bolt_circle",
+        "label": "mounting hole pattern exists in the built solid",
+        "status": "fail",
+        "detail": "mounting hole pattern: the request asks for 4 cylindrical feature(s) of radius 2.5 mm and the built solid contains none. The solid has no cylindrical faces at all.",
+        "evidence": {
+          "requested": true,
+          "represented": false,
+          "instantiated": true,
+          "observed": false,
+          "verified": false,
+          "expected_radius_mm": 2.5,
+          "expected_count": 4,
+          "found_axes": 0,
+          "axes_xy": [],
+          "cylindrical_radii_present_mm": []
+        }
+      }
+    ],
+    "fulfillment": [
+      {
+        "id": "bolt_circle",
+        "kind": "hole_pattern",
+        "label": "mounting hole pattern",
+        "requested": true,
+        "represented": false,
+        "instantiated": true,
+        "observed": false,
+        "verified": false,
+        "status": "fail",
+        "detail": "mounting hole pattern: the request asks for 4 cylindrical feature(s) of radius 2.5 mm and the built solid contains none. The solid has no cylindrical faces at all.",
+        "evidence": {
+          "expected_radius_mm": 2.5,
+          "expected_count": 4,
+          "found_axes": 0,
+          "axes_xy": [],
+          "cylindrical_radii_present_mm": []
+        }
+      }
+    ],
     "measured": {
       "volume_cm3": 96.0,
       "bbox_mm": [
@@ -282,7 +353,7 @@
     }
   },
   "narrative": {
-    "headline": "Rect plate \u00b7 120\u00d780\u00d710 mm \u00b7 96.00 cm\u00b3",
+    "headline": "Rect plate \u00b7 120\u00d780\u00d710 mm \u00b7 96.00 cm\u00b3 \u2014 refused",
     "sections": [
       {
         "title": "Interpretation",
@@ -308,10 +379,10 @@
       },
       {
         "title": "Verification",
-        "body": "Before any geometry existed, the design committed to what it should measure. It was then built and measured, and the overall extents came out as predicted and its own closed-form volume matched what the kernel measured. Final volume 96.000 cm\u00b3, envelope 120\u00d780\u00d710 mm."
+        "body": "This part is **not** correct as drawn. mounting hole pattern exists in the built solid failed \u2014 mounting hole pattern: the request asks for 4 cylindrical feature(s) of radius 2.5 mm and the built solid contains none. The solid has no cylindrical faces at all.. It is being shown so the failure is visible, not because it is usable."
       }
     ],
-    "verdict": "verified"
+    "verdict": "refused"
   },
   "files": {
     "fcstd": "part.FCStd",
@@ -320,8 +391,8 @@
     "glb": "part.glb",
     "topology": "part.topology.json"
   },
-  "request_id": "c41c0b6b5975",
-  "design_ms": 19746.4,
+  "request_id": "fa849cb35db9",
+  "design_ms": 31914.8,
   "design_events": [
     "step",
     "step",
@@ -336,66 +407,839 @@
   "inspection": {
     "question": "What is the bolt circle diameter, and where did that number come from?",
     "answered": true,
-    "answer": "The NEMA 23 standard defines a **square bolt pattern** with a side length of **47.14\u202fmm** (per the lookup_standard result). It does **not** specify a circular bolt circle diameter. The four M5 clearance holes are placed at the corners of this 47.14\u202fmm square, with a hole spacing equal to the side length. If you need a circular approximation, the diagonal of the square (\u2248\u202f66.6\u202fmm) would be the distance between opposite holes, but this is not a standard term for NEMA 23 mounts.",
+    "answer": "The NEMA\u202f23 mounting standard defines a square bolt pattern whose side length is **47.14\u202fmm**. Treating that square as a circular bolt circle, the distance from the centre of the pattern to each hole (the radius) is half the diagonal of the square:\n\n\\[\n\\text{radius} = \\frac{47.14}{\\sqrt{2}} \\approx 33.27\\text{\u202fmm}\n\\]\n\nso the **bolt\u2011circle diameter** is:\n\n\\[\n\\text{diameter} = 2 \\times 33.27 \\approx 66.5\\text{\u202fmm}\n\\]\n\nThis value comes directly from the NEMA\u202f23 stepper\u2011mount specification retrieved by the `lookup_standard` tool (source: \u201cNEMA\u202f23 stepper mount: 47.14\u202fmm square bolt pattern \u2026\u201d).\n\nThe current CAD model does not contain any cylindrical faces, so the bolt\u2011circle pattern (and its 4\u202f\u00d7\u202fM5 clearance holes) is not yet implemented in the part. The verification report flagged this as a failure: \u201cmounting hole pattern exists in the built solid \u2013 the solid contains none.\u201d",
     "error": null,
     "model": "fallback:k2think",
     "inspected": true,
     "tools_used": [
-      "list_objects",
-      "get_featuregraph",
-      "inspect_topology",
       "lookup_standard"
     ],
     "tool_calls": [
       {
-        "tool": "list_objects",
-        "arguments": {},
-        "ok": true,
-        "observation": "- Body (PartDesign::Body) parametric, 6 faces\n- plate (PartDesign::Pad) parametric, 6 faces",
-        "duration_ms": 0.0,
-        "raw_keys": [
-          "objects"
-        ]
-      },
-      {
-        "tool": "get_featuregraph",
-        "arguments": {},
-        "ok": true,
-        "observation": "FeatureGraph: 3 feature(s)\n  s_plate (Sketch on XY): 4 LineSegment\n  plate (Pad, Length=10.0) <- profile s_plate",
-        "duration_ms": 1.5,
-        "raw_keys": [
-          "graph"
-        ]
-      },
-      {
-        "tool": "inspect_topology",
-        "arguments": {
-          "name": "plate"
-        },
-        "ok": true,
-        "observation": "plate: None solid(s), 6 faces / 12 edges / 8 verts | surfaces[Plane x6] | bbox=120.0x80.0x10.0",
-        "duration_ms": 0.0,
-        "raw_keys": [
-          "request_id",
-          "shapes"
-        ]
-      },
-      {
         "tool": "lookup_standard",
         "arguments": {
-          "query": "NEMA 23 stepper bolt circle diameter",
-          "domain": "mechanical"
+          "query": "NEMA 23 bolt circle diameter"
         },
         "ok": true,
         "observation": "- NEMA 23 stepper mount: 47.14 mm square bolt pattern (5.1 mm holes (M5 clearance)), pilot boss \u00f838.1 mm, shaft \u00f86.35 mm, faceplate 56.4 mm square",
-        "duration_ms": 13.1,
+        "duration_ms": 10.2,
         "raw_keys": [
           "results"
         ]
       }
     ],
-    "rounds": 4,
-    "explain_ms": 12389.1
+    "rounds": 1,
+    "explain_ms": 5344.7
   },
-  "total_ms": 32135.5
+  "total_ms": 37259.4,
+  "topology": {
+    "schema": "orionflow-topology-v1",
+    "occurrences": [
+      {
+        "ref": "#o1",
+        "name": "Body",
+        "label": "Body",
+        "shape": "#o1.s1",
+        "bbox": [
+          -60.0,
+          -40.0,
+          0.0,
+          60.0,
+          40.0,
+          10.0
+        ]
+      }
+    ],
+    "faces": [
+      {
+        "ref": "#o1.s1.f1",
+        "index": 1,
+        "element": "Face1",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "surface": "Plane",
+        "axis": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "position": [
+          -60.0,
+          -40.0,
+          0.0
+        ],
+        "area": 1200.0,
+        "center": [
+          -0.0,
+          -40.0,
+          5.0
+        ],
+        "normal": [
+          0.0,
+          -1.0,
+          -0.0
+        ],
+        "bbox": [
+          -60.0,
+          -40.0,
+          0.0,
+          60.0,
+          -40.0,
+          10.0
+        ],
+        "stable": "@plate.f1"
+      },
+      {
+        "ref": "#o1.s1.f2",
+        "index": 2,
+        "element": "Face2",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "surface": "Plane",
+        "axis": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          60.0,
+          -40.0,
+          0.0
+        ],
+        "area": 800.0,
+        "center": [
+          60.0,
+          -0.0,
+          5.0
+        ],
+        "normal": [
+          1.0,
+          -0.0,
+          -0.0
+        ],
+        "bbox": [
+          60.0,
+          -40.0,
+          0.0,
+          60.0,
+          40.0,
+          10.0
+        ],
+        "stable": "@plate.f5"
+      },
+      {
+        "ref": "#o1.s1.f3",
+        "index": 3,
+        "element": "Face3",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "surface": "Plane",
+        "axis": [
+          0.0,
+          -1.0,
+          0.0
+        ],
+        "position": [
+          60.0,
+          40.0,
+          0.0
+        ],
+        "area": 1200.0,
+        "center": [
+          0.0,
+          40.0,
+          5.0
+        ],
+        "normal": [
+          -0.0,
+          1.0,
+          -0.0
+        ],
+        "bbox": [
+          -60.0,
+          40.0,
+          0.0,
+          60.0,
+          40.0,
+          10.0
+        ],
+        "stable": "@plate.f4"
+      },
+      {
+        "ref": "#o1.s1.f4",
+        "index": 4,
+        "element": "Face4",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "surface": "Plane",
+        "axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          -60.0,
+          40.0,
+          0.0
+        ],
+        "area": 800.0,
+        "center": [
+          -60.0,
+          0.0,
+          5.0
+        ],
+        "normal": [
+          -1.0,
+          -0.0,
+          -0.0
+        ],
+        "bbox": [
+          -60.0,
+          -40.0,
+          0.0,
+          -60.0,
+          40.0,
+          10.0
+        ],
+        "stable": "@plate.f0"
+      },
+      {
+        "ref": "#o1.s1.f5",
+        "index": 5,
+        "element": "Face5",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "surface": "Plane",
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "area": 9600.0,
+        "center": [
+          -0.0,
+          0.0,
+          0.0
+        ],
+        "normal": [
+          -0.0,
+          -0.0,
+          -1.0
+        ],
+        "bbox": [
+          -60.0,
+          -40.0,
+          0.0,
+          60.0,
+          40.0,
+          0.0
+        ],
+        "stable": "@plate.f2"
+      },
+      {
+        "ref": "#o1.s1.f6",
+        "index": 6,
+        "element": "Face6",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "surface": "Plane",
+        "axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          10.0
+        ],
+        "area": 9600.0,
+        "center": [
+          -0.0,
+          0.0,
+          10.0
+        ],
+        "normal": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "bbox": [
+          -60.0,
+          -40.0,
+          10.0,
+          60.0,
+          40.0,
+          10.0
+        ],
+        "stable": "@plate.f3"
+      }
+    ],
+    "edges": [
+      {
+        "ref": "#o1.s1.e1",
+        "index": 1,
+        "element": "Edge1",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 10.0,
+        "center": [
+          -60.0,
+          -40.0,
+          5.0
+        ],
+        "ends": [
+          [
+            -60.0,
+            -40.0,
+            0.0
+          ],
+          [
+            -60.0,
+            -40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e0"
+      },
+      {
+        "ref": "#o1.s1.e2",
+        "index": 2,
+        "element": "Edge2",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 10.0,
+        "center": [
+          60.0,
+          -40.0,
+          5.0
+        ],
+        "ends": [
+          [
+            60.0,
+            -40.0,
+            0.0
+          ],
+          [
+            60.0,
+            -40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e8"
+      },
+      {
+        "ref": "#o1.s1.e3",
+        "index": 3,
+        "element": "Edge3",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 120.0,
+        "center": [
+          0.0,
+          -40.0,
+          0.0
+        ],
+        "ends": [
+          [
+            -60.0,
+            -40.0,
+            0.0
+          ],
+          [
+            60.0,
+            -40.0,
+            0.0
+          ]
+        ],
+        "stable": "@plate.e4"
+      },
+      {
+        "ref": "#o1.s1.e4",
+        "index": 4,
+        "element": "Edge4",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 120.0,
+        "center": [
+          0.0,
+          -40.0,
+          10.0
+        ],
+        "ends": [
+          [
+            -60.0,
+            -40.0,
+            10.0
+          ],
+          [
+            60.0,
+            -40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e5"
+      },
+      {
+        "ref": "#o1.s1.e5",
+        "index": 5,
+        "element": "Edge5",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 10.0,
+        "center": [
+          60.0,
+          40.0,
+          5.0
+        ],
+        "ends": [
+          [
+            60.0,
+            40.0,
+            0.0
+          ],
+          [
+            60.0,
+            40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e11"
+      },
+      {
+        "ref": "#o1.s1.e6",
+        "index": 6,
+        "element": "Edge6",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 80.0,
+        "center": [
+          60.0,
+          0.0,
+          0.0
+        ],
+        "ends": [
+          [
+            60.0,
+            -40.0,
+            0.0
+          ],
+          [
+            60.0,
+            40.0,
+            0.0
+          ]
+        ],
+        "stable": "@plate.e9"
+      },
+      {
+        "ref": "#o1.s1.e7",
+        "index": 7,
+        "element": "Edge7",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 80.0,
+        "center": [
+          60.0,
+          0.0,
+          10.0
+        ],
+        "ends": [
+          [
+            60.0,
+            -40.0,
+            10.0
+          ],
+          [
+            60.0,
+            40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e10"
+      },
+      {
+        "ref": "#o1.s1.e8",
+        "index": 8,
+        "element": "Edge8",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 10.0,
+        "center": [
+          -60.0,
+          40.0,
+          5.0
+        ],
+        "ends": [
+          [
+            -60.0,
+            40.0,
+            0.0
+          ],
+          [
+            -60.0,
+            40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e3"
+      },
+      {
+        "ref": "#o1.s1.e9",
+        "index": 9,
+        "element": "Edge9",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 120.0,
+        "center": [
+          0.0,
+          40.0,
+          0.0
+        ],
+        "ends": [
+          [
+            60.0,
+            40.0,
+            0.0
+          ],
+          [
+            -60.0,
+            40.0,
+            0.0
+          ]
+        ],
+        "stable": "@plate.e6"
+      },
+      {
+        "ref": "#o1.s1.e10",
+        "index": 10,
+        "element": "Edge10",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 120.0,
+        "center": [
+          0.0,
+          40.0,
+          10.0
+        ],
+        "ends": [
+          [
+            60.0,
+            40.0,
+            10.0
+          ],
+          [
+            -60.0,
+            40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e7"
+      },
+      {
+        "ref": "#o1.s1.e11",
+        "index": 11,
+        "element": "Edge11",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 80.0,
+        "center": [
+          -60.0,
+          -0.0,
+          0.0
+        ],
+        "ends": [
+          [
+            -60.0,
+            40.0,
+            0.0
+          ],
+          [
+            -60.0,
+            -40.0,
+            0.0
+          ]
+        ],
+        "stable": "@plate.e1"
+      },
+      {
+        "ref": "#o1.s1.e12",
+        "index": 12,
+        "element": "Edge12",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "curve": "Line",
+        "length": 80.0,
+        "center": [
+          -60.0,
+          -0.0,
+          10.0
+        ],
+        "ends": [
+          [
+            -60.0,
+            40.0,
+            10.0
+          ],
+          [
+            -60.0,
+            -40.0,
+            10.0
+          ]
+        ],
+        "stable": "@plate.e2"
+      }
+    ],
+    "vertices": [
+      {
+        "ref": "#o1.s1.v1",
+        "index": 1,
+        "element": "Vertex1",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          -60.0,
+          -40.0,
+          0.0
+        ],
+        "stable": "@plate.v0"
+      },
+      {
+        "ref": "#o1.s1.v2",
+        "index": 2,
+        "element": "Vertex2",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          -60.0,
+          -40.0,
+          10.0
+        ],
+        "stable": "@plate.v1"
+      },
+      {
+        "ref": "#o1.s1.v3",
+        "index": 3,
+        "element": "Vertex3",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          60.0,
+          -40.0,
+          0.0
+        ],
+        "stable": "@plate.v4"
+      },
+      {
+        "ref": "#o1.s1.v4",
+        "index": 4,
+        "element": "Vertex4",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          60.0,
+          -40.0,
+          10.0
+        ],
+        "stable": "@plate.v5"
+      },
+      {
+        "ref": "#o1.s1.v5",
+        "index": 5,
+        "element": "Vertex5",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          60.0,
+          40.0,
+          0.0
+        ],
+        "stable": "@plate.v6"
+      },
+      {
+        "ref": "#o1.s1.v6",
+        "index": 6,
+        "element": "Vertex6",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          60.0,
+          40.0,
+          10.0
+        ],
+        "stable": "@plate.v7"
+      },
+      {
+        "ref": "#o1.s1.v7",
+        "index": 7,
+        "element": "Vertex7",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          -60.0,
+          40.0,
+          0.0
+        ],
+        "stable": "@plate.v2"
+      },
+      {
+        "ref": "#o1.s1.v8",
+        "index": 8,
+        "element": "Vertex8",
+        "feature": "plate",
+        "lineage": [
+          "plate",
+          "s_plate"
+        ],
+        "center": [
+          -60.0,
+          40.0,
+          10.0
+        ],
+        "stable": "@plate.v3"
+      }
+    ],
+    "features": {
+      "plate": {
+        "type": "PartDesign::Pad",
+        "label": "plate",
+        "build_index": 0,
+        "faces": [
+          "#o1.s1.f1",
+          "#o1.s1.f2",
+          "#o1.s1.f3",
+          "#o1.s1.f4",
+          "#o1.s1.f5",
+          "#o1.s1.f6"
+        ],
+        "edges": [
+          "#o1.s1.e1",
+          "#o1.s1.e2",
+          "#o1.s1.e3",
+          "#o1.s1.e4",
+          "#o1.s1.e5",
+          "#o1.s1.e6",
+          "#o1.s1.e7",
+          "#o1.s1.e8",
+          "#o1.s1.e9",
+          "#o1.s1.e10",
+          "#o1.s1.e11",
+          "#o1.s1.e12"
+        ],
+        "vertices": [
+          "#o1.s1.v1",
+          "#o1.s1.v2",
+          "#o1.s1.v3",
+          "#o1.s1.v4",
+          "#o1.s1.v5",
+          "#o1.s1.v6",
+          "#o1.s1.v7",
+          "#o1.s1.v8"
+        ],
+        "blueprint_feature": true
+      }
+    },
+    "counts": {
+      "occurrences": 1,
+      "shapes": 1,
+      "faces": 6,
+      "edges": 12,
+      "vertices": 8,
+      "features": 1,
+      "unattributed": 0
+    },
+    "attribution": "element_map",
+    "truncated": []
+  }
 }

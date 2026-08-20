@@ -525,10 +525,18 @@ def _finish(
             rows,
             measured=observed,
             engineering=eng_rows,
-            # From the frozen Blueprint, never from the request: the ledger is
-            # inside ``blueprint_hash``, so it cannot be rewritten to suit a
-            # measurement that has already happened.
+            # From the frozen Blueprint, never from the request: the ledger and
+            # the feature obligations are inside ``blueprint_hash``, so neither
+            # can be rewritten to suit a measurement that has already happened.
             design_plan=bp.design_plan,
+            # OCC's own account of the solid it produced. This is the
+            # independent half of feature fulfillment: the assertion rows above
+            # are derived from the same requirements a feature is, so a dropped
+            # hole makes the prediction and the measurement agree with each
+            # other. Only the topology has an opinion the contract did not
+            # supply.
+            topology=record,
+            template=bp.template,
         )
 
     bundle["assertions"] = rows
