@@ -24,5 +24,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /* The agent-logic tests run under node via esbuild, not in the browser
+     bundle. Type-checking them here would demand node globals the app has no
+     business declaring — and shipping them would put test data in the bundle. */
+  "exclude": ["src/**/*.test.ts"]
 }

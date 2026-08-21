@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import Workspace from "./components/Studio/Workspace";
 import { useAuthStore } from "./store/authStore";
 import AuthPage from "./pages/AuthPage";
+import StartPage from "./pages/StartPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -39,6 +40,9 @@ function CADApp() {
                 setSearchParams({}, { replace: true });
             }
         });
+        // Deliberately once, on mount. The effect clears the query parameter it
+        // reads, so listing `searchParams` would re-run it on its own cleanup.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return <Workspace />;
@@ -73,6 +77,11 @@ export default function App() {
                     </ProtectedRoute>
                 }
             />
+            {/* The one step between "Try OrionFlow" on the landing page and
+                the studio: name, company, work email, then sign-up with the
+                first two already filled in. Public by design — it runs before
+                anyone has an account. */}
+            <Route path="/start" element={<StartPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/reset-password" element={<ResetPasswordPage />} />

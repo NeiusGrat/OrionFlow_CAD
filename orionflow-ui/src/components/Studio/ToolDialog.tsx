@@ -242,7 +242,7 @@ const primaryButton: React.CSSProperties = {
     borderRadius: "6px",
     border: "none",
     background: "var(--st-blue)",
-    color: "#12100B",
+    color: "var(--st-on-accent)",
     fontSize: "12px",
     fontWeight: 700,
     cursor: "pointer",

@@ -41,6 +41,19 @@ interface EditState {
     selectedFeature: string | null;
     selectedFace: TopoFace | null;
 
+    /** Faces the agent picked out in answer to a request like "the two holes
+     *  on the left".
+     *
+     *  Kept apart from `selectedFace` because it is plural and that is not: the
+     *  inspector edits one feature at a time, so a set of six faces cannot be
+     *  squeezed into the single slot without either losing five of them or
+     *  breaking the panel. The viewport lights all of them; when the set is
+     *  exactly one, `selectFace` runs as well so the inspector opens on it and
+     *  the agent's pick is editable by hand. */
+    agentRefs: string[];
+    /** The sentence the agent used to describe what it selected. */
+    agentSelectionNote: string;
+
     inspecting: boolean;
     inspection: InspectResult | null;
 
@@ -66,6 +79,8 @@ interface EditState {
     setFaceMap: (map: FaceMap | null, forRequest: string) => void;
     hover: (face: TopoFace | null) => void;
     selectFace: (face: TopoFace | null) => Promise<void>;
+    /** Light a set of faces the agent resolved from a request. */
+    selectRefs: (refs: string[], note: string) => Promise<void>;
     chooseParameter: (name: string | null) => void;
     setDraft: (value: number) => void;
     preview: () => Promise<void>;
@@ -91,6 +106,8 @@ const EMPTY = {
     operation: null,
     dimensions: {},
     proposal: null,
+    agentRefs: [] as string[],
+    agentSelectionNote: '',
 };
 
 export const useEditStore = create<EditState>((set, get) => ({
@@ -147,6 +164,11 @@ export const useEditStore = create<EditState>((set, get) => ({
             plan: null,
             error: null,
             inspecting: true,
+            // A click is the user overriding whatever the agent had lit. Left
+            // standing, the previous set would keep glowing next to the new
+            // pick and neither would read as "the selection".
+            agentRefs: [],
+            agentSelectionNote: '',
         });
 
         try {
@@ -171,6 +193,35 @@ export const useEditStore = create<EditState>((set, get) => ({
             if (get().selectedFace?.ref !== face.ref) return;
             set({ inspecting: false, error: (e as Error).message });
         }
+    },
+
+    /** Light what the agent resolved.
+     *
+     *  A set of one is promoted to a full selection: the inspector opens on it,
+     *  its parameters load, and the user can retune it by hand straight away.
+     *  A set of many stays a highlight, because the inspector edits one feature
+     *  and pretending otherwise would put a panel of controls next to six faces
+     *  and act on one of them. */
+    selectRefs: async (refs, note) => {
+        const faces = get().topology?.faces ?? [];
+        const found = refs
+            .map((r) => faces.find((f) => f.ref === r))
+            .filter((f): f is TopoFace => !!f);
+
+        if (found.length === 1) {
+            await get().selectFace(found[0]);
+            set({ agentRefs: refs, agentSelectionNote: note });
+            return;
+        }
+        set({
+            ...EMPTY,
+            agentRefs: found.map((f) => f.ref),
+            agentSelectionNote: note,
+            // Named when every face agrees, so the tree can still show which
+            // feature is under discussion without claiming a single pick.
+            selectedFeature:
+                new Set(found.map((f) => f.feature)).size === 1 ? found[0]?.feature ?? null : null,
+        });
     },
 
     chooseParameter: (name) => {

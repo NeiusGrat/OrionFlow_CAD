@@ -1,20 +1,24 @@
 /**
- * The reviewed route: prompt, plan, approval, build.
+ * The live design session, rendered inside the conversation.
  *
- * The chat panel beside this designs and builds in one go, which is the right
- * shape when you already know what you want. This is the other one — the design
- * stops at a plan and waits to be read, because the server will not build
- * anything nobody approved.
+ * This used to be a tab with its own prompt box beside the assistant, which
+ * made "design it carefully" a different product from "design it". It is not a
+ * different product — it is the same request routed through the approval gate,
+ * so the agent starts the session now and this shows what came back.
  *
- * The timeline at the bottom is the session's own event log, not a transcript
- * assembled here. That matters: a build outlives the request that started it, so
- * the only honest account of what happened is the one the server appended as it
- * happened, replayed from a cursor.
+ * The prompt form that used to be here is gone with the tab: there is one place
+ * to describe a part, and it is the composer. Everything else is kept, because
+ * it is what the reviewed route is *for* — the plan, the checks that already
+ * ran, the approve/reject/revise controls, and the event log.
+ *
+ * The timeline is the session's own log replayed from a cursor, not a
+ * transcript assembled here. That matters: a build outlives the request that
+ * started it, so the only honest account of what happened is the one the server
+ * appended as it happened.
  */
 
-import { useEffect, useState } from "react";
-import PlanReview from "./PlanReview";
 import { useSessionStore } from "../../store/sessionStore";
+import PlanReview from "./PlanReview";
 
 const EVENT_LABEL: Record<string, string> = {
     session_created: "Design started",
@@ -38,22 +42,15 @@ function Timeline() {
     if (!events.length) return null;
     return (
         <div
+            className="studio-scroll"
             style={{
                 borderTop: "1px solid var(--st-rule)",
                 padding: "10px 12px",
-                maxHeight: "180px",
+                maxHeight: "168px",
                 overflowY: "auto",
             }}
         >
-            <div
-                style={{
-                    fontSize: "10px",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "var(--st-pencil)",
-                    marginBottom: "6px",
-                }}
-            >
+            <div className="of-label" style={{ marginBottom: "7px" }}>
                 Timeline
             </div>
             {events.map((e) => (
@@ -62,18 +59,12 @@ function Timeline() {
                     style={{
                         fontSize: "11px",
                         display: "flex",
-                        gap: "8px",
-                        marginBottom: "3px",
+                        gap: "9px",
+                        marginBottom: "4px",
+                        color: "var(--st-graphite)",
                     }}
                 >
-                    <span
-                        style={{
-                            color: "var(--st-pencil)",
-                            fontFamily: "var(--st-mono, monospace)",
-                        }}
-                    >
-                        {e.seq}
-                    </span>
+                    <span className="of-bracket">[{String(e.seq).padStart(2, "0")}]</span>
                     <span>{EVENT_LABEL[e.type] ?? e.type}</span>
                     {e.data?.error && (
                         <span style={{ color: "var(--st-redline)" }}>{e.data.error}</span>
@@ -86,113 +77,19 @@ function Timeline() {
 
 export default function SessionPanel() {
     const session = useSessionStore((s) => s.session);
-    const busy = useSessionStore((s) => s.busy);
-    const error = useSessionStore((s) => s.error);
-    const { start, close } = useSessionStore.getState();
-    const [prompt, setPrompt] = useState("");
+    const close = useSessionStore((s) => s.close);
 
-    // A session left open in another tab, or from before a refresh, is not
-    // resumed automatically: the id would have to be persisted and a stale one
-    // reads as a 404 on load. Starting fresh is the honest default; the list
-    // route exists for picking an earlier one up deliberately.
-    useEffect(() => () => close(), [close]);
+    if (!session) return null;
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-            {!session && (
-                <div style={{ padding: "12px" }}>
-                    <div
-                        style={{
-                            fontSize: "10px",
-                            letterSpacing: "0.08em",
-                            textTransform: "uppercase",
-                            color: "var(--st-pencil)",
-                            marginBottom: "8px",
-                        }}
-                    >
-                        Describe the part
-                    </div>
-                    <textarea
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="A 120 × 80 × 10 mm mounting plate with four M6 clearance holes"
-                        rows={4}
-                        style={{
-                            width: "100%",
-                            background: "var(--st-void)",
-                            color: "var(--st-ink)",
-                            border: "1px solid var(--st-rule)",
-                            fontFamily: "inherit",
-                            fontSize: "12px",
-                            padding: "8px",
-                            marginBottom: "8px",
-                        }}
-                    />
-                    <button
-                        disabled={!!busy || !prompt.trim()}
-                        onClick={() => void start(prompt)}
-                        style={{
-                            padding: "6px 12px",
-                            fontSize: "12px",
-                            fontFamily: "inherit",
-                            background: "var(--st-blue)",
-                            color: "var(--st-sheet)",
-                            border: "1px solid var(--st-blue)",
-                            cursor: busy || !prompt.trim() ? "default" : "pointer",
-                            opacity: busy || !prompt.trim() ? 0.45 : 1,
-                        }}
-                    >
-                        {busy === "creating" ? "Working out the plan…" : "Plan it"}
-                    </button>
-                    {error && (
-                        <div
-                            style={{
-                                marginTop: "10px",
-                                fontSize: "12px",
-                                color: "var(--st-redline)",
-                            }}
-                        >
-                            {error.message}
-                        </div>
-                    )}
-                    <p
-                        style={{
-                            marginTop: "14px",
-                            fontSize: "11px",
-                            color: "var(--st-pencil)",
-                            lineHeight: 1.5,
-                        }}
-                    >
-                        Nothing is built until you approve the plan. You can reject it, ask
-                        for changes, or approve and build — and every revision is kept.
-                    </p>
-                </div>
-            )}
-
-            {session && (
-                <>
-                    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-                        <PlanReview />
-                    </div>
-                    <Timeline />
-                    <div style={{ padding: "8px 12px", borderTop: "1px solid var(--st-rule)" }}>
-                        <button
-                            onClick={close}
-                            style={{
-                                fontSize: "11px",
-                                background: "transparent",
-                                color: "var(--st-pencil)",
-                                border: "1px solid var(--st-rule)",
-                                padding: "4px 10px",
-                                fontFamily: "inherit",
-                                cursor: "pointer",
-                            }}
-                        >
-                            Start another
-                        </button>
-                    </div>
-                </>
-            )}
+        <div style={{ display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <PlanReview />
+            <Timeline />
+            <div style={{ padding: "9px 12px", borderTop: "1px solid var(--st-rule)" }}>
+                <button onClick={close} className="of-btn of-btn--quiet" style={{ fontSize: "11px" }}>
+                    Close this plan
+                </button>
+            </div>
         </div>
     );
 }

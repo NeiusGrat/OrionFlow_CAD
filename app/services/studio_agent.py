@@ -1952,6 +1952,78 @@ def _part_context(part: dict) -> str:
     bp = part.get("blueprint") or {}
     if bp.get("design_plan"):
         lines.append(f"Design plan: {json.dumps(bp['design_plan'])[:1500]}")
+
+    # -- The rest of the engineering state the studio has in front of it.
+    #
+    # Everything above describes the part in the abstract. What follows is the
+    # user's *situation*: what they are pointing at, how the part was built,
+    # what they have done to it recently, and what went wrong last. Without
+    # these the assistant answers about a part; with them it answers about the
+    # part on this screen, which is the difference between a chatbot beside CAD
+    # and a CAD system you can talk to.
+    #
+    # All of it is optional. A client that sends none of these keys gets
+    # exactly the context it did before, so an older frontend still works.
+
+    selection = part.get("selection") or {}
+    if selection.get("face"):
+        bits = [f"face {selection['face']}"]
+        if selection.get("feature"):
+            bits.append(f"authored by feature {selection['feature']}")
+        if selection.get("surface"):
+            bits.append(str(selection["surface"]).split("::")[-1])
+        if selection.get("radius") is not None:
+            bits.append(f"radius {selection['radius']} mm")
+        if selection.get("area") is not None:
+            bits.append(f"area {selection['area']} mm^2")
+        lines.append("")
+        lines.append(
+            "The user has selected " + ", ".join(bits) + ". When they say "
+            '"this", "that face" or "it", that is what they mean.'
+        )
+    elif selection.get("faces"):
+        shown = list(selection["faces"])[:12]
+        note = f" ({selection['note']})" if selection.get("note") else ""
+        lines.append("")
+        lines.append(
+            f"The user has {len(selection['faces'])} faces selected{note}: "
+            + ", ".join(str(f) for f in shown)
+            + "."
+        )
+
+    tree = part.get("feature_tree")
+    if tree:
+        lines.append("")
+        lines.append("Feature history, in build order:")
+        for feat in list(tree)[:24]:
+            status = feat.get("status") or "unknown"
+            mark = "" if status == "success" else f"  [{status}]"
+            label = f" - {feat.get('label')}" if feat.get("label") else ""
+            lines.append(f"  {feat.get('id')}: {feat.get('type')}{label}{mark}")
+
+    recent = part.get("recent_operations") or []
+    if recent:
+        lines.append("")
+        lines.append(
+            "Recent operations on this part, oldest first: "
+            + " -> ".join(str(r) for r in recent)
+        )
+
+    if part.get("contract_broken"):
+        lines.append("")
+        lines.append(
+            "This part has been hand-edited since it was designed, so the "
+            "model's original assertions no longer describe this geometry. Do "
+            "not present the verdict as a grade of the part as it now stands."
+        )
+
+    if part.get("last_error"):
+        lines.append("")
+        lines.append(
+            f"The last thing that failed in this session: {part['last_error']}. "
+            "If the user is following up on it, address that."
+        )
+
     return "\n".join(lines)
 
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import OrionFlowLogo from '../components/OrionFlowLogo';
 import { useAuthStore } from '../store/authStore';
 
@@ -14,20 +14,24 @@ declare global {
 const inputStyle: React.CSSProperties = {
     width: '100%',
     boxSizing: 'border-box',
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '10px',
+    background: 'var(--st-raise)',
+    border: '1px solid var(--st-rule)',
+    borderRadius: 'var(--st-r)',
     padding: '13px 16px',
-    color: '#EFE7D8',
+    color: 'var(--st-ink)',
     fontSize: '14.5px',
     outline: 'none',
     transition: 'border-color 0.15s ease, background 0.15s ease',
 };
 
 export default function AuthPage() {
-    const [isLogin, setIsLogin] = useState(true);
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+    // Arriving from /start, everything but the password is already known.
+    // Re-typing a name and an email that were just entered is the kind of
+    // friction that loses people one screen from the product.
+    const [params] = useSearchParams();
+    const [isLogin, setIsLogin] = useState(params.get('intent') !== 'signup');
+    const [name, setName] = useState(params.get('name') ?? '');
+    const [email, setEmail] = useState(params.get('email') ?? '');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -110,7 +114,7 @@ export default function AuthPage() {
         <div style={{
             minHeight: '100vh',
             width: '100%',
-            background: '#17140F',
+            background: 'var(--st-void)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -120,12 +124,12 @@ export default function AuthPage() {
 
                 {/* Card — logo, brand, and form all inside, like the reference */}
                 <div style={{
-                    background: '#1F1B15',
-                    border: '1px solid rgba(255, 255, 255, 0.07)',
-                    borderRadius: '16px',
+                    background: 'var(--st-sheet)',
+                    border: '1px solid var(--st-rule)',
+                    borderRadius: 'var(--st-r-xl)',
                     padding: '40px 32px 32px',
                     textAlign: 'center',
-                    boxShadow: '0 30px 70px -35px rgba(0, 0, 0, 0.7)',
+                    boxShadow: 'var(--st-shadow)',
                 }}>
                     {/* Logo mark */}
                     <a href="https://orionflow.in" style={{ textDecoration: 'none', display: 'inline-block' }}>
@@ -137,14 +141,14 @@ export default function AuthPage() {
                         fontSize: '24px',
                         fontWeight: 700,
                         margin: '14px 0 4px',
-                        color: '#EFE7D8',
-                        letterSpacing: '-0.015em',
+                        color: 'var(--st-ink)',
+                        letterSpacing: '-0.024em',
                     }}>
                         OrionFlow
                     </h1>
                     <p style={{
                         fontSize: '14px',
-                        color: '#A79D8B',
+                        color: 'var(--st-graphite)',
                         margin: '0 0 26px',
                     }}>
                         {isLogin ? 'Sign in to continue' : 'Create your account'}
@@ -168,9 +172,9 @@ export default function AuthPage() {
                                 gap: '12px',
                                 margin: '0 0 18px',
                             }}>
-                                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
-                                <span style={{ color: '#7C7364', fontSize: '13px' }}>or</span>
-                                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }} />
+                                <div style={{ flex: 1, height: '1px', background: 'var(--st-rule)' }} />
+                                <span className="of-label" style={{ letterSpacing: '0.16em' }}>or</span>
+                                <div style={{ flex: 1, height: '1px', background: 'var(--st-rule)' }} />
                             </div>
                         </>
                     )}
@@ -219,7 +223,7 @@ export default function AuthPage() {
                         {isLogin && (
                             <div style={{ textAlign: 'right', marginBottom: '18px' }}>
                                 <Link to="/auth/forgot-password" style={{
-                                    color: '#7C7364',
+                                    color: 'var(--st-pencil)',
                                     fontSize: '12.5px',
                                     textDecoration: 'none',
                                 }}>
@@ -230,12 +234,13 @@ export default function AuthPage() {
 
                         {error && (
                             <div style={{
-                                background: 'rgba(222, 136, 113, 0.1)',
-                                border: '1px solid rgba(222, 136, 113, 0.3)',
-                                borderRadius: '8px',
+                                background: 'var(--st-raise)',
+                                border: '1px solid var(--st-rule)',
+                                borderLeft: '2px solid var(--st-redline)',
+                                borderRadius: 'var(--st-r)',
                                 padding: '11px 12px',
                                 marginBottom: '16px',
-                                color: '#E8A594',
+                                color: 'var(--st-redline)',
                                 fontSize: '13px',
                                 textAlign: 'left',
                             }}>
@@ -249,17 +254,14 @@ export default function AuthPage() {
                             style={{
                                 width: '100%',
                                 padding: '13px 24px',
-                                borderRadius: '10px',
-                                background: loading
-                                    ? 'rgba(138, 165, 230, 0.5)'
-                                    : 'linear-gradient(135deg, #5B7FD4 0%, #8AA5E6 100%)',
-                                color: 'white',
+                                borderRadius: 'var(--st-r)',
+                                background: 'var(--st-accent)',
+                                color: 'var(--st-on-accent)',
                                 fontWeight: 600,
                                 fontSize: '15px',
                                 border: 'none',
+                                opacity: loading ? 0.55 : 1,
                                 cursor: loading ? 'not-allowed' : 'pointer',
-                                boxShadow: '0 4px 18px rgba(138, 165, 230, 0.28)',
-                                transition: 'all 0.25s ease',
                             }}
                         >
                             {loading ? 'Please wait…' : (isLogin ? 'Sign in' : 'Sign up')}
@@ -271,7 +273,7 @@ export default function AuthPage() {
                         marginTop: '22px',
                         marginBottom: 0,
                         fontSize: '13.5px',
-                        color: '#A79D8B',
+                        color: 'var(--st-graphite)',
                     }}>
                         {isLogin ? "Don't have an account? " : 'Already have an account? '}
                         <button
@@ -280,7 +282,7 @@ export default function AuthPage() {
                             style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#A8BDEE',
+                                color: 'var(--st-ink)',
                                 cursor: 'pointer',
                                 fontWeight: 500,
                                 fontSize: '13.5px',
@@ -299,14 +301,14 @@ export default function AuthPage() {
                     textAlign: 'center',
                     marginTop: '18px',
                     marginBottom: 0,
-                    color: '#4A4133',
+                    color: 'var(--st-pencil)',
                     fontSize: '12px',
                     lineHeight: 1.6,
                 }}>
                     By continuing, you agree to our{' '}
-                    <Link to="/terms" style={{ color: '#7C7364' }}>Terms</Link>
+                    <Link to="/terms" style={{ color: 'var(--st-graphite)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Terms</Link>
                     {' '}and{' '}
-                    <Link to="/privacy" style={{ color: '#7C7364' }}>Privacy Policy</Link>.
+                    <Link to="/privacy" style={{ color: 'var(--st-graphite)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Privacy Policy</Link>.
                 </p>
             </div>
         </div>

@@ -1,507 +1,138 @@
-/* OrionFlow Studio — the drawing sheet after dark.
-   Shares the orionflow.in system: warm neutrals, drafting-ink blue, redline.
-   Stays dark on purpose: the 3D viewport needs the contrast. */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,300..600&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
-:root {
-  /* Typography */
-  --font-display: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-serif: 'Newsreader', Georgia, serif;
-  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
-
-  /* Core palette — warm dark, matching the landing sheet's dark theme.
-     Names kept (slate-*) so existing components resolve unchanged. */
-  --slate-950: #17140F;
-  --slate-900: #1B1712;
-  --slate-850: #1F1B15;
-  --slate-800: #262119;
-  --slate-700: #332C22;
-  --slate-600: #4A4133;
-  --slate-500: #7C7364;
-  --slate-400: #A79D8B;
-  --slate-300: #C4BAA6;
-  --slate-200: #D8CFBF;
-  --slate-100: #E6DED0;
-  --slate-50: #EFE7D8;
-
-  /* Primary accent — drafting ink, lifted to read on a dark viewport */
-  --blue-600: #5B7FD4;
-  --blue-500: #7396DF;
-  --blue-400: #8AA5E6;
-  --blue-300: #A8BDEE;
-  --blue-glow: rgba(138, 165, 230, 0.34);
-  --blue-glow-strong: rgba(138, 165, 230, 0.5);
-
-  /* Secondary accent — redline, the drawing's revision mark */
-  --indigo-600: #C2604A;
-  --indigo-500: #DE8871;
-  --indigo-400: #E8A594;
-  --indigo-glow: rgba(222, 136, 113, 0.32);
-
-  /* Tertiary — muted blue; the viewport supplies the real colour */
-  --cyan-500: #6E93C8;
-  --cyan-400: #8FAEDC;
-  --cyan-300: #B0C7E8;
-  --cyan-glow: rgba(143, 174, 220, 0.26);
-
-  /* Semantic Colors */
-  --color-bg-app: var(--slate-950);
-  --color-bg-panel: var(--slate-900);
-  --color-bg-panel-elevated: var(--slate-850);
-  --color-bg-element: var(--slate-800);
-  --color-bg-element-hover: var(--slate-700);
-  --color-bg-element-active: var(--slate-600);
-
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-hover: rgba(255, 255, 255, 0.12);
-  --color-border-accent: var(--blue-500);
-
-  --color-text-primary: var(--slate-50);
-  --color-text-secondary: var(--slate-300);
-  --color-text-muted: var(--slate-500);
-  --color-text-accent: var(--blue-400);
-
-  --color-accent: var(--blue-500);
-  --color-accent-hover: var(--blue-400);
-  --color-accent-glow: var(--blue-glow);
-
-  --color-secondary: var(--indigo-500);
-  --color-secondary-glow: var(--indigo-glow);
-
-  /* Glass Effects */
-  --glass-bg: rgba(27, 23, 18, 0.85);
-  --glass-bg-light: rgba(38, 33, 25, 0.9);
-  --glass-blur: blur(24px);
-  --glass-border: rgba(255, 255, 255, 0.08);
-
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6);
-  --shadow-xl: 0 24px 60px rgba(0,0,0,0.7);
-  --shadow-glow-accent: 0 0 30px var(--blue-glow);
-  --shadow-glow-accent-strong: 0 0 50px var(--blue-glow-strong);
-  --shadow-glow-secondary: 0 0 30px var(--indigo-glow);
-
-  /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --space-12: 48px;
-  --space-16: 64px;
-
-  /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-2xl: 28px;
-  --radius-3xl: 36px;
-  --radius-full: 9999px;
-
-  /* Transitions */
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --duration-fast: 150ms;
-  --duration-normal: 250ms;
-  --duration-slow: 400ms;
-  --duration-slower: 600ms;
-
-  color-scheme: dark;
-}
-
-/* Reset & Base */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background-color: var(--color-bg-app);
-  font-family: var(--font-display);
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--color-text-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-}
-
-#root {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  min-height: 100vh;
-}
-
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--color-text-primary);
-}
-
-/* Buttons */
-button {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 500;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out-quad);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-button:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Inputs */
-input[type="text"],
-input[type="number"],
-textarea {
-  font-family: var(--font-display);
-  font-size: 14px;
-  background-color: var(--color-bg-element);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-  padding: 10px 14px;
-  width: 100%;
-  transition: all var(--duration-fast) var(--ease-out-quad);
-}
-
-input:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: var(--color-text-muted);
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--slate-700);
-  border-radius: var(--radius-full);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--slate-600);
-  background-clip: padding-box;
-}
-
-/* Selection */
-::selection {
-  background: var(--color-accent);
-  color: var(--slate-950);
-}
-
-/* Links */
-a {
-  color: var(--color-accent);
-  text-decoration: none;
-  transition: color var(--duration-fast) var(--ease-out-quad);
-}
-
-a:hover {
-  color: var(--color-accent-hover);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideInLeft {
-  from { transform: translateX(-12px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slideInRight {
-  from { transform: translateX(12px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slideInUp {
-  from { transform: translateY(16px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes slideInDown {
-  from { transform: translateY(-16px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes scaleIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes glow {
-  0%, 100% { box-shadow: 0 0 20px var(--blue-glow); }
-  50% { box-shadow: 0 0 40px var(--blue-glow), 0 0 60px var(--blue-glow); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes gradientFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes borderGlow {
-  0%, 100% { border-color: rgba(138, 165, 230, 0.3); }
-  50% { border-color: rgba(138, 165, 230, 0.6); }
-}
-
-@keyframes orbFloat {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(10px, -10px) scale(1.02); }
-  50% { transform: translate(0, -20px) scale(1); }
-  75% { transform: translate(-10px, -10px) scale(0.98); }
-}
-
-/* Utility Classes */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-}
-
-.glass-light {
-  background: var(--glass-bg-light);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-border);
-}
-
-.mono {
-  font-family: var(--font-mono);
-}
-
-/* Gradient Text */
-.gradient-text {
-  background: linear-gradient(135deg, var(--blue-400) 0%, var(--cyan-400) 50%, var(--blue-300) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.gradient-text-flow {
-  background: linear-gradient(90deg, var(--blue-400), var(--cyan-400), var(--indigo-400), var(--blue-400));
-  background-size: 300% 100%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: gradientFlow 4s ease infinite;
-}
-
-/* Noise Texture Overlay */
-.noise::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  opacity: 0.03;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Grid Background */
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(138, 165, 230, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(138, 165, 230, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-}
-
-/* Premium Button Styles */
-.btn-primary {
-  background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-500) 100%);
-  color: white;
-  padding: 12px 24px;
-  border-radius: var(--radius-lg);
-  font-weight: 600;
-  box-shadow: 0 4px 20px var(--blue-glow);
-  transition: all var(--duration-normal) var(--ease-out-expo);
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px var(--blue-glow-strong);
-}
-
-.btn-secondary {
-  background: var(--slate-800);
-  color: var(--slate-200);
-  padding: 12px 24px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  font-weight: 500;
-  transition: all var(--duration-normal) var(--ease-out-expo);
-}
-
-.btn-secondary:hover {
-  background: var(--slate-700);
-  border-color: var(--color-border-hover);
-}
-
-/* Card Styles */
-.card {
-  background: var(--slate-900);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  transition: all var(--duration-normal) var(--ease-out-expo);
-}
-
-.card:hover {
-  border-color: rgba(138, 165, 230, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-/* Landing Page Specific */
-.landing-hero {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  animation: orbFloat 8s ease-in-out infinite;
-}
-
-.orb-primary {
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(138, 165, 230, 0.15) 0%, transparent 70%);
-  top: -200px;
-  right: -100px;
-}
-
-.orb-secondary {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(222, 136, 113, 0.12) 0%, transparent 70%);
-  bottom: -150px;
-  left: -100px;
-  animation-delay: -4s;
-}
-
-.orb-tertiary {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(110, 147, 200, 0.08) 0%, transparent 70%);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation-delay: -2s;
-}
-
-/* ══ Studio (app.orionflow.in) ════════════════════════════════════════════
-   A drawing office, not a dashboard.
-
-   The dark theme is a drawing sheet after dark: warm near-black, drafting-ink
-   blue for anything selected, redline for anything revised or wrong. The light
-   theme is the same sheet under a lamp — vellum on a desk. Both are real; the
-   viewport needs the dark one, engineers reading dimensions all day often want
-   the other, so neither is a gimmick.
+/* ══════════════════════════════════════════════════════════════════════════
+   OrionFlow Studio — an AI engineering workspace.
+
+   Rich black and off-white. Not "dark mode": a hierarchy of near-blacks with a
+   warm cast, hairline rules instead of borders, near-zero radii, and one
+   off-white that carries every primary action. Colour is reserved for meaning —
+   a check that passed, a revision mark, a caution — and never spent on
+   decoration.
+
+   The viewport is deliberately a *cooler* black than the chrome around it. That
+   two-degree temperature shift is what makes the part read as an object lit on
+   a stage rather than a texture on the same surface as the panels.
 
    Numbers are set in mono with tabular figures everywhere they appear. In CAD
    the numbers are the content, and a dimension that shifts by a pixel when it
    ticks from 9 to 10 is a dimension you cannot scan down a column.
-   ═════════════════════════════════════════════════════════════════════════ */
-:root {
-  --st-void: #141109;         /* app chrome, behind everything */
-  --st-sheet: #1A1611;        /* dock surfaces */
-  --st-raise: #221D16;        /* raised: buttons, wells, ribbon keys */
-  --st-raise-hi: #2C251C;     /* hover */
-  --st-rule: #372F24;         /* hairlines that divide */
-  --st-rule-soft: #262019;    /* hairlines that group */
-  --st-ink: #EFE7D8;          /* primary text */
-  --st-graphite: #A79D8B;     /* secondary text */
-  --st-pencil: #7C7364;       /* labels, units, disabled */
-  --st-blue: #8AA5E6;         /* drafting ink: selection, primary action */
-  --st-blue-hi: #A8BDEE;
-  --st-blue-wash: rgba(138, 165, 230, 0.14);
-  --st-blue-edge: rgba(138, 165, 230, 0.34);
-  --st-redline: #DE8871;      /* revision mark: errors, destructive */
-  --st-verify: #7FB894;       /* a check that actually passed */
-  --st-caution: #D9A441;
-  --st-viewport-hi: #25201A;
-  --st-viewport-lo: #16130F;
-  --st-shadow: 0 14px 38px rgba(0, 0, 0, 0.55);
-  --st-grid-cell: #2c3037;
-  --st-grid-section: #3a3f47;
+   ══════════════════════════════════════════════════════════════════════════ */
 
-  /* Legacy aliases. Components written against the old names inherit the new
-     palette — and the theme switch — without being touched. */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ── Type ──────────────────────────────────────────────────────────────
+     Two families, both doing a job. Instrument Sans runs every word of the
+     interface; IBM Plex Mono carries every number, selector and hash. The
+     serif that used to appear on narrative headlines is gone — a display
+     grotesque at tight tracking marks "an engineer is writing" more honestly
+     in a workspace than a bookish serif did. */
+  --font-display: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: var(--font-display);
+  --font-serif: var(--font-display);
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --st-mono: var(--font-mono);
+
+  /* ── Ground: five near-blacks, warm-cast ─────────────────────────────── */
+  --st-void: #0A0908;         /* app ground, behind everything */
+  --st-sheet: #0F0E0D;        /* panel surfaces */
+  --st-raise: #161513;        /* raised: buttons, wells, chips */
+  --st-raise-hi: #1E1D1A;     /* hover */
+  --st-rule: #292722;         /* hairlines that divide */
+  --st-rule-soft: #1A1917;    /* hairlines that group */
+
+  /* ── Ink: three weights of off-white ─────────────────────────────────── */
+  --st-ink: #F5F2ED;          /* primary text */
+  --st-graphite: #A6A29B;     /* secondary text */
+  --st-pencil: #6F6B64;       /* labels, units, disabled */
+
+  /* ── Accent: the off-white itself ────────────────────────────────────────
+     A premium black-and-white system has no coloured primary. Emphasis is
+     luminance, not hue: the important control is the one that is white.
+     `--st-blue` is kept as an alias so every component written against the old
+     drafting-ink name inherits this without being touched. */
+  --st-accent: #F5F2ED;
+  --st-on-accent: #0A0908;
+  --st-blue: var(--st-accent);
+  --st-blue-hi: #FFFFFF;
+  --st-blue-wash: rgba(245, 242, 237, 0.08);
+  --st-blue-edge: rgba(245, 242, 237, 0.18);
+
+  /* ── Meaning. Only these three carry hue. ────────────────────────────── */
+  --st-verify: #6FCB92;       /* a check that actually passed */
+  --st-redline: #E8705B;      /* revision mark: errors, destructive */
+  --st-caution: #D6A250;
+
+  /* ── The stage. Cooler than the chrome, on purpose. ──────────────────── */
+  --st-viewport-hi: #17181A;
+  --st-viewport-lo: #0A0A0B;
+  --st-grid-cell: #24262A;
+  --st-grid-section: #31343A;
+
+  /* ── Depth. Shadow does the lifting; blur is used almost nowhere. ────── */
+  --st-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --st-shadow: 0 18px 48px rgba(0, 0, 0, 0.62), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --st-shadow-lift: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 1px 2px rgba(0, 0, 0, 0.5);
+  --st-glow: 0 0 0 1px rgba(245, 242, 237, 0.07), 0 10px 34px rgba(0, 0, 0, 0.55);
+  --st-scrim: rgba(10, 9, 8, 0.72);
+
+  /* ── Radii. Near-sharp. A CAD tool is not a phone app. ───────────────── */
+  --st-r-xs: 2px;
+  --st-r-sm: 3px;
+  --st-r: 5px;
+  --st-r-lg: 8px;
+  --st-r-xl: 12px;
+
+  /* ── Motion ──────────────────────────────────────────────────────────── */
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 130ms;
+  --duration-normal: 220ms;
+
+  color-scheme: dark;
+}
+
+/* ── Vellum under a lamp. Same drawing, lights on. ───────────────────────
+   Kept real rather than decorative: engineers reading dimensions all day often
+   want it, and the viewport carries its own ground either way. */
+:root[data-theme="light"] {
+  --st-void: #E4DED7;
+  --st-sheet: #F5F0ED;
+  --st-raise: #FBF8F5;
+  --st-raise-hi: #FFFFFF;
+  --st-rule: #D5CDC4;
+  --st-rule-soft: #E9E3DC;
+  --st-ink: #11100E;
+  --st-graphite: #56534E;
+  --st-pencil: #807C75;
+
+  --st-accent: #11100E;
+  --st-on-accent: #F5F0ED;
+  --st-blue-hi: #000000;
+  --st-blue-wash: rgba(17, 16, 14, 0.06);
+  --st-blue-edge: rgba(17, 16, 14, 0.18);
+
+  --st-verify: #2F7A4F;
+  --st-redline: #B4432C;
+  --st-caution: #8A6110;
+
+  --st-viewport-hi: #EDEAE6;
+  --st-viewport-lo: #CFCBC5;
+  --st-grid-cell: #C0BAB2;
+  --st-grid-section: #A29C94;
+
+  --st-shadow-sm: 0 1px 2px rgba(70, 60, 45, 0.12);
+  --st-shadow: 0 18px 48px rgba(70, 60, 45, 0.18), 0 2px 8px rgba(70, 60, 45, 0.1);
+  --st-shadow-lift: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 1px 2px rgba(70, 60, 45, 0.12);
+  --st-glow: 0 0 0 1px rgba(17, 16, 14, 0.07), 0 10px 34px rgba(70, 60, 45, 0.16);
+  --st-scrim: rgba(245, 240, 237, 0.78);
+
+  color-scheme: light;
+}
+
+/* ── Legacy aliases ──────────────────────────────────────────────────────
+   Components written against the older names inherit the new system — and the
+   theme switch — without being edited. Deleting these would be a rewrite of
+   thirty files to change nothing a user can see. */
+:root, :root[data-theme="light"] {
   --studio-bg: var(--st-void);
   --studio-panel: var(--st-sheet);
   --studio-panel-2: var(--st-raise);
@@ -510,48 +141,105 @@ a:hover {
   --studio-text: var(--st-ink);
   --studio-text-dim: var(--st-graphite);
   --studio-text-faint: var(--st-pencil);
-  --studio-accent: var(--st-blue);
+  --studio-accent: var(--st-accent);
   --studio-accent-dim: var(--st-blue-wash);
   --studio-ok: var(--st-verify);
   --studio-warn: var(--st-caution);
   --studio-err: var(--st-redline);
   --studio-viewport-hi: var(--st-viewport-hi);
   --studio-viewport-lo: var(--st-viewport-lo);
+
+  --color-bg-app: var(--st-void);
+  --color-bg-panel: var(--st-sheet);
+  --color-bg-panel-elevated: var(--st-raise);
+  --color-bg-element: var(--st-raise);
+  --color-bg-element-hover: var(--st-raise-hi);
+  --color-border: var(--st-rule);
+  --color-border-hover: var(--st-blue-edge);
+  --color-text-primary: var(--st-ink);
+  --color-text-secondary: var(--st-graphite);
+  --color-text-muted: var(--st-pencil);
+  --color-text-accent: var(--st-accent);
+  --color-accent: var(--st-accent);
+  --color-accent-glow: var(--st-blue-wash);
+  --slate-900: var(--st-sheet);
+
+  --radius-sm: var(--st-r-sm);
+  --radius-md: var(--st-r);
+  --radius-lg: var(--st-r-lg);
+  --radius-full: 9999px;
 }
 
-/* Vellum on a desk. Same drawing, lamp on. */
-:root[data-theme="light"] {
-  --st-void: #CFC7B6;
-  --st-sheet: #F2ECE0;
-  --st-raise: #E7DFD0;
-  --st-raise-hi: #DCD2C0;
-  --st-rule: #BFB4A0;
-  --st-rule-soft: #DED5C5;
-  --st-ink: #241E15;
-  --st-graphite: #5C5344;
-  --st-pencil: #857B6B;
-  --st-blue: #3D5CA4;
-  --st-blue-hi: #2C4785;
-  --st-blue-wash: rgba(61, 92, 164, 0.12);
-  --st-blue-edge: rgba(61, 92, 164, 0.38);
-  --st-redline: #B0442A;
-  --st-verify: #3B7350;
-  --st-caution: #8A6110;
-  --st-viewport-hi: #E9E4DA;
-  --st-viewport-lo: #C8C1B4;
-  --st-shadow: 0 14px 38px rgba(80, 66, 44, 0.22);
-  --st-grid-cell: #b9b2a4;
-  --st-grid-section: #9c9486;
-  color-scheme: light;
+/* ══ Reset & base ═══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--st-void);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--st-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
 
-:root[data-theme="light"] body { background-color: var(--st-void); }
+#root { display: flex; width: 100%; height: 100%; min-height: 100vh; }
 
-/* ── Type roles ─────────────────────────────────────────────────────────
-   Instrument Sans runs the chrome. IBM Plex Mono carries every number.
-   Newsreader appears exactly once — on the assistant's narrative headline —
-   to mark the difference between the interface talking and an engineer
-   writing. One serif, one job. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  color: var(--st-ink);
+}
+
+button {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out-quad),
+              color var(--duration-fast) var(--ease-out-quad),
+              border-color var(--duration-fast) var(--ease-out-quad),
+              opacity var(--duration-fast) var(--ease-out-quad);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+input[type="text"], input[type="email"], input[type="password"],
+input[type="number"], textarea {
+  font-family: var(--font-display);
+  font-size: 14px;
+  background-color: var(--st-raise);
+  border: 1px solid var(--st-rule);
+  border-radius: var(--st-r);
+  color: var(--st-ink);
+  padding: 10px 13px;
+  width: 100%;
+  transition: border-color var(--duration-fast) var(--ease-out-quad),
+              background var(--duration-fast) var(--ease-out-quad);
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--st-blue-edge);
+  background: var(--st-raise-hi);
+}
+input::placeholder, textarea::placeholder { color: var(--st-pencil); }
+
+::selection { background: var(--st-accent); color: var(--st-on-accent); }
+
+a { color: var(--st-ink); text-decoration: none; }
+
+/* ══ Type roles ═════════════════════════════════════════════════════════ */
 .of-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -559,26 +247,105 @@ a:hover {
 }
 .of-label {
   font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.11em;
+  font-weight: 600;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--st-pencil);
+  font-family: var(--font-mono);
 }
+/* The narrative headline. A display grotesque, set tight and large — the one
+   place the interface stops labelling and starts writing. */
 .of-report-head {
-  font-family: var(--font-serif);
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 1.18;
+}
+/* A drawing-office index mark: [01], [02]. Mono, tiny, quiet. */
+.of-bracket {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--st-pencil);
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── The title block ────────────────────────────────────────────────────
+/* ══ Status chip ════════════════════════════════════════════════════════
+   One row of a machine log, made readable: a coloured verb saying what
+   happened, then the thing it happened to. Used for every tool call, build
+   stage and CAD action the agent takes, so a glance down the conversation
+   reads as a record of work rather than a wall of prose. */
+.of-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 8px 3px 7px;
+  border-radius: var(--st-r-sm);
+  background: var(--st-raise);
+  border: 1px solid var(--st-rule);
+  font-size: 11px;
+  line-height: 1.35;
+  max-width: 100%;
+  min-width: 0;
+}
+.of-chip__verb {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.of-chip__what {
+  color: var(--st-graphite);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.of-chip__note {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  color: var(--st-pencil);
+  flex-shrink: 0;
+}
+
+/* ══ Buttons ════════════════════════════════════════════════════════════ */
+.of-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: var(--st-r);
+  border: 1px solid var(--st-rule);
+  background: var(--st-raise);
+  color: var(--st-ink);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.of-btn:hover:not(:disabled) { background: var(--st-raise-hi); border-color: var(--st-blue-edge); }
+.of-btn--primary {
+  background: var(--st-accent);
+  border-color: var(--st-accent);
+  color: var(--st-on-accent);
+  font-weight: 600;
+}
+.of-btn--primary:hover:not(:disabled) { background: var(--st-blue-hi); border-color: var(--st-blue-hi); }
+.of-btn--quiet { background: transparent; border-color: transparent; color: var(--st-graphite); }
+.of-btn--quiet:hover:not(:disabled) { background: var(--st-raise); color: var(--st-ink); border-color: transparent; }
+
+/* ══ The title block ════════════════════════════════════════════════════
    The status bar is a real drawing title block: fielded cells, a micro-label
-   over a mono value, hairline verticals between them. It is the one piece of
-   chrome the studio is meant to be remembered by, so everything around it is
-   kept quiet. */
+   over a mono value, hairline verticals between them. Every cell is a number
+   the system actually holds — nothing here is decoration standing in for data. */
 .of-titleblock {
   display: flex;
   align-items: stretch;
-  height: 30px;
+  height: 28px;
   flex-shrink: 0;
   background: var(--st-sheet);
   border-top: 1px solid var(--st-rule);
@@ -589,16 +356,17 @@ a:hover {
   flex-direction: column;
   justify-content: center;
   gap: 1px;
-  padding: 0 11px;
+  padding: 0 12px;
   border-right: 1px solid var(--st-rule-soft);
   white-space: nowrap;
   min-width: 0;
 }
 .of-tb-cell:last-child { border-right: none; }
 .of-tb-key {
+  font-family: var(--font-mono);
   font-size: 7.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--st-pencil);
   line-height: 1;
@@ -613,27 +381,26 @@ a:hover {
   text-overflow: ellipsis;
 }
 
-/* ── Workbench ribbon ──────────────────────────────────────────────────── */
+/* ══ Workbench ribbon ═══════════════════════════════════════════════════ */
 .of-tool {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  width: 46px;
-  height: 46px;
+  gap: 4px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: var(--st-r);
   background: transparent;
   color: var(--st-graphite);
   cursor: pointer;
-  transition: background 0.1s linear, color 0.1s linear, border-color 0.1s linear;
 }
 .of-tool span {
   font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   line-height: 1;
 }
 .of-tool:hover:not(:disabled) {
@@ -642,29 +409,29 @@ a:hover {
   color: var(--st-ink);
 }
 .of-tool:active:not(:disabled) { transform: translateY(1px); }
-.of-tool:disabled { opacity: 0.32; cursor: not-allowed; }
+.of-tool:disabled { opacity: 0.3; cursor: not-allowed; }
 .of-tool-group {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 0 9px;
+  gap: 3px;
+  padding: 0 10px;
   border-right: 1px solid var(--st-rule-soft);
 }
 .of-tool-group:last-child { border-right: none; }
 
-/* ── Rows that behave like a tree ──────────────────────────────────────── */
-.of-row { transition: background 0.1s linear; }
+/* ══ Rows that behave like a tree ═══════════════════════════════════════ */
+.of-row { transition: background var(--duration-fast) linear; }
 .of-row:hover { background: var(--st-raise); }
 
-/* ── Focus. Visible, always, and it must not be the last thing added. ─── */
+/* ══ Focus. Visible, always. ════════════════════════════════════════════ */
 :where(button, a, input, textarea, select, [tabindex]):focus-visible {
-  outline: 2px solid var(--st-blue);
+  outline: 2px solid var(--st-accent);
   outline-offset: 1px;
-  border-radius: 3px;
+  border-radius: var(--st-r-xs);
 }
 
-/* ── Scrollbars ────────────────────────────────────────────────────────── */
+/* ══ Scrollbars ═════════════════════════════════════════════════════════ */
 .studio-scroll { scrollbar-width: thin; scrollbar-color: var(--st-rule) transparent; }
 .studio-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
 .studio-scroll::-webkit-scrollbar-thumb {
@@ -675,22 +442,120 @@ a:hover {
 }
 .studio-scroll::-webkit-scrollbar-thumb:hover { background: var(--st-pencil); background-clip: padding-box; }
 .studio-scroll::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--st-rule);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--st-pencil); background-clip: padding-box; }
 
-/* ── Motion. Two effects, both short. ──────────────────────────────────── */
+/* ══ Markdown, as an engineer would want to read it ═════════════════════ */
+.of-md { font-size: 13px; line-height: 1.68; color: var(--st-ink); }
+.of-md > *:first-child { margin-top: 0; }
+.of-md > *:last-child { margin-bottom: 0; }
+.of-md p { margin: 0 0 9px; }
+.of-md strong { font-weight: 600; color: var(--st-ink); }
+.of-md em { font-style: italic; color: var(--st-graphite); }
+.of-md h1, .of-md h2, .of-md h3 {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 15px 0 6px;
+  color: var(--st-ink);
+}
+.of-md ul, .of-md ol { margin: 0 0 10px; padding-left: 17px; }
+.of-md li { margin-bottom: 4px; }
+.of-md li::marker { color: var(--st-pencil); }
+.of-md code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  padding: 1.5px 5px;
+  border-radius: var(--st-r-xs);
+  background: var(--st-raise);
+  border: 1px solid var(--st-rule-soft);
+  color: var(--st-ink);
+  white-space: nowrap;
+}
+.of-md pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--st-r);
+  background: var(--st-raise);
+  border: 1px solid var(--st-rule);
+  overflow-x: auto;
+}
+.of-md pre code {
+  padding: 0;
+  border: none;
+  background: transparent;
+  white-space: pre;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--st-graphite);
+}
+.of-md blockquote {
+  margin: 0 0 10px;
+  padding-left: 11px;
+  border-left: 2px solid var(--st-rule);
+  color: var(--st-graphite);
+}
+.of-md hr { border: none; border-top: 1px solid var(--st-rule); margin: 14px 0; }
+.of-md a { color: var(--st-ink); text-decoration: underline; text-underline-offset: 2px; }
+.of-md table { border-collapse: collapse; margin: 0 0 10px; font-size: 12px; width: 100%; }
+.of-md th, .of-md td { border: 1px solid var(--st-rule); padding: 5px 8px; text-align: left; }
+.of-md th { color: var(--st-pencil); font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ══ Motion. Short, and it always means something. ══════════════════════ */
 .of-spin { animation: spin 0.9s linear infinite; }
-.of-enter { animation: ofEnter 0.16s var(--ease-out-quad) both; }
-@keyframes ofEnter {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: none; }
+.of-enter { animation: ofEnter 0.18s var(--ease-out-quad) both; }
+.of-rise { animation: ofRise 0.28s var(--ease-out-expo) both; }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes ofEnter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes ofRise { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+@keyframes ofPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.42; } }
+@keyframes ofBlink { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0.15; } }
+@keyframes ofSweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* The live indicator: a dot that breathes while work is genuinely in flight. */
+.of-live { animation: ofPulse 1.5s var(--ease-out-quad) infinite; }
+
+/* The streaming caret. Marks tokens still arriving, so a finished answer and a
+   truncated one are never mistaken for each other. */
+.of-caret {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--st-accent);
+  animation: ofBlink 1s steps(1) infinite;
+}
+
+/* A line of text that is still being produced upstream. */
+.of-shimmer {
+  background: linear-gradient(90deg,
+    var(--st-pencil) 0%, var(--st-ink) 42%, var(--st-pencil) 84%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ofSweep 2.4s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .of-spin { animation-duration: 2.4s; }
-  .of-enter { animation: none; }
+  .of-enter, .of-rise, .of-live, .of-shimmer { animation: none; }
+  .of-shimmer { -webkit-text-fill-color: var(--st-graphite); }
+  .of-caret { animation: none; }
   * { scroll-behavior: auto !important; }
 }
 
-/* ── Range input: a machinist's dial, not a browser slider ─────────────── */
+/* ══ Range input: a machinist dial, not a browser slider ════════════════ */
 .of-range {
   -webkit-appearance: none;
   appearance: none;
@@ -701,33 +566,41 @@ a:hover {
   padding: 0;
   border: none;
 }
-.of-range::-webkit-slider-runnable-track {
-  height: 2px;
-  background: var(--st-rule);
-  border-radius: 1px;
-}
-.of-range::-moz-range-track {
-  height: 2px;
-  background: var(--st-rule);
-  border-radius: 1px;
-}
+.of-range::-webkit-slider-runnable-track { height: 2px; background: var(--st-rule); border-radius: 1px; }
+.of-range::-moz-range-track { height: 2px; background: var(--st-rule); border-radius: 1px; }
 .of-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 11px;
-  height: 11px;
-  margin-top: -4.5px;
-  border-radius: 2px;
-  background: var(--st-blue);
+  width: 10px;
+  height: 10px;
+  margin-top: -4px;
+  border-radius: var(--st-r-xs);
+  background: var(--st-accent);
   border: none;
 }
 .of-range::-moz-range-thumb {
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
-  background: var(--st-blue);
+  width: 10px; height: 10px;
+  border-radius: var(--st-r-xs);
+  background: var(--st-accent);
   border: none;
 }
 .of-range:disabled { cursor: default; }
 .of-range:disabled::-webkit-slider-thumb { background: var(--st-pencil); }
 .of-range:disabled::-moz-range-thumb { background: var(--st-pencil); }
+
+/* ══ Ambient light behind the viewport ══════════════════════════════════
+   A single soft pool above the part. It is what stops a black panel next to a
+   black viewport from reading as one flat void, and it costs one gradient. */
+.of-stage-light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(72% 46% at 50% 0%,
+    rgba(245, 242, 237, 0.055) 0%,
+    rgba(245, 242, 237, 0.018) 38%,
+    transparent 72%);
+}
+:root[data-theme="light"] .of-stage-light {
+  background: radial-gradient(72% 46% at 50% 0%,
+    rgba(17, 16, 14, 0.05) 0%, transparent 70%);
+}

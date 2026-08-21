@@ -377,9 +377,30 @@ export function faceOverlay(
     map: FaceMap,
     ref: string | null | undefined,
 ): THREE.BufferGeometry | null {
-    if (!ref) return null;
-    const triangles = map.trianglesOfFace.get(ref);
-    if (!triangles || !triangles.length) return null;
+    return facesOverlay(geometry, map, ref ? [ref] : []);
+}
+
+/**
+ * The same overlay, for a set of faces lit together.
+ *
+ * What the agent needs when it resolves "the two holes on the left": one mesh
+ * carrying every matched face, so a selection of six costs the same single draw
+ * call as a selection of one. Built from the same triangle lists as the
+ * single-face path, so an agent pick and a click light identically — they are
+ * the same selection, arrived at two ways.
+ */
+export function facesOverlay(
+    geometry: THREE.BufferGeometry,
+    map: FaceMap,
+    refs: readonly string[],
+): THREE.BufferGeometry | null {
+    if (!refs.length) return null;
+    const triangles: number[] = [];
+    for (const ref of refs) {
+        const t = map.trianglesOfFace.get(ref);
+        if (t) triangles.push(...t);
+    }
+    if (!triangles.length) return null;
 
     const index = geometry.getIndex();
     const position = geometry.getAttribute('position');

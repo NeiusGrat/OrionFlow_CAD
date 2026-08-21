@@ -646,6 +646,12 @@ class WaitlistEntry(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    #: Who they are. Nullable because every row written before the intake form
+    #: existed is a real signup with a real email and no name, and back-filling
+    #: a placeholder would turn "we do not know" into something that reads as
+    #: an answer.
+    name: Mapped[Optional[str]] = mapped_column(String(200))
+    company: Mapped[Optional[str]] = mapped_column(String(200))
     source: Mapped[Optional[str]] = mapped_column(String(64))  # e.g. "landing"
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

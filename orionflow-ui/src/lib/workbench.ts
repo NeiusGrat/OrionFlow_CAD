@@ -373,14 +373,14 @@ export const TOOLS: ToolSpec[] = [
     {
         id: 'loft', label: 'Loft', kind: 'Loft', group: 'Solids', icon: 'loft',
         hint: 'Blends between profiles.',
-        unavailable: 'A loft needs two or more sections. Describe the transition in the assistant and it will build one.',
+        unavailable: 'A loft needs two or more sections. Describe the transition to Orion and it will build one.',
         fields: [],
         build: () => ({ type: 'Loft', label: 'Loft', variables: {}, parameters: {} }),
     },
     {
         id: 'sweep', label: 'Sweep', kind: 'Sweep', group: 'Solids', icon: 'sweep',
         hint: 'Drives a profile along a path.',
-        unavailable: 'A sweep needs a profile and a separate path sketch. Describe it in the assistant and it will build one.',
+        unavailable: 'A sweep needs a profile and a separate path sketch. Describe it to Orion and it will build one.',
         fields: [],
         build: () => ({ type: 'Sweep', label: 'Sweep', variables: {}, parameters: {} }),
     },

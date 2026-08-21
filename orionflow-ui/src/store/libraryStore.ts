@@ -41,10 +41,17 @@ function packChat(messages: StudioMessage[]): Partial<StudioMessage>[] {
         // checked against is a property of the answer, and a reopened session
         // that dropped it would present a grounded reply as an unaided one.
         checks: m.checks,
+        // Kept for the same reason as `checks`, and more strongly: an action is
+        // something that happened to the model. A reopened project that dropped
+        // them would show a conversation in which the part changed for no
+        // recorded reason.
+        actions: m.actions,
         model: m.model,
         error: m.error,
+        suggestion: m.suggestion,
         timestamp: m.timestamp,
-        mode: m.mode,
+        intent: m.intent,
+        routedBecause: m.routedBecause,
         lens: m.lens,
     }));
 }
@@ -57,6 +64,7 @@ function unpackChat(stored: Partial<StudioMessage>[] | undefined): StudioMessage
         content: m.content ?? '',
         steps: [],
         checks: m.checks ?? [],
+        actions: m.actions ?? [],
         narrative: m.narrative ?? null,
         thinking: '',
         model: m.model ?? '',
@@ -64,8 +72,16 @@ function unpackChat(stored: Partial<StudioMessage>[] | undefined): StudioMessage
         streaming: false,
         design: null,
         error: m.error ?? null,
+        suggestion: m.suggestion ?? null,
+        // A choice offered in an earlier session is not re-offered on reopen:
+        // its buttons would rebuild a part from a request that is no longer in
+        // front of anyone. The message that asked still reads correctly.
+        choice: null,
+        // Likewise a session view — the session it referred to has closed.
+        showsSession: false,
         timestamp: m.timestamp ?? Date.now(),
-        mode: m.mode ?? 'build',
+        intent: m.intent ?? 'ask',
+        routedBecause: m.routedBecause ?? '',
         lens: m.lens ?? 'modeling',
     }));
 }

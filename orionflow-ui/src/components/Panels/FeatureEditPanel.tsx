@@ -233,6 +233,21 @@ export default function FeatureEditPanel() {
     const failed = verification?.failed?.length ?? 0;
 
     // ---- empty states ---------------------------------------------------- //
+    // Three of them, and they are genuinely different situations. Collapsing
+    // them into one message is what made an empty studio claim the part "was
+    // built before face selection existed" when there was no part at all.
+    if (!part) {
+        return (
+            <>
+                <PanelKeyframes />
+                <Empty icon={<MousePointerClick size={20} />}>
+                    Nothing is open yet. Once a part is built, click any face or edge
+                    here to see which feature made it and what changing it would affect.
+                </Empty>
+            </>
+        );
+    }
+
     if (!topology) {
         return (
             <>

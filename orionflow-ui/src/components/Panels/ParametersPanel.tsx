@@ -86,8 +86,8 @@ export default function ParametersPanel() {
             {!editable && (
                 <div style={{ ...empty, paddingBottom: "4px" }}>
                     Read-only — this part has no Blueprint behind it, so there is
-                    nothing to rebuild from. Describe it in the assistant to get a
-                    parametric version.
+                    nothing to rebuild from. Describe it to Orion to get a parametric
+                    version.
                 </div>
             )}
             {names.map((name) => {
@@ -205,7 +205,7 @@ export default function ParametersPanel() {
                                     borderRadius: "5px",
                                     border: "none",
                                     background: "var(--st-blue)",
-                                    color: "#12100B",
+                                    color: "var(--st-on-accent)",
                                     fontSize: "11px",
                                     fontWeight: 700,
                                     cursor: "pointer",

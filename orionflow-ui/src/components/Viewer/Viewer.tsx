@@ -21,7 +21,7 @@ import { useDesignStore } from "../../store/designStore";
 import { useUIStore } from "../../store/uiStore";
 import { useEditStore } from "../../store/editStore";
 import { useStudioStore } from "../../store/studioStore";
-import { buildFaceMap, faceOverlay, pickEdge } from "../../lib/faceMap";
+import { buildFaceMap, faceOverlay, facesOverlay, pickEdge } from "../../lib/faceMap";
 import { useManifoldPreview } from "../../hooks/useManifoldPreview";
 import * as THREE from "three";
 import { Box as BoxIcon } from "lucide-react";
@@ -175,6 +175,7 @@ function Model({ url, onBounds }: { url: string; onBounds: (b: SceneBounds) => v
     const hoveredFaceRef = hoveredElement?.ref ?? null;
     const hover = useEditStore((s) => s.hover);
     const selectFace = useEditStore((s) => s.selectFace);
+    const agentRefs = useEditStore((s) => s.agentRefs);
 
     /** Build the triangle→feature join once per (model, sidecar) pair.
      *
@@ -268,6 +269,20 @@ function Model({ url, onBounds }: { url: string; onBounds: (b: SceneBounds) => v
         return g;
     }, [selectedElement, hoveredElement]);
 
+    /** What the agent lit in answer to a request.
+     *
+     *  Drawn with the same material as a click, because it is the same claim:
+     *  "this is what is selected". Giving the agent its own colour would invent
+     *  a second kind of selection the rest of the studio does not have. The
+     *  single-face case is left to `selectedGeometry` — `selectRefs` promotes a
+     *  set of one into a real selection — so the two never draw over each
+     *  other. */
+    const agentGeometry = useMemo(() => {
+        if (!baseGeometry || !faceMap || agentRefs.length < 2) return null;
+        return facesOverlay(baseGeometry, faceMap, agentRefs);
+    }, [baseGeometry, faceMap, agentRefs]);
+
+    useEffect(() => () => agentGeometry?.dispose(), [agentGeometry]);
     useEffect(() => () => selectedGeometry?.dispose(), [selectedGeometry]);
     useEffect(() => () => hoveredGeometry?.dispose(), [hoveredGeometry]);
     useEffect(() => () => edgeLine?.dispose(), [edgeLine]);
@@ -422,6 +437,14 @@ function Model({ url, onBounds }: { url: string; onBounds: (b: SceneBounds) => v
             {selectedGeometry && (
                 <mesh
                     geometry={selectedGeometry}
+                    material={MAT_FACE_SELECTED}
+                    raycast={() => {}}
+                    renderOrder={2}
+                />
+            )}
+            {agentGeometry && (
+                <mesh
+                    geometry={agentGeometry}
                     material={MAT_FACE_SELECTED}
                     raycast={() => {}}
                     renderOrder={2}
@@ -592,27 +615,65 @@ export default function Viewer({ url }: { url: string }) {
                     }}
                 >
                     <div
+                        className="of-live"
                         style={{
-                            width: "52px",
-                            height: "52px",
-                            borderRadius: "12px",
-                            border: "1px solid var(--studio-border)",
-                            background: "var(--studio-panel-2)",
+                            width: "46px",
+                            height: "46px",
+                            borderRadius: "var(--st-r-lg)",
+                            border: "1px solid var(--st-rule)",
+                            background: "var(--st-raise)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            animation: "pulse 1.6s ease-in-out infinite",
                         }}
                     >
-                        <BoxIcon size={24} color="var(--studio-accent)" />
+                        <BoxIcon size={21} strokeWidth={1.3} color="var(--st-ink)" />
                     </div>
-                    <p style={{ marginTop: "18px", fontSize: "14px", fontWeight: 600 }}>
-                        Generating geometry…
+                    <p className="of-shimmer" style={{ marginTop: "17px", fontSize: "13.5px", fontWeight: 500 }}>
+                        Building geometry
                     </p>
-                    <p style={{ marginTop: "6px", fontSize: "12px", color: "var(--studio-text-dim)" }}>
-                        intent → parametric code → B-rep → mesh
+                    <p className="of-label" style={{ marginTop: "7px" }}>
+                        intent → blueprint → B-rep → mesh
                     </p>
-                    <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }`}</style>
+                </div>
+            )}
+
+            {/* Nothing built yet.
+                A viewport that is simply black reads as a failure to load
+                rather than as an empty stage, and the one thing a new user
+                needs to know here is where the part will come from. */}
+            {!isValidUrl && !showPreview && !isGenerating && (
+                <div
+                    style={{
+                        position: "absolute",
+                        inset: 0,
+                        zIndex: 5,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "13px",
+                        pointerEvents: "none",
+                        textAlign: "center",
+                        padding: "24px",
+                    }}
+                >
+                    <BoxIcon size={26} strokeWidth={1.1} color="var(--st-rule)" />
+                    <div className="of-label" style={{ letterSpacing: "0.2em" }}>
+                        No part open
+                    </div>
+                    <p
+                        style={{
+                            margin: 0,
+                            maxWidth: "260px",
+                            fontSize: "12px",
+                            lineHeight: 1.6,
+                            color: "var(--st-pencil)",
+                        }}
+                    >
+                        Describe what you need in the conversation and the solid appears
+                        here — then click any face to ask about it.
+                    </p>
                 </div>
             )}
 

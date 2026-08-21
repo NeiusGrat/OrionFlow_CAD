@@ -431,7 +431,7 @@
           <path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5z"/>
         </svg>
       </button>
-      <a class="act" href="https://app.orionflow.in">Open the studio</a>
+      <a class="act" href="https://app.orionflow.in/start">Try OrionFlow</a>
     </nav>
   </div>
 </header>
@@ -466,7 +466,7 @@
         anymore. This is for you.</p>
 
       <div class="letter__sign">
-        <a class="act" href="https://app.orionflow.in">Open the studio</a>
+        <a class="act" href="https://app.orionflow.in/start">Try OrionFlow</a>
         <a class="act act--quiet" href="#method">Read the method</a>
       </div>
     </div>
@@ -720,7 +720,7 @@
 
       <form class="form" id="form" novalidate>
         <input id="email" type="email" placeholder="you@company.com" aria-label="Work email" autocomplete="email" maxlength="320" required />
-        <input id="hp" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
+        <input id="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp" />
         <button class="act" id="join" type="submit"><span id="join-label">Request an invite</span></button>
         <span class="form__err" id="err" hidden>That didn't go through. Check the address and try again.</span>
         <span class="form__wait" id="wait" hidden>Still working — the first request after a quiet spell takes a few seconds.</span>
@@ -863,7 +863,7 @@
         body: JSON.stringify({
           email: value,
           source: "landing",
-          company: document.getElementById("hp").value || null
+          website: document.getElementById("hp").value || null
         })
       }).then(function(r){
         if(!r.ok) throw new Error(r.status);

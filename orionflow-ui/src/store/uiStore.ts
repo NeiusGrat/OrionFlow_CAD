@@ -22,6 +22,10 @@ interface UIState {
     ribbonOpen: boolean;
     toggleRibbon: () => void;
 
+    /** The left model panel. Collapsing it is how the part gets the screen. */
+    dockOpen: boolean;
+    toggleDock: () => void;
+
     /** Null when no tool dialog is up. */
     tool: ToolRequest | null;
     openTool: (t: ToolRequest) => void;
@@ -30,7 +34,11 @@ interface UIState {
     /** The first-run tour. Persisted, so it is shown once and never nags. */
     tourStep: number | null;
     startTour: () => void;
-    nextTour: () => void;
+    /** `total` is passed in rather than hard-coded here: the tour's length is a
+     *  property of the tour, and the two drifted apart once already — the store
+     *  still thought there were four cards after one was removed, which left a
+     *  final step that rendered nothing. */
+    nextTour: (total: number) => void;
     endTour: () => void;
     tourSeen: boolean;
 }
@@ -52,12 +60,15 @@ export const useUIStore = create<UIState>()(
             },
             toggleTheme: () => get().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
 
-            openSections: { tree: true, parameters: true, projects: false },
+            openSections: { tree: true, parameters: true, inspector: true, projects: false },
             toggleSection: (id) =>
                 set((s) => ({ openSections: { ...s.openSections, [id]: !s.openSections[id] } })),
 
             ribbonOpen: true,
             toggleRibbon: () => set((s) => ({ ribbonOpen: !s.ribbonOpen })),
+
+            dockOpen: true,
+            toggleDock: () => set((s) => ({ dockOpen: !s.dockOpen })),
 
             tool: null,
             openTool: (tool) => set({ tool }),
@@ -66,10 +77,12 @@ export const useUIStore = create<UIState>()(
             tourStep: null,
             tourSeen: false,
             startTour: () => set({ tourStep: 0 }),
-            nextTour: () =>
+            nextTour: (total) =>
                 set((s) => {
                     const next = (s.tourStep ?? 0) + 1;
-                    return next >= 4 ? { tourStep: null, tourSeen: true } : { tourStep: next };
+                    return next >= total
+                        ? { tourStep: null, tourSeen: true }
+                        : { tourStep: next };
                 }),
             endTour: () => set({ tourStep: null, tourSeen: true }),
         }),
@@ -81,6 +94,7 @@ export const useUIStore = create<UIState>()(
                 theme: s.theme,
                 openSections: s.openSections,
                 ribbonOpen: s.ribbonOpen,
+                dockOpen: s.dockOpen,
                 tourSeen: s.tourSeen,
             }),
             onRehydrateStorage: () => (state) => {
