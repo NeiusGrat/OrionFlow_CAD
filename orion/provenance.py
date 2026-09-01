@@ -135,6 +135,34 @@ def literals(request: str) -> set[float]:
 LENGTH_UNITS = frozenset(_UNITS)
 
 
+def unclaimed_lengths(request: str, values: Any) -> list[float]:
+    """Dimensions the request states that no value accounts for.
+
+    :func:`classify` runs one way — every value is tested against the request,
+    and one with no number behind it is ``unsourced``. This is the other way,
+    and nothing ran it: a number the user wrote that reached no slot simply
+    disappeared. "Tube 40 mm OD, 32 mm ID, 60 mm long" was read as an outside
+    diameter and a length, the bore was dropped on the floor, and the part
+    built as a **solid bar** — then graded VERIFIED, because the closed form
+    was derived from the same slots that lost it.
+
+    Only numbers written with a length unit are considered. A bare numeral is
+    too weak a signal — "M5", "NEMA 17" and "3 x 3" all carry integers that
+    name no dimension — and a false question is a worse answer than none.
+    """
+    pool = [v for v in (values or {}).values()
+            if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    out: list[float] = []
+    for value, unit in literals_with_units(request):
+        if unit not in LENGTH_UNITS:
+            continue
+        if any(corroborated(v, [value]) for v in pool):
+            continue
+        if value not in out:
+            out.append(value)
+    return out
+
+
 def _close(a: float, b: float, rel_tol: float = _REL_TOL) -> bool:
     return abs(a - b) <= rel_tol * max(1.0, abs(a), abs(b))
 
@@ -179,6 +207,11 @@ def _standard_fields(notes: Iterable[str]) -> dict[str, str]:
     for note in notes or ():
         text = str(note)
         low = text.lower()
+        # The general form, and the one new tables should use: a note that says
+        # which field it filled. The three phrase matches below predate it and
+        # are kept because their notes read better without the suffix.
+        for field in re.findall("(?:^|[, ])so ([a-z_][a-z0-9_]*) = ", low):
+            out[field] = text
         if "clearance hole" in low:
             out["hole_d"] = text
         elif "counterbore" in low:

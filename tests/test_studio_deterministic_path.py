@@ -138,14 +138,34 @@ def test_the_identify_prompt_offers_a_way_out():
     assert set(interview.FAMILY_NAMES) <= set(blueprint_gen.BUILDERS)
 
 
-def test_a_dead_endpoint_falls_through_rather_than_refusing(agent, monkeypatch):
-    """An unreachable model is not a statement about the part."""
+def test_a_dead_endpoint_is_not_a_statement_about_the_part(agent, monkeypatch):
+    """An unreachable model is not a statement about the part.
+
+    This asserted ``is None`` and got the intent backwards. Falling through
+    hands the request to the caller, which answers "This part has no
+    deterministic builder, and the fine-tuned model ... is not currently being
+    served" — a claim about our capability, made about a request nobody ever
+    read. A rate-limited endpoint made "Rectangular plate 100 x 60 x 5 mm"
+    report that it could not be built deterministically, and it is a compiled
+    family: the bench scored it 0/1 until the 429 that caused it was fixed.
+
+    So the intent is pinned instead of the mechanism. Unread means unread: the
+    failure is classed at the model, and nothing is claimed about the family.
+    """
 
     def boom(provider):
         raise RuntimeError("endpoint unreachable")
 
     monkeypatch.setattr(agent, "_client", boom)
-    assert agent._deterministic("a plate 10 x 10 x 2 mm", None) is None
+    p = agent._deterministic("a plate 10 x 10 x 2 mm", None)
+
+    assert p is not None, "an unread request must not fall through as 'not mine'"
+    assert p.failure == "model", "an outage is an environment failure"
+    assert not p.ok
+    # The part is a rectangular plate and we compile rectangular plates. The
+    # answer must never suggest otherwise.
+    assert "no deterministic builder" not in p.error
+    assert "rectangular plate" in p.error.lower()
 
 
 def test_a_dead_primary_is_compiled_by_the_fallback(agent, monkeypatch):

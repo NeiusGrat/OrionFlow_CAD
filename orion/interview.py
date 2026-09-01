@@ -52,6 +52,27 @@ CLEARANCE = {"M3": 3.4, "M4": 4.5, "M5": 5.5, "M6": 6.6, "M8": 9.0,
 COUNTERBORE = {"M3": 6.5, "M4": 8.0, "M5": 10.0, "M6": 11.0, "M8": 15.0,
                "M10": 18.0, "M12": 20.0}
 
+#: NEMA ICS 16 stepper motor frames: (face across flats, bolt square, screw).
+#:
+#: The knowledge layer, reaching the live path. "NEMA 17 motor mount plate,
+#: 6 mm thick: M3 holes on a 31 x 31 mm square bolt pattern" states the pattern
+#: and never states the plate — so the interview asked how long the plate
+#: should be, about the one dimension in mechanical engineering that a
+#: designation fixes exactly. An engineer would not ask; they would know the
+#: face is 42.3 mm square, and say where they got it.
+#:
+#: The bolt square is carried too, so a request that names the frame and not the
+#: pattern is still complete — and it is a 2 x 2 grid at that pitch, which is
+#: what a square bolt pattern is.
+MOTOR_FRAMES = {
+    "NEMA 8": (20.3, 16.0, "M2"),
+    "NEMA 11": (28.2, 23.0, "M2.5"),
+    "NEMA 14": (35.2, 26.0, "M3"),
+    "NEMA 17": (42.3, 31.0, "M3"),
+    "NEMA 23": (56.4, 47.14, "M5"),
+    "NEMA 34": (86.0, 69.6, "M6"),
+}
+
 #: ISO 228 (G) parallel pipe thread tapping drills, mm.
 TAPPING = {"G1/8": 8.8, "G1/4": 11.8, "G3/8": 15.25, "G1/2": 19.0,
            "G3/4": 24.5, "G1": 30.75}
@@ -89,6 +110,32 @@ class Slot:
     #: itself complete, which is the wrong end of the pipeline to discover a
     #: question at.
     requires: tuple[str, ...] = ()
+    #: Fields of which *at least one* must be given once this one is.
+    #:
+    #: ``requires`` is an AND and some requirements are genuinely a choice. A
+    #: mounting hole pattern needs a *placement*, and there is more than one
+    #: kind: on a bolt circle, or inset from the corners. Demanding both asks
+    #: for a bolt circle diameter that a corner pattern does not have; demanding
+    #: neither is how "four M5 clearance holes, one 10 mm from each corner"
+    #: became a plate with no holes at all — the count and the diameter were
+    #: read, no placement was, and the builder had nowhere to put them.
+    #:
+    #: The question asked is the first named field's, since the alternatives are
+    #: phrasings of one question rather than several.
+    requires_any: tuple[str, ...] = ()
+    #: Takes this other slot's value when the request states only one of them.
+    #:
+    #: An L-bracket cut from one plate has one thickness, and "60 x 40 base and
+    #: a 60 x 50 vertical wall, 4 mm thick" states it once. Two separate
+    #: required slots turned that into two questions the request had already
+    #: answered — the assistant asking "how thick is the vertical plate?" about
+    #: a sentence ending "4 mm thick". Three of the sixteen benchmark prompts
+    #: the compiled path could attempt died this way.
+    #:
+    #: Declared in the schema, never inferred, and the mirrored value is
+    #: recorded as ``derived`` rather than ``stated``: one plate is a fact about
+    #: the family, and which slot it came from stays on the record.
+    mirrors: str = "" 
 
 
 @dataclass(frozen=True)
@@ -116,6 +163,8 @@ def _slots_of(block: dict) -> tuple[Slot, ...]:
             diameter=bool(spec.get("diameter")),
             text=bool(spec.get("text")),
             requires=tuple(spec.get("requires") or ()),
+            requires_any=tuple(spec.get("requires_any") or ()),
+            mirrors=str(spec.get("mirrors") or ""),
         ))
     return tuple(out)
 
@@ -188,7 +237,23 @@ class Interview:
 
     @property
     def complete(self) -> bool:
-        return bool(self.family) and not missing(self.family, self.slots)
+        return (bool(self.family)
+                and not missing(self.family, self.slots)
+                and not self.unaccounted)
+
+    @property
+    def unaccounted(self) -> list[float]:
+        """Dimensions the request states that no slot took.
+
+        A missing *required* slot is a gap the schema knows about. This is the
+        other kind: the request said something, the extraction did not hear it,
+        and every downstream check agrees with the omission because they are all
+        derived from the slots. It is the same shape of defect as a builder
+        dropping a feature, one stage earlier.
+        """
+        from . import provenance as P
+
+        return P.unclaimed_lengths(self.request, self.slots)
 
     def to_dict(self) -> dict:
         return {"request": self.request, "family": self.family,
@@ -213,6 +278,27 @@ class Interview:
         return self.provenance
 
 
+def apply_mirrors(family: str, slots: dict) -> dict:
+    """Fill slots the schema says take another's value. Idempotent.
+
+    Only ever fills a slot the request left empty, so an explicitly different
+    upright thickness always wins over the base's.
+    """
+    fam = FAMILIES.get(family)
+    if fam is None:
+        return dict(slots)
+    out = dict(slots)
+    for s in fam.required + fam.optional:
+        if not s.mirrors:
+            continue
+        if out.get(s.name) is not None and out.get(s.name) != "":
+            continue
+        source = out.get(s.mirrors)
+        if source is not None and source != "":
+            out[s.name] = source
+    return out
+
+
 def missing(family: str, slots: dict) -> list[Slot]:
     """Required slots with no value. The completeness test, in Python.
 
@@ -223,11 +309,18 @@ def missing(family: str, slots: dict) -> list[Slot]:
     fam = FAMILIES.get(family)
     if fam is None:
         return []
+    # A slot the schema says mirrors another is not a gap once its source has a
+    # value — asking for it is asking a question the request already answered.
+    slots = apply_mirrors(family, slots)
 
     def absent(name: str) -> bool:
         return slots.get(name) is None or slots.get(name) == ""
 
-    gaps = [s for s in fam.required if absent(s.name)]
+    # A mirrored slot whose source is also missing is not a second question:
+    # answering the source fills it. Asking both would be asking the user to
+    # state one plate's thickness twice.
+    gaps = [s for s in fam.required
+            if absent(s.name) and not (s.mirrors and absent(s.mirrors))]
     # Conditionally required: a field only becomes necessary once the thing it
     # qualifies has been asked for. Ordered after the unconditional ones so the
     # interview establishes the envelope before the detail.
@@ -238,12 +331,32 @@ def missing(family: str, slots: dict) -> list[Slot]:
             dep = fam.slot(name)
             if dep is not None and absent(name) and dep not in gaps:
                 gaps.append(dep)
+        # A choice, not a conjunction: satisfied by any one of the alternatives.
+        if s.requires_any and all(absent(n) for n in s.requires_any):
+            dep = fam.slot(s.requires_any[0])
+            if dep is not None and dep not in gaps:
+                gaps.append(dep)
     return gaps
 
 
 def question_for(slot: Slot) -> str:
     """One question, from the schema. Not generated, so it cannot drift."""
     return slot.prompt
+
+
+def open_questions(iv: "Interview") -> list[str]:
+    """Everything standing between this request and a build.
+
+    Two sources, and both have to be asked or the second is silently dropped:
+    slots the schema requires and the request did not fill, and dimensions the
+    request stated that no slot took.
+    """
+    out = [question_for(s) for s in missing(iv.family, iv.slots)]
+    for value in iv.unaccounted:
+        out.append(
+            f"The request mentions {value:g} mm and I have not used it "
+            f"anywhere — what is that dimension?")
+    return out
 
 
 def resolve(family: str, slots: dict) -> dict:
@@ -266,6 +379,24 @@ def resolve(family: str, slots: dict) -> dict:
     return out
 
 
+def designations(request: str, slots: dict) -> dict:
+    """Standard designations read out of the request text, not sampled.
+
+    A designation is a token, not a judgement: "NEMA 17" either appears or it
+    does not. Leaving it to the extraction meant the plate size stayed unknown
+    whenever the model happened not to fill the slot — measured on the very
+    prompt this exists for, which returned thickness, thread and pitch and no
+    frame. Anything the model *did* fill is left alone.
+    """
+    text = (request or "").upper().replace("-", " ")
+    out = dict(slots)
+    if not out.get("motor_frame"):
+        m = re.search("(?:^|[^A-Z])NEMA ?([0-9]+)(?:[^0-9]|$)", text)
+        if m and f"NEMA {m.group(1)}" in MOTOR_FRAMES:
+            out["motor_frame"] = f"NEMA {m.group(1)}"
+    return out
+
+
 def apply_standards(slots: dict, family: str = "") -> tuple[dict, list[str]]:
     """Turn named threads into dimensions from the tables above.
 
@@ -285,6 +416,33 @@ def apply_standards(slots: dict, family: str = "") -> tuple[dict, list[str]]:
     out = dict(slots)
     notes: list[str] = []
     thread = str(out.get("thread") or out.get("hole_thread") or "").upper()
+    # A named motor frame fixes the plate it bolts to. Only ever fills what the
+    # request left open, so a stated size always wins over the table.
+    frame = str(out.get("motor_frame") or "").upper().replace("-", " ").strip()
+    if frame in MOTOR_FRAMES:
+        face, square, screw = MOTOR_FRAMES[frame]
+        for axis in ("length", "width"):
+            if out.get(axis) is None and wanted(axis):
+                out[axis] = face
+                notes.append(f"{frame} face is {face} mm across (NEMA ICS 16), "
+                             f"so {axis} = {face}")
+        if wanted("hole_pitch"):
+            if out.get("hole_pitch") is None:
+                out["hole_pitch"] = square
+                notes.append(f"{frame} bolt square is {square} mm "
+                             f"(NEMA ICS 16), so hole_pitch = {square}")
+            # A motor face carries four screws at the corners of a square, so
+            # the counts follow from the frame whoever supplied the pitch. The
+            # request states "31 x 31 mm square bolt pattern" and was still
+            # asked how many holes across — about a pattern it had named.
+            if out.get("hole_cols") is None and out.get("hole_rows") is None:
+                out["hole_cols"] = out["hole_rows"] = 2
+                notes.append(f"{frame} mounts on four screws in a square, "
+                             f"so hole_cols = 2 and hole_rows = 2")
+        if out.get("thread") is None and out.get("hole_d") is None:
+            thread = screw
+            notes.append(f"{frame} uses {screw} mounting screws (NEMA ICS 16)")
+
     if thread in CLEARANCE and out.get("hole_d") is None and wanted("hole_d"):
         out["hole_d"] = CLEARANCE[thread]
         notes.append(f"{thread} clearance hole = {CLEARANCE[thread]} mm (ISO 273 medium)")
@@ -325,7 +483,12 @@ Read the request and name the part family. Nothing else.
 
 Choose "other" unless the request is clearly one of the listed families. A wrong
 match is worse than no match: it sends the request down a path that cannot build
-it. Springs, gears, shafts, pipes, castings and anything not listed are "other".
+it. Springs, gears, castings and anything not listed are "other".
+
+"disc" is any part turned from round stock, whatever it is called: washers,
+plain cylinders, tubes and sleeves, spacers, shaft collars, pulley blanks,
+flanges, cover discs and grilles are all discs — optionally bored, optionally
+holed. Length does not disqualify one: a 40 mm long tube is a disc.
 
 Reply with ONE JSON object and nothing else:
 {"family": "<one of: %s, other>"}
@@ -580,6 +743,7 @@ def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Intervi
 
     raw = _json_of(got.content) or {}
     slots, unsupported = _known_slots(family, raw if isinstance(raw, dict) else {})
+    slots = designations(request, slots)
     slots, notes = apply_standards(slots, family)
     iv = Interview(request=request, family=family, slots=slots, notes=notes,
                    unsupported=unsupported)
@@ -631,26 +795,42 @@ def requirements(iv: Interview) -> dict:
     if gaps:
         raise ValueError("interview incomplete; still missing: "
                          + ", ".join(s.name for s in gaps))
+    filled = apply_mirrors(iv.family, iv.slots)
+    mirrored = {k for k in filled if iv.slots.get(k) in (None, "")}
     out = {"family": iv.family, "schema_version": SCHEMA_VERSION}
-    out.update(resolve(iv.family, iv.slots))
+    out.update(resolve(iv.family, filled))
     if iv.notes:
         out["standards_applied"] = list(iv.notes)
     # Travels with the numbers, under the names the numbers now have. Left
     # behind, it would be unrecoverable: a radius in a Blueprint carries no
     # record of the diameter somebody typed, or of whether anybody typed one.
-    out["provenance"] = _resolved_provenance(iv)
+    out["provenance"] = _resolved_provenance(iv, mirrored=mirrored)
     if iv.unsupported:
         out["unsupported"] = list(iv.unsupported)
     return out
 
 
-def _resolved_provenance(iv: Interview) -> dict:
+def _resolved_provenance(iv: Interview, mirrored: set = None) -> dict:
     """Slot provenance re-keyed the way :func:`resolve` re-keys the slots."""
+    from . import provenance as P
+
     fam = FAMILIES.get(iv.family)
+    mirrored = mirrored or set()
     out: dict[str, Any] = {}
-    for name, entry in (iv.provenance or {}).items():
+    filled = apply_mirrors(iv.family, iv.slots)
+    entries = dict(iv.provenance or {})
+    # A mirrored slot has no entry of its own — nothing in the text named it.
+    # It is derived, and the record says which slot it was derived from, so a
+    # thickness that was never typed can never read as one that was.
+    for name in mirrored:
         s = fam.slot(name) if fam else None
-        value = iv.slots.get(name)
+        entries[name] = {
+            "source": P.DERIVED,
+            "detail": f"same plate as {s.mirrors}" if s is not None else "mirrored",
+        }
+    for name, entry in entries.items():
+        s = fam.slot(name) if fam else None
+        value = filled.get(name)
         renamed = (s is not None and s.diameter
                    and isinstance(value, (int, float)) and not isinstance(value, bool))
         out[name.removesuffix("_d") + "_r" if renamed else name] = entry

@@ -145,8 +145,12 @@ def test_the_obligation_is_frozen_into_the_contract():
     from orion.blueprint import Blueprint
 
     iv = interview.Interview(request="a plate", family="rect_plate")
+    # A placement is part of asking for holes: without one the interview is
+    # incomplete, which is the defect this module exists for — this fixture
+    # used to state a count and a size and nothing else, and that is precisely
+    # the request that built a blank plate.
     iv.slots = {"length": 120, "width": 80, "thickness": 10,
-                "hole_count": 4, "hole_d": 5}
+                "hole_count": 4, "hole_d": 5, "hole_edge_gap": 10}
     iv.classify()
     bp = Blueprint.from_dict(
         blueprint_gen.generate("rect_plate", interview.requirements(iv))

@@ -64,6 +64,49 @@ def annulus(r_outer, r_inner, cx=0.0, cy=0.0):
             "centroid": (cx, cy), "loops": 2}
 
 
+def disc_with_holes(r, holes, r_inner=0.0, cx=0.0, cy=0.0):
+    """Disc, optionally bored, minus circular holes.
+
+    The round counterpart of :func:`rect_with_holes`, and the profile the whole
+    rotational half of mechanical design is drawn on: washers, flanges, pulley
+    blanks, shaft collars, spacers, cover discs, grilles. ``annulus`` gave the
+    bore and nothing else, so a flange with a bolt pattern had no profile at
+    all and its family had no builder.
+
+    holes = [(hx, hy, r), ...] in absolute coordinates, as for the rectangle.
+    """
+    _require(r > 0, f"disc needs r > 0, got {r}")
+    _require(0 <= r_inner < r,
+             f"disc bore must be smaller than the disc, got {r_inner} of {r}")
+    geo = [_circle(0, cx, cy, r)]
+    area = math.pi * r * r
+    mx, my = cx * area, cy * area
+    if r_inner > 0:
+        geo.append(_circle(len(geo), cx, cy, r_inner))
+        a = math.pi * r_inner * r_inner
+        area -= a
+        mx -= cx * a
+        my -= cy * a
+    for hx, hy, hr in holes:
+        _require(hr > 0, f"hole needs r > 0, got {hr}")
+        _require(math.hypot(hx - cx, hy - cy) + hr < r + 1e-9,
+                 f"hole at ({hx},{hy}) r={hr} leaves the disc")
+        # Only where there IS a bore. With r_inner = 0 this rejected a hole at
+        # the centre of the disc, which every odd x odd grid has — a 5 x 5
+        # speaker grille refused itself.
+        if r_inner > 0:
+            _require(math.hypot(hx - cx, hy - cy) - hr > r_inner - 1e-9,
+                     f"hole at ({hx},{hy}) r={hr} breaks into the bore")
+        geo.append(_circle(len(geo), hx, hy, hr))
+        a = math.pi * hr * hr
+        area -= a
+        mx -= hx * a
+        my -= hy * a
+    _require(area > 0, "the bore and holes consumed the whole disc")
+    return {"geometry": geo, "area": area, "centroid": (mx / area, my / area),
+            "loops": len(geo)}
+
+
 def rect(w, h, cx=0.0, cy=0.0):
     _require(w > 0 and h > 0, f"rect needs w,h > 0, got {w}, {h}")
     x0, x1 = cx - w / 2, cx + w / 2
@@ -358,6 +401,7 @@ BUILDERS = {
     "poly_with_holes": poly_with_holes,
     "hole_grid": hole_grid,
     "annulus": annulus,
+    "disc_with_holes": disc_with_holes,
     "rect": rect,
     "rect_with_holes": rect_with_holes,
     "rounded_rect": rounded_rect,

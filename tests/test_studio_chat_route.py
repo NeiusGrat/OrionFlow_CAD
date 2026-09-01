@@ -61,7 +61,7 @@ class _Agent:
         self.bundle = bundle or BUNDLE
         self.prompts: list[str] = []
 
-    def design(self, prompt, on_event=None):
+    def design(self, prompt, on_event=None, history=None):
         self.prompts.append(prompt)
         return dict(self.bundle)
 

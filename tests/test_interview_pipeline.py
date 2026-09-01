@@ -956,3 +956,371 @@ def test_the_generated_blueprint_passes_the_same_static_check_as_an_authored_one
     payload["variables"]["unused_extra"] = 12.0
     with pytest.raises(BlueprintError, match="unused variable"):
         Blueprint.from_dict(payload).freeze()
+
+
+# --------------------------------------------------------------------------- #
+# mounting holes need a placement
+#
+# "Mounting plate 120 x 80 x 6 mm with four M5 clearance holes, one 10 mm from
+# each corner" built a plate with NO CYLINDRICAL FACES AT ALL and the only
+# thing that noticed was the feature-fulfillment check. The count and the
+# diameter were read; the corner inset had no slot, so no placement reached the
+# builder, and ``rect_plate`` placed holes only when a bolt circle radius was
+# present. Six of the fifty benchmark prompts failed this way.
+# --------------------------------------------------------------------------- #
+def test_a_hole_pattern_without_a_placement_is_a_question():
+    """A count and a size do not say where the holes go."""
+    gaps = [s.name for s in interview.missing(
+        "rect_plate",
+        {"length": 120, "width": 80, "thickness": 6,
+         "hole_count": 4, "hole_d": 5},
+    )]
+    assert "hole_edge_gap" in gaps, (
+        "a hole pattern with no placement must be asked about, not built empty"
+    )
+
+
+def test_either_placement_completes_a_hole_pattern():
+    """A bolt circle and a corner inset are alternatives, not both required."""
+    base = {"length": 120, "width": 80, "thickness": 6,
+            "hole_count": 4, "hole_d": 5}
+    assert not interview.missing("rect_plate", {**base, "pcd": 60})
+    assert not interview.missing("rect_plate", {**base, "hole_edge_gap": 10})
+
+
+def test_corner_holes_reach_the_geometry():
+    """The holes are in the profile, at the stated inset from each corner."""
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="plate", family="rect_plate")
+    iv.slots = {"length": 120, "width": 80, "thickness": 6,
+                "hole_count": 4, "hole_d": 5.5, "hole_edge_gap": 10}
+    iv.classify()
+    payload = blueprint_gen.generate("rect_plate", interview.requirements(iv))
+
+    holes = payload["template"]["sketches"][0]["profile"]["args"]["holes"]
+    assert len(holes) == 4, "four corners, four holes"
+    assert payload["variables"]["gap"] == 10
+    assert payload["variables"]["hole_r"] == 2.75
+
+    # And the obligation says where they are, so a later drop is catchable.
+    placement = payload["design_plan"]["obligations"][0]["placement"]
+    assert placement["form"] == "corners"
+    assert placement["span"] == [100.0, 60.0]
+
+
+def test_a_corner_pattern_that_cannot_fit_is_refused():
+    """Not silently moved inward — the number is wrong and says so."""
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="plate", family="rect_plate")
+    iv.slots = {"length": 40, "width": 40, "thickness": 5,
+                "hole_count": 4, "hole_d": 6, "hole_edge_gap": 19}
+    iv.classify()
+    with pytest.raises(blueprint_gen.GeneratorError):
+        blueprint_gen.generate("rect_plate", interview.requirements(iv))
+
+
+# --------------------------------------------------------------------------- #
+# one plate, one thickness
+#
+# "L bracket: 60 x 40 mm base and a 60 x 50 mm vertical wall, 4 mm thick" was
+# answered with "How thick is the base plate? How thick is the vertical plate?"
+# — two questions about a sentence that ends by answering them. A bracket cut
+# from one plate has one thickness, and that is a fact about the family, so it
+# belongs in the schema rather than in the model's reading.
+# --------------------------------------------------------------------------- #
+def test_one_stated_thickness_completes_a_bracket():
+    assert not interview.missing("l_bracket", {
+        "base_length": 60, "base_width": 40, "base_thickness": 4,
+        "upright_height": 50})
+
+
+def test_a_mirrored_slot_is_not_a_second_question():
+    """With no thickness at all, the user is asked once, not twice."""
+    gaps = [s.name for s in interview.missing("l_bracket", {
+        "base_length": 60, "base_width": 40, "upright_height": 50})]
+    assert gaps == ["base_thickness"]
+
+
+def test_an_explicit_value_beats_the_mirror():
+    """A bracket with a thicker upright is a real part and must survive."""
+    filled = interview.apply_mirrors("l_bracket", {
+        "base_thickness": 4, "upright_thickness": 8})
+    assert filled["upright_thickness"] == 8
+
+
+def test_a_mirrored_thickness_is_derived_not_stated():
+    """Nobody typed it. The ledger has to say so."""
+    from orion import provenance as P
+
+    iv = interview.Interview(request="L bracket 60 x 40 base, 50 tall, 4 mm thick",
+                             family="l_bracket")
+    iv.slots = {"base_length": 60, "base_width": 40, "base_thickness": 4,
+                "upright_height": 50}
+    iv.classify()
+    req = interview.requirements(iv)
+
+    assert req["upright_thickness"] == 4
+    assert req["provenance"]["upright_thickness"]["source"] == P.DERIVED
+    assert "base_thickness" in req["provenance"]["upright_thickness"]["detail"]
+
+
+def test_a_grid_of_holes_is_a_third_placement():
+    """Nine holes at 30 mm could be 3x3 or 9x1, so the counts are asked for."""
+    base = {"length": 100, "width": 100, "thickness": 3,
+            "hole_count": 9, "hole_d": 6}
+    gaps = [s.name for s in interview.missing("rect_plate",
+                                              {**base, "hole_pitch": 30})]
+    assert "hole_cols" in gaps and "hole_rows" in gaps
+    assert not interview.missing("rect_plate", {
+        **base, "hole_pitch": 30, "hole_cols": 3, "hole_rows": 3})
+
+
+def test_grid_holes_are_parametric_in_the_pitch():
+    """Baked-in constants stop being a grid the moment the spacing is edited."""
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="grid plate", family="rect_plate")
+    iv.slots = {"length": 100, "width": 100, "thickness": 3, "hole_count": 9,
+                "hole_d": 6, "hole_pitch": 30, "hole_cols": 3, "hole_rows": 3}
+    iv.classify()
+    payload = blueprint_gen.generate("rect_plate", interview.requirements(iv))
+
+    holes = payload["template"]["sketches"][0]["profile"]["args"]["holes"]
+    assert len(holes) == 9
+    assert all("pitch" in h[0] and "pitch" in h[1] for h in holes)
+    # The obligation states the span between outermost holes, not the spacing.
+    assert payload["design_plan"]["obligations"][0]["placement"] == {
+        "form": "grid", "pitch": [60.0, 60.0]}
+
+
+def test_a_grid_too_big_for_the_plate_is_refused():
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="grid plate", family="rect_plate")
+    iv.slots = {"length": 50, "width": 50, "thickness": 3, "hole_count": 9,
+                "hole_d": 6, "hole_pitch": 30, "hole_cols": 3, "hole_rows": 3}
+    iv.classify()
+    with pytest.raises(blueprint_gen.GeneratorError, match="does not fit"):
+        blueprint_gen.generate("rect_plate", interview.requirements(iv))
+
+
+# --------------------------------------------------------------------------- #
+# the disc family, and the dimension that vanished
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("slots,expected_v", [
+    ({"outer_d": 20, "bore_d": 8.4, "thickness": 2},
+     "(pi*R**2 - pi*bore_r**2)*T"),
+    ({"outer_d": 30, "thickness": 50}, "(pi*R**2)*T"),
+    ({"outer_d": 100, "bore_d": 25, "thickness": 8,
+      "hole_count": 6, "hole_d": 9, "pcd": 80},
+     "(pi*R**2 - pi*bore_r**2 - 6*pi*hole_r**2)*T"),
+])
+def test_the_disc_family_has_an_exact_closed_form(slots, expected_v):
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="disc", family="disc")
+    iv.slots = dict(slots)
+    iv.classify()
+    payload = blueprint_gen.generate("disc", interview.requirements(iv))
+    body = [a for a in payload["assertions"] if a["id"] == "body"][0]
+    assert body["target"] == expected_v
+    assert body["tier"] == 1, "a disc is closed-form; it must not drop a tier"
+
+
+def test_a_bolt_circle_breaking_into_the_bore_is_refused():
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="flange", family="disc")
+    iv.slots = {"outer_d": 100, "bore_d": 60, "thickness": 8,
+                "hole_count": 6, "hole_d": 9, "pcd": 66}
+    iv.classify()
+    with pytest.raises(blueprint_gen.GeneratorError, match="bore"):
+        blueprint_gen.generate("disc", interview.requirements(iv))
+
+
+def test_a_stated_dimension_that_reached_no_slot_is_a_question():
+    """"Tube 40 mm OD, 32 mm ID, 60 mm long" read as a SOLID BAR and verified.
+
+    The bore was dropped by the extraction, and every downstream check agreed
+    with the omission because they are all derived from the same slots.
+    """
+    iv = interview.Interview(request="Tube 40 mm OD, 32 mm ID, 60 mm long",
+                             family="disc")
+    iv.slots = {"outer_d": 40, "thickness": 60}
+    assert iv.unaccounted == [32.0]
+    assert not iv.complete, "a dropped dimension must not read as complete"
+    assert any("32" in q for q in interview.open_questions(iv))
+
+
+@pytest.mark.parametrize("request_text,slots", [
+    ("Washer 20 mm OD, 8.4 mm ID, 2 mm thick",
+     {"outer_d": 20, "bore_d": 8.4, "thickness": 2}),
+    ("Mounting plate 120 x 80 x 6 mm with four M5 clearance holes, "
+     "one 10 mm from each corner",
+     {"length": 120, "width": 80, "thickness": 6, "hole_count": 4,
+      "hole_d": 5.5, "hole_edge_gap": 10}),
+    ("Plate 100 x 100 x 3 mm with a 3 x 3 grid of 6 mm holes spaced 30 mm apart",
+     {"length": 100, "width": 100, "thickness": 3, "hole_count": 9,
+      "hole_d": 6, "hole_pitch": 30, "hole_cols": 3, "hole_rows": 3}),
+])
+def test_a_fully_read_request_raises_no_false_question(request_text, slots):
+    """A false question is a worse answer than none, so this is the guard."""
+    from orion import provenance as P
+
+    assert P.unclaimed_lengths(request_text, slots) == []
+
+
+# --------------------------------------------------------------------------- #
+# open-top boxes
+# --------------------------------------------------------------------------- #
+def test_the_shelled_box_is_a_pad_and_a_pocket_not_a_shell():
+    """Thickness would re-author every face and hide the volume in the kernel."""
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="box", family="shelled_box")
+    iv.slots = {"length": 80, "width": 60, "height": 30, "wall": 2.5}
+    iv.classify()
+    payload = blueprint_gen.generate("shelled_box", interview.requirements(iv))
+
+    kinds = [f["type"] for f in payload["template"]["features"]]
+    assert "Pocket" in kinds and "Thickness" not in kinds
+    body = [a for a in payload["assertions"] if a["id"] == "body"][0]
+    assert body["tier"] == 1
+    assert body["target"] == "L*W*H - (L - 2*wall)*(W - 2*wall)*(H - floor_t)"
+
+
+def test_the_floor_variable_does_not_shadow_the_builtin():
+    """`floor` is a function in the expression language; the static check
+    rejects a variable that shadows it, and then reports it unreferenced."""
+    from orion import blueprint_gen
+    from orion.blueprint import Blueprint
+
+    iv = interview.Interview(request="tray", family="shelled_box")
+    iv.slots = {"length": 120, "width": 80, "height": 15, "wall": 3, "floor": 3}
+    iv.classify()
+    payload = blueprint_gen.generate("shelled_box", interview.requirements(iv))
+    assert "floor" not in payload["variables"]
+    assert payload["variables"]["floor_t"] == 3
+    Blueprint.from_dict(payload).freeze()  # must pass the static check
+
+
+@pytest.mark.parametrize("slots,match", [
+    ({"length": 40, "width": 40, "height": 25, "wall": 20}, "no cavity"),
+    ({"length": 80, "width": 60, "height": 10, "wall": 2, "floor": 12},
+     "no depth"),
+])
+def test_a_box_with_no_inside_is_refused(slots, match):
+    from orion import blueprint_gen
+
+    iv = interview.Interview(request="box", family="shelled_box")
+    iv.slots = dict(slots)
+    iv.classify()
+    with pytest.raises(blueprint_gen.GeneratorError, match=match):
+        blueprint_gen.generate("shelled_box", interview.requirements(iv))
+
+
+# --------------------------------------------------------------------------- #
+# the knowledge layer, on the live path
+#
+# "NEMA 17 motor mount plate, 6 mm thick: M3 holes on a 31 x 31 mm square bolt
+# pattern" was answered with "How long should the plate be?" — about the one
+# dimension a designation fixes exactly. An engineer knows the face is 42.3 mm
+# and can say where they got it; so, now, can this.
+# --------------------------------------------------------------------------- #
+def test_a_named_motor_frame_sizes_the_plate():
+    slots, notes = interview.apply_standards(
+        {"motor_frame": "NEMA 17", "thickness": 6}, family="rect_plate")
+    assert slots["length"] == 42.3 and slots["width"] == 42.3
+    assert slots["hole_pitch"] == 31.0
+    assert slots["hole_cols"] == 2 and slots["hole_rows"] == 2
+    assert not interview.missing("rect_plate", slots)
+    assert any("NEMA ICS 16" in n for n in notes), "a table has to say which"
+
+
+def test_a_stated_size_beats_the_frame_table():
+    """The table fills what the request left open. Never overrides it."""
+    slots, _ = interview.apply_standards(
+        {"motor_frame": "NEMA 17", "thickness": 6, "length": 60, "width": 60},
+        family="rect_plate")
+    assert slots["length"] == 60 and slots["width"] == 60
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("NEMA 17 motor mount plate", "NEMA 17"),
+    ("nema-23 mount", "NEMA 23"),
+    ("a NEMA17 bracket", "NEMA 17"),
+    ("plain plate 50 x 50", None),
+    ("ALTNEMA 17 thing", None),
+])
+def test_a_designation_is_read_from_the_text_not_sampled(text, expected):
+    """It either appears or it does not; that must not depend on the model."""
+    assert interview.designations(text, {}).get("motor_frame") == expected
+
+
+def test_frame_derived_values_are_standard_not_unsourced():
+    """Nobody typed 42.3. It is sourced, and the ledger names the standard."""
+    from orion import provenance as P
+
+    slots, notes = interview.apply_standards(
+        {"motor_frame": "NEMA 17", "thickness": 6}, family="rect_plate")
+    prov = P.classify("NEMA 17 motor mount plate, 6 mm thick", slots, notes=notes)
+    for field in ("length", "width", "hole_pitch"):
+        assert prov[field]["source"] == P.STANDARD, field
+        assert "NEMA" in prov[field]["basis"]
+
+
+# --------------------------------------------------------------------------- #
+# an answer is not a new request
+# --------------------------------------------------------------------------- #
+def test_an_answer_is_joined_to_the_question_it_answers():
+    from app.services.studio_agent import _carry_forward
+
+    history = [
+        {"role": "user", "content": "L bracket: 60 x 40 mm base and a "
+                                    "60 x 50 mm vertical wall"},
+        {"role": "assistant", "content": "How thick is the base plate?"},
+    ]
+    joined = _carry_forward(history, "4 mm")
+    assert "L bracket" in joined and joined.endswith("4 mm")
+
+
+def test_the_walk_stops_at_a_finished_build():
+    """A new request must never be merged into the one before it."""
+    from app.services.studio_agent import _carry_forward
+
+    history = [
+        {"role": "user", "content": "L bracket 60 x 40, 4 mm thick"},
+        {"role": "assistant", "content": "Built it. Volume 12000 mm3."},
+        {"role": "user", "content": "now a washer 20 mm OD"},
+        {"role": "assistant", "content": "What is the bore?"},
+    ]
+    joined = _carry_forward(history, "8 mm")
+    assert "washer" in joined
+    assert "bracket" not in joined, "an answered request must not come back"
+
+
+def test_no_history_is_the_message_itself():
+    from app.services.studio_agent import _carry_forward
+
+    assert _carry_forward([], "a plate 100 x 60 x 5 mm") == "a plate 100 x 60 x 5 mm"
+    assert _carry_forward(None, "x") == "x"
+
+
+def test_a_centre_hole_is_legal_when_there_is_no_bore():
+    """Every odd x odd grid has one. A 5 x 5 speaker grille refused itself."""
+    import math
+
+    from orion import profiles as P
+
+    out = P.build("disc_with_holes", r=35,
+                  holes=[(0, 0, 2), (10, 0, 2), (-10, 0, 2)])
+    assert abs(out["area"] - (math.pi * 35 * 35 - 3 * math.pi * 4)) < 1e-9
+
+
+def test_a_centre_hole_inside_a_bore_is_still_refused():
+    from orion import profiles as P
+
+    with pytest.raises(P.ProfileError, match="bore"):
+        P.build("disc_with_holes", r=35, r_inner=8, holes=[(0, 0, 2)])

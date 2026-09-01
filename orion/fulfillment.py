@@ -307,6 +307,24 @@ def _check_placement(placement: dict, axes: list, centre) -> tuple[bool, str, di
         ok = max(gaps) - min(gaps) <= ABS_TOL_MM
         return ok, f"even spacing along the pattern {gaps}", {"gaps_mm": gaps}
 
+    if form == O.CORNERS:
+        span = placement.get("span") or []
+        if len(span) != 2 or None in span:
+            return False, "no corner span to measure against", {}
+        if len(points) != 4:
+            return False, f"a corner pattern has four holes, measured {len(points)}", {}
+        # Same reasoning as GRID: the plane's basis comes from the geometry, not
+        # from the request, so the two spans are matched as a set.
+        measured = sorted((max(p[0] for p in points) - min(p[0] for p in points),
+                           max(p[1] for p in points) - min(p[1] for p in points)))
+        expected = sorted(span)
+        ok = all(abs(m - e) <= ABS_TOL_MM for m, e in zip(measured, expected))
+        return ok, (
+            f"measured corner pattern {measured[0]:.4f} x {measured[1]:.4f} mm "
+            f"against {expected[0]:.4f} x {expected[1]:.4f} mm"
+        ), {"measured_span_mm": [round(m, 4) for m in measured],
+            "expected_span_mm": [round(e, 4) for e in expected]}
+
     return False, f"no placement rule for {form!r}", {}
 
 

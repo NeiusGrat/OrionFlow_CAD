@@ -772,16 +772,53 @@ class Proposal:
         }
 
 
+def _carry_forward(history: Optional[list[dict]], message: str) -> str:
+    """The whole request, when the last turn was a question.
+
+    Walks back over the trailing user turns, stopping at the first assistant
+    turn that was not a question — anything before that belongs to a request
+    that has already been answered. The joined text is what the extraction
+    reads, so "4 mm" is understood as the thickness of the bracket two turns up.
+
+    An assistant turn is a question when it contains one. Every question this
+    system emits comes from ``interview.question_for`` and ends in "?", so the
+    test is precise in the direction that matters: a normal answer stops the
+    walk, and a request is never silently merged into an unrelated one.
+    """
+    carried: list[str] = []
+    for turn in reversed(history or []):
+        role, content = turn.get("role"), (turn.get("content") or "").strip()
+        if not content:
+            continue
+        if role == "assistant":
+            if "?" not in content:
+                break
+            continue
+        if role == "user":
+            carried.append(content)
+    if not carried:
+        return message
+    return chr(10).join(list(reversed(carried)) + [message])
+
+
 def _failed_bundle(proposal: Proposal) -> dict:
     """A proposal that never reached the kernel, in the shape of a build result.
 
     Lets the orchestration rank and report every outcome the same way, whether
     it died at the model, at the parser or at the geometry.
+
+    ``failure`` is carried rather than flattened into ``error``. A proposal that
+    died because the endpoint serving our weights is down is an *environment*
+    failure, and scoring it beside a part whose geometry was wrong makes the
+    system look worse than it is — the benchmark that reported 36% counted five
+    unreachable-endpoint rows as capability failures. Nothing downstream could
+    tell them apart, because this shape dropped the one field that says which.
     """
     return {
         "success": False,
         "model": proposal.model,
         "error": proposal.error,
+        "failure": proposal.failure,
         "verification": {},
         "files": {},
         "blueprint": proposal.payload or None,
@@ -1127,6 +1164,7 @@ class StudioAgent:
         # architecture was intact and unreachable.
         iv = None
         read_by = ""
+        read_error = ""
         for provider in _in_health_order(_providers()):
             try:
                 client = self._client(provider)
@@ -1147,6 +1185,7 @@ class StudioAgent:
                 continue
 
             if candidate.transport_error:
+                read_error = candidate.transport_error
                 _mark_down(provider, candidate.transport_error)
                 continue
 
@@ -1154,7 +1193,43 @@ class StudioAgent:
             iv, read_by = candidate, provider
             break
 
-        if iv is None or iv.family not in blueprint_gen.BUILDERS:
+        if iv is None:
+            # No provider could read the request. That is an *environment*
+            # failure and it must not fall through: past this point the caller
+            # answers "this part has no deterministic builder", which is a
+            # claim about our capability, and it is false for the four families
+            # we compile. A rate-limited endpoint made
+            # "Rectangular plate 100 x 60 x 5 mm" — the simplest prompt in the
+            # bench, and a compiled family — report that it could not be built
+            # deterministically. The request was never read; nothing at all is
+            # known about which family it is.
+            buildable = ", ".join(
+                interview.FAMILIES[f].label if f in interview.FAMILIES else f
+                for f in sorted(blueprint_gen.BUILDERS)
+            )
+            _emit_step(
+                on_event,
+                "understand",
+                "Understanding the request",
+                "fail",
+                "could not reach a model to read the request",
+                [read_error] if read_error else [],
+            )
+            return Proposal(
+                failure="model",
+                error=(
+                    "I could not reach a model to read your request, so I do "
+                    "not yet know what to build. This is an outage on our side, "
+                    f"not a limit of the design: {read_error or 'endpoint unavailable'}. "
+                    f"These build exactly once it is back: {buildable}."
+                ),
+                route=design_router.Route(
+                    design_router.DIRECT,
+                    "the request could not be read; no family was determined",
+                ).to_dict(),
+            )
+
+        if iv.family not in blueprint_gen.BUILDERS:
             return None
 
         _emit_step(
@@ -1168,10 +1243,11 @@ class StudioAgent:
         )
 
         if not iv.complete:
-            asks = [
-                interview.question_for(s)
-                for s in interview.missing(iv.family, iv.slots)
-            ]
+            # Both kinds of gap: slots the schema requires and nobody filled,
+            # and dimensions the request stated that no slot took. Asking only
+            # the first let "Tube 40 mm OD, 32 mm ID, 60 mm long" build as a
+            # solid bar and grade VERIFIED.
+            asks = interview.open_questions(iv)
             _emit_step(
                 on_event,
                 "understand",
@@ -1528,7 +1604,8 @@ class StudioAgent:
         return bundle
 
     # ------------------------------------------------------------------ #
-    def design(self, prompt: str, on_event: EventSink = None) -> dict:
+    def design(self, prompt: str, on_event: EventSink = None,
+               history: Optional[list[dict]] = None) -> dict:
         """Prompt → Blueprint → geometry → verdict.
 
         Orchestration only: ``propose`` draws and freezes, ``build`` runs the
@@ -1544,6 +1621,13 @@ class StudioAgent:
         """
         from orion import repair_loop
 
+        # An answer to a question is not a new request. The interview asks
+        # "How thick is the base plate?", the user types "4 mm", and until now
+        # that answer arrived on its own — a fresh extraction against three
+        # characters, with the part it described already forgotten. Carried
+        # forward here rather than inside the interview so every route below
+        # sees one complete request.
+        prompt = _carry_forward(history, prompt)
         proposal = self.propose(prompt, on_event)
         if proposal.failure == "questions":
             return {

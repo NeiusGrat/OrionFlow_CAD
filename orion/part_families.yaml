@@ -32,11 +32,27 @@ families:
       thickness: {ask: "How thick should it be?"}
     optional:
       material:      {ask: "Material?", unit: "", text: true}
+      # A designation the standards table can turn into dimensions.
+      motor_frame:   {ask: "Which motor frame does it mount?", unit: "", text: true}
       corner_radius: {ask: "Corner radius?"}
       bore_d:        {ask: "Central bore diameter?", diameter: true}
-      hole_count:    {ask: "How many mounting holes?", unit: ""}
+      # A hole pattern needs a count, a size and a PLACEMENT. Without the last
+      # one the builder has nowhere to put the holes and silently placed none:
+      # "four M5 clearance holes, one 10 mm from each corner" built a blank
+      # plate, and only the feature-fulfillment check caught it.
+      hole_count:    {ask: "How many mounting holes?", unit: "",
+                      requires: [hole_d],
+                      requires_any: [hole_edge_gap, pcd, hole_pitch]}
       hole_d:        {ask: "Mounting hole diameter?", diameter: true}
       pcd:           {ask: "Bolt circle diameter?", diameter: true}
+      hole_edge_gap: {ask: "How far in from each corner are the mounting holes?"}
+      # The third placement: a rectangular grid. Spacing alone does not fix a
+      # pattern — nine holes at 30 mm could be 3x3 or 9x1 — so the counts are
+      # asked for rather than factored out of hole_count.
+      hole_pitch:    {ask: "How far apart are the holes?",
+                      requires: [hole_cols, hole_rows]}
+      hole_cols:     {ask: "How many holes across?", unit: ""}
+      hole_rows:     {ask: "How many holes down?", unit: ""}
       thread:        {ask: "Mounting thread size?", unit: "", text: true}
       pocket_l:      {ask: "Pocket length?", requires: [pocket_w, pocket_depth]}
       pocket_w:      {ask: "Pocket width?"}
@@ -47,6 +63,44 @@ families:
       fillet:        {ask: "External fillet radius?"}
       chamfer:       {ask: "Edge chamfer size?"}
 
+  # The rotational half of mechanical design. One family covers washers,
+  # cylinders, tubes, flanges, pulley blanks, shaft collars, spacers, cover
+  # discs and grilles, because they are one profile — a disc, optionally bored,
+  # optionally holed — extruded. 19 of the 50 benchmark prompts are this shape
+  # and none of them had a builder.
+  disc:
+    label: disc
+    required:
+      outer_d:   {ask: "What is the outside diameter?", diameter: true}
+      thickness: {ask: "How thick is it, or how long for a tube or shaft?"}
+    optional:
+      material:      {ask: "Material?", unit: "", text: true}
+      bore_d:        {ask: "Centre bore diameter?", diameter: true}
+      hole_count:    {ask: "How many mounting holes?", unit: "",
+                      requires: [hole_d], requires_any: [pcd, hole_pitch]}
+      hole_d:        {ask: "Mounting hole diameter?", diameter: true}
+      pcd:           {ask: "Bolt circle diameter?", diameter: true}
+      hole_pitch:    {ask: "How far apart are the holes?",
+                      requires: [hole_cols, hole_rows]}
+      hole_cols:     {ask: "How many holes across?", unit: ""}
+      hole_rows:     {ask: "How many holes down?", unit: ""}
+      thread:        {ask: "Mounting thread size?", unit: "", text: true}
+
+  # Open-topped boxes: enclosures, trays, shelled blocks. Built as a pad with a
+  # blind pocket rather than a Thickness feature, so the cavity has an exact
+  # closed form and every face keeps its authorship.
+  shelled_box:
+    label: open-top box
+    required:
+      length:    {ask: "How long is the box?"}
+      width:     {ask: "How wide is the box?"}
+      height:    {ask: "How tall is the box?"}
+      wall:      {ask: "How thick are the walls?"}
+    optional:
+      material:  {ask: "Material?", unit: "", text: true}
+      floor:     {ask: "How thick is the floor?"}
+      corner_radius: {ask: "Corner radius?"}
+
   l_bracket:
     label: L-bracket
     required:
@@ -54,7 +108,9 @@ families:
       base_width:        {ask: "How wide is the base plate?"}
       base_thickness:    {ask: "How thick is the base plate?"}
       upright_height:    {ask: "How tall is the vertical plate?"}
-      upright_thickness: {ask: "How thick is the vertical plate?"}
+      # One plate, bent. A single stated thickness is the whole bracket unless
+      # the request separately says otherwise.
+      upright_thickness: {ask: "How thick is the vertical plate?", mirrors: base_thickness}
     optional:
       material:       {ask: "Material?", unit: "", text: true}
       upright_width:  {ask: "How wide is the vertical plate?"}

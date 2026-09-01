@@ -63,6 +63,7 @@ CENTRED = "centred"  # one axis, at the body's centre
 BOLT_CIRCLE = "bolt_circle"  # n axes, all at radius r from the centre
 GRID = "grid"  # n axes on a rectangular pitch
 LINE = "line"  # n axes evenly spaced along an edge
+CORNERS = "corners"  # four axes, each inset from a corner of a rectangle
 
 
 @dataclass(frozen=True)
@@ -123,13 +124,42 @@ def _i(req: dict, key: str) -> Optional[int]:
 
 
 def _bolt_circle(req: dict) -> dict:
+    """The plate's mounting holes, on whichever placement the request fixed.
+
+    Two placements are real and the obligation must name the one that was
+    asked for: a bolt circle, or four holes inset from the corners. Treating
+    the second as "no placement stated" was survivable while the check only
+    counted axes, but it makes the contract weaker than the request — the
+    corner inset is a stated position and belongs in the frozen plan.
+    """
     pcd_r = _f(req, "pcd_r")
+    gap = _f(req, "hole_edge_gap")
+    pitch = _f(req, "hole_pitch")
+    cols, rows = _i(req, "hole_cols"), _i(req, "hole_rows")
+    if pcd_r is not None:
+        placement = {"form": BOLT_CIRCLE, "radius": pcd_r}
+    elif pitch is not None and cols and rows:
+        # ``GRID`` compares the span between the outermost holes, not the
+        # spacing — the same convention ``_square_pattern`` already uses.
+        return {
+            "count": cols * rows,
+            "radius": _f(req, "hole_r"),
+            "placement": {"form": GRID,
+                          "pitch": [(cols - 1) * pitch, (rows - 1) * pitch]},
+        }
+    elif gap is not None:
+        # The span between opposite holes, derived here so the check does not
+        # need the plate's size. The contract carries what it asserts.
+        length, width = _f(req, "length"), _f(req, "width")
+        placement = {"form": CORNERS, "inset": gap}
+        if length is not None and width is not None:
+            placement["span"] = [length - 2 * gap, width - 2 * gap]
+    else:
+        placement = None
     return {
         "count": _i(req, "hole_count"),
         "radius": _f(req, "hole_r"),
-        "placement": (
-            {"form": BOLT_CIRCLE, "radius": pcd_r} if pcd_r is not None else None
-        ),
+        "placement": placement,
     }
 
 
@@ -224,10 +254,21 @@ def _shoulder(req: dict) -> dict:
 #: builders are where a requirement can go quiet — a rule that lived in the same
 #: conditional block would go quiet with it.
 RULES: dict[str, tuple[Rule, ...]] = {
+    "shelled_box": (
+        Rule("corner_radius", ROUND, "rounded corners",
+             ("corner_radius",), _corner_round("corner_radius")),
+    ),
+    "disc": (
+        Rule("central_bore", BORE, "centre bore", ("bore_r",), _centred("bore_r")),
+        Rule("bolt_circle", HOLE_PATTERN, "mounting hole pattern",
+             ("hole_count", "hole_r", "pcd_r",
+              "hole_pitch", "hole_cols", "hole_rows"), _bolt_circle),
+    ),
     "rect_plate": (
         Rule("central_bore", BORE, "central bore", ("bore_r",), _centred("bore_r")),
         Rule("bolt_circle", HOLE_PATTERN, "mounting hole pattern",
-             ("hole_count", "hole_r", "pcd_r"), _bolt_circle),
+             ("hole_count", "hole_r", "pcd_r", "hole_edge_gap",
+              "hole_pitch", "hole_cols", "hole_rows"), _bolt_circle),
         Rule("pocket", POCKET, "pocket",
              ("pocket_l", "pocket_w", "pocket_depth"),
              expect_feature=("Pocket", "Groove")),

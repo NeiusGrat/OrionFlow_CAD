@@ -172,6 +172,13 @@ def rect_plate(req: dict) -> dict:
     # the closed form was computed from the same absent holes. The consumption
     # guard is what surfaced it.
     pcd_r = _num(req, "pcd_r")
+    # The other placement a plate's mounting holes actually take. A bolt circle
+    # is the wrong idealisation for the commonest plate in mechanical design —
+    # four holes inset from the corners — and until this existed the request was
+    # read and then dropped, because ``pcd_r`` was the only placement the
+    # builder understood. The interview now refuses to call a hole pattern
+    # complete without one of the two.
+    edge_gap = _num(req, "hole_edge_gap")
     if n and hole_r and pcd_r:
         n = int(n)
         if n < 1:
@@ -186,6 +193,55 @@ def rect_plate(req: dict) -> dict:
             holes.append([f"pcd_r*{math.cos(a):.10f}",
                           f"pcd_r*{math.sin(a):.10f}", "hole_r"])
         area += f" - {n}*pi*hole_r**2"
+    elif n and hole_r and edge_gap is not None:
+        n = int(n)
+        if n != 4:
+            # Four corners, four holes. Any other count needs a placement this
+            # cannot infer, and inventing one is the failure this module exists
+            # to prevent — so it is a question, not a guess.
+            raise GeneratorError(
+                f"a corner hole pattern has four holes, not {n}; "
+                "give a bolt circle diameter for any other count")
+        if edge_gap <= hole_r:
+            raise GeneratorError(
+                f"holes {hole_r * 2:g} mm across cannot sit {edge_gap:g} mm "
+                "from the corner without breaking the edge")
+        if edge_gap + hole_r >= min(L, W) / 2:
+            raise GeneratorError(
+                "the corner holes overlap at the centre of the plate")
+        v["hole_r"] = hole_r
+        v["gap"] = edge_gap
+        for sx, sy in ((1, 1), (-1, 1), (-1, -1), (1, -1)):
+            holes.append([f"{sx}*(L/2 - gap)", f"{sy}*(W/2 - gap)", "hole_r"])
+        area += " - 4*pi*hole_r**2"
+    elif hole_r and _num(req, "hole_pitch") is not None:
+        # A rectangular grid, centred on the plate. The counts come from the
+        # request because a pitch alone does not fix a pattern.
+        pitch = _num(req, "hole_pitch")
+        cols, rows = req.get("hole_cols"), req.get("hole_rows")
+        if not cols or not rows:
+            raise GeneratorError(
+                "a grid of holes needs how many across and how many down")
+        cols, rows = int(cols), int(rows)
+        if cols < 1 or rows < 1:
+            raise GeneratorError("a grid needs at least one hole each way")
+        span_x, span_y = (cols - 1) * pitch, (rows - 1) * pitch
+        if span_x + 2 * hole_r >= L or span_y + 2 * hole_r >= W:
+            raise GeneratorError(
+                f"a {cols} x {rows} grid at {pitch:g} mm pitch does not fit "
+                f"inside {L:g} x {W:g} mm")
+        v["hole_r"] = hole_r
+        v["pitch"] = pitch
+        # Written as multiples of ``pitch`` rather than as evaluated constants:
+        # the static check refuses a coordinate that references no variable, and
+        # it is right to — a grid baked into literals stops being parametric the
+        # moment anyone edits the spacing.
+        for i in range(cols):
+            for j in range(rows):
+                holes.append([f"{i - (cols - 1) / 2.0:.10f}*pitch",
+                              f"{j - (rows - 1) / 2.0:.10f}*pitch",
+                              "hole_r"])
+        area += f" - {cols * rows}*pi*hole_r**2"
 
     if holes:
         args = dict(profile["args"])
@@ -1192,7 +1248,196 @@ def manifold(req: dict) -> dict:
                       features, sketches, deps, inexact=inexact)
 
 
+def disc(req: dict) -> dict:
+    """Disc, optionally bored, optionally holed, extruded.
+
+    One family for the rotational half of the vocabulary: a washer is a bored
+    disc, a tube is a bored disc that is longer than it is wide, a flange is a
+    bored disc with a bolt circle, a grille is a disc with a hole grid. They
+    differ in proportion and in name, not in construction — so they share a
+    builder, and every cut lives in the pad profile where the area is exact.
+    """
+    # ``outer_d`` is a diameter, so ``interview.resolve`` has already halved it
+    # into ``outer_r``. Asserting the pre-resolution name finds nothing.
+    _assert_positive(req, ("outer_r", "thickness"))
+    R, T = _num(req, "outer_r"), _num(req, "thickness")
+
+    inexact: list[str] = []
+    v: dict[str, float] = {"R": R, "T": T}
+    holes: list[list[str]] = []
+    area = "pi*R**2"
+
+    bore_r = _num(req, "bore_r")
+    if bore_r:
+        if bore_r >= R:
+            raise GeneratorError(
+                f"a bore of {bore_r * 2:g} mm does not fit a "
+                f"{R * 2:g} mm disc")
+        v["bore_r"] = bore_r
+        area += " - pi*bore_r**2"
+
+    n = req.get("hole_count")
+    hole_r = _num(req, "hole_r")
+    pcd_r = _num(req, "pcd_r")
+    pitch = _num(req, "hole_pitch")
+    if n and hole_r and pcd_r:
+        n = int(n)
+        if n < 1:
+            raise GeneratorError("hole_count must be at least 1")
+        if pcd_r + hole_r >= R:
+            raise GeneratorError("the bolt circle does not fit on the disc")
+        if bore_r and pcd_r - hole_r <= bore_r:
+            raise GeneratorError("the bolt circle breaks into the centre bore")
+        v["hole_r"], v["pcd_r"] = hole_r, pcd_r
+        import math as _m
+        for i in range(n):
+            a = 2 * _m.pi * i / n
+            holes.append([f"pcd_r*{_m.cos(a):.10f}",
+                          f"pcd_r*{_m.sin(a):.10f}", "hole_r"])
+        area += f" - {n}*pi*hole_r**2"
+    elif hole_r and pitch is not None:
+        cols, rows = req.get("hole_cols"), req.get("hole_rows")
+        if not cols or not rows:
+            raise GeneratorError(
+                "a grid of holes needs how many across and how many down")
+        cols, rows = int(cols), int(rows)
+        v["hole_r"], v["pitch"] = hole_r, pitch
+        import math as _m
+        placed = 0
+        for i in range(cols):
+            for j in range(rows):
+                cx = (i - (cols - 1) / 2.0) * pitch
+                cy = (j - (rows - 1) / 2.0) * pitch
+                # A grid on a round face is clipped by the face. A hole that
+                # would hang over the rim is not silently moved — the pattern
+                # the user asked for does not fit and that is a refusal.
+                if _m.hypot(cx, cy) + hole_r >= R:
+                    raise GeneratorError(
+                        f"a {cols} x {rows} grid at {pitch:g} mm pitch does "
+                        f"not fit on a {R * 2:g} mm disc")
+                if bore_r and _m.hypot(cx, cy) - hole_r <= bore_r:
+                    raise GeneratorError(
+                        "the hole grid breaks into the centre bore")
+                holes.append([f"{i - (cols - 1) / 2.0:.10f}*pitch",
+                              f"{j - (rows - 1) / 2.0:.10f}*pitch", "hole_r"])
+                placed += 1
+        area += f" - {placed}*pi*hole_r**2"
+
+    if holes or bore_r:
+        args: dict = {"r": "R", "holes": holes}
+        if bore_r:
+            args["r_inner"] = "bore_r"
+        profile = {"builder": "disc_with_holes", "args": args}
+    else:
+        profile = {"builder": "circle", "args": {"r": "R"}}
+
+    features = [
+        {"id": "Body", "type": "Body", "parameters": {}},
+        {"id": "s_disc", "type": "Sketch", "parameters": {}},
+        {"id": "disc", "type": "Pad", "rationale": "disc blank, cuts in-profile",
+         "parameters": {"Length": "T", "Type": "Length"}},
+    ]
+    sketches = [{"id": "s_disc", "plane": "XY", "profile": profile}]
+    deps = [{"source": "s_disc", "target": "disc", "kind": "profile"}]
+    volume = f"({area})*T"
+    derivation = [{"step": 1, "eq": f"V = {volume}",
+                   "why": "disc blank with every through-cut in the pad profile"}]
+
+    assertions = [
+        _extent_assertion("dia_x", "x", "2*R"),
+        _extent_assertion("dia_y", "y", "2*R"),
+        _volume_assertion(volume, inexact),
+    ]
+    return _blueprint("disc", v, derivation, assertions,
+                      features, sketches, deps, inexact=inexact)
+
+
+def shelled_box(req: dict) -> dict:
+    """Open-topped box: a pad with one blind pocket.
+
+    Deliberately not a ``Thickness`` feature. Shelling is the idiomatic way to
+    say it and the wrong way to build it here: it produces a cavity whose volume
+    has to be predicted from the kernel's own offset rather than from the
+    request, and it re-authors every face so the topology layer can no longer
+    say which feature made one. A pad and a pocket give the same solid, an exact
+    closed form, and faces that keep their names.
+
+    Closed boxes are refused rather than approximated — a lid needs a second
+    body or a real shell, and neither is this.
+    """
+    _assert_positive(req, ("length", "width", "height", "wall"))
+    L, W, H = _num(req, "length"), _num(req, "width"), _num(req, "height")
+    wall = _num(req, "wall")
+    floor = _num(req, "floor")
+    if floor is None:
+        floor = wall
+    if floor <= 0:
+        raise GeneratorError("floor thickness must be positive")
+    if 2 * wall >= min(L, W):
+        raise GeneratorError(
+            f"{wall:g} mm walls leave no cavity in a {L:g} x {W:g} mm box")
+    if floor >= H:
+        raise GeneratorError(
+            f"a {floor:g} mm floor leaves no depth in a {H:g} mm box")
+
+    inexact: list[str] = []
+    # Not ``floor``: the expression language has a floor() built-in, and a
+    # variable of that name both shadows it and reads as unreferenced.
+    v: dict[str, float] = {"L": L, "W": W, "H": H, "wall": wall,
+                           "floor_t": floor}
+
+    corner_r = _num(req, "corner_radius")
+    if corner_r and corner_r > 0:
+        if corner_r > min(L, W) / 2:
+            raise GeneratorError(
+                f"corner radius {corner_r} exceeds half the shorter side")
+        v["cr"] = corner_r
+        outer_area = "(L*W - (4 - pi)*cr**2)"
+        outer = {"builder": "rounded_rect",
+                 "args": {"w": "L", "h": "W", "r": "cr"}}
+    else:
+        outer_area = "L*W"
+        outer = {"builder": "rect", "args": {"w": "L", "h": "W"}}
+
+    features = [
+        {"id": "Body", "type": "Body", "parameters": {}},
+        {"id": "s_box", "type": "Sketch", "parameters": {}},
+        {"id": "box", "type": "Pad", "rationale": "solid blank",
+         "parameters": {"Length": "H", "Type": "Length"}},
+        {"id": "s_cavity", "type": "Sketch", "parameters": {}},
+        {"id": "cavity", "type": "Pocket", "rationale": "shell out the inside",
+         "parameters": {"Length": "H - floor_t", "Type": "Length"}},
+    ]
+    sketches = [
+        {"id": "s_box", "plane": "XY", "profile": outer},
+        {"id": "s_cavity", "plane": "XY", "z": "H",
+         "profile": {"builder": "rect",
+                     "args": {"w": "L - 2*wall", "h": "W - 2*wall"}}},
+    ]
+    deps = [{"source": "s_box", "target": "box", "kind": "profile"},
+            {"source": "s_cavity", "target": "cavity", "kind": "profile"}]
+
+    volume = f"{outer_area}*H - (L - 2*wall)*(W - 2*wall)*(H - floor_t)"
+    derivation = [
+        {"step": 1, "eq": f"V_blank = {outer_area}*H",
+         "why": "solid blank before the cavity"},
+        {"step": 2, "eq": f"V = {volume}",
+         "why": "blind pocket from the top face leaves walls and a floor"},
+    ]
+
+    assertions = [
+        _extent_assertion("len_extent", "x", "L"),
+        _extent_assertion("wid_extent", "y", "W"),
+        _extent_assertion("ht_extent", "z", "H"),
+        _volume_assertion(volume, inexact),
+    ]
+    return _blueprint("shelled_box", v, derivation, assertions,
+                      features, sketches, deps, inexact=inexact)
+
+
 BUILDERS: dict[str, Callable[[dict], dict]] = {
+    "disc": disc,
+    "shelled_box": shelled_box,
     "rect_plate": rect_plate,
     "l_bracket": l_bracket,
     "bearing_housing": bearing_housing,
@@ -1210,6 +1455,11 @@ INFORMATIONAL = frozenset({
     "unsupported",
     "material", "bearing_series", "mounting_type",
     "thread", "hole_thread", "port_thread", "inlet_thread",
+    # A frame designation shapes nothing itself: ``interview.apply_standards``
+    # has already turned it into a face size, a bolt square and a screw, each
+    # with its citation. The name is kept so the plan records what the plate
+    # was sized to mount.
+    "motor_frame",
 })
 
 

@@ -72,7 +72,7 @@ def run_case(agent, case: dict) -> dict:
     row = {"id": case.get("id"), "category": case.get("category"),
            "prompt": case["prompt"], "verified": False, "built": False,
            "repaired": False, "attempts": 0, "verdict": None,
-           "part_class": "", "model": "", "error": None,
+           "part_class": "", "model": "", "error": None, "failure": "",
            "bbox_ok": None, "volume_ok": None, "volume_mm3": None,
            "checks": 0, "failed_checks": [], "elapsed_s": 0.0}
     try:
@@ -93,6 +93,7 @@ def run_case(agent, case: dict) -> dict:
         "part_class": bundle.get("part_class", ""),
         "model": bundle.get("model", ""),
         "error": bundle.get("error"),
+        "failure": bundle.get("failure") or "",
         "checks": len(report.get("checks") or []),
         "failed_checks": [c.get("id") for c in (report.get("failed") or [])],
         "volume_mm3": stats.get("volume_mm3"),
@@ -110,17 +111,48 @@ def run_case(agent, case: dict) -> dict:
     return row
 
 
-def summarise(rows: list[dict]) -> dict:
+def is_environment_failure(row: dict) -> bool:
+    """Did the deployment prevent this row from being attempted at all?
+
+    Report section 15: an unreachable endpoint is an ENVIRONMENT failure, not a
+    MODEL failure, and counting the two together understates the system. The
+    2026-07-31 run scored five "no model is reachable" rows as capability
+    failures, which is a real part of the gap between 36% and what the compiled
+    path actually does.
+
+    The failure class is authoritative; the error text is a fallback for rows
+    recorded before ``_failed_bundle`` carried the class.
+    """
+    if row.get("failure") == "model":
+        return True
+    err = (row.get("error") or "").lower()
+    return "no model is reachable" in err or "not currently being served" in err
+
+
+def summarise(rows: list[dict], deployment: dict = None) -> dict:
     n = len(rows)
     got = lambda k: sum(1 for r in rows if r[k])          # noqa: E731
     pct = lambda k: 100.0 * got(k) / n if n else 0.0      # noqa: E731
+    env = [r for r in rows if is_environment_failure(r)]
+    attempted = [r for r in rows if not is_environment_failure(r)]
+    att_verified = sum(1 for r in attempted if r["verified"])
     bbox = [r for r in rows if r["bbox_ok"] is not None]
     vol = [r for r in rows if r["volume_ok"] is not None]
     claims = [r for r in rows if r.get("stated_volume_agrees") is not None]
 
     summary = {
         "n": n,
+        # Stamped so a number can never be compared across deployments by
+        # accident: the same prompts on a served LoRA and on a fallback are
+        # measuring two different systems.
+        "deployment": deployment or {},
         "verified_pct": pct("verified"),
+        # Over the rows this deployment could actually attempt. Equal to
+        # ``verified_pct`` when nothing was blocked by the environment.
+        "attempted_n": len(attempted),
+        "verified_pct_attempted": (
+            100.0 * att_verified / len(attempted) if attempted else 0.0),
+        "environment_failed_n": len(env),
         "built_pct": pct("built"),
         "repaired_n": got("repaired"),
         "verified_without_repair": sum(
@@ -135,6 +167,11 @@ def summarise(rows: list[dict]) -> dict:
     print("\n" + "=" * 60)
     print(f"  prompts              {n}")
     print(f"  VERIFIED             {summary['verified_pct']:6.1f}%   <- headline")
+    if env:
+        print(f"  VERIFIED (attempted) {summary['verified_pct_attempted']:6.1f}%"
+              f"   <- excludes {len(env)} row(s) the deployment blocked")
+        print(f"  environment failures {len(env)}/{n}   "
+              f"(endpoint down / weights not served)")
     print(f"  built geometry       {summary['built_pct']:6.1f}%")
     print(f"  verified first try   {summary['verified_without_repair']}/{n}")
     print(f"  needed a repair turn {summary['repaired_n']}/{n}")
@@ -175,10 +212,22 @@ def main(argv=None) -> int:
     print(f"model {health.get('model')} via {health.get('provider')} "
           f"(ours: {health.get('serving_our_model')}) | "
           f"builder {health.get('builder')}/{health.get('builder_mode')}")
-    if not health.get("serving_our_model"):
-        print("REFUSING: the configured provider does not serve our weights; "
-              "a number measured on a fallback is not a number about this system")
-        return 2
+    # This used to refuse outright, on the grounds that a number measured on a
+    # fallback is not a number about this system. That was true when every
+    # Blueprint was authored by our weights. It is not true now: the four
+    # compiled families go through ``_deterministic``, which reads the request
+    # with whatever provider is up and then compiles the Blueprint in Python,
+    # so their result is provider-independent and *is* a number about this
+    # system. Refusing made the bench unrunnable for as long as the GPU stays
+    # down, which is how the headline came to be a month old.
+    #
+    # So: run, but stamp the deployment into the summary, and never let a row
+    # the deployment could not attempt be scored as a capability failure.
+    ours = bool(health.get("serving_our_model"))
+    if not ours:
+        print("NOTE: our weights are not being served. The compiled families "
+              "are still measured exactly; rows that need the fine-tuned "
+              "author are reported as environment failures, not as failures.")
 
     cases = [json.loads(line) for line in open(BENCH, encoding="utf-8")
              if line.strip()]
@@ -195,7 +244,12 @@ def main(argv=None) -> int:
         print(f"  [{mark}] {i:3d}/{len(cases)} {str(row['id'])[:24]:24s} "
               f"{row['elapsed_s']:5.1f}s{extra}", flush=True)
 
-    summary = summarise(rows)
+    summary = summarise(rows, deployment={
+        "provider": health.get("provider"),
+        "configured_model": health.get("configured_model"),
+        "serving_our_model": ours,
+        "builder": f"{health.get('builder')}/{health.get('builder_mode')}",
+    })
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     out = Path(args.out) if args.out else (

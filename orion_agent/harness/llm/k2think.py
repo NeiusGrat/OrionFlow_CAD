@@ -189,7 +189,16 @@ class K2ThinkClient(LLMClient):
         )
         # Transient network failures (DNS getaddrinfo blips, dropped sockets,
         # read timeouts, 5xx) shouldn't kill the whole agent turn — retry a few
-        # times with backoff. Auth/4xx errors are permanent, so don't retry them.
+        # times with backoff. Auth/4xx errors are permanent, so don't retry them
+        # — with one exception.
+        #
+        # 429 is the one 4xx that is explicitly transient: it means "you asked
+        # too fast", and HTTP defines ``Retry-After`` for exactly this. Lumping
+        # it in with 401/404 made a rate limit look like a dead endpoint, and
+        # the caller then put the provider on a 120 s cooldown — so a burst of
+        # requests (a benchmark run, or any busy minute) knocked the only
+        # provider out and every prompt behind it reported that no model was
+        # reachable. Retrying here costs one sleep; not retrying cost the run.
         attempts = 3
         last_exc: Exception | None = None
         for i in range(attempts):
@@ -197,9 +206,19 @@ class K2ThinkClient(LLMClient):
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     return json.loads(resp.read().decode("utf-8", "replace"))
             except urllib.error.HTTPError as exc:
-                if exc.code < 500 or i == attempts - 1:
+                retryable = exc.code >= 500 or exc.code == 429
+                if not retryable or i == attempts - 1:
                     raise
                 last_exc = exc
+                if exc.code == 429:
+                    # Honour the server's own pacing when it gives one. Capped:
+                    # a hostile or absent value must not stall the turn.
+                    try:
+                        wait = float(exc.headers.get("Retry-After") or 0)
+                    except (TypeError, ValueError):
+                        wait = 0.0
+                    time.sleep(min(max(wait, 2.0 * (i + 1)), 30.0))
+                    continue
             except (urllib.error.URLError, OSError, TimeoutError) as exc:
                 if i == attempts - 1:
                     raise

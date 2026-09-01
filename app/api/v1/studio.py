@@ -214,7 +214,10 @@ def studio_chat(
                 )
                 return
 
-            bundle = agent.design(request.message, on_event=on_event)
+            # The conversation, not just the latest line: an answer to the
+            # interview's question is meaningless on its own.
+            bundle = agent.design(request.message, on_event=on_event,
+                                  history=request.history)
             produced["bundle"] = bundle
             if not bundle.get("success"):
                 events.put(
