@@ -43,7 +43,13 @@ families:
       hole_count:    {ask: "How many mounting holes?", unit: "",
                       requires: [hole_d],
                       requires_any: [hole_edge_gap, pcd, hole_pitch]}
-      hole_d:        {ask: "Mounting hole diameter?", diameter: true}
+      # A hole that is named but never placed is the worst of both: the
+      # obligation is recorded, the builder has no coordinates so it cuts
+      # nothing, and fulfillment then refuses a part nobody was asked a
+      # question about. Measured: five of six families accepted "M8 holes"
+      # with no placement, asked nothing, and built a solid with none.
+      hole_d:        {ask: "Mounting hole diameter?", diameter: true,
+                      requires_any: [hole_edge_gap, pcd, hole_pitch]}
       pcd:           {ask: "Bolt circle diameter?", diameter: true}
       hole_edge_gap: {ask: "How far in from each corner are the mounting holes?"}
       # The third placement: a rectangular grid. Spacing alone does not fix a
@@ -53,7 +59,8 @@ families:
                       requires: [hole_cols, hole_rows]}
       hole_cols:     {ask: "How many holes across?", unit: ""}
       hole_rows:     {ask: "How many holes down?", unit: ""}
-      thread:        {ask: "Mounting thread size?", unit: "", text: true}
+      thread:        {ask: "Mounting thread size?", unit: "", text: true,
+                      requires_any: [hole_edge_gap, pcd, hole_pitch]}
       pocket_l:      {ask: "Pocket length?", requires: [pocket_w, pocket_depth]}
       pocket_w:      {ask: "Pocket width?"}
       pocket_depth:  {ask: "Pocket depth?"}
@@ -78,13 +85,15 @@ families:
       bore_d:        {ask: "Centre bore diameter?", diameter: true}
       hole_count:    {ask: "How many mounting holes?", unit: "",
                       requires: [hole_d], requires_any: [pcd, hole_pitch]}
-      hole_d:        {ask: "Mounting hole diameter?", diameter: true}
+      hole_d:        {ask: "Mounting hole diameter?", diameter: true,
+                      requires_any: [pcd, hole_pitch]}
       pcd:           {ask: "Bolt circle diameter?", diameter: true}
       hole_pitch:    {ask: "How far apart are the holes?",
                       requires: [hole_cols, hole_rows]}
       hole_cols:     {ask: "How many holes across?", unit: ""}
       hole_rows:     {ask: "How many holes down?", unit: ""}
-      thread:        {ask: "Mounting thread size?", unit: "", text: true}
+      thread:        {ask: "Mounting thread size?", unit: "", text: true,
+                      requires_any: [pcd, hole_pitch]}
 
   # Open-topped boxes: enclosures, trays, shelled blocks. Built as a pad with a
   # blind pocket rather than a Thickness feature, so the cavity has an exact
@@ -143,8 +152,10 @@ families:
       shoulder:       {ask: "Locating shoulder width?"}
       recess_d:       {ask: "Flange recess diameter?", diameter: true, requires: [recess_depth]}
       recess_depth:   {ask: "Flange recess depth?"}
-      hole_d:         {ask: "Mounting hole diameter?", diameter: true}
-      thread:         {ask: "Mounting thread size?", unit: "", text: true}
+      hole_d:         {ask: "Mounting hole diameter?", diameter: true,
+                       requires_any: [hole_pitch_x, hole_pitch_y]}
+      thread:         {ask: "Mounting thread size?", unit: "", text: true,
+                       requires_any: [hole_pitch_x, hole_pitch_y]}
       hole_pitch_x:   {ask: "Hole spacing along the length?"}
       hole_pitch_y:   {ask: "Hole spacing across the width?"}
       fillet:         {ask: "Fillet radius where the feet meet the body?"}

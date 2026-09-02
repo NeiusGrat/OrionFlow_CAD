@@ -944,21 +944,43 @@ def bearing_housing(req: dict) -> dict:
 
     hole_r = _num(req, "hole_r")
     px, py = _num(req, "hole_pitch_x"), _num(req, "hole_pitch_y")
-    if hole_r and px and py:
-        if px / 2 + hole_r >= L / 2 or py / 2 + hole_r >= W / 2:
+    # ``and px and py`` here required BOTH pitches, which silently dropped the
+    # commonest bearing housing there is: a pillow block carries two bolts, one
+    # either side of the shaft, so only a length pitch is ever stated. The
+    # pattern was skipped entirely and the part came out a plain block — after
+    # the holes had been asked for, extracted and sized by ISO 273. Everything
+    # downstream then did its job: fulfillment found no cylinders of radius 4.5
+    # and refused a part the user had fully specified. Four holes need two
+    # pitches; two holes need one.
+    if hole_r and (px or py):
+        if px and px / 2 + hole_r >= L / 2:
             raise GeneratorError(
-                f"a {px} x {py} hole pattern runs off a {L} x {W} housing")
-        if (px / 2 - hole_r) ** 2 + (py / 2 - hole_r) ** 2 < R * R:
+                f"a {px} mm hole pitch runs off a {L} mm long housing")
+        if py and py / 2 + hole_r >= W / 2:
+            raise GeneratorError(
+                f"a {py} mm hole pitch runs off a {W} mm wide housing")
+        if px and py:
+            clear = (px / 2 - hole_r) ** 2 + (py / 2 - hole_r) ** 2 >= R * R
+        else:
+            # One pitch puts the pair on an axis through the seat centre, so
+            # the clearance is a plain centre distance rather than the corner
+            # form above. Kept separate so the four-hole case is untouched.
+            clear = (max(px or 0.0, py or 0.0) / 2.0) - hole_r >= R
+        if not clear:
             raise GeneratorError(
                 "the mounting holes run into the bearing seat; that "
                 "intersection has no closed form here")
         v["hole_r"] = hole_r
-        v["pitch_x"] = px / 2.0
-        v["pitch_y"] = py / 2.0
-        for sx in ("-", "+"):
-            for sy in ("-", "+"):
-                holes.append([f"{sx}pitch_x", f"{sy}pitch_y", "hole_r"])
-        terms.append("4*pi*hole_r**2*H")
+        xs = ["-pitch_x", "+pitch_x"] if px else ["0"]
+        ys = ["-pitch_y", "+pitch_y"] if py else ["0"]
+        if px:
+            v["pitch_x"] = px / 2.0
+        if py:
+            v["pitch_y"] = py / 2.0
+        for sx in xs:
+            for sy in ys:
+                holes.append([sx, sy, "hole_r"])
+        terms.append(f"{len(xs) * len(ys)}*pi*hole_r**2*H")
 
     profile = ({"builder": "rect_with_holes",
                 "args": {"w": "L", "h": "W", "holes": holes}} if holes

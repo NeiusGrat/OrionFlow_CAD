@@ -36,6 +36,13 @@ def _usage_of(body: dict) -> dict:
     }
 
 
+#: Seconds to wait after each successive 429, floor-first. See ``_post`` for
+#: why the server's own ``Retry-After`` is a ceiling on these rather than the
+#: value used: this gateway sends 60 unconditionally and recovers in under 0.5s.
+#: Worst case across all attempts is ~15s, against 30s for a single old retry.
+_RATE_LIMIT_BACKOFF = (1.0, 2.0, 4.0, 8.0)
+
+
 class K2ThinkClient(LLMClient):
     supports_vision = False            # text-only reasoning model
     supports_native_tools = False      # tool calls via prompt protocol
@@ -199,7 +206,21 @@ class K2ThinkClient(LLMClient):
         # requests (a benchmark run, or any busy minute) knocked the only
         # provider out and every prompt behind it reported that no model was
         # reachable. Retrying here costs one sleep; not retrying cost the run.
-        attempts = 3
+        #
+        # How long that sleep should be is a separate question, and honouring
+        # the header was the wrong answer. This gateway sends a blanket
+        # ``Retry-After: 60`` on every 429 regardless of state. The limiter
+        # actually refills in under half a second — measured 2026-09-02: trip a
+        # 429, wait 0.5s, the next request returns 200, as it does at 1s, 2s and
+        # 3s. Two back-to-back calls is exactly what one studio turn makes, so
+        # the second reliably tripped it and then slept the old 30s cap. A
+        # flange took 37.8s of which 30.0s was this sleep and 3.5s was the
+        # model. It read as "K2-Think is slow"; it was us waiting.
+        #
+        # So the header is treated as a ceiling rather than an instruction, and
+        # the floor is a normal geometric backoff. A server that ever sends a
+        # *smaller* Retry-After is still obeyed exactly.
+        attempts = 5
         last_exc: Exception | None = None
         for i in range(attempts):
             try:
@@ -211,13 +232,14 @@ class K2ThinkClient(LLMClient):
                     raise
                 last_exc = exc
                 if exc.code == 429:
-                    # Honour the server's own pacing when it gives one. Capped:
-                    # a hostile or absent value must not stall the turn.
                     try:
                         wait = float(exc.headers.get("Retry-After") or 0)
                     except (TypeError, ValueError):
                         wait = 0.0
-                    time.sleep(min(max(wait, 2.0 * (i + 1)), 30.0))
+                    step = _RATE_LIMIT_BACKOFF[
+                        min(i, len(_RATE_LIMIT_BACKOFF) - 1)
+                    ]
+                    time.sleep(min(wait, step) if wait > 0 else step)
                     continue
             except (urllib.error.URLError, OSError, TimeoutError) as exc:
                 if i == attempts - 1:

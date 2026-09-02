@@ -1377,3 +1377,76 @@ def test_every_schema_question_names_exactly_one_field():
         for slot in list(fam.required) + list(fam.optional):
             key = slot.prompt.strip().lower()
             assert seen.setdefault(key, slot.name) == slot.name, key
+
+
+# --------------------------------------------------------------------------- #
+# a named hole must be a placed hole
+# --------------------------------------------------------------------------- #
+def test_a_two_bolt_pillow_block_gets_two_bolts():
+    """The commonest bearing housing there is, and it built as a plain block.
+
+    `bearing_housing` required BOTH `hole_pitch_x` and `hole_pitch_y` before it
+    would place anything, but a pillow block carries two bolts either side of
+    the shaft and states one pitch. The pattern was skipped silently — after the
+    holes had been asked for, extracted, and sized by ISO 273 — and fulfillment
+    then refused a fully specified part for containing no cylinders of radius
+    4.5 mm.
+    """
+    req = interview.resolve("bearing_housing", {
+        "length": 100, "width": 60, "height": 50, "bore_d": 42,
+        "seat_depth": 12, "thread": "M8", "hole_pitch_x": 70, "hole_d": 9.0})
+    bp = blueprint_gen.BUILDERS["bearing_housing"](req)
+
+    holes = bp["template"]["sketches"][0]["profile"]["args"]["holes"]
+    assert len(holes) == 2, holes
+    assert {h[0] for h in holes} == {"-pitch_x", "+pitch_x"}
+    assert {h[1] for h in holes} == {"0"}, "one pitch means the pair sits on an axis"
+    assert bp["variables"]["pitch_x"] == 35.0
+    assert "pitch_y" not in bp["variables"]
+    # The volume claim has to count the holes it actually cut, not four.
+    assert "2*pi*hole_r**2*H" in str(bp["assertions"])
+
+
+def test_a_four_bolt_housing_is_unchanged():
+    req = interview.resolve("bearing_housing", {
+        "length": 120, "width": 90, "height": 50, "bore_d": 42,
+        "seat_depth": 12, "hole_d": 9.0, "hole_pitch_x": 90, "hole_pitch_y": 60})
+    bp = blueprint_gen.BUILDERS["bearing_housing"](req)
+
+    holes = bp["template"]["sketches"][0]["profile"]["args"]["holes"]
+    assert len(holes) == 4, holes
+    assert "4*pi*hole_r**2*H" in str(bp["assertions"])
+
+
+def test_a_single_pitch_that_hits_the_seat_is_refused_not_fudged():
+    """Two holes on one axis sit a plain centre distance from the seat, so the
+    corner-form clearance test does not apply to them."""
+    req = interview.resolve("bearing_housing", {
+        "length": 100, "width": 60, "height": 50, "bore_d": 42,
+        "seat_depth": 12, "hole_d": 9.0, "hole_pitch_x": 44})
+    with pytest.raises(blueprint_gen.GeneratorError, match="bearing seat"):
+        blueprint_gen.BUILDERS["bearing_housing"](req)
+
+
+@pytest.mark.parametrize("family, slots, expected", [
+    ("rect_plate", dict(length=100, width=60, thickness=6), "hole_edge_gap"),
+    ("disc", dict(outer_d=80, thickness=6), "pcd"),
+    ("bearing_housing", dict(length=80, width=60, height=45, bore_d=42,
+                             seat_depth=12), "hole_pitch_x"),
+])
+def test_naming_a_thread_without_a_placement_asks_where(family, slots, expected):
+    """A hole named but never placed is the worst of both outcomes: the
+    obligation is recorded, the builder has no coordinates so it cuts nothing,
+    and fulfillment refuses a part the user was never asked a question about.
+    Measured before the fix: five of six families accepted "M8 holes" with no
+    placement, asked nothing, and built a solid with none."""
+    s = dict(slots, thread="M8")
+    s, _ = interview.apply_standards(s)
+    assert expected in [g.name for g in interview.missing(family, s)]
+
+
+def test_a_placed_hole_asks_nothing_further():
+    """The guard must not start interrogating requests that are already whole."""
+    done = dict(length=100, width=60, thickness=6,
+                hole_count=4, hole_d=5.5, hole_edge_gap=10)
+    assert interview.missing("rect_plate", done) == []
