@@ -1450,3 +1450,87 @@ def test_a_placed_hole_asks_nothing_further():
     done = dict(length=100, width=60, thickness=6,
                 hole_count=4, hole_d=5.5, hole_edge_gap=10)
     assert interview.missing("rect_plate", done) == []
+
+
+# --------------------------------------------------------------------------- #
+# l_bracket: holes in the base, not only on the upright
+# --------------------------------------------------------------------------- #
+def _bracket(**extra):
+    return interview.resolve("l_bracket", dict({
+        "base_length": 100, "base_width": 80, "base_thickness": 6,
+        "upright_height": 90, "upright_thickness": 6}, **extra))
+
+
+def test_a_shelf_bracket_gets_holes_in_the_base():
+    """`bolt_square` places the motor interface on the UPRIGHT and was the only
+    placement this family had. A shelf or angle bracket bolts down through its
+    BASE, so its holes had nowhere to go: the profile stayed a plain rect and
+    the part was built without them."""
+    bp = blueprint_gen.BUILDERS["l_bracket"](_bracket(hole_d=9.0,
+                                                      base_hole_pitch_x=60))
+    base = bp["template"]["sketches"][0]
+    assert base["id"] == "s_base"
+    assert base["profile"]["builder"] == "rect_with_holes"
+    holes = base["profile"]["args"]["holes"]
+    assert len(holes) == 2, holes
+    assert {h[0] for h in holes} == {"BL/2 - base_half_x", "BL/2 + base_half_x"}
+    assert bp["variables"]["base_half_x"] == 30.0
+    vol = [a for a in bp["assertions"] if a["kind"] == "body_volume"][0]["target"]
+    assert vol.endswith("- 2*pi*hole_r**2*BT"), vol
+
+
+def test_both_base_pitches_give_four_holes():
+    bp = blueprint_gen.BUILDERS["l_bracket"](_bracket(
+        hole_d=9.0, base_hole_pitch_x=60, base_hole_pitch_y=50))
+    holes = bp["template"]["sketches"][0]["profile"]["args"]["holes"]
+    assert len(holes) == 4, holes
+    vol = [a for a in bp["assertions"] if a["kind"] == "body_volume"][0]["target"]
+    assert "4*pi*hole_r**2*BT" in vol
+
+
+def test_a_base_hole_under_the_upright_is_refused():
+    """A hole under the standing plate is an interference, and its volume term
+    would be wrong as well as its geometry."""
+    with pytest.raises(blueprint_gen.GeneratorError, match="under the upright"):
+        blueprint_gen.BUILDERS["l_bracket"](_bracket(
+            hole_d=9.0, base_hole_pitch_x=82))
+
+
+def test_base_holes_survive_the_counterbore_volume_rebuild():
+    """The counterbore branch rebuilds `volume` from scratch rather than
+    appending to it. Subtracting the base holes before that point would be
+    silently discarded, and the claim would overstate the solid by exactly
+    those holes — a volume assertion that fails for no visible reason."""
+    bp = blueprint_gen.BUILDERS["l_bracket"](_bracket(
+        hole_d=9.0, bolt_square=31, cbore_d=15.0, cbore_depth=3.0,
+        base_hole_pitch_x=60))
+    vol = [a for a in bp["assertions"] if a["kind"] == "body_volume"][0]["target"]
+    assert "cbore_d" in vol, "expected the counterbored form"
+    assert "2*pi*hole_r**2*BT" in vol, vol
+
+
+@pytest.mark.parametrize("family, slots, placement", [
+    ("rect_plate", dict(length=100, width=60, thickness=6), {"hole_edge_gap": 10}),
+    ("rect_plate", dict(length=100, width=60, thickness=6), {"pcd": 60}),
+    ("disc", dict(outer_d=80, thickness=6), {"pcd": 60}),
+    ("bearing_housing", dict(length=100, width=60, height=50, bore_d=42,
+                             seat_depth=12), {"hole_pitch_x": 70}),
+    ("l_bracket", dict(base_length=100, base_width=80, base_thickness=6,
+                       upright_height=90, upright_thickness=6),
+     {"base_hole_pitch_x": 60}),
+    ("l_bracket", dict(base_length=100, base_width=80, base_thickness=6,
+                       upright_height=90, upright_thickness=6),
+     {"bolt_square": 31}),
+])
+def test_a_placement_with_no_diameter_asks_for_one(family, slots, placement):
+    """The other half of the pair, and it was missing.
+
+    A stated hole size demanded a position; a stated position demanded no size.
+    Measured on a shelf bracket whose "two M8 clearance holes ... 60 mm apart"
+    lost the M8 in extraction: the pitch was read, it claimed the 60 so the
+    unaccounted-dimension guard stayed quiet, no diameter meant no obligation,
+    and a bracket with no holes was graded VERIFIED.
+    """
+    assert "hole_d" in [
+        g.name for g in interview.missing(family, dict(slots, **placement))
+    ]

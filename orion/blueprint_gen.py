@@ -639,6 +639,54 @@ def l_bracket(req: dict) -> dict:
                                  f"0 {sv} bolt_half", "hole_r"])
         cuts.append("4*pi*hole_r**2")
 
+    # ---- mounting holes through the base plate ---------------------------- #
+    #
+    # ``bolt_square`` above places the motor interface on the *upright*. It was
+    # the only placement this family had, so a shelf or angle bracket — whose
+    # holes go through the *base*, because that is the face bolted down — had
+    # nowhere to put them. The obligation was still recorded from the thread,
+    # the base profile stayed a plain rect, and fulfillment then refused a part
+    # the user had fully specified without a question ever being asked.
+    #
+    # Cut in the base's own profile for the reason the upright's are: an
+    # in-profile hole has never mis-cut here, and a Pocket at this scale has.
+    # One pitch puts two holes on an axis, both put four — the pillow-block
+    # rule, because a bracket bolted through two holes is as common as four.
+    base_holes: list[list[str]] = []
+    base_cut = ""
+    bpx, bpy = _num(req, "base_hole_pitch_x"), _num(req, "base_hole_pitch_y")
+    if hole_r and (bpx or bpy):
+        if hole_r <= 0:
+            raise GeneratorError("mounting hole radius must be positive")
+        if bpx and bpx / 2.0 + hole_r >= BL / 2.0:
+            raise GeneratorError(
+                f"a {bpx} mm hole pitch runs off a {BL} mm base plate")
+        if bpy and bpy / 2.0 + hole_r >= BW / 2.0:
+            raise GeneratorError(
+                f"a {bpy} mm hole pitch runs off a {BW} mm wide base")
+        # The upright stands on x=0..UT. A hole under it is not a hole, it is
+        # an interference, and its volume term would be wrong as well.
+        if BL / 2.0 - (bpx / 2.0 if bpx else 0.0) - hole_r <= UT:
+            raise GeneratorError(
+                "the base holes run under the upright; move them or lengthen "
+                "the base")
+        v["hole_r"] = hole_r
+        xs = ["BL/2 - base_half_x", "BL/2 + base_half_x"] if bpx else ["BL/2"]
+        ys = ["-base_half_y", "+base_half_y"] if bpy else ["0"]
+        if bpx:
+            v["base_half_x"] = bpx / 2.0
+        if bpy:
+            v["base_half_y"] = bpy / 2.0
+        for bx in xs:
+            for by in ys:
+                base_holes.append([bx, by, "hole_r"])
+        n_base = len(xs) * len(ys)
+        # Recorded, not applied: the counterbore branch below rebuilds
+        # ``volume`` from scratch rather than appending to it, so subtracting
+        # here would be silently discarded for any counterbored bracket and the
+        # claim would overstate the solid by exactly these holes.
+        base_cut = f"{n_base}*pi*hole_r**2*BT"
+
     # ---- counterbores, as a thickness split rather than a cut ------------- #
     #
     # A counterbored plate is two plates: a thin one at the face carrying the
@@ -716,8 +764,12 @@ def l_bracket(req: dict) -> dict:
     ]
     sketches = [
         {"id": "s_base", "plane": "XY",
-         "profile": {"builder": "rect",
-                     "args": {"w": "BL", "h": "BW", "cx": "BL/2", "cy": "0"}}},
+         "profile": ({"builder": "rect_with_holes",
+                      "args": {"w": "BL", "h": "BW", "cx": "BL/2", "cy": "0",
+                               "holes": base_holes}} if base_holes
+                     else {"builder": "rect",
+                           "args": {"w": "BL", "h": "BW", "cx": "BL/2",
+                                    "cy": "0"}})},
     ]
     deps = [{"source": "s_base", "target": "base", "kind": "profile"}]
 
@@ -772,6 +824,13 @@ def l_bracket(req: dict) -> dict:
                 "why": "pilot bore and mounting holes through the upright, cut "
                        "in its own profile and clear of the base"})
 
+
+    if base_cut:
+        volume = f"{volume} - {base_cut}"
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": "mounting holes through the base plate, cut in its own "
+                   "profile and clear of the upright"})
 
     # ---- gusset fillet at the joint --------------------------------------- #
     #

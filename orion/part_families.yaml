@@ -50,13 +50,22 @@ families:
       # with no placement, asked nothing, and built a solid with none.
       hole_d:        {ask: "Mounting hole diameter?", diameter: true,
                       requires_any: [hole_edge_gap, pcd, hole_pitch]}
-      pcd:           {ask: "Bolt circle diameter?", diameter: true}
-      hole_edge_gap: {ask: "How far in from each corner are the mounting holes?"}
+      # Every placement slot requires the diameter it places. The pair was
+      # only enforced one way: a stated hole size demanded a position, but a
+      # stated position demanded no size. Measured on a shelf bracket whose
+      # "two M8 holes ... 60 mm apart" lost the M8 in extraction — the pitch
+      # was read, claimed the 60 so the unaccounted-dimension guard stayed
+      # quiet, raised no obligation because no diameter existed, and the
+      # bracket was built with no holes and graded VERIFIED.
+      pcd:           {ask: "Bolt circle diameter?", diameter: true,
+                      requires: [hole_d]}
+      hole_edge_gap: {ask: "How far in from each corner are the mounting holes?",
+                      requires: [hole_d]}
       # The third placement: a rectangular grid. Spacing alone does not fix a
       # pattern — nine holes at 30 mm could be 3x3 or 9x1 — so the counts are
       # asked for rather than factored out of hole_count.
       hole_pitch:    {ask: "How far apart are the holes?",
-                      requires: [hole_cols, hole_rows]}
+                      requires: [hole_cols, hole_rows, hole_d]}
       hole_cols:     {ask: "How many holes across?", unit: ""}
       hole_rows:     {ask: "How many holes down?", unit: ""}
       thread:        {ask: "Mounting thread size?", unit: "", text: true,
@@ -87,9 +96,10 @@ families:
                       requires: [hole_d], requires_any: [pcd, hole_pitch]}
       hole_d:        {ask: "Mounting hole diameter?", diameter: true,
                       requires_any: [pcd, hole_pitch]}
-      pcd:           {ask: "Bolt circle diameter?", diameter: true}
+      pcd:           {ask: "Bolt circle diameter?", diameter: true,
+                      requires: [hole_d]}
       hole_pitch:    {ask: "How far apart are the holes?",
-                      requires: [hole_cols, hole_rows]}
+                      requires: [hole_cols, hole_rows, hole_d]}
       hole_cols:     {ask: "How many holes across?", unit: ""}
       hole_rows:     {ask: "How many holes down?", unit: ""}
       thread:        {ask: "Mounting thread size?", unit: "", text: true,
@@ -125,9 +135,19 @@ families:
       upright_width:  {ask: "How wide is the vertical plate?"}
       inside_fillet:  {ask: "Inside fillet radius at the joint?"}
       bore_d:         {ask: "Pilot bore diameter on the vertical plate?", diameter: true}
-      hole_d:         {ask: "Mounting hole diameter?", diameter: true}
-      thread:         {ask: "Mounting thread size?", unit: "", text: true}
-      bolt_square:    {ask: "Square bolt pattern spacing?"}
+      # ``bolt_square`` places the motor interface on the UPRIGHT. It was the
+      # only placement this family had, so a shelf or angle bracket — whose
+      # holes go through the BASE so it can be bolted down — had nowhere to put
+      # them, and named holes went uncut.
+      hole_d:         {ask: "Mounting hole diameter?", diameter: true,
+                       requires_any: [bolt_square, base_hole_pitch_x,
+                                      base_hole_pitch_y]}
+      thread:         {ask: "Mounting thread size?", unit: "", text: true,
+                       requires_any: [bolt_square, base_hole_pitch_x,
+                                      base_hole_pitch_y]}
+      bolt_square:    {ask: "Square bolt pattern spacing?", requires: [hole_d]}
+      base_hole_pitch_x: {ask: "Hole spacing along the base?", requires: [hole_d]}
+      base_hole_pitch_y: {ask: "Hole spacing across the base?", requires: [hole_d]}
       cbore_d:        {ask: "Counterbore diameter?", diameter: true, requires: [cbore_depth]}
       cbore_depth:    {ask: "Counterbore depth?"}
       slot_length:    {ask: "Mounting slot length?"}
@@ -156,8 +176,8 @@ families:
                        requires_any: [hole_pitch_x, hole_pitch_y]}
       thread:         {ask: "Mounting thread size?", unit: "", text: true,
                        requires_any: [hole_pitch_x, hole_pitch_y]}
-      hole_pitch_x:   {ask: "Hole spacing along the length?"}
-      hole_pitch_y:   {ask: "Hole spacing across the width?"}
+      hole_pitch_x:   {ask: "Hole spacing along the length?", requires: [hole_d]}
+      hole_pitch_y:   {ask: "Hole spacing across the width?", requires: [hole_d]}
       fillet:         {ask: "Fillet radius where the feet meet the body?"}
       chamfer:        {ask: "Edge chamfer size?"}
 
@@ -175,7 +195,8 @@ families:
       port_d:        {ask: "Port tapping drill diameter?", diameter: true}
       inlet_thread:  {ask: "Inlet thread size?", unit: "", text: true}
       hole_d:        {ask: "Mounting hole diameter?", diameter: true, requires: [hole_edge_gap]}
-      hole_edge_gap: {ask: "How far are the mounting holes from the block edge?"}
+      hole_edge_gap: {ask: "How far are the mounting holes from the block edge?",
+                     requires: [hole_d]}
       thread:        {ask: "Mounting thread size?", unit: "", text: true}
       cbore_d:       {ask: "Counterbore diameter?", diameter: true, requires: [cbore_depth]}
       cbore_depth:   {ask: "Counterbore depth?"}
