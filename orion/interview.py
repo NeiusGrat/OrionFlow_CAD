@@ -344,6 +344,68 @@ def question_for(slot: Slot) -> str:
     return slot.prompt
 
 
+def _by_question() -> dict[str, Slot]:
+    """Every schema question, mapped back to the slot that asked it.
+
+    Exact lookup rather than a parse, because ``question_for`` returns
+    ``Slot.prompt`` verbatim. Across all families the prompts are distinct, so a
+    question names exactly one field; the first family to claim a phrasing wins
+    and the rest agree with it.
+    """
+    idx: dict[str, Slot] = {}
+    for fam in FAMILIES.values():
+        for slot in list(fam.required) + list(fam.optional):
+            idx.setdefault(slot.prompt.strip().lower(), slot)
+    return idx
+
+
+#: An answer that carries a value and no field name. Deliberately narrow: a
+#: reply long enough to be a sentence is left alone, because it can say which
+#: dimension it means and a prefix would only fight it.
+_BARE_QUANTITY = re.compile(
+    r"^[~<>=]?\s*\d+(?:\.\d+)?\s*(?:mm|cm|m|in|inch|inches)?$", re.I
+)
+_BARE_WORD = re.compile(r"^[A-Za-z][\w .+-]{0,23}$")
+
+
+def phrase_answer(question: str, answer: str) -> str:
+    """Restate a bare answer as the field it answers.
+
+    "6 mm" replying to "How thick should it be?" names no field, and the
+    extraction that reads the merged turn has nothing to bind it to. Measured:
+    the value was dropped entirely, so the same question came back *and*
+    ``unclaimed_lengths`` reported "the request mentions 6 mm and I have not
+    used it anywhere" — the system asking about the number it had just asked
+    for. Answering a question has to advance the interview or the interview is
+    a loop.
+
+    The binding is known in Python and is not the model's to guess: the
+    question came from the schema, so the field it asked about is exact. Only
+    an answer with no field name of its own is rewritten, and only when the
+    turn asked one question — two questions and one bare number is genuinely
+    ambiguous, and inventing a binding there would be worse than asking again.
+    """
+    answer = (answer or "").strip()
+    if not answer or not question:
+        return answer
+    idx = _by_question()
+    asked = [
+        slot
+        for line in question.splitlines()
+        for slot in [idx.get(line.strip().lower())]
+        if slot is not None
+    ]
+    if len(asked) != 1:
+        return answer
+    slot = asked[0]
+    if slot.name in answer.lower():
+        return answer
+    pattern = _BARE_WORD if slot.text else _BARE_QUANTITY
+    if not pattern.match(answer):
+        return answer
+    return f"{slot.name}: {answer}"
+
+
 def open_questions(iv: "Interview") -> list[str]:
     """Everything standing between this request and a build.
 

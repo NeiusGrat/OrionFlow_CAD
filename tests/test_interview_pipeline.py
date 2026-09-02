@@ -1324,3 +1324,56 @@ def test_a_centre_hole_inside_a_bore_is_still_refused():
 
     with pytest.raises(P.ProfileError, match="bore"):
         P.build("disc_with_holes", r=35, r_inner=8, holes=[(0, 0, 2)])
+
+
+def test_a_bare_answer_is_bound_to_the_field_that_asked_for_it():
+    """Answering a question must advance the interview, not restart it.
+
+    Measured before the fix: "6 mm" replying to "How thick should it be?" was
+    joined to the request as a bare number, the extraction placed it nowhere,
+    and the turn came back with *both* the same question and "the request
+    mentions 6 mm and I have not used it anywhere" — the system asking about
+    the number it had just asked for. The binding is in the schema, so it is
+    decided in Python rather than left to the model.
+    """
+    from app.services.studio_agent import _carry_forward
+
+    history = [
+        {"role": "user", "content": "a mounting plate for a NEMA 17 stepper"},
+        {"role": "assistant", "content": "How thick should it be?"},
+    ]
+    assert _carry_forward(history, "6 mm").endswith("thickness: 6 mm")
+
+
+def test_an_answer_that_names_its_own_field_is_left_alone():
+    """A sentence can say which dimension it means; a prefix would fight it."""
+    from app.services.studio_agent import _carry_forward
+
+    history = [{"role": "assistant", "content": "How thick should it be?"}]
+    assert _carry_forward(history, "make it 6 mm thick") == "make it 6 mm thick"
+
+
+def test_two_questions_and_one_number_is_not_guessed():
+    """Inventing a binding is worse than asking again."""
+    from app.services.studio_agent import _carry_forward
+
+    history = [
+        {
+            "role": "assistant",
+            "content": "How thick should it be?\nHow many mounting holes?",
+        }
+    ]
+    assert _carry_forward(history, "6 mm") == "6 mm"
+
+
+def test_every_schema_question_names_exactly_one_field():
+    """`phrase_answer` is an exact lookup, which only holds while the prompts
+    stay distinct. A phrasing reused for two different fields would silently
+    bind answers to whichever family loaded first."""
+    from orion import interview
+
+    seen: dict[str, str] = {}
+    for fam in interview.FAMILIES.values():
+        for slot in list(fam.required) + list(fam.optional):
+            key = slot.prompt.strip().lower()
+            assert seen.setdefault(key, slot.name) == slot.name, key

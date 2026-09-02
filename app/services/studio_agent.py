@@ -35,9 +35,11 @@ logger = get_logger(__name__)
 
 EventSink = Optional[Callable[[str, dict], None]]
 
-#: Providers that serve OUR fine-tuned weights. Anything else is somebody
-#: else's model and must be labelled as a fallback, however well it answers.
-OURS = ("vllm", "openai")
+#: Providers that talk to an endpoint WE run — an OpenAI-compatible vLLM
+#: server. This is a *transport* fact and nothing more: it says the API accepts
+#: ``model=`` naming one of several adapters served side by side. It says
+#: nothing about who trained the weights behind it.
+OUR_ENDPOINT = ("vllm", "openai")
 
 
 #: Which model answers questions. Our LoRA is trained to reply to everything
@@ -52,6 +54,38 @@ CONVERSATION_MODEL = os.environ.get("ORION_CONVERSATION_MODEL", "orionflow-base"
 #: copilot silently generates geometry with untuned weights — a failure that
 #: looks like the fine-tune regressing rather than like a config error.
 DESIGN_MODEL = os.environ.get("ORION_DESIGN_MODEL", "orionflow")
+
+#: The adapter names our endpoint serves when the weights behind it are OURS:
+#: the LoRA and the untouched base alongside it. Overridable because the served
+#: names are a deployment decision, but the distinction they encode is not.
+#:
+#: A stock open model behind our own vLLM — a Modal-managed Qwen, say — makes
+#: the transport ours and the training somebody else's, and that gap is exactly
+#: where the two used to be conflated. Three things turn on it: the label the
+#: UI shows, ``serving_our_model`` in health, and the gate that lets a model
+#: author a Blueprint unaided. Only the LoRA was ever trained for the last one;
+#: a stock model asked to try spends two sampling rounds arriving at "no
+#: Blueprint JSON in completion", which is the outcome the deterministic path
+#: was built to replace. Sending an adapter name to an endpoint that does not
+#: serve it is a 404 on top.
+OUR_ADAPTERS = frozenset(
+    name.strip()
+    for name in os.environ.get(
+        "ORION_OUR_ADAPTERS", "orionflow,orionflow-base"
+    ).split(",")
+    if name.strip()
+)
+
+
+def serving_fine_tune(provider: str) -> bool:
+    """Whether ``provider`` is serving weights we trained.
+
+    Both halves are required, and neither implies the other: our endpoint
+    serving stock Qwen is not our model, and our adapter name pointed at
+    somebody else's API is not even reachable.
+    """
+    return provider in OUR_ENDPOINT and DESIGN_MODEL in OUR_ADAPTERS
+
 
 #: How many times to draw a design before giving up. Two by default: one
 #: resample recovers most static-check misses, and a third rarely adds anything
@@ -105,8 +139,17 @@ def _providers() -> tuple[str, str]:
 
 
 def model_label(provider: str) -> str:
-    """What to call this model in the UI. Never flatters a fallback."""
-    return "orionflow" if provider in OURS else f"fallback:{provider}"
+    """What to call this model in the UI. Never flatters a fallback.
+
+    A stock model on our own endpoint is named for what it is rather than
+    called a fallback: it is the configured primary, so "fallback:" would be
+    as wrong as "orionflow". Only the fine-tune earns our name.
+    """
+    if serving_fine_tune(provider):
+        return "orionflow"
+    if provider in OUR_ENDPOINT:
+        return DESIGN_MODEL
+    return f"fallback:{provider}"
 
 
 #: Providers that just failed at the transport, and when to trust them again.
@@ -785,7 +828,10 @@ def _carry_forward(history: Optional[list[dict]], message: str) -> str:
     test is precise in the direction that matters: a normal answer stops the
     walk, and a request is never silently merged into an unrelated one.
     """
+    from orion import interview
+
     carried: list[str] = []
+    asked = ""
     for turn in reversed(history or []):
         role, content = turn.get("role"), (turn.get("content") or "").strip()
         if not content:
@@ -793,9 +839,16 @@ def _carry_forward(history: Optional[list[dict]], message: str) -> str:
         if role == "assistant":
             if "?" not in content:
                 break
+            # The most recent question is the one ``message`` answers. Kept so
+            # the answer can be bound to its field; joining the turns without
+            # it leaves a bare "6 mm" for the extraction to place by guesswork,
+            # and it guesses "nowhere".
+            if not carried and not asked:
+                asked = content
             continue
         if role == "user":
             carried.append(content)
+    message = interview.phrase_answer(asked, message)
     if not carried:
         return message
     return chr(10).join(list(reversed(carried)) + [message])
@@ -864,7 +917,7 @@ class StudioAgent:
                     "duty_reader_unavailable", provider=provider, error=str(exc)
                 )
                 continue
-            if provider in OURS:
+            if serving_fine_tune(provider):
                 client.model = CONVERSATION_MODEL
             return client
         return None
@@ -881,7 +934,7 @@ class StudioAgent:
         return {
             "provider": primary,
             "fallback": fallback,
-            "serving_our_model": primary in OURS,
+            "serving_our_model": serving_fine_tune(primary),
             # The adapter that actually authors geometry, which is the one a
             # user is asking about. This reported ``cfg.llm.model`` — the value
             # the agent loop and the conversation use — so a correctly
@@ -957,7 +1010,7 @@ class StudioAgent:
             # crashed on the fallback that exists to keep them working. Sending
             # our adapter's name to somebody else's API would be meaningless
             # even where it did not crash: that endpoint serves one model.
-            kw = {"model": model} if model and provider in OURS else {}
+            kw = {"model": model} if model and serving_fine_tune(provider) else {}
             if tools:
                 kw["tools"] = tools
             resp = client.chat_stream(
@@ -1027,7 +1080,7 @@ class StudioAgent:
         # Blueprint JSON in completion" — measured 22-49s for a spur gear — and
         # a stated limit is a better answer than a slow parse error, especially
         # since the four compiled families above are unaffected by the outage.
-        if not any(p in OURS and not _is_down(p) for p in _providers()):
+        if not any(serving_fine_tune(p) and not _is_down(p) for p in _providers()):
             from orion import blueprint_gen, interview
 
             buildable = ", ".join(
@@ -1168,7 +1221,8 @@ class StudioAgent:
         for provider in _in_health_order(_providers()):
             try:
                 client = self._client(provider)
-                client.model = CONVERSATION_MODEL if provider in OURS else client.model
+                if serving_fine_tune(provider):
+                    client.model = CONVERSATION_MODEL
             except Exception as exc:  # noqa: BLE001 - try the fallback
                 logger.warning(
                     "interview_provider_failed", provider=provider, error=str(exc)

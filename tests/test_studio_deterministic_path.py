@@ -263,3 +263,45 @@ def test_a_provider_on_cooldown_is_still_tried_when_it_is_all_there_is():
     studio_agent._mark_down("k2think")
     assert studio_agent._in_health_order(("k2think",)) == ["k2think"]
     studio_agent._DOWN.clear()
+
+
+def test_our_endpoint_serving_stock_weights_is_not_our_model(monkeypatch):
+    """The transport being ours says nothing about who trained the weights.
+
+    Pointing `vllm` at a Modal-managed Qwen makes the provider ours and the
+    model somebody else's. Conflating the two claimed the fine-tune in health
+    and in the UI, sent an adapter name the endpoint does not serve, and — the
+    one that costs geometry — unlocked the model-authored Blueprint path for
+    weights never trained to author one.
+    """
+    monkeypatch.setattr(studio_agent, "DESIGN_MODEL", "Qwen/Qwen3.6-35B-A3B")
+
+    assert not studio_agent.serving_fine_tune("vllm")
+    assert studio_agent.model_label("vllm") == "Qwen/Qwen3.6-35B-A3B"
+
+
+def test_our_endpoint_serving_our_adapter_is_our_model(monkeypatch):
+    monkeypatch.setattr(studio_agent, "DESIGN_MODEL", "orionflow")
+
+    assert studio_agent.serving_fine_tune("vllm")
+    assert studio_agent.model_label("vllm") == "orionflow"
+    # A vendor API cannot serve our adapter however it is configured.
+    assert not studio_agent.serving_fine_tune("k2think")
+    assert studio_agent.model_label("k2think") == "fallback:k2think"
+
+
+def test_stock_weights_do_not_unlock_the_blueprint_authoring_path(
+    agent, monkeypatch
+):
+    """The gate that refuses an unbuildable family must key on training, not on
+    which URL answers. A stock model reached here spends two sampling rounds
+    reaching "no Blueprint JSON in completion"; the refusal costs 1.5s."""
+    monkeypatch.setattr(studio_agent, "_providers", lambda: ("vllm", ""))
+    monkeypatch.setattr(studio_agent, "DESIGN_MODEL", "Qwen/Qwen3.6-35B-A3B")
+    monkeypatch.setattr(agent, "_client", lambda provider: _Stub("other", {}))
+    studio_agent._DOWN.clear()
+
+    p = agent.propose("a spur gear, 20 teeth, module 2", None)
+
+    assert not p.ok and p.failure == "model"
+    assert p.completion == ""
