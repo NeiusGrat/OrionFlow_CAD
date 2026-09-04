@@ -150,8 +150,25 @@ def unclaimed_lengths(request: str, values: Any) -> list[float]:
     too weak a signal — "M5", "NEMA 17" and "3 x 3" all carry integers that
     name no dimension — and a false question is a worse answer than none.
     """
-    pool = [v for v in (values or {}).values()
-            if isinstance(v, (int, float)) and not isinstance(v, bool)]
+    # Walks structured fields too. ``hole_groups`` carries its diameters and
+    # pitches inside a list of dicts, and a flat scan of ``values.values()``
+    # saw none of them — so a bracket whose patterns were fully specified as
+    # groups had every one of their numbers reported as "stated in the request
+    # and no slot took it". The guard was right about its own evidence and
+    # wrong about the part.
+    def _numbers(value):
+        if isinstance(value, bool):
+            return
+        if isinstance(value, (int, float)):
+            yield float(value)
+        elif isinstance(value, dict):
+            for inner in value.values():
+                yield from _numbers(inner)
+        elif isinstance(value, (list, tuple)):
+            for inner in value:
+                yield from _numbers(inner)
+
+    pool = [n for v in (values or {}).values() for n in _numbers(v)]
     out: list[float] = []
     for value, unit in literals_with_units(request):
         if unit not in LENGTH_UNITS:

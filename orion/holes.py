@@ -234,9 +234,89 @@ def validate(group: Group, face: Face, numbers: dict) -> None:
                 f"{face.v_label}")
 
 
+def area_term(group: Group) -> str:
+    """The area this group removes from its face's profile.
+
+    Area rather than volume because that is what the builders accumulate: a
+    hole cut in the pad profile contributes to the face area, and the depth is
+    applied once when the profile is extruded. Handing back a volume would have
+    it multiplied by the depth twice.
+    """
+    return f"{count_of(group)}*pi*{group.r_var}**2"
+
+
 def volume_term(group: Group, face: Face) -> str:
     """What this group removes, exactly: n cylinders of the face's depth."""
-    return f"{count_of(group)}*pi*{group.r_var}**2*{face.depth}"
+    return f"{area_term(group)}*{face.depth}"
+
+
+def compile_groups(family: str, raw: Any, v: dict, numbers: dict,
+                   targets: dict[str, list]) -> tuple[list[str], list[dict],
+                                                      list[dict]]:
+    """Compile every EDS hole group into the builder's own sketches.
+
+    ``targets`` maps a face name onto the hole list the builder will hand to
+    that face's profile, so a group lands in the sketch that actually cuts it.
+    A face the builder did not offer is reported rather than placed, even when
+    the family declares it — a family can have a face this particular geometry
+    does not expose, and putting the holes somewhere else would be worse than
+    saying so.
+
+    Returns ``([(face, area_term)], obligations, unsupported)``. The face
+    travels with its term because a caller applies each one at that face's own
+    depth — an upright's holes are not the base's thickness deep.
+    """
+    groups, unsupported = from_eds(family, raw)
+    terms: list[tuple[str, str]] = []
+    obligations: list[dict] = []
+    faces = FACES.get(family) or {}
+
+    for group in groups:
+        face = faces.get(group.face)
+        holes = targets.get(group.face)
+        if face is None or holes is None:
+            unsupported.append({
+                "feature": group.id,
+                "requested": {"face": group.face, "placement": group.placement,
+                              "diameter": round(group.radius * 2, 6)},
+                "source": "hole group",
+                "reason": (f"this {family} has no {group.face} face to cut — "
+                           f"it offers {', '.join(sorted(targets)) or 'none'}"),
+            })
+            continue
+        try:
+            validate(group, face, numbers)
+            placed = coordinates(group, face, v, numbers)
+        except HoleError as exc:
+            # A group that does not fit is a statement about the request, and
+            # it names the number that is wrong. Reported rather than raised so
+            # one bad group cannot cost the user every other feature.
+            unsupported.append({
+                "feature": group.id,
+                "requested": {"face": group.face, "placement": group.placement,
+                              "diameter": round(group.radius * 2, 6)},
+                "source": "hole group",
+                "reason": str(exc),
+            })
+            for name in (group.r_var, f"{group.prefix}half",
+                         f"{group.prefix}half_u", f"{group.prefix}half_v",
+                         f"{group.prefix}gap", f"{group.prefix}pcd_r"):
+                v.pop(name, None)
+            continue
+        holes.extend(placed)
+        terms.append((group.face, area_term(group)))
+        row = obligation(group)
+        if row["placement"] is None and group.placement == "corners":
+            from . import obligations as OB
+
+            gap = _n(group.params, "edge_gap")
+            u_ext = numbers.get(face.u_extent)
+            v_ext = numbers.get(face.v_extent)
+            if gap and u_ext and v_ext:
+                row["placement"] = {"form": OB.GRID,
+                                    "pitch": [u_ext - 2 * gap, v_ext - 2 * gap]}
+        obligations.append(row)
+    return terms, obligations, unsupported
 
 
 def obligation(group: Group) -> dict:
@@ -246,13 +326,34 @@ def obligation(group: Group) -> dict:
     Ø6.5 pattern that came out with eight Ø3.5 holes satisfies "eight holes"
     and is the wrong part.
     """
+    from . import obligations as OB
+
+    # The same shape ``orion.obligations`` emits, not a lookalike. It carried a
+    # ``diameter`` where the checker reads ``radius``, so every group obligation
+    # came back "requested but no diameter was stated, so nothing about it can
+    # be measured" — honest, and the exact silence these exist to prevent.
+    placement = None
+    p = group.params
+    if group.placement == "square":
+        pitch = _n(p, "pitch")
+        placement = {"form": OB.GRID, "pitch": [pitch, pitch]}
+    elif group.placement == "grid":
+        placement = {"form": OB.GRID,
+                     "pitch": [_n(p, "pitch_u"), _n(p, "pitch_v")]}
+    elif group.placement == "bolt_circle":
+        pcd = _n(p, "pcd")
+        placement = {"form": OB.BOLT_CIRCLE,
+                     "radius": pcd / 2.0 if pcd else None}
+    # ``corners`` needs the face extents to become a span and the caller has
+    # them, so it is filled in by :func:`compile_groups`.
     return {
         "id": group.id,
-        "kind": "hole_pattern",
+        "kind": OB.HOLE_PATTERN,
+        "label": f"{group.id.replace('_', ' ')} on the {group.face}",
         "count": count_of(group),
-        "diameter": round(group.radius * 2, 6),
-        "face": group.face,
-        "source": "hole group",
+        "radius": group.radius,
+        "placement": placement,
+        "source": ["hole group"],
     }
 
 

@@ -344,7 +344,17 @@ def missing(family: str, slots: dict) -> list[Slot]:
             if dep is not None and absent(name) and dep not in gaps:
                 gaps.append(dep)
         # A choice, not a conjunction: satisfied by any one of the alternatives.
+        #
+        # ...and also satisfied by a hole group, when every alternative is a
+        # flat placement a group supersedes. A group carries its own placement,
+        # so demanding one of the old ones as well asks the user for something
+        # they have already said. Measured: the NEMA 17 bracket extracted
+        # cleanly into two groups, the standards table filled `hole_d` from the
+        # frame, and the interview then asked "Square bolt pattern spacing?" —
+        # about a pattern that was fully specified.
         if s.requires_any and all(absent(n) for n in s.requires_any):
+            if slots.get("hole_groups") and set(s.requires_any) <=                     SUPERSEDED_BY_GROUPS.get(family, frozenset()):
+                continue
             dep = fam.slot(s.requires_any[0])
             if dep is not None and dep not in gaps:
                 gaps.append(dep)
@@ -573,11 +583,39 @@ def apply_standards(slots: dict, family: str = "") -> tuple[dict, list[str]]:
     """
     fam = FAMILIES.get(family) if family else None
 
+    # A group carries its own diameter, so a table fill for the same pattern is
+    # a duplicate at a *different* number. Measured on the NEMA 17 bracket: the
+    # user said 3.5, the frame table filled hole_d = 3.4, and the obligation
+    # raised from the table then failed against the 3.5 holes the group had
+    # correctly built. The geometry was right and the verdict said REFUSED.
+    superseded = (SUPERSEDED_BY_GROUPS.get(family, frozenset())
+                  if slots.get("hole_groups") else frozenset())
+
     def wanted(name: str) -> bool:
+        if name in superseded:
+            return False
         return fam is None or fam.slot(name) is not None
 
     out = dict(slots)
     notes: list[str] = []
+
+    # A group may name a thread instead of a diameter, and usually does: "four
+    # M5 clearance holes" states a size the model must not answer from memory.
+    # Resolved here, from the same ISO 273 table the flat slots use, so the
+    # structured form is not worse at standards than the form it replaces —
+    # measured, two bench rows had their whole pattern reported as "no diameter
+    # was given for this hole group" while the thread sat right there in it.
+    for group in out.get("hole_groups") or []:
+        if not isinstance(group, dict) or group.get("diameter") is not None:
+            continue
+        named = str(group.get("thread") or "").upper().replace(" ", "")
+        if named in CLEARANCE:
+            group["diameter"] = CLEARANCE[named]
+            notes.append(
+                f"{named} clearance hole is {CLEARANCE[named]} mm (ISO 273 "
+                f"medium), so {group.get('id', 'a hole group')} = "
+                f"{CLEARANCE[named]} mm")
+
     thread = str(out.get("thread") or out.get("hole_thread") or "").upper()
     # A named motor frame fixes the plate it bolts to. Only ever fills what the
     # request left open, so a stated size always wins over the table.
@@ -742,14 +780,82 @@ def extract_prompt(family: str) -> str:
     """
     fam = FAMILIES[family]
 
+    # A slot a hole group supersedes is not listed beside it: two ways to say
+    # one thing is more to deliberate about, not less.
+    hidden = READ_DETERMINISTICALLY | (
+        SUPERSEDED_BY_GROUPS.get(family, frozenset())
+        if _hole_groups_section(family) else frozenset())
+
     def show(slots) -> str:
         return "\n".join(
-            f"  {s.name} — {s.prompt}" + (" (diameter)" if s.diameter else "")
-            for s in slots if s.name not in READ_DETERMINISTICALLY
+            f"  {s.name} \u2014 {s.prompt}" + (" (diameter)" if s.diameter else "")
+            for s in slots if s.name not in hidden
         ) or "  (none)"
 
     return EXTRACT_SYSTEM % (
-        family.replace("_", " "), show(fam.required), show(fam.optional))
+        family.replace("_", " "), show(fam.required),
+        show(fam.optional) + _hole_groups_section(family))
+
+
+#: The structured field, described from the capability registry so the prompt
+#: and what the builder can actually place cannot drift apart.
+#:
+#: Adding it *reduced* the work rather than adding to it. Measured on a plate
+#: with three different hole patterns, same request, same 8192 budget:
+#:
+#:     flat slots    31.8s   12,282 chars   {hole_edge_gap, pcd, length,
+#:                                           width, thickness}
+#:     hole_groups    7.3s    1,807 chars   all three patterns, complete
+#:
+#: The flat form asked the model to fit three patterns through one set of
+#: scalars, and it produced an edge gap and a bolt circle with no diameters
+#: between them — the shape of the schema, not of the request. A field shaped
+#: like what the user said is less to deliberate about, not more.
+_HOLE_GROUPS_TEMPLATE = """
+
+  hole_groups — a LIST, when the request states more than one hole pattern, or \
+one that the fields above cannot hold. Each entry is an object:
+    {"id": short name, "face": %s, "placement": one of below, \
+"diameter": mm, plus that placement's own parameter}
+    corners -> "edge_gap"; square -> "pitch"; grid -> "pitch_u"/"pitch_v"; \
+bolt_circle -> "pcd" and "count".
+    For a threaded size give "thread" ("M5") INSTEAD of a diameter and let the \nstandard decide it. Never convert a thread to a drill size yourself.
+    Every pattern keeps its OWN diameter. Two patterns of different sizes are \
+two entries, never one."""
+
+
+#: Flat slots a hole group says better, per family.
+#:
+#: Offered *alongside* ``hole_groups`` they are the worst of both: the model
+#: sees two ways to say one thing and deliberates about which, and adding the
+#: structured field on top of them put the NEMA 17 bracket back over the budget
+#: cliff — 277 s and not one dimension extracted. Removed instead of added to,
+#: which is what "extend the vocabulary compositionally" has to mean if it is to
+#: cost less rather than more.
+#:
+#: The schema still accepts every one of them: only the prompt changes, so a
+#: stored requirements set, a regenerate, or an answer to a question keeps
+#: working exactly as it did.
+SUPERSEDED_BY_GROUPS: dict[str, frozenset] = {
+    "rect_plate": frozenset({
+        "hole_count", "hole_d", "hole_edge_gap", "pcd", "hole_pitch",
+        "hole_cols", "hole_rows",
+    }),
+    "l_bracket": frozenset({
+        "hole_d", "bolt_square", "base_hole_d", "base_hole_edge_gap",
+        "base_hole_pitch_x", "base_hole_pitch_y",
+    }),
+}
+
+
+def _hole_groups_section(family: str) -> str:
+    """The hole-group field for a family that has drillable faces, or ""."""
+    from . import holes as H
+
+    faces = H.FACES.get(family)
+    if not faces:
+        return ""
+    return _HOLE_GROUPS_TEMPLATE % " | ".join(sorted(faces))
 
 
 def _json_of(text: str) -> Optional[dict]:
@@ -827,6 +933,14 @@ def _known_slots(family: str, raw: dict) -> tuple[dict, list[dict]]:
     for k, v in raw.items():
         if v is None or v == "":
             continue
+        # The one structured field. Every other slot is a scalar, and the loop
+        # below coerces strings to floats and rejects anything long — which
+        # would turn a list of hole groups into an unsupported feature named
+        # "hole_groups". Passed through whole; ``orion.holes`` validates each
+        # entry and reports the ones it cannot place.
+        if k == "hole_groups" and isinstance(v, list):
+            out[k] = v
+            continue
         if k not in names:
             if k.lower() in _NOT_A_FEATURE:
                 continue
@@ -857,7 +971,22 @@ def _known_slots(family: str, raw: dict) -> tuple[dict, list[dict]]:
 #: together. Asking for 8192 completion tokens is therefore never satisfiable
 #: and vLLM rejects the request outright, which surfaced as an empty reply and
 #: read exactly like a model that had nothing to say. Leave room for the prompt.
-READ_TOKENS = 2048
+#: Start where the answer actually arrives, and do not go past it.
+#:
+#: Bigger is not safer with a reasoning model — it is worse, because the model
+#: deliberates to fill whatever room it is given. Measured on the NEMA 17
+#: bracket against K2-Horizon, same prompt, one call each::
+#:
+#:      8192   64.4 s   finish=stop     23,347 chars   every field, groups too
+#:     16384  144.5 s   finish=length   53,134 chars   nothing at all
+#:
+#: The old ladder walked straight into the second row. It began at 2048, the
+#: transport doubled that to 4096 on truncation, ``_ask`` escalated to
+#: :data:`REASONING_TOKENS`, and the transport doubled *that* to 16384 — four
+#: calls, 281 s, and a fully specified bracket reported as missing its base
+#: length. Starting at the budget that works costs one call and 64 s, and the
+#: reply finishes on its own so nothing doubles it.
+READ_TOKENS = int(os.environ.get("ORION_READ_TOKENS", "8192"))
 
 #: The budget a *reasoning* model needs to reach an answer at all.
 #:
@@ -869,8 +998,10 @@ READ_TOKENS = 2048
 #: that read the request and found nothing in it — so a fully specified plate
 #: was reported as missing its length, width and thickness.
 #:
-#: Used only for the retry, so a tuned model that answers immediately still
-#: costs one small call, and only a model that needs the room asks for it.
+#: Equal to :data:`READ_TOKENS` now, so the retry does not raise the budget —
+#: see there for why raising it loses the answer. Kept as its own name because
+#: a tuned model that answers immediately would want a small READ_TOKENS and
+#: this floor underneath it, and the two are different questions.
 REASONING_TOKENS = int(os.environ.get("ORION_INTERVIEW_TOKENS", "8192"))
 
 EMIT_TOKENS = 4096
@@ -902,8 +1033,16 @@ def _ask(client, system: str, request: str, max_tokens: int):
     resp, dead = once(max_tokens)
     if dead:
         return resp, dead
-    if not (resp.content or "").strip() and max_tokens < REASONING_TOKENS:
-        resp, dead = once(REASONING_TOKENS)
+    if not (resp.content or "").strip():
+        # A fresh draw at the SAME budget, not a bigger one. Raising it is what
+        # loses the answer — the model deliberates to fill whatever room it is
+        # given, and 16384 returned nothing on a request 8192 answered in 64s.
+        #
+        # The variance is real even at temperature 0: a mixture-of-experts model
+        # served at scale is not bit-exact, and the same bracket extracted in
+        # 34s twice and then ran past the budget on the next call. One more
+        # sample costs one call and usually lands.
+        resp, dead = once(max(max_tokens, REASONING_TOKENS))
         if dead:
             return resp, dead
     return resp, ""
@@ -989,6 +1128,10 @@ def requirements(iv: Interview) -> dict:
     mirrored = {k for k in filled if iv.slots.get(k) in (None, "")}
     out = {"family": iv.family, "schema_version": SCHEMA_VERSION}
     out.update(resolve(iv.family, filled))
+    # Structured, so ``resolve`` leaves it alone: a group carries its own
+    # diameter and halving it here would halve it twice.
+    if iv.slots.get("hole_groups"):
+        out["hole_groups"] = list(iv.slots["hole_groups"])
     if iv.notes:
         out["standards_applied"] = list(iv.notes)
     # Travels with the numbers, under the names the numbers now have. Left

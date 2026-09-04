@@ -78,10 +78,19 @@ def _eval_expr(expr: Any, variables: dict) -> Optional[float]:
 def _blueprint(part_class: str, variables: dict, derivation: list,
                assertions: list, features: list, sketches: list,
                dependencies: list, datums: Optional[dict] = None,
-               inexact: Optional[list] = None) -> dict:
+               inexact: Optional[list] = None,
+               groups: Optional[list] = None,
+               group_unsupported: Optional[list] = None) -> dict:
     plan: dict = {"derivation": derivation}
     if inexact:
         plan["no_closed_form"] = list(inexact)
+    # Carried out of the builder rather than recomputed in ``generate``: only
+    # the builder knows which faces it actually offered, so only it can say
+    # which groups were placed and which were reported.
+    if groups:
+        plan["_hole_group_obligations"] = list(groups)
+    if group_unsupported:
+        plan["_hole_group_unsupported"] = list(group_unsupported)
     return {
         "part_class": part_class,
         "variables": variables,
@@ -272,6 +281,15 @@ def rect_plate(req: dict) -> dict:
                               "hole_r"])
         area += f" - {cols * rows}*pi*hole_r**2"
 
+    # EDS hole groups on the top face, compiled into the same pad profile the
+    # native patterns use. A group is the general form of what `hole_count` +
+    # `hole_d` + a placement say; putting them in the same list means one
+    # profile, one closed form, and no seam between the two ways of asking.
+    group_terms, group_obl, group_unsupported = H.compile_groups(
+        "rect_plate", req.get("hole_groups"), v, {"L": L, "W": W, "T": T},
+        {"top": holes})
+    for _face, term in group_terms:
+        area += f" - {term}"
     if holes:
         args = dict(profile["args"])
         args["holes"] = holes
@@ -449,7 +467,8 @@ def rect_plate(req: dict) -> dict:
         _volume_assertion(volume, inexact),
     ]
     return _blueprint("rect_plate", v, derivation, assertions,
-                      features, sketches, deps, inexact=inexact)
+                      features, sketches, deps, inexact=inexact,
+                      groups=group_obl, group_unsupported=group_unsupported)
 
 
 def _bosses(req: dict, v: dict, features: list, sketches: list, deps: list,
@@ -1000,6 +1019,20 @@ def l_bracket(req: dict) -> dict:
         v["cbore_d"] = cbore_depth
         counterbored = True
 
+    # EDS hole groups, compiled into the same two profiles the native patterns
+    # use. Placed here because ``_profile`` and the base sketch below close
+    # over these lists — appending after they are built reaches nothing, which
+    # is exactly what the first attempt did.
+    group_terms, group_obl, group_unsupported = H.compile_groups(
+        "l_bracket", req.get("hole_groups"), v,
+        {"BL": BL, "BW": BW, "BT": BT, "UH": UH, "UW": UW, "UT": UT},
+        {"base": base_holes, "upright": up_holes})
+    for gid, term in group_terms:
+        if gid == "upright":
+            cuts.append(term)
+        else:
+            base_cut = f"{base_cut} + {term}*BT" if base_cut else f"{term}*BT"
+
     def _profile(hole_expr: Optional[str]) -> dict:
         """The upright's section, with its mounting holes at one radius."""
         if not up_holes:
@@ -1205,7 +1238,8 @@ def l_bracket(req: dict) -> dict:
         _volume_assertion(volume, inexact),
     ]
     return _blueprint("l_bracket", v, derivation, assertions,
-                      features, sketches, deps, inexact=inexact)
+                      features, sketches, deps,
+                      groups=group_obl, group_unsupported=group_unsupported, inexact=inexact)
 
 
 # --------------------------------------------------------------------------- #
@@ -2304,9 +2338,19 @@ def generate(family: str, requirements: dict) -> dict:
     # and every one of the eleven conditional blocks above reads its inputs
     # before deciding whether it can place them — which is exactly how
     # hole_count=4 became a blank plate that verified.
+    plan_now = payload["design_plan"]
     payload["design_plan"]["obligations"] = OB.to_dicts(
         OB.derive(family, requirements)
-    )
+    ) + list(plan_now.pop("_hole_group_obligations", []))
+
+    # A group the builder could not place travels with the ones the schema
+    # could not name: same channel, same warning row, same rule that an
+    # unsupported record can never read VERIFIED.
+    group_unsupported = plan_now.pop("_hole_group_unsupported", [])
+    if group_unsupported:
+        requirements = dict(requirements)
+        requirements["unsupported"] = list(
+            requirements.get("unsupported") or []) + group_unsupported
 
     # Features the request asked for that this system has no slot, builder or
     # observer for. Carried, not dropped: an unrecognised request and an absent

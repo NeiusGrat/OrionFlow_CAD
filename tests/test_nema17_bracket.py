@@ -264,3 +264,204 @@ def test_what_is_omitted_is_actually_recovered_from_the_text():
     assert got["critical_tolerance"] == 0.05
     assert got["datum"] == "bottom face"
     assert interview.READ_DETERMINISTICALLY <= set(got)
+
+
+# --------------------------------------------------------------------------- #
+# The same bracket with no per-face slots at all
+# --------------------------------------------------------------------------- #
+GROUPED = dict(
+    base_length=60, base_width=50, base_thickness=5,
+    upright_height=50, upright_thickness=5, upright_width=42.3, bore_d=22,
+    hole_groups=[
+        {"id": "motor_face", "face": "upright", "placement": "square",
+         "diameter": 3.5, "pitch": 31},
+        {"id": "base_mount", "face": "base", "placement": "corners",
+         "diameter": 6.5, "edge_gap": 10},
+    ],
+)
+
+
+def _grouped(slots=None):
+    slots = slots or GROUPED
+    req = interview.resolve("l_bracket", slots)
+    req["hole_groups"] = slots["hole_groups"]
+    return blueprint_gen.generate("l_bracket", req)
+
+
+def test_the_bracket_builds_from_groups_with_no_hole_slots():
+    """The point of the vocabulary: two patterns, two diameters, two faces, and
+    not one slot named after where they go."""
+    bp = _grouped()
+    upright = _holes(bp, "s_upright")
+    base = _holes(bp, "s_base")
+    assert len(base) == 4
+    assert len([h for h in upright if h[2] != "bore_r"]) == 4
+    # Each group keeps its own radius variable.
+    assert {h[2] for h in base} != {h[2] for h in upright if h[2] != "bore_r"}
+
+
+def test_each_group_lands_on_the_face_it_named():
+    """A group compiled into the wrong sketch is a hole in the wrong place, and
+    the volume would still come out right."""
+    bp = _grouped()
+    base_r = next(iter({h[2] for h in _holes(bp, "s_base")}))
+    up_r = next(iter({h[2] for h in _holes(bp, "s_upright") if h[2] != "bore_r"}))
+    assert bp["variables"][base_r] == pytest.approx(3.25)
+    assert bp["variables"][up_r] == pytest.approx(1.75)
+
+
+def test_every_group_becomes_an_obligation_the_kernel_checks():
+    bp = _grouped()
+    obl = {o["id"]: o for o in bp["design_plan"]["obligations"]}
+    assert {"pilot_bore", "motor_face", "base_mount"} <= set(obl)
+    assert obl["motor_face"]["radius"] == pytest.approx(1.75)
+    assert obl["base_mount"]["radius"] == pytest.approx(3.25)
+    # Shape, not a lookalike: it carried a `diameter` where the checker reads
+    # `radius`, so every group came back "no diameter was stated, so nothing
+    # about it can be measured" — honest, and the exact silence these prevent.
+    assert all("radius" in o and o.get("placement")
+               for o in obl.values() if o["id"] != "pilot_bore")
+
+
+def test_a_group_the_builder_cannot_place_is_reported_and_the_rest_still_build():
+    """One bad group must not cost the user every other feature."""
+    bad = dict(GROUPED)
+    bad["hole_groups"] = GROUPED["hole_groups"] + [
+        {"id": "web_relief", "face": "web", "placement": "square",
+         "diameter": 5, "pitch": 20}]
+    bp = _grouped(bad)
+    assert len(_holes(bp, "s_base")) == 4
+    reported = {u["feature"] for u in bp["design_plan"]["unsupported"]}
+    assert "web_relief" in reported
+
+
+def test_a_group_that_does_not_fit_is_reported_rather_than_raised():
+    """A pattern wider than the plate is a statement about the request. Raising
+    would take the whole bracket down with it."""
+    bad = dict(GROUPED)
+    bad["hole_groups"] = [
+        {"id": "too_wide", "face": "base", "placement": "square",
+         "diameter": 5, "pitch": 200}]
+    bp = _grouped(bad)
+    why = [u["reason"] for u in bp["design_plan"]["unsupported"]]
+    assert any("wider than" in r for r in why), why
+    # And it left no variables behind for a pattern that was never placed.
+    assert not any(k.startswith("g1_") for k in bp["variables"])
+
+
+def test_the_extraction_prompt_offers_groups_only_where_they_can_be_placed():
+    """Generated from the capability registry, so the prompt and what the
+    builder can actually cut cannot drift apart."""
+    for family in ("rect_plate", "l_bracket"):
+        prompt = interview.extract_prompt(family)
+        assert "hole_groups" in prompt
+        for face in H.FACES[family]:
+            assert face in prompt
+    # A family with no drillable faces declared is not offered the field.
+    assert "hole_groups" not in interview.extract_prompt("disc")
+
+
+def test_a_structured_field_is_less_to_deliberate_about_not_more():
+    """Measured on a plate with three different hole patterns, same request,
+    same 8192 budget:
+
+        flat slots    31.8s   12,282 chars   {hole_edge_gap, pcd, length,
+                                              width, thickness}
+        hole_groups    7.3s    1,807 chars   all three patterns, complete
+
+    The flat form asked the model to fit three patterns through one set of
+    scalars and it returned an edge gap and a bolt circle with no diameters
+    between them — the shape of the schema, not of the request. This test holds
+    the property that made that possible: one field, and every pattern in it
+    keeps its own diameter.
+    """
+    prompt = interview.extract_prompt("rect_plate")
+    assert "OWN diameter" in prompt
+    assert "two entries, never one" in prompt
+
+
+# --------------------------------------------------------------------------- #
+# One vocabulary, not two
+# --------------------------------------------------------------------------- #
+def test_a_slot_a_group_supersedes_is_not_offered_beside_it():
+    """Two ways to say one thing is more to deliberate about, not less.
+
+    Adding the structured field on top of the flat slots put the bracket back
+    over the budget cliff: 277s and not one dimension extracted. The flat slots
+    are still accepted by the schema — only the prompt changes — so a stored
+    requirements set or an answer to a question keeps working.
+    """
+    prompt = interview.extract_prompt("l_bracket")
+    for name in interview.SUPERSEDED_BY_GROUPS["l_bracket"]:
+        assert f"  {name} \u2014 " not in prompt, name
+    # Still accepted, and still builds.
+    assert interview.FAMILIES["l_bracket"].slot("bolt_square") is not None
+    assert blueprint_gen.generate(
+        "l_bracket", interview.resolve("l_bracket", BRACKET))["variables"]
+
+
+def test_a_group_satisfies_the_placement_a_flat_diameter_demands():
+    """`hole_d` demands a placement, and a group is one.
+
+    The bracket extracted cleanly into two groups, the frame table filled
+    `hole_d`, and the interview then asked "Square bolt pattern spacing?" about
+    a pattern that was already fully specified.
+    """
+    slots = {"base_length": 60, "base_width": 50, "base_thickness": 5,
+             "upright_height": 50, "upright_thickness": 5, "hole_d": 3.4,
+             "hole_groups": [{"id": "m", "face": "upright",
+                              "placement": "square", "diameter": 3.5,
+                              "pitch": 31}]}
+    assert [g.name for g in interview.missing("l_bracket", slots)] == []
+    del slots["hole_groups"]
+    assert "bolt_square" in [g.name for g in interview.missing("l_bracket", slots)]
+
+
+def test_a_standards_table_does_not_duplicate_a_group_at_a_different_number():
+    """The user said 3.5; the NEMA table would say 3.4. The obligation raised
+    from the table then failed against the 3.5 holes the group had correctly
+    built — right geometry, verdict REFUSED."""
+    slots = {"upright_width": 42.3, "motor_frame": "NEMA 17",
+             "hole_groups": [{"id": "m", "face": "upright",
+                              "placement": "square", "diameter": 3.5,
+                              "pitch": 31}]}
+    with_groups, _ = interview.apply_standards(dict(slots), "l_bracket")
+    assert with_groups.get("hole_d") is None
+    flat = {k: v for k, v in slots.items() if k != "hole_groups"}
+    without, _ = interview.apply_standards(flat, "l_bracket")
+    assert without["hole_d"] == 3.4
+
+
+def test_a_group_may_name_a_thread_and_the_standard_decides():
+    """"four M5 clearance holes" states a size the model must not answer from
+    memory. Without this the whole pattern came back "no diameter was given for
+    this hole group" while the thread sat right there in it."""
+    slots = {"length": 120, "width": 80, "thickness": 6,
+             "hole_groups": [{"id": "mounting", "face": "top",
+                              "placement": "corners", "edge_gap": 10,
+                              "thread": "M5"}]}
+    out, notes = interview.apply_standards(slots, "rect_plate")
+    assert out["hole_groups"][0]["diameter"] == 5.5
+    assert any("ISO 273" in n for n in notes)
+
+
+def test_a_stated_diameter_beats_the_thread():
+    slots = {"hole_groups": [{"id": "m", "face": "top", "placement": "corners",
+                              "edge_gap": 10, "thread": "M5", "diameter": 6.0}]}
+    out, _ = interview.apply_standards(slots, "rect_plate")
+    assert out["hole_groups"][0]["diameter"] == 6.0
+
+
+def test_the_unaccounted_guard_looks_inside_a_group():
+    """It scanned only scalar values, so a bracket whose patterns were fully
+    specified as groups had every number in them reported as "stated in the
+    request and no slot took it" — right about its own evidence, wrong about
+    the part."""
+    from orion import provenance as P
+
+    request = "plate 120 x 80 x 6 with four 5.5 mm holes 10 mm from each corner"
+    values = {"L": 120.0, "W": 80.0, "T": 6.0,
+              "hole_groups": [{"diameter": 5.5, "edge_gap": 10}]}
+    assert P.unclaimed_lengths(request, values) == []
+    # ...and it still catches a number that really did reach nothing.
+    assert P.unclaimed_lengths(request, {"L": 120.0, "W": 80.0, "T": 6.0}) == [5.5, 10.0]
