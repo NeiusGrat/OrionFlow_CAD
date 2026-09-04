@@ -1713,3 +1713,108 @@ def test_a_grid_that_contradicts_the_placement_is_refused():
             iv("rect_plate", length=120, width=80, thickness=6,
                hole_count=4, hole_d=5, hole_edge_gap=10,
                hole_cols=3, hole_rows=2))
+
+
+# --------------------------------------------------------------------------- #
+# Housings: what separates a gearbox from a box
+# --------------------------------------------------------------------------- #
+def _housing(**extra):
+    return interview.build(iv("shelled_box", length=180, width=120, height=90,
+                              wall=8, **extra))
+
+
+def test_a_bolting_flange_extends_the_part_and_stays_exact():
+    """Padded as a slab and opened out, not built as a ring profile.
+
+    There is no rectangular-ring builder, and a pad plus a pocket gives the
+    same solid with two exact areas instead of one that would have to be
+    approximated.
+    """
+    payload = _housing(flange_width=10, flange_thickness=10,
+                       flange_hole_d=8, flange_hole_count=8)
+    ids = [f["id"] for f in payload["template"]["features"]]
+    assert "flange" in ids and "flange_bore" in ids
+    ext = {a["axis"]: a["target"] for a in payload["assertions"]
+           if a["kind"] == "bbox_extent"}
+    # The flange sets every extent: it projects outward and stands proud.
+    assert ext["x"] == "L + 2*fw" and ext["y"] == "W + 2*fw"
+    assert ext["z"] == "H + ft"
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+    assert body["tier"] == 1 and "8*pi*fh_r**2" in body["target"]
+
+
+def test_ribs_add_exactly_half_a_prism_each():
+    """Outside the wall and meeting it on one face, so nothing overlaps."""
+    payload = _housing(rib_count=3, rib_thickness=6, rib_height=40,
+                       rib_projection=25, rib_pitch=50)
+    ids = [f["id"] for f in payload["template"]["features"]]
+    # Three a side, both sides.
+    assert sum(1 for i in ids if i.startswith("rib")) == 6
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+    assert "6*(rib_h*rib_p/2)*rib_t" in body["target"] and body["tier"] == 1
+    ext = {a["axis"]: a["target"] for a in payload["assertions"]
+           if a["kind"] == "bbox_extent"}
+    assert ext["y"] == "W + 2*rib_p"
+
+
+def test_a_rib_projection_defaults_to_a_45_degree_gusset():
+    """A documented default, and the derivation says so rather than implying."""
+    payload = _housing(rib_count=2, rib_thickness=6, rib_height=40,
+                       rib_pitch=50)
+    assert payload["variables"]["rib_p"] == 40
+    why = " ".join(d["why"] for d in payload["design_plan"]["derivation"])
+    assert "45 degree gusset" in why
+
+
+def test_ribs_described_but_never_counted_are_refused_not_dropped():
+    """Reading a value is not using it.
+
+    Every rib field is consumed up front so the block can see it, which means
+    rib dimensions with no count would be marked read, dropped, and never
+    reported — the exact silent drop the consumption guard exists to catch.
+    Nothing in the schema requires a count, so this is the builder's to catch.
+    """
+    with pytest.raises(blueprint_gen.GeneratorError, match="never counted"):
+        _housing(rib_thickness=6, rib_height=40)
+
+
+@pytest.mark.parametrize("slots, wanted", [
+    ({"flange_hole_d": 8, "flange_hole_count": 8}, "flange_width"),
+    ({"flange_width": 10}, "flange_thickness"),
+])
+def test_an_incomplete_flange_becomes_a_question_not_a_refusal(slots, wanted):
+    """Caught a layer earlier than the builder, which is the better outcome:
+    a bolt hole with no flange to sit in is a gap in the request, and a gap is
+    something to ask about."""
+    gaps = [g.name for g in interview.missing(
+        "shelled_box",
+        {"length": 180, "width": 120, "height": 90, "wall": 8, **slots})]
+    assert wanted in gaps
+
+
+@pytest.mark.parametrize("slots, match", [
+    ({"flange_hole_r": 4.0, "flange_hole_count": 8}, "flange needs a width"),
+    ({"flange_thickness": 10}, "flange needs a width"),
+])
+def test_the_builder_still_refuses_a_flange_with_no_width(slots, match):
+    """The backstop under that question. A caller that skips the interview —
+    a regenerate, a stored requirements dict — must not get a part with the
+    bolt holes quietly missing."""
+    with pytest.raises(blueprint_gen.GeneratorError, match=match):
+        blueprint_gen.generate("shelled_box", {
+            "length": 180, "width": 120, "height": 90, "wall": 8, **slots})
+
+
+@pytest.mark.parametrize("extra, match", [
+    ({"rib_count": 3, "rib_thickness": 6, "rib_height": 90, "rib_pitch": 50},
+     "not shorter than"),
+    ({"rib_count": 9, "rib_thickness": 6, "rib_height": 40, "rib_pitch": 50},
+     "do not fit"),
+    ({"flange_width": 10, "flange_thickness": 10, "flange_hole_d": 12,
+      "flange_hole_count": 4}, "does not fit in a 10 mm flange"),
+    ({"flange_width": 10, "flange_thickness": 10, "flange_hole_d": 8,
+      "flange_hole_count": 6}, "4 \(corners\) or 8"),
+])
+def test_a_housing_that_does_not_close_up_is_refused_with_the_number(extra, match):
+    with pytest.raises(blueprint_gen.GeneratorError, match=match):
+        _housing(**extra)

@@ -181,6 +181,25 @@ families:
                         diameter: true}
       bore_height:     {ask: "How high is the bore axis above the base?",
                         requires_any: [end_bore_d, opposite_bore_d]}
+      # How a housing joins its lid. A pad plus a pocket rather than a ring
+      # profile: there is no rectangular-ring builder, and this way both areas
+      # are exact.
+      flange_width:      {ask: "How far does the top flange project beyond the wall?",
+                          requires: [flange_thickness]}
+      flange_thickness:  {ask: "How thick is the flange?"}
+      flange_hole_d:     {ask: "Flange bolt hole diameter?", diameter: true,
+                          requires: [flange_width, flange_hole_count]}
+      flange_hole_count: {ask: "How many bolt holes in the flange?", unit: "",
+                          requires: [flange_hole_d]}
+      # Triangular gussets on the long walls. Outside the box and meeting it on
+      # one face, so each adds exactly half a prism and the closed form holds.
+      rib_count:      {ask: "How many ribs on each long side?", unit: "",
+                       requires: [rib_thickness, rib_height]}
+      rib_thickness:  {ask: "How thick is each rib?"}
+      rib_height:     {ask: "How far up the wall does each rib reach?"}
+      rib_projection: {ask: "How far does each rib stand out from the wall?"}
+      rib_pitch:      {ask: "How far apart are the rib centres?"}
+
 
   l_bracket:
     label: L-bracket

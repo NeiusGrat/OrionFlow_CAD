@@ -1801,10 +1801,195 @@ def shelled_box(req: dict) -> dict:
                        f"end wall: one cylinder {wall:g} mm long, the cavity "
                        f"behind it already being air"})
 
+    # ---- bolting flange around the open top -------------------------------- #
+    #
+    # How a housing joins its lid, and the last thing standing between a
+    # gearbox request and a built part. Constructed as a slab padded on the top
+    # face and then opened out, rather than as a ring profile: there is no
+    # rectangular-ring builder, and a pad plus a pocket gives the same solid
+    # with two exact areas instead of one that has to be invented.
+    #
+    #     + ((L + 2*fw)*(W + 2*fw) - n*pi*fh_r^2) * ft     the slab, drilled
+    #     -  (L - 2*wall)*(W - 2*wall)            * ft     opened over the bore
+    fw = _num(req, "flange_width")
+    ft = _num(req, "flange_thickness")
+    fh_r = _num(req, "flange_hole_r")
+    fh_n = req.get("flange_hole_count")
+    if fw and not ft:
+        raise GeneratorError("a flange needs a thickness as well as a width")
+    if (ft or fh_r or fh_n) and not fw:
+        # Reading a value is not using it. Everything here is consumed up front
+        # so the block can see it, which means a stated bolt hole with no
+        # flange to sit in would be marked read, dropped, and never reported —
+        # the exact silent-drop the consumption guard exists to catch.
+        raise GeneratorError(
+            "a flange needs a width — how far it projects beyond the wall")
+    x_extent, y_extent, z_extent = "L", "W", "H"
+    if fw and ft:
+        if fw <= 0 or ft <= 0:
+            raise GeneratorError("flange width and thickness must be positive")
+        v["fw"] = fw
+        v["ft"] = ft
+        x_extent, y_extent, z_extent = "L + 2*fw", "W + 2*fw", "H + ft"
+
+        holes: list[list[str]] = []
+        if fh_r or fh_n:
+            if not (fh_r and fh_n):
+                raise GeneratorError(
+                    "flange bolt holes need both a count and a diameter")
+            fh_n = int(fh_n)
+            # Four at the corners, or eight adding the mid-point of each side.
+            # Any other count needs a spacing this cannot infer, and guessing
+            # one is the failure this module exists to prevent — the same rule
+            # the plate's corner pattern already follows.
+            if fh_n not in (4, 8):
+                raise GeneratorError(
+                    f"a flange bolt pattern here is 4 (corners) or 8 (corners "
+                    f"and side mid-points), not {fh_n}; give a bolt circle for "
+                    f"any other count")
+            if fh_r * 2 >= fw:
+                raise GeneratorError(
+                    f"a {fh_r * 2:g} mm bolt hole does not fit in a {fw:g} mm "
+                    f"flange")
+            v["fh_r"] = fh_r
+            # On the flange centreline: half its width outboard of the wall.
+            v["fbx"] = L / 2.0 + fw / 2.0
+            v["fby"] = W / 2.0 + fw / 2.0
+            for sx, sy in ((1, 1), (-1, 1), (-1, -1), (1, -1)):
+                holes.append([f"{sx}*fbx", f"{sy}*fby", "fh_r"])
+            if fh_n == 8:
+                for sy in (1, -1):
+                    holes.append(["0*fbx", f"{sy}*fby", "fh_r"])
+                for sx in (1, -1):
+                    holes.append([f"{sx}*fbx", "0*fby", "fh_r"])
+
+        slab_area = "(L + 2*fw)*(W + 2*fw)"
+        if holes:
+            slab = {"builder": "rect_with_holes",
+                    "args": {"w": "L + 2*fw", "h": "W + 2*fw", "holes": holes}}
+            slab_area += f" - {len(holes)}*pi*fh_r**2"
+        else:
+            slab = {"builder": "rect",
+                    "args": {"w": "L + 2*fw", "h": "W + 2*fw"}}
+        features += [
+            {"id": "s_flange", "type": "Sketch", "parameters": {}},
+            {"id": "flange", "type": "Pad",
+             "rationale": "bolting flange around the open top",
+             "parameters": {"Length": "ft", "Type": "Length"}},
+            {"id": "s_flange_bore", "type": "Sketch", "parameters": {}},
+            {"id": "flange_bore", "type": "Pocket",
+             "rationale": "open the flange over the cavity",
+             "parameters": {"Length": "ft", "Type": "Length"}},
+        ]
+        sketches += [
+            {"id": "s_flange", "plane": "XY", "z": "H", "profile": slab},
+            {"id": "s_flange_bore", "plane": "XY", "z": "H + ft",
+             "profile": {"builder": "rect",
+                         "args": {"w": "L - 2*wall", "h": "W - 2*wall"}}},
+        ]
+        deps += [
+            {"source": "s_flange", "target": "flange", "kind": "profile"},
+            {"source": "s_flange_bore", "target": "flange_bore",
+             "kind": "profile"},
+        ]
+        volume = (f"{volume} + ({slab_area})*ft"
+                  f" - (L - 2*wall)*(W - 2*wall)*ft")
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": "flange slab padded on the top face and then opened over "
+                   "the cavity, leaving a rim the width of the wall plus the "
+                   "projection"})
+
+    # ---- stiffening ribs on the long walls --------------------------------- #
+    #
+    # Triangular gussets, outside the wall and touching it on one face only, so
+    # they add exactly half a prism each and overlap nothing:
+    #
+    #     + 2*n * (rib_h*rib_p/2) * rib_t
+    #
+    # The triangle is sketched on YZ — local x is world Z and local y is world
+    # Y, the same mapping the shaft bores use — and padded along +X.
+    rib_n = req.get("rib_count")
+    rib_t = _num(req, "rib_thickness")
+    rib_h = _num(req, "rib_height")
+    rib_p = _num(req, "rib_projection")
+    rib_pitch = _num(req, "rib_pitch")
+    if (rib_t or rib_h or rib_p or rib_pitch) and not rib_n:
+        raise GeneratorError(
+            "ribs are described but never counted — how many on each long "
+            "side?")
+    if rib_n:
+        rib_n = int(rib_n)
+        if not (rib_t and rib_h):
+            raise GeneratorError(
+                "a rib needs a thickness and a height up the wall")
+        if rib_p is None:
+            # A 45 degree gusset: the standard proportion, and stated in the
+            # derivation rather than left as a silent choice.
+            rib_p = rib_h
+        if rib_n < 1:
+            raise GeneratorError("rib_count must be at least 1")
+        if rib_n > 1 and not rib_pitch:
+            raise GeneratorError(
+                f"{rib_n} ribs a side need a spacing — how far apart their "
+                f"centres sit along the length")
+        pitch = rib_pitch or 0.0
+        if rib_n > 1 and pitch <= rib_t:
+            raise GeneratorError(
+                f"ribs {rib_t:g} mm thick cannot sit {pitch:g} mm apart")
+        span = (rib_n - 1) * pitch + rib_t
+        if span > L:
+            raise GeneratorError(
+                f"{rib_n} ribs at {pitch:g} mm pitch span {span:g} mm and do "
+                f"not fit along a {L:g} mm wall")
+        if rib_h >= H:
+            raise GeneratorError(
+                f"a {rib_h:g} mm rib is not shorter than the {H:g} mm wall it "
+                f"stiffens")
+        v.update({"rib_t": rib_t, "rib_h": rib_h, "rib_p": rib_p})
+        if rib_n > 1:
+            v["rib_pitch"] = pitch
+        for i in range(rib_n):
+            coef = i - (rib_n - 1) / 2.0
+            at = (f"{coef:.10f}*rib_pitch - rib_t/2" if rib_n > 1
+                  else "-rib_t/2")
+            for side, sign in (("p", "+"), ("m", "-")):
+                # Outboard of the wall on each side. The far side's triangle is
+                # mirrored in Y so both project away from the box rather than
+                # one of them into it.
+                wall_y = f"{sign}(W/2)"
+                tip_y = f"{sign}(W/2 + rib_p)"
+                pts = [["rib_h", wall_y],
+                       ["0*rib_h", tip_y],
+                       ["0*rib_h", wall_y]]
+                fid = f"rib{i}{side}"
+                features += [
+                    {"id": f"s_{fid}", "type": "Sketch", "parameters": {}},
+                    {"id": fid, "type": "Pad",
+                     "rationale": "triangular stiffening rib on the long wall",
+                     "parameters": {"Length": "rib_t", "Type": "Length"}},
+                ]
+                sketches.append({
+                    "id": f"s_{fid}", "plane": "YZ", "z": at,
+                    "profile": {"builder": "polyline", "args": {"points": pts}}})
+                deps.append({"source": f"s_{fid}", "target": fid,
+                             "kind": "profile"})
+        volume = f"{volume} + {2 * rib_n}*(rib_h*rib_p/2)*rib_t"
+        why = (f"{rib_n} triangular rib(s) on each long wall, outside the box "
+               f"and meeting it on one face, so each adds exactly half a prism")
+        if rib_p == rib_h and _num(req, "rib_projection") is None:
+            why += "; projection taken equal to the height, a 45 degree gusset"
+        derivation.append({"step": len(derivation) + 1, "eq": f"V = {volume}",
+                           "why": why})
+        # A rib that reaches further out than the flange sets the width.
+        out = max(rib_p, fw or 0.0)
+        y_extent = "W + 2*rib_p" if out == rib_p and rib_p > (fw or 0.0) \
+            else y_extent
+
     assertions = [
-        _extent_assertion("len_extent", "x", "L"),
-        _extent_assertion("wid_extent", "y", "W"),
-        _extent_assertion("ht_extent", "z", "H"),
+        _extent_assertion("len_extent", "x", x_extent),
+        _extent_assertion("wid_extent", "y", y_extent),
+        _extent_assertion("ht_extent", "z", z_extent),
         _volume_assertion(volume, inexact),
     ]
     return _blueprint("shelled_box", v, derivation, assertions,
