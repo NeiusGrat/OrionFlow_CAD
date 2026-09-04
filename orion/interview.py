@@ -457,6 +457,51 @@ def resolve(family: str, slots: dict) -> dict:
     return out
 
 
+#: How a part is made, read from the request rather than asked of the model.
+#:
+#: These are designations in the same sense "NEMA 17" is: the word is either in
+#: the request or it is not. Leaving them to the extraction did not work — a
+#: prompt saying "CNC machined aluminium mounting plate ... load bearing
+#: bracket" came back with ten slots filled and neither of these, because the
+#: extraction prompt is overwhelmingly about numbers and a choice from a list
+#: does not read as a value the request "states". Deterministic here, and the
+#: same request always reads the same way.
+#:
+#: Ordered: the first match wins, so the more specific spelling comes first.
+PROCESS_WORDS = (
+    ("CNC MACHINED", "machined"),
+    ("CNC MILLED", "machined"),
+    ("MACHINED", "machined"),
+    ("MILLED", "machined"),
+    ("TURNED", "machined"),
+    ("DIE CAST", "cast"),
+    ("SAND CAST", "cast"),
+    ("INVESTMENT CAST", "cast"),
+    ("CASTING", "cast"),
+    ("CAST", "cast"),
+    ("3D PRINTED", "printed"),
+    ("ADDITIVE", "printed"),
+    ("PRINTED", "printed"),
+    ("SHEET METAL", "sheet"),
+    ("LASER CUT", "sheet"),
+    ("FOLDED", "sheet"),
+)
+
+#: What the part is for. Only ``load_bearing`` currently obliges anything — a
+#: part called load-bearing with no stated duty cannot have its strength
+#: checked, and the verdict would otherwise read like one that had.
+FUNCTION_WORDS = (
+    ("LOAD BEARING", "load_bearing"),
+    ("LOAD-BEARING", "load_bearing"),
+    ("STRUCTURAL", "load_bearing"),
+    ("MOUNTING", "mounting"),
+    ("MOUNT", "mounting"),
+    ("CLEARANCE", "clearance"),
+    ("ENCLOSURE", "enclosure"),
+    ("HOUSING", "enclosure"),
+)
+
+
 def designations(request: str, slots: dict) -> dict:
     """Standard designations read out of the request text, not sampled.
 
@@ -472,6 +517,13 @@ def designations(request: str, slots: dict) -> dict:
         m = re.search("(?:^|[^A-Z])NEMA ?([0-9]+)(?:[^0-9]|$)", text)
         if m and f"NEMA {m.group(1)}" in MOTOR_FRAMES:
             out["motor_frame"] = f"NEMA {m.group(1)}"
+    for name, table in (("process", PROCESS_WORDS), ("function", FUNCTION_WORDS)):
+        if out.get(name):
+            continue
+        for word, value in table:
+            if re.search(rf"(?:^|[^A-Z]){word}(?:[^A-Z]|$)", text):
+                out[name] = value
+                break
     return out
 
 

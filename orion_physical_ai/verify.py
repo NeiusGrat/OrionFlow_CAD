@@ -487,6 +487,13 @@ def from_assertion_rows(
         )
     checks.extend(solid_validity_checks(measured))
     checks.extend(engineering_checks(engineering))
+    # Whether the part can be made by the process it says it is made by. A
+    # design that says nothing about how it is made produces no rows and is
+    # unaffected — guessing "probably milled" would put a warning on every part
+    # in the corpus and teach everyone to ignore the row.
+    from orion import dfm
+
+    checks.extend(dfm.check(design_plan))
     checks.extend(provenance_checks(design_plan))
     fulfillment = fulfillment_rows(design_plan, topology, template)
     checks.extend(fulfillment_checks(fulfillment))

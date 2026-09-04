@@ -32,6 +32,11 @@ families:
       thickness: {ask: "How thick should it be?"}
     optional:
       material:      {ask: "Material?", unit: "", text: true}
+      # Neither shapes geometry — a milled plate and a cast one of the
+      # same dimensions are the same solid — but both decide what can
+      # be claimed about the part. See orion/dfm.py.
+      process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
+      function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
       # A designation the standards table can turn into dimensions.
       motor_frame:   {ask: "Which motor frame does it mount?", unit: "", text: true}
       corner_radius: {ask: "Corner radius?"}
@@ -121,6 +126,11 @@ families:
       thickness: {ask: "How wide is the gear face?"}
     optional:
       material:       {ask: "Material?", unit: "", text: true}
+      # Neither shapes geometry — a milled plate and a cast one of the
+      # same dimensions are the same solid — but both decide what can
+      # be claimed about the part. See orion/dfm.py.
+      process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
+      function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
       bore_d:         {ask: "Bore diameter?", diameter: true}
       pressure_angle: {ask: "Pressure angle in degrees?", unit: "deg"}
       # Carried so it can be REFUSED rather than ignored. A helix angle is not
@@ -142,6 +152,11 @@ families:
       thickness: {ask: "How thick is it, or how long for a tube or shaft?"}
     optional:
       material:      {ask: "Material?", unit: "", text: true}
+      # Neither shapes geometry — a milled plate and a cast one of the
+      # same dimensions are the same solid — but both decide what can
+      # be claimed about the part. See orion/dfm.py.
+      process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
+      function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
       bore_d:        {ask: "Centre bore diameter?", diameter: true}
       hole_count:    {ask: "How many mounting holes?", unit: "",
                       requires: [hole_d], requires_any: [pcd, hole_pitch]}
@@ -168,6 +183,11 @@ families:
       wall:      {ask: "How thick are the walls?"}
     optional:
       material:  {ask: "Material?", unit: "", text: true}
+      # Neither shapes geometry — a milled plate and a cast one of the
+      # same dimensions are the same solid — but both decide what can
+      # be claimed about the part. See orion/dfm.py.
+      process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
+      function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
       floor:     {ask: "How thick is the floor?"}
       corner_radius: {ask: "Corner radius?"}
       # What separates a housing from a box. Each is one cylinder through one
@@ -213,6 +233,11 @@ families:
       upright_thickness: {ask: "How thick is the vertical plate?", mirrors: base_thickness}
     optional:
       material:       {ask: "Material?", unit: "", text: true}
+      # Neither shapes geometry — a milled plate and a cast one of the
+      # same dimensions are the same solid — but both decide what can
+      # be claimed about the part. See orion/dfm.py.
+      process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
+      function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
       upright_width:  {ask: "How wide is the vertical plate?"}
       inside_fillet:  {ask: "Inside fillet radius at the joint?"}
       bore_d:         {ask: "Pilot bore diameter on the vertical plate?", diameter: true}
@@ -248,6 +273,11 @@ families:
       seat_depth: {ask: "How deep is the bearing seat?"}
     optional:
       material:       {ask: "Material?", unit: "", text: true}
+      # Neither shapes geometry — a milled plate and a cast one of the
+      # same dimensions are the same solid — but both decide what can
+      # be claimed about the part. See orion/dfm.py.
+      process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
+      function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
       bearing_series: {ask: "Which bearing series?", unit: "", text: true}
       mounting_type:  {ask: "Mounting style (foot or flange)?", unit: "", text: true}
       shoulder:       {ask: "Locating shoulder width?"}
@@ -271,6 +301,11 @@ families:
       passage_d: {ask: "What diameter is the main passage?", diameter: true}
     optional:
       material:      {ask: "Material?", unit: "", text: true}
+      # Neither shapes geometry — a milled plate and a cast one of the
+      # same dimensions are the same solid — but both decide what can
+      # be claimed about the part. See orion/dfm.py.
+      process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
+      function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
       port_count:    {ask: "How many ports?", unit: ""}
       port_thread:   {ask: "Port thread size?", unit: "", text: true}
       port_d:        {ask: "Port tapping drill diameter?", diameter: true}
