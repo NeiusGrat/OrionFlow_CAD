@@ -1301,7 +1301,7 @@ def test_a_bolt_circle_breaking_into_the_bore_is_refused():
         blueprint_gen.generate("disc", interview.requirements(iv))
 
 
-def test_a_stated_dimension_that_reached_no_slot_is_a_question():
+def _dropped_bore():
     """"Tube 40 mm OD, 32 mm ID, 60 mm long" read as a SOLID BAR and verified.
 
     The bore was dropped by the extraction, and every downstream check agreed
@@ -1310,9 +1310,50 @@ def test_a_stated_dimension_that_reached_no_slot_is_a_question():
     iv = interview.Interview(request="Tube 40 mm OD, 32 mm ID, 60 mm long",
                              family="disc")
     iv.slots = {"outer_d": 40, "thickness": 60}
+    return iv
+
+
+def test_a_stated_dimension_that_reached_no_slot_is_still_asked_about():
+    iv = _dropped_bore()
     assert iv.unaccounted == [32.0]
-    assert not iv.complete, "a dropped dimension must not read as complete"
     assert any("32" in q for q in interview.open_questions(iv))
+
+
+def test_a_dropped_dimension_no_longer_blocks_the_build():
+    """It is a gap in what we can claim, not in what we can build.
+
+    Blocking meant the user answered questions and got nothing to look at. A
+    bar with a question against it is a better answer than silence: it is what
+    an engineer does — draw what the drawing says, and come back about the
+    dimension with no feature against it.
+    """
+    assert _dropped_bore().complete
+
+
+def test_a_dropped_dimension_still_cannot_reach_verified():
+    """The safety property, now carried by a different mechanism.
+
+    This is the whole reason the guard existed. The bar builds and its closed
+    form agrees with it exactly — because both were derived from the same slots
+    that lost the bore — so nothing in the geometry disagrees. What stops
+    VERIFIED is the unsupported record: the 32 mm travels into the frozen
+    contract, and an unsupported row is a warning by construction.
+    """
+    from orion_physical_ai import verify
+
+    req = interview.requirements(_dropped_bore())
+    unsupported = req["unsupported"]
+    assert any(u["requested"] == 32.0 for u in unsupported), unsupported
+
+    rows = verify.fulfillment_rows({"unsupported": unsupported}, topology=None)
+    warned = [r for r in rows if r["status"] == verify.WARN]
+    assert warned, rows
+    # Geometry perfect, ledger clean, and still not VERIFIED.
+    checks = [{"id": "body_volume:body", "status": verify.PASS,
+               "label": "", "detail": ""}] + [
+        {"id": r["check_id"], "status": r["status"], "label": "", "detail": ""}
+        for r in warned]
+    assert verify.verdict_for(checks) == verify.UNMEASURED
 
 
 @pytest.mark.parametrize("request_text,slots", [

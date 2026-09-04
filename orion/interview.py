@@ -237,9 +237,21 @@ class Interview:
 
     @property
     def complete(self) -> bool:
-        return (bool(self.family)
-                and not missing(self.family, self.slots)
-                and not self.unaccounted)
+        """Enough to build. Not the same as enough to fully verify.
+
+        An unaccounted dimension used to block this, so a request with one
+        number nobody could place produced no part at all — the user answered
+        questions and got nothing to look at, when a plate with three of its
+        four features is a better answer than silence and a question.
+
+        It no longer blocks, because it is not a gap in what we can *build*: it
+        is a gap in what we can *claim*. The number still travels, as an
+        explicit unsupported record that forces the verdict below VERIFIED and
+        is still asked about — see ``requirements`` and ``open_questions``.
+        A missing required slot is different in kind and still blocks: without
+        a length there is no plate to build at all.
+        """
+        return bool(self.family) and not missing(self.family, self.slots)
 
     @property
     def unaccounted(self) -> list[float]:
@@ -407,11 +419,15 @@ def phrase_answer(question: str, answer: str) -> str:
 
 
 def open_questions(iv: "Interview") -> list[str]:
-    """Everything standing between this request and a build.
+    """Everything still open about this request.
 
     Two sources, and both have to be asked or the second is silently dropped:
     slots the schema requires and the request did not fill, and dimensions the
     request stated that no slot took.
+
+    Only the first kind blocks a build. The second is asked *alongside* the
+    part, which is how an engineer works — draw what the drawing says, and come
+    back about the dimension that has no feature against it.
     """
     out = [question_for(s) for s in missing(iv.family, iv.slots)]
     for value in iv.unaccounted:
@@ -867,8 +883,27 @@ def requirements(iv: Interview) -> dict:
     # behind, it would be unrecoverable: a radius in a Blueprint carries no
     # record of the diameter somebody typed, or of whether anybody typed one.
     out["provenance"] = _resolved_provenance(iv, mirrored=mirrored)
-    if iv.unsupported:
-        out["unsupported"] = list(iv.unsupported)
+    unsupported = list(iv.unsupported)
+    # A dimension the request stated and no slot took travels the same way a
+    # named feature with no slot does. Both are "you asked for this and we
+    # cannot make or check it", and only one of them used to be sayable.
+    #
+    # This is what keeps the safety property while dropping the refusal. The
+    # guard exists because "Tube 40 mm OD, 32 mm ID, 60 mm long" lost the bore,
+    # built as a solid bar, and graded VERIFIED — the closed form was derived
+    # from the same slots that dropped it, so nothing disagreed. Carrying the
+    # 32 mm here means the bar still builds, and cannot be VERIFIED: an
+    # unsupported record is a warning row in the verdict by construction.
+    for value in iv.unaccounted:
+        unsupported.append({
+            "feature": f"{value:g} mm",
+            "requested": value,
+            "source": "interview",
+            "reason": "stated in the request and no slot took it, so no "
+                      "builder placed it and no observer can check it",
+        })
+    if unsupported:
+        out["unsupported"] = unsupported
     return out
 
 

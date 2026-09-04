@@ -865,6 +865,27 @@ def _carry_forward(history: Optional[list[dict]], message: str) -> str:
     return chr(10).join(list(reversed(carried)) + [message])
 
 
+def _carry_open_questions(bundle: dict, proposal: "Proposal") -> None:
+    """Questions that did not block the build travel with the part.
+
+    A dimension the request stated that no slot took is a gap in what we can
+    *claim*, not in what we can build — so the part is drawn and the question
+    comes with it, which is how an engineer works. The verdict already reflects
+    it: an unsupported record is a warning row by construction, so a part with
+    one of these can never read VERIFIED.
+
+    Kept out of ``error``: the build did not fail, and putting it there would
+    render a delivered part as a failure.
+    """
+    if proposal.questions:
+        bundle["open_questions"] = list(proposal.questions)
+    if proposal.warnings:
+        bundle["warnings"] = list(bundle.get("warnings") or []) + [
+            w for w in proposal.warnings
+            if w not in (bundle.get("warnings") or [])
+        ]
+
+
 def _failed_bundle(proposal: Proposal) -> dict:
     """A proposal that never reached the kernel, in the shape of a build result.
 
@@ -1310,6 +1331,16 @@ class StudioAgent:
             [f"{k} = {v}" for k, v in sorted(iv.slots.items())],
         )
 
+        # Open questions that do NOT block a build: dimensions the request
+        # stated that no slot took. They travel with the part as warnings and
+        # as an unsupported record, so the user sees the geometry *and* what
+        # could not be placed, instead of a question and nothing.
+        carried = [
+            f"The request mentions {value:g} mm and I have not used it "
+            f"anywhere — what is that dimension?"
+            for value in iv.unaccounted
+        ]
+
         if not iv.complete:
             # Both kinds of gap: slots the schema requires and nobody filled,
             # and dimensions the request stated that no slot took. Asking only
@@ -1354,6 +1385,8 @@ class StudioAgent:
                 variables=dict(iv.slots),
                 reasoning=iv.to_dict(),
                 model=f"compiled:{read_by}",
+                questions=carried,
+                warnings=list(carried),
                 route=design_router.Route(
                     design_router.DIRECT,
                     "assembly compiled from the interview",
@@ -1419,6 +1452,8 @@ class StudioAgent:
             # geometry was compiled in Python, and this provider only read the
             # request into slots.
             model=f"compiled:{read_by}",
+            questions=carried,
+            warnings=list(carried),
             # Compiled Blueprints are graded by the same two reviews as authored
             # ones. Not because the generator is expected to fail them — its
             # volume is derived alongside the geometry rather than predicted
@@ -1689,6 +1724,7 @@ class StudioAgent:
             bundle["model"] = proposal.model
             bundle["route"] = proposal.route
             bundle["reasoning"] = proposal.reasoning
+            _carry_open_questions(bundle, proposal)
             rep = bundle.get("verification") or {}
             _emit_step(
                 on_event,
@@ -1729,6 +1765,7 @@ class StudioAgent:
         bundle["volume_claim"] = proposal.volume_claim
         bundle["critique"] = proposal.critique
         bundle["mechanical"] = proposal.mechanical
+        _carry_open_questions(bundle, proposal)
         return bundle
 
     # ------------------------------------------------------------------ #
