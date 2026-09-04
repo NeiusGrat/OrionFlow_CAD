@@ -37,6 +37,12 @@ families:
       # be claimed about the part. See orion/dfm.py.
       process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
       function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
+      # What the dimensions are allowed to be. A drawing without tolerances is
+      # every dimension as a wish; ISO 2768 is what a shop applies when the
+      # drawing does not say. See orion/tolerance.py.
+      tolerance_class:    {ask: "General tolerance class — ISO 2768 f, m, c or v?", unit: "", text: true}
+      critical_tolerance: {ask: "Is there a tighter tolerance called out anywhere, in mm?"}
+      datum:              {ask: "Which face is the datum the part is measured from?", unit: "", text: true}
       # A designation the standards table can turn into dimensions.
       motor_frame:   {ask: "Which motor frame does it mount?", unit: "", text: true}
       corner_radius: {ask: "Corner radius?"}
@@ -131,6 +137,12 @@ families:
       # be claimed about the part. See orion/dfm.py.
       process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
       function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
+      # What the dimensions are allowed to be. A drawing without tolerances is
+      # every dimension as a wish; ISO 2768 is what a shop applies when the
+      # drawing does not say. See orion/tolerance.py.
+      tolerance_class:    {ask: "General tolerance class — ISO 2768 f, m, c or v?", unit: "", text: true}
+      critical_tolerance: {ask: "Is there a tighter tolerance called out anywhere, in mm?"}
+      datum:              {ask: "Which face is the datum the part is measured from?", unit: "", text: true}
       bore_d:         {ask: "Bore diameter?", diameter: true}
       pressure_angle: {ask: "Pressure angle in degrees?", unit: "deg"}
       # Carried so it can be REFUSED rather than ignored. A helix angle is not
@@ -157,6 +169,12 @@ families:
       # be claimed about the part. See orion/dfm.py.
       process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
       function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
+      # What the dimensions are allowed to be. A drawing without tolerances is
+      # every dimension as a wish; ISO 2768 is what a shop applies when the
+      # drawing does not say. See orion/tolerance.py.
+      tolerance_class:    {ask: "General tolerance class — ISO 2768 f, m, c or v?", unit: "", text: true}
+      critical_tolerance: {ask: "Is there a tighter tolerance called out anywhere, in mm?"}
+      datum:              {ask: "Which face is the datum the part is measured from?", unit: "", text: true}
       bore_d:        {ask: "Centre bore diameter?", diameter: true}
       hole_count:    {ask: "How many mounting holes?", unit: "",
                       requires: [hole_d], requires_any: [pcd, hole_pitch]}
@@ -188,6 +206,12 @@ families:
       # be claimed about the part. See orion/dfm.py.
       process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
       function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
+      # What the dimensions are allowed to be. A drawing without tolerances is
+      # every dimension as a wish; ISO 2768 is what a shop applies when the
+      # drawing does not say. See orion/tolerance.py.
+      tolerance_class:    {ask: "General tolerance class — ISO 2768 f, m, c or v?", unit: "", text: true}
+      critical_tolerance: {ask: "Is there a tighter tolerance called out anywhere, in mm?"}
+      datum:              {ask: "Which face is the datum the part is measured from?", unit: "", text: true}
       floor:     {ask: "How thick is the floor?"}
       corner_radius: {ask: "Corner radius?"}
       # What separates a housing from a box. Each is one cylinder through one
@@ -238,6 +262,12 @@ families:
       # be claimed about the part. See orion/dfm.py.
       process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
       function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
+      # What the dimensions are allowed to be. A drawing without tolerances is
+      # every dimension as a wish; ISO 2768 is what a shop applies when the
+      # drawing does not say. See orion/tolerance.py.
+      tolerance_class:    {ask: "General tolerance class — ISO 2768 f, m, c or v?", unit: "", text: true}
+      critical_tolerance: {ask: "Is there a tighter tolerance called out anywhere, in mm?"}
+      datum:              {ask: "Which face is the datum the part is measured from?", unit: "", text: true}
       upright_width:  {ask: "How wide is the vertical plate?"}
       inside_fillet:  {ask: "Inside fillet radius at the joint?"}
       bore_d:         {ask: "Pilot bore diameter on the vertical plate?", diameter: true}
@@ -278,6 +308,12 @@ families:
       # be claimed about the part. See orion/dfm.py.
       process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
       function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
+      # What the dimensions are allowed to be. A drawing without tolerances is
+      # every dimension as a wish; ISO 2768 is what a shop applies when the
+      # drawing does not say. See orion/tolerance.py.
+      tolerance_class:    {ask: "General tolerance class — ISO 2768 f, m, c or v?", unit: "", text: true}
+      critical_tolerance: {ask: "Is there a tighter tolerance called out anywhere, in mm?"}
+      datum:              {ask: "Which face is the datum the part is measured from?", unit: "", text: true}
       bearing_series: {ask: "Which bearing series?", unit: "", text: true}
       mounting_type:  {ask: "Mounting style (foot or flange)?", unit: "", text: true}
       shoulder:       {ask: "Locating shoulder width?"}
@@ -306,6 +342,12 @@ families:
       # be claimed about the part. See orion/dfm.py.
       process:       {ask: "How is it made — machined, cast, printed or sheet?", unit: "", text: true}
       function:      {ask: "What does it do — load bearing, mounting, clearance or enclosure?", unit: "", text: true}
+      # What the dimensions are allowed to be. A drawing without tolerances is
+      # every dimension as a wish; ISO 2768 is what a shop applies when the
+      # drawing does not say. See orion/tolerance.py.
+      tolerance_class:    {ask: "General tolerance class — ISO 2768 f, m, c or v?", unit: "", text: true}
+      critical_tolerance: {ask: "Is there a tighter tolerance called out anywhere, in mm?"}
+      datum:              {ask: "Which face is the datum the part is measured from?", unit: "", text: true}
       port_count:    {ask: "How many ports?", unit: ""}
       port_thread:   {ask: "Port thread size?", unit: "", text: true}
       port_d:        {ask: "Port tapping drill diameter?", diameter: true}

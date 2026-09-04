@@ -2122,6 +2122,9 @@ INFORMATIONAL = frozenset({
     # decide what can be *claimed* about the part, so they are recorded rather
     # than consumed. See ``orion.dfm``.
     "process", "function",
+    # What the dimensions are allowed to be, and what they are measured from.
+    # Neither changes the solid; both change what can be claimed about it.
+    "tolerance_class", "critical_tolerance", "datum",
     "material", "bearing_series", "mounting_type",
     "thread", "hole_thread", "port_thread", "inlet_thread",
     # A frame designation shapes nothing itself: ``interview.apply_standards``
@@ -2292,6 +2295,16 @@ def generate(family: str, requirements: dict) -> dict:
     manufacturing = _manufacturing(family, requirements, payload)
     if manufacturing:
         payload["design_plan"]["manufacturing"] = manufacturing
+
+    tolerance = {
+        k: v for k, v in (
+            ("class", requirements.get("tolerance_class")),
+            ("critical", requirements.get("critical_tolerance")),
+            ("datum", requirements.get("datum")),
+        ) if v is not None and v != ""
+    }
+    if tolerance:
+        payload["design_plan"]["tolerance"] = tolerance
 
     payload["design_plan"]["provenance"] = P.extend(
         requirements.get("provenance") or {},

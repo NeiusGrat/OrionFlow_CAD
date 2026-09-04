@@ -419,6 +419,12 @@ def from_assertion_rows(
     design_plan: Optional[dict] = None,
     topology: Optional[dict] = None,
     template: Optional[dict] = None,
+    #: The frozen variables and datum frame. Only the tolerance rows read
+    #: them: ISO 2768 is keyed on nominal size, so the schedule cannot be
+    #: computed from the design plan alone, and a datum claim has to be
+    #: checked against the frame the part was actually dimensioned from.
+    variables: Optional[dict] = None,
+    datums: Optional[dict] = None,
 ) -> dict[str, Any]:
     """Verification report for the forge path, where a frozen closed form is
     compared against what the kernel measured.
@@ -491,9 +497,12 @@ def from_assertion_rows(
     # design that says nothing about how it is made produces no rows and is
     # unaffected — guessing "probably milled" would put a warning on every part
     # in the corpus and teach everyone to ignore the row.
-    from orion import dfm
+    from orion import dfm, tolerance as T
 
     checks.extend(dfm.check(design_plan))
+    # What the dimensions are allowed to be, and whether the process holds it.
+    # Same rule again: a design that states no tolerance produces no rows.
+    checks.extend(T.check(design_plan, variables, datums))
     checks.extend(provenance_checks(design_plan))
     fulfillment = fulfillment_rows(design_plan, topology, template)
     checks.extend(fulfillment_checks(fulfillment))

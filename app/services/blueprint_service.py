@@ -537,6 +537,12 @@ def _finish(
             # supply.
             topology=record,
             template=bp.template,
+            # Both frozen alongside the rest of the contract. ISO 2768 is keyed
+            # on nominal size, so the tolerance schedule cannot be computed
+            # from the design plan alone, and a stated datum has to be checked
+            # against the frame the part was actually dimensioned from.
+            variables=dict(bp.variables),
+            datums=dict(bp.datums or {}),
         )
 
     bundle["assertions"] = rows

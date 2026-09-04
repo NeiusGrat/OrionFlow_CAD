@@ -517,6 +517,31 @@ def designations(request: str, slots: dict) -> dict:
         m = re.search("(?:^|[^A-Z])NEMA ?([0-9]+)(?:[^0-9]|$)", text)
         if m and f"NEMA {m.group(1)}" in MOTOR_FRAMES:
             out["motor_frame"] = f"NEMA {m.group(1)}"
+    if not out.get("tolerance_class"):
+        # "ISO 2768-m", "ISO2768 mK", "general tolerance medium". The class
+        # letter is a designation like every other token read here.
+        m = re.search(r"ISO ?2768[ \-]*([FMCV])", text)
+        if m:
+            out["tolerance_class"] = m.group(1).lower()
+        else:
+            for word, value in (("FINE TOLERANCE", "f"), ("MEDIUM TOLERANCE", "m"),
+                                ("COARSE TOLERANCE", "c"),
+                                ("GENERAL TOLERANCE FINE", "f"),
+                                ("GENERAL TOLERANCE MEDIUM", "m"),
+                                ("GENERAL TOLERANCE COARSE", "c")):
+                if word in text:
+                    out["tolerance_class"] = value
+                    break
+    if out.get("critical_tolerance") is None:
+        # A called-out band: "+/-0.05", "±0.05 mm", "0.05 mm tolerance".
+        m = re.search(r"(?:\+/-|±|\+\-)\s*([0-9]*\.?[0-9]+)", request or "")
+        if m is None:
+            m = re.search(r"([0-9]*\.?[0-9]+)\s*MM TOLERANCE", text)
+        if m:
+            try:
+                out["critical_tolerance"] = float(m.group(1))
+            except ValueError:
+                pass
     for name, table in (("process", PROCESS_WORDS), ("function", FUNCTION_WORDS)):
         if out.get(name):
             continue
