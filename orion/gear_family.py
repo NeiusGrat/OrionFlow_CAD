@@ -26,7 +26,30 @@ from concurrent.futures import ThreadPoolExecutor
 from .blueprint import Blueprint, BlueprintError
 from . import forge
 
-MAX_SEGMENTS = 360          # ~15 s in FreeCAD; 500+ blows the build budget
+#: How many segments to *aim* for when choosing the flank sampling. Higher is a
+#: more accurate involute and a slower build, so this is a quality/latency
+#: trade and not a safety limit. Left where it was measured: a live user waits
+#: on this.
+MAX_SEGMENTS = 360          # ~15 s in FreeCAD
+
+#: Above this a gear is refused outright. A separate number from the one above
+#: because they answer different questions — that one picks a sampling, this
+#: one says the kernel will not finish — and collapsing them refused gears that
+#: build comfortably.
+#:
+#: The old ceiling was 400, from "505 segments exceeded 90 s". Re-measured on
+#: FreeCAD 1.1.3 against the current 180 s budget, module 2.5, 20 mm face::
+#:
+#:     312 seg (24T)  16.8 s      462 seg (42T)  26.6 s
+#:     352 seg (32T)  20.4 s      616 seg (56T)  72.7 s
+#:
+#: All four built and verified. 400 was therefore rejecting a plain 42-tooth
+#: gear — one of the commonest sizes there is — with almost seven times the
+#: budget still unspent. 520 keeps a real margin (about 35 s against 180 s)
+#: while admitting everything up to 47 teeth at minimum sampling, and still
+#: refuses the 56-tooth case, which at 72.7 s is too close to be safe on a
+#: slower box.
+MAX_BUILD_SEGMENTS = 520
 
 # --------------------------------------------------------------------------- #
 # The gear rules, in ONE place
@@ -43,9 +66,9 @@ MAX_SEGMENTS = 360          # ~15 s in FreeCAD; 500+ blows the build budget
 #                      a tooth centreline lands at both 0 and 180 degrees. Odd
 #                      counts failed 16/16 against a *correct* gear.
 #   3. segments      — teeth * (2*flank_pts + 5) must stay inside the kernel's
-#                      build budget; 505 segments exceeded 90 s outright and
-#                      396 sat 1.2 s under it, passing alone and failing under
-#                      load.
+#                      build budget. Two numbers, deliberately: MAX_SEGMENTS
+#                      picks the flank sampling (quality against latency) and
+#                      MAX_BUILD_SEGMENTS refuses outright. See both.
 #
 # Any composer that builds gears must call these rather than restate them.
 MIN_TEETH = 18              # >= 17 for undercut, rounded up to the next even
@@ -70,8 +93,11 @@ def teeth_problems(teeth: int, flank_pts: int | None = None) -> list[str]:
     if z % 2:
         out.append(f"teeth {z} is odd: tip_diameter bbox != 2*ra")
     segs = segments_for(z, flank_pts)
-    if segs > 400:
-        out.append(f"{segs} sketch segments exceeds the build budget")
+    if segs > MAX_BUILD_SEGMENTS:
+        out.append(
+            f"{segs} sketch segments exceeds the build budget of "
+            f"{MAX_BUILD_SEGMENTS}; {z} teeth is more than this profile "
+            f"generator can tessellate in time")
     return out
 
 

@@ -48,6 +48,16 @@ UNPROVEN = "unproven"  # nothing failed, but nothing was provable either
 #: and it was heard as "the numbers are right". This says the difference out
 #: loud instead of leaving the reader to know it.
 UNSOURCED = "unsourced"
+#: The geometry is proved, the dimensions are accounted for, and one thing the
+#: request asked for could only be confirmed *present* rather than measured.
+#:
+#: Split out of UNSOURCED, which every warning used to collapse into. A bracket
+#: whose ledger read 13 stated and 1 derived — nothing unaccounted at all — was
+#: reported as UNSOURCED because its pocket raised the "present, size not
+#: verified" warning, and UNSOURCED means "nobody accounted for the numbers".
+#: That sends a reader hunting for an invented dimension that does not exist.
+#: One warning, one meaning.
+UNMEASURED = "unmeasured"
 
 
 def _check(
@@ -72,6 +82,10 @@ def verdict_for(checks: list[dict]) -> str:
     * every feature the request obliged is present and measures right
       (``feature:``)
 
+    Anything short of that is named for which of the three fell short:
+    ``unsourced`` for the numbers, ``unmeasured`` for a feature this system can
+    confirm present but cannot size.
+
     The third was missing, and the first cannot substitute for it: a volume
     assertion is derived from the same requirements the feature is, so a plate
     that dropped four holes predicted its own hole-less volume and matched it
@@ -79,8 +93,15 @@ def verdict_for(checks: list[dict]) -> str:
     """
     if any(c["status"] == FAIL for c in checks):
         return REFUSED
-    if any(c["status"] == WARN for c in checks):
+    # A warning is named for what raised it. Provenance wins when both are
+    # present: "some of these numbers came from nowhere" is the more serious
+    # claim, and burying it under a measurement-coverage note would be the
+    # laundering this module exists to prevent.
+    warned = [c for c in checks if c["status"] == WARN]
+    if any(str(c["id"]).startswith("provenance") for c in warned):
         return UNSOURCED
+    if warned:
+        return UNMEASURED
     # Provenance is deliberately not counted here. It says where the numbers
     # came from, never whether the geometry matches them, so a part with a
     # clean ledger and no geometry check has still proved nothing — and

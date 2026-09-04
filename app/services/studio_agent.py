@@ -473,7 +473,9 @@ def _with_provenance(payload: dict, request: str, chain: Any = None) -> dict:
 #: gave will not be given by drawing again; the second draw would simply invent
 #: a different number, and might invent one that happens to match a numeral in
 #: the request and grade better for it.
-_NOTHING, _BUILT_UNVERIFIED, _UNSOURCED, _VERIFIED = 1, 2, 3, 4
+#: ``_UNMEASURED`` sits above ``_UNSOURCED``: its numbers are all accounted
+#: for and only a feature's *size* went unchecked, which is the nearer miss.
+_NOTHING, _BUILT_UNVERIFIED, _UNSOURCED, _UNMEASURED, _VERIFIED = 1, 2, 3, 4, 5
 
 
 def _rank(bundle: dict) -> int:
@@ -482,6 +484,8 @@ def _rank(bundle: dict) -> int:
     verdict = (bundle.get("verification") or {}).get("verdict")
     if verdict == "verified":
         return _VERIFIED
+    if verdict == "unmeasured":
+        return _UNMEASURED
     if verdict == "unsourced":
         return _UNSOURCED
     if bundle.get("success"):

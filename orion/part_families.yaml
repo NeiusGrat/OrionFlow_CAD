@@ -108,6 +108,28 @@ families:
       fillet:        {ask: "External fillet radius?"}
       chamfer:       {ask: "Edge chamfer size?"}
 
+  # The first family that is neither prismatic nor revolved. The geometry has
+  # been verified since the forge work — a module 2.5, 42-tooth gear measures
+  # its tip diameter exactly and its profile volume to 2e-15 — but it was never
+  # in the builder registry, so every gear request was answered "this part has
+  # no deterministic builder".
+  spur_gear:
+    label: spur gear
+    required:
+      module:    {ask: "What module is the gear?"}
+      teeth:     {ask: "How many teeth?", unit: ""}
+      thickness: {ask: "How wide is the gear face?"}
+    optional:
+      material:       {ask: "Material?", unit: "", text: true}
+      bore_d:         {ask: "Bore diameter?", diameter: true}
+      pressure_angle: {ask: "Pressure angle in degrees?", unit: "deg"}
+      # Carried so it can be REFUSED rather than ignored. A helix angle is not
+      # a length, so the unaccounted-dimension guard never sees it: without a
+      # slot, "15 degree helix" would build a perfectly good spur gear, pass
+      # every assertion and grade VERIFIED with the one thing the user asked
+      # for silently absent.
+      helix_angle:    {ask: "Helix angle in degrees?", unit: "deg"}
+
   # The rotational half of mechanical design. One family covers washers,
   # cylinders, tubes, flanges, pulley blanks, shaft collars, spacers, cover
   # discs and grilles, because they are one profile — a disc, optionally bored,
@@ -148,6 +170,17 @@ families:
       material:  {ask: "Material?", unit: "", text: true}
       floor:     {ask: "How thick is the floor?"}
       corner_radius: {ask: "Corner radius?"}
+      # What separates a housing from a box. Each is one cylinder through one
+      # wall, so the volume stays a closed form. Without them a gearbox request
+      # lost its bores to the unaccounted-dimension guard and was refused
+      # whole, which made the commonest reason to want a shelled box
+      # unaskable.
+      end_bore_d:      {ask: "Shaft bore diameter through the end wall?",
+                        diameter: true}
+      opposite_bore_d: {ask: "Bore diameter through the opposite end wall?",
+                        diameter: true}
+      bore_height:     {ask: "How high is the bore axis above the base?",
+                        requires_any: [end_bore_d, opposite_bore_d]}
 
   l_bracket:
     label: L-bracket

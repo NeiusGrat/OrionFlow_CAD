@@ -179,12 +179,38 @@ def rect_plate(req: dict) -> dict:
     # builder understood. The interview now refuses to call a hole pattern
     # complete without one of the two.
     edge_gap = _num(req, "hole_edge_gap")
+    # ``hole_cols``/``hole_rows`` describe a grid, and until now only the grid
+    # branch read them — so "four M5 holes, one 10 mm from each corner", which
+    # the reader quite reasonably also records as 2 x 2, was refused outright:
+    # the corner branch placed the holes and never looked at the counts, and
+    # the consumption guard reported two features the generator had ignored.
+    # Measured on the bench prompt of exactly that shape: three identical runs
+    # gave one VERIFIED and two refusals, because whether the counts appear at
+    # all is up to the reader.
+    #
+    # A 2 x 2 grid at the corners IS the corner pattern. So the counts are read
+    # here, where every placement can see them, and checked for agreement
+    # rather than treated as a rival placement.
+    cols_stated, rows_stated = req.get("hole_cols"), req.get("hole_rows")
+
+    def _counts_agree(placed: int) -> None:
+        """Refuse only a grid that contradicts the pattern actually placed."""
+        if not cols_stated or not rows_stated:
+            return
+        grid = int(cols_stated) * int(rows_stated)
+        if grid != placed:
+            raise GeneratorError(
+                f"the holes are described two ways that disagree: "
+                f"{int(cols_stated)} x {int(rows_stated)} is {grid} holes, and "
+                f"the placement given puts {placed}")
+
     if n and hole_r and pcd_r:
         n = int(n)
         if n < 1:
             raise GeneratorError("hole_count must be at least 1")
         if pcd_r + hole_r >= min(L, W) / 2:
             raise GeneratorError("bolt circle does not fit inside the plate")
+        _counts_agree(n)
         v["hole_r"] = hole_r
         v["pcd_r"] = pcd_r
         import math
@@ -209,6 +235,7 @@ def rect_plate(req: dict) -> dict:
         if edge_gap + hole_r >= min(L, W) / 2:
             raise GeneratorError(
                 "the corner holes overlap at the centre of the plate")
+        _counts_agree(4)
         v["hole_r"] = hole_r
         v["gap"] = edge_gap
         for sx, sy in ((1, 1), (-1, 1), (-1, -1), (1, -1)):
@@ -218,7 +245,7 @@ def rect_plate(req: dict) -> dict:
         # A rectangular grid, centred on the plate. The counts come from the
         # request because a pitch alone does not fix a pattern.
         pitch = _num(req, "hole_pitch")
-        cols, rows = req.get("hole_cols"), req.get("hole_rows")
+        cols, rows = cols_stated, rows_stated
         if not cols or not rows:
             raise GeneratorError(
                 "a grid of holes needs how many across and how many down")
@@ -1706,6 +1733,74 @@ def shelled_box(req: dict) -> dict:
          "why": "blind pocket from the top face leaves walls and a floor"},
     ]
 
+    # ---- shaft bores through the end walls --------------------------------- #
+    #
+    # What separates a housing from a box. Without these a gearbox request lost
+    # its bores to the unaccounted-dimension guard and was refused as a whole,
+    # so the commonest reason to want a shelled box could not be asked for.
+    #
+    # Each bore is one cylinder through one wall, so the closed form stays
+    # exact: the Pocket runs ``wall`` deep from the outer face and the cavity
+    # beyond it is already air.
+    #
+    # All three are read whether or not they are used: an unread requirement is
+    # a feature the user asked for and the builder ignored, and ``generate``
+    # refuses the part for it — correctly.
+    end_r = _num(req, "end_bore_r")
+    opp_r = _num(req, "opposite_bore_r")
+    axis_h = _num(req, "bore_height")
+    if axis_h is None:
+        axis_h = H / 2.0
+    if (end_r or opp_r):
+        v["bore_h"] = axis_h
+        # A YZ sketch's local x is world Z and its local y is world Y, and a
+        # Pocket cuts toward +X. Both were the opposite of the obvious reading:
+        # placing the axis height in ``cy`` puts the bore across the width at
+        # z = 0, half of it outside the solid, which still builds and still
+        # measures — it removed 46% of the cylinder in the probe that found it.
+        for name, r_val, at in (("end", end_r, "L/2 - wall"),
+                                ("opp", opp_r, "-L/2")):
+            if not r_val:
+                continue
+            if r_val >= W / 2:
+                raise GeneratorError(
+                    f"a {r_val * 2:g} mm bore is wider than the {W:g} mm end "
+                    f"face it goes through")
+            if axis_h - r_val <= 0 or axis_h + r_val >= H:
+                raise GeneratorError(
+                    f"a {r_val * 2:g} mm bore centred {axis_h:g} mm up does "
+                    f"not fit in a {H:g} mm tall end wall; it needs "
+                    f"{r_val * 2:g} mm of wall around it")
+            if r_val >= W / 2 - wall or axis_h - r_val < floor:
+                # A bore that does not clear the cavity is a blind counterbore
+                # in the wall, not a shaft passage. The volume would still be
+                # exact, which is precisely why this has to be said out loud.
+                raise GeneratorError(
+                    f"a {r_val * 2:g} mm bore centred {axis_h:g} mm up does "
+                    f"not open into the cavity — it stops in the "
+                    f"{floor:g} mm floor or the side walls. Raise the axis or "
+                    f"reduce the bore")
+            key = f"{name}_bore_r"
+            v[key] = r_val
+            features += [
+                {"id": f"s_{name}_bore", "type": "Sketch", "parameters": {}},
+                {"id": f"{name}_bore", "type": "Pocket",
+                 "rationale": "shaft bore through the end wall",
+                 "parameters": {"Length": "wall", "Type": "Length"}},
+            ]
+            sketches.append({
+                "id": f"s_{name}_bore", "plane": "YZ", "z": at,
+                "profile": {"builder": "circle",
+                            "args": {"r": key, "cx": "bore_h"}}})
+            deps.append({"source": f"s_{name}_bore", "target": f"{name}_bore",
+                         "kind": "profile"})
+            volume = f"{volume} - pi*{key}**2*wall"
+            derivation.append({
+                "step": len(derivation) + 1, "eq": f"V = {volume}",
+                "why": f"shaft bore through the {'far ' if name == 'opp' else ''}"
+                       f"end wall: one cylinder {wall:g} mm long, the cavity "
+                       f"behind it already being air"})
+
     assertions = [
         _extent_assertion("len_extent", "x", "L"),
         _extent_assertion("wid_extent", "y", "W"),
@@ -1716,6 +1811,108 @@ def shelled_box(req: dict) -> dict:
                       features, sketches, deps, inexact=inexact)
 
 
+# --------------------------------------------------------------------------- #
+# Spur gear
+# --------------------------------------------------------------------------- #
+def spur_gear(req: dict) -> dict:
+    """An involute spur gear — the first non-prismatic, non-revolved family.
+
+    The geometry was already here and already verified: ``orion.gear_family``
+    has built and graded gears since the forge work, and a module-2.5 42-tooth
+    gear measures its tip diameter and its profile volume to 2e-15. It was
+    simply not in ``BUILDERS``, so the live path answered "this part has no
+    deterministic builder" for every gear anyone asked for. This is the wiring,
+    not new geometry.
+
+    The three rules that govern a buildable gear live in ``gear_family`` and are
+    called rather than restated — that module says so, having watched a second
+    sampler re-derive them and forget one.
+
+    The volume claim is ``body_volume_profile`` rather than a closed form: an
+    involute has no expression in this language, so the area comes from the same
+    profile builder that emits the geometry. Prediction and part are the same
+    polygon, which is a stronger guarantee than a formula either of them could
+    disagree with.
+    """
+    from . import gear_family as G
+
+    _assert_positive(req, ("module", "thickness"))
+    module = _num(req, "module")
+    t = _num(req, "thickness")
+    teeth_raw = req.get("teeth")
+    if not teeth_raw:
+        raise GeneratorError("a gear needs a tooth count")
+    teeth = int(teeth_raw)
+
+    # A helix is not a padded profile. Refusing is the whole point: the sketch
+    # would build a perfectly good SPUR gear, measure correctly against its own
+    # assertions and grade VERIFIED, and the one thing the user asked for that
+    # this cannot do would have vanished without trace. Degrees are not a
+    # length, so the unaccounted-dimension guard never sees it either.
+    helix = _num(req, "helix_angle")
+    if helix:
+        raise GeneratorError(
+            f"this builder makes spur gears, and a {helix:g} degree helix needs "
+            f"a swept flank rather than a padded profile. Ask for a spur gear, "
+            f"or state the helix as zero")
+
+    fpts = G.flank_points_for(teeth)
+    problems = G.teeth_problems(teeth, fpts)
+    if problems:
+        raise GeneratorError("; ".join(problems))
+
+    alpha = _num(req, "pressure_angle") or 20.0
+    bore_r = _num(req, "bore_r") or 0.0
+    if bore_r:
+        # A cut gear must keep a real rim under the tooth root, or the teeth
+        # are standing on nothing.
+        rim = module * teeth / 2.0 - 1.25 * module - 1.5 * module
+        if bore_r >= rim:
+            raise GeneratorError(
+                f"a {bore_r * 2:g} mm bore leaves no rim under the tooth root "
+                f"of a module {module:g}, {teeth}-tooth gear; the bore must "
+                f"stay under {rim * 2:g} mm")
+
+    v = {"module": module, "teeth": float(teeth), "bore_r": bore_r,
+         "t": t, "alpha": alpha, "fpts": float(fpts)}
+    derivation = [{"step": i + 1, "eq": eq, "why": why}
+                  for i, (eq, why) in enumerate(G.DERIVATIONS)]
+    assertions = [
+        {"id": "bore_fits", "kind": "precondition", "tier": 1,
+         "target": "module*teeth/2 - 1.25*module - bore_r - 2"},
+        {"id": "no_undercut", "kind": "precondition", "tier": 1,
+         "target": "teeth - 17"},
+        {"id": "rim_guard", "kind": "precondition", "tier": 1,
+         "target": "module*teeth/2 - 1.25*module - bore_r - 1.5*module"},
+        {"id": "tip_diameter", "kind": "bbox_extent", "axis": "x", "tier": 1,
+         "tol_rel": 1e-06, "target": "module*teeth + 2*module"},
+        {"id": "body", "kind": "body_volume_profile", "tier": 1,
+         "tol_rel": 1e-06, "sketch": "s_gear", "length": "t"},
+        {"id": "one_solid", "kind": "solids", "tier": 1, "tol_rel": 1e-09,
+         "target": "1"},
+        {"id": "closed", "kind": "watertight", "tier": 1},
+    ]
+    features = [
+        {"id": "Body", "type": "Body", "parameters": {}},
+        {"id": "s_gear", "type": "Sketch", "parameters": {}},
+        {"id": "gear", "type": "Pad",
+         "rationale": "spur gear blank — involute flanks generated from module, "
+                      "tooth count and pressure angle, with a central bore for "
+                      "the shaft",
+         "parameters": {"Length": "t", "Type": "Length"}},
+    ]
+    sketches = [{"id": "s_gear", "plane": "XY", "profile": {
+        "builder": "involute_gear",
+        "args": {"module": "module", "teeth": "teeth", "bore_r": "bore_r",
+                 "pressure_angle": "alpha", "flank_pts": "fpts"}}}]
+    deps = [{"source": "s_gear", "target": "gear", "kind": "profile"}]
+    return _blueprint(
+        "spur_gear", v, derivation, assertions, features, sketches, deps,
+        datums={"A": "bottom face z=0 (primary)",
+                "B": "bore axis (secondary)",
+                "C": "first tooth flank (tertiary)"})
+
+
 BUILDERS: dict[str, Callable[[dict], dict]] = {
     "disc": disc,
     "shelled_box": shelled_box,
@@ -1723,6 +1920,7 @@ BUILDERS: dict[str, Callable[[dict], dict]] = {
     "l_bracket": l_bracket,
     "bearing_housing": bearing_housing,
     "manifold": manifold,
+    "spur_gear": spur_gear,
 }
 
 

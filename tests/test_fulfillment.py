@@ -434,7 +434,7 @@ def test_a_chamfer_the_builder_dropped_fails():
 def test_a_present_chamfer_still_prevents_verified():
     """Rule C: the boundary stops VERIFIED without calling the geometry wrong."""
     report = _report(CHAMFERED, obligations=O.to_dicts(_dressing_obligation()))
-    assert report["verdict"] == verify.UNSOURCED
+    assert report["verdict"] == verify.UNMEASURED
     assert report["failed"] == []
 
 
@@ -695,7 +695,7 @@ def test_a_model_authored_design_cannot_reach_verified_on_features():
         topology=CORRECT,
     )
     assert report["verdict"] != verify.VERIFIED
-    assert report["verdict"] == verify.UNSOURCED
+    assert report["verdict"] == verify.UNMEASURED
     # Not a refusal — the geometry is sound, it is the feature claim that is
     # unavailable.
     assert report["failed"] == []
@@ -861,7 +861,16 @@ def test_the_unsupported_record_cannot_be_dropped_after_the_freeze():
 # ---- B: otherwise perfect geometry still cannot be VERIFIED --------------- #
 def test_an_unsupported_feature_prevents_verified_on_perfect_geometry():
     """Extents pass, solid valid, volume passes, ledger clean — and one thing
-    the user asked for is not in the part and never could be."""
+    the user asked for is not in the part and never could be.
+
+    The verdict is UNMEASURED, not UNSOURCED. Every warning used to collapse
+    into the latter, which means "nobody accounted for the numbers" — so a part
+    whose ledger was entirely stated and derived was reported as though its
+    dimensions had been invented, and the reader was sent hunting for one that
+    does not exist. The two are separate facts about a part and now have
+    separate names; ``test_a_clean_feature_warning_is_not_a_provenance_warning``
+    holds the line from the other side.
+    """
     plan = {"provenance": CLEAN_LEDGER, "unsupported": list(UNSUPPORTED_DRAFT)}
     report = verify.from_assertion_rows(
         PASSING_ROWS,
@@ -869,7 +878,7 @@ def test_an_unsupported_feature_prevents_verified_on_perfect_geometry():
         design_plan=plan,
         topology=CORRECT,
     )
-    assert report["verdict"] == verify.UNSOURCED
+    assert report["verdict"] == verify.UNMEASURED
     # Not a refusal: the geometry is not wrong, the capability is missing.
     assert report["failed"] == []
     row = next(c for c in report["checks"] if c["id"] == "unsupported:draft_angle")
@@ -894,7 +903,7 @@ def test_unsupported_is_distinguishable_from_no_request_at_all():
         topology=CORRECT,
     )
     assert clean["verdict"] == verify.VERIFIED
-    assert asked["verdict"] == verify.UNSOURCED
+    assert asked["verdict"] == verify.UNMEASURED
     assert not any(c["id"].startswith("unsupported:") for c in clean["checks"])
 
 
@@ -910,7 +919,7 @@ def test_unsupported_is_distinguishable_from_omitted():
         topology=CORRECT,
     )
     assert omitted["verdict"] == verify.REFUSED
-    assert unsupported["verdict"] == verify.UNSOURCED
+    assert unsupported["verdict"] == verify.UNMEASURED
 
 
 def test_no_obligation_is_invented_for_an_unsupported_feature():
@@ -954,3 +963,37 @@ def test_pocket_and_slot_semantics_are_unchanged():
                              "edges": [], "vertices": []}})
     assert F.check(pocket, with_pocket)[0]["status"] == "warn"
     assert F.check(pocket, CORRECT)[0]["status"] == "fail"
+
+
+def test_a_clean_feature_warning_is_not_a_provenance_warning():
+    """The two warnings must not be able to impersonate each other.
+
+    A feature this system can see but not size, and a dimension nobody
+    accounted for, are different problems with different fixes. Collapsing them
+    cost a real diagnosis: a bracket with 13 stated and 1 derived dimension —
+    nothing unaccounted at all — reported UNSOURCED because its pocket could
+    not be measured.
+    """
+    from orion_physical_ai import verify
+
+    feature_only = [
+        {"id": "bbox_extent:len", "status": verify.PASS, "label": "", "detail": ""},
+        {"id": "feature:pocket", "status": verify.WARN, "label": "", "detail": ""},
+    ]
+    assert verify.verdict_for(feature_only) == verify.UNMEASURED
+
+    provenance_only = [
+        {"id": "bbox_extent:len", "status": verify.PASS, "label": "", "detail": ""},
+        {"id": "provenance:sources", "status": verify.WARN, "label": "", "detail": ""},
+    ]
+    assert verify.verdict_for(provenance_only) == verify.UNSOURCED
+
+    # Both at once: the claim about the numbers is the more serious one, and
+    # burying it under a measurement note would be the laundering the
+    # provenance ledger exists to prevent.
+    assert verify.verdict_for(feature_only + provenance_only) == verify.UNSOURCED
+
+    # And a failure still outranks either.
+    failed = feature_only + [
+        {"id": "solid:valid", "status": verify.FAIL, "label": "", "detail": ""}]
+    assert verify.verdict_for(failed) == verify.REFUSED

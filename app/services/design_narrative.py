@@ -234,7 +234,7 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
         if phrase and phrase not in kinds:
             kinds.append(phrase)
 
-    if verdict in ("verified", "unsourced") and kinds:
+    if verdict in ("verified", "unsourced", "unmeasured") and kinds:
         body = (
             "Before any geometry existed, the design committed to what it "
             "should measure. It was then built and measured, and " + _join(kinds) + "."
@@ -244,6 +244,12 @@ def build(bundle: dict, prompt: str = "") -> Optional[dict]:
                 f", envelope {'×'.join(str(round(v)) for v in stats['bbox_mm'])} mm."
                 if stats.get("bbox_mm")
                 else "."
+            )
+        if verdict == "unmeasured":
+            body += (
+                " One feature the request asked for is present in the solid "
+                "but could not be measured independently, so its size rests "
+                "on the volume claim rather than on its own check."
             )
         if verdict == "unsourced":
             # Said here as well as in its own section, because this paragraph

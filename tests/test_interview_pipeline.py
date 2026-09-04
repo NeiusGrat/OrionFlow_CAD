@@ -1686,3 +1686,30 @@ def test_a_placement_with_no_diameter_asks_for_one(family, slots, placement):
     assert "hole_d" in [
         g.name for g in interview.missing(family, dict(slots, **placement))
     ]
+
+
+def test_a_corner_pattern_restated_as_a_grid_still_builds():
+    """"Four holes, one from each corner" is also 2 x 2, and both are true.
+
+    Only the grid branch read ``hole_cols``/``hole_rows``, so when the reader
+    recorded a corner pattern as counts as well, the corner branch placed the
+    holes, never looked at them, and the consumption guard refused the part for
+    two features the generator had "ignored". Whether the counts appear at all
+    is up to the reader, so the same bench prompt gave one VERIFIED and two
+    refusals across three identical runs.
+    """
+    payload = interview.build(
+        iv("rect_plate", length=120, width=80, thickness=6,
+           hole_count=4, hole_d=5, hole_edge_gap=10,
+           hole_cols=2, hole_rows=2))
+    holes = payload["template"]["sketches"][0]["profile"]["args"]["holes"]
+    assert len(holes) == 4
+
+
+def test_a_grid_that_contradicts_the_placement_is_refused():
+    """Agreement is checked, not assumed — 3 x 2 is not four corner holes."""
+    with pytest.raises(blueprint_gen.GeneratorError, match="disagree"):
+        interview.build(
+            iv("rect_plate", length=120, width=80, thickness=6,
+               hole_count=4, hole_d=5, hole_edge_gap=10,
+               hole_cols=3, hole_rows=2))
