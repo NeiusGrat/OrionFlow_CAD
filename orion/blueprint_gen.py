@@ -246,15 +246,15 @@ def rect_plate(req: dict) -> dict:
     if holes:
         args = dict(profile["args"])
         args["holes"] = holes
-        builder = "poly_with_holes" if profile["builder"] == "rounded_rect" \
-            else "rect_with_holes"
-        if builder == "poly_with_holes":
-            # rounded_rect has no holes variant; fall back to a plain rect so
-            # the closed form stays exact rather than approximating a fillet.
-            v.pop("cr", None)
-            area = area.replace("(L*W - (4 - pi)*cr**2)", "L*W")
-            builder = "rect_with_holes"
-            args = {"w": "L", "h": "W", "holes": holes}
+        # A rounded outline and a hole pattern are not mutually exclusive.
+        # This used to fall back to a plain rect "so the closed form stays
+        # exact" — which silently deleted a stated corner radius, and because
+        # fulfillment does not inspect fillets, the square-cornered plate then
+        # graded VERIFIED. Trading the part the user asked for against an exact
+        # number is the wrong trade when a third option exists: the two areas
+        # are independent, so ``rounded_rect_with_holes`` keeps both.
+        builder = ("rounded_rect_with_holes"
+                   if profile["builder"] == "rounded_rect" else "rect_with_holes")
         profile = {"builder": builder, "args": args}
 
     features = [
@@ -269,6 +269,8 @@ def rect_plate(req: dict) -> dict:
     derivation = [{"step": 1, "eq": f"V = {volume}",
                    "why": "plate blank with every through-cut in the pad profile"}]
 
+    volume = _bosses(req, v, features, sketches, deps, derivation, volume, L, W)
+
     pl, pw, pd = (_num(req, "pocket_l"), _num(req, "pocket_w"),
                   _num(req, "pocket_depth"))
     if pl and pw and pd:
@@ -277,6 +279,30 @@ def rect_plate(req: dict) -> dict:
                 f"pocket depth {pd} must be less than thickness {T}")
         if pl >= L or pw >= W:
             raise GeneratorError("pocket does not fit within the plate")
+
+        # An internal corner radius is what a milled pocket actually has — an
+        # end mill cannot cut a sharp inside corner — so a stated one is
+        # geometry, not decoration. There was no slot for it, which is how
+        # "pocket internal corner radius: R3" ended up in the plate's OUTER
+        # ``corner_radius``: the unaccounted-dimension guard insists every
+        # stated number lands somewhere, and R3 took the only radius slot on
+        # offer. The plate was then given 3 mm corners nobody asked for, which
+        # collided with the external fillet and ended the design. The area
+        # stays exact either way.
+        pcr = _num(req, "pocket_corner_radius")
+        if pcr and pcr > 0:
+            if pcr >= min(pl, pw) / 2:
+                raise GeneratorError(
+                    f"a {pcr:g} mm pocket corner radius does not fit a "
+                    f"{pl:g} x {pw:g} mm pocket")
+            v["pcr"] = pcr
+            pocket_profile = {"builder": "rounded_rect",
+                              "args": {"w": "pl", "h": "pw", "r": "pcr"}}
+            pocket_area = "(pl*pw - (4 - pi)*pcr**2)"
+        else:
+            pcr = None
+            pocket_profile = {"builder": "rect", "args": {"w": "pl", "h": "pw"}}
+            pocket_area = "pl*pw"
 
         # A pocket over a through-hole removes nothing there — that material
         # left with the hole. Subtracting the full pocket box double-counts the
@@ -299,6 +325,14 @@ def rect_plate(req: dict) -> dict:
                 continue
             inside = (abs(cx) + rr <= pl / 2) and (abs(cy) + rr <= pw / 2)
             straddles = (abs(cx) - rr < pl / 2) and (abs(cy) - rr < pw / 2)
+            if pcr and inside:
+                # In a corner quadrant the pocket wall is the arc, not the two
+                # sides: a hole can sit inside the bounding rectangle and still
+                # cross the rounded wall, which would credit back material the
+                # pocket never removed.
+                ex, ey = abs(cx) - (pl / 2 - pcr), abs(cy) - (pw / 2 - pcr)
+                if ex > 0 and ey > 0:
+                    inside = (ex * ex + ey * ey) ** 0.5 + rr <= pcr
             if inside:
                 overlap_terms.append(f"pi*{r_expr}**2*pd")
             elif straddles:
@@ -315,23 +349,23 @@ def rect_plate(req: dict) -> dict:
              "parameters": {"Length": "pd", "Type": "Length"}},
         ]
         sketches.append({"id": "s_pocket", "plane": "XY", "z": "T",
-                         "profile": {"builder": "rect",
-                                     "args": {"w": "pl", "h": "pw"}}})
+                         "profile": pocket_profile})
         deps.append({"source": "s_pocket", "target": "pocket", "kind": "profile"})
         if straddling:
             inexact.append(
                 f"{straddling} hole(s) cross the pocket wall, and the region "
                 f"they share is bounded by a circle and a straight edge with no "
                 f"exact area in this expression language")
-        pocket = "pl*pw*pd"
+        pocket = f"{pocket_area}*pd"
         if overlap_terms:
             pocket = f"({pocket} - {' - '.join(overlap_terms)})"
         volume = f"{volume} - {pocket}"
-        why = "blind rectangular pocket from the top face"
+        why = ("blind rectangular pocket from the top face"
+               + (f", inside corners rounded to {pcr:g} mm" if pcr else ""))
         if overlap_terms:
             why += (f", less the {len(overlap_terms)} through-hole(s) under it "
                     f"whose material the holes already removed")
-        derivation.append({"step": 2, "eq": f"V = {volume}", "why": why})
+        derivation.append({"step": len(derivation) + 1, "eq": f"V = {volume}", "why": why})
 
     # ---- corner mounting slots -------------------------------------------- #
     sl, sw = _num(req, "slot_length"), _num(req, "slot_width")
@@ -351,13 +385,31 @@ def rect_plate(req: dict) -> dict:
     #
     # An external fillet on a plate is a rounded corner, which this builder
     # already expresses in the profile with an exact area — so `fillet` and
-    # `corner_radius` are the same request and only one may be given.
-    if _num(req, "fillet") and corner_r:
-        raise GeneratorError(
-            "a corner radius rounds the plate's outline in the sketch, where "
-            "the area is exact, and an external fillet rounds the same edges "
-            "afterwards where it is not. Give one")
-    volume = _vertical_fillet(req, v, features, inexact, derivation, volume)
+    # `corner_radius` are the same request under two names.
+    #
+    # Both present used to be an unconditional refusal, which is wrong
+    # whenever they agree. One sentence — "external vertical-edge fillets:
+    # R5" — lands in both slots routinely, because the reader has two homes
+    # for it and no way to know they name the same edges. The guard then
+    # refused the duplicate that extraction had just invented, and asked the
+    # user to choose between a radius and itself; on the prompt that exposed
+    # this it fired twice and ended the design. Two names for one number is
+    # not a contradiction — take the in-profile form, which is the exact one.
+    # A genuine disagreement is still a refusal, and now says both values.
+    fil = _num(req, "fillet")
+    if fil and corner_r:
+        if abs(fil - corner_r) > 1e-9:
+            raise GeneratorError(
+                f"the same four upright edges are given two radii: a corner "
+                f"radius of {corner_r:g} mm in the sketch and a {fil:g} mm "
+                f"external fillet after it. Give one")
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": f"the {fil:g} mm external fillet and the {corner_r:g} mm "
+                   f"corner radius name the same four upright edges, rounded "
+                   f"in the profile where the area is exact"})
+    else:
+        volume = _vertical_fillet(req, v, features, inexact, derivation, volume)
 
     volume = _perimeter_chamfer(req, v, features, deps, volume, derivation,
                                 "L", "W", inexact)
@@ -369,6 +421,154 @@ def rect_plate(req: dict) -> dict:
     ]
     return _blueprint("rect_plate", v, derivation, assertions,
                       features, sketches, deps, inexact=inexact)
+
+
+def _bosses(req: dict, v: dict, features: list, sketches: list, deps: list,
+            derivation: list, volume: str, L: float, W: float) -> str:
+    """Cylindrical bosses standing on the plate, optionally bored through.
+
+    The commonest thing a mounting bracket has that a flat plate does not, and
+    the reason the whole family was unreachable for bracket prompts: a plate
+    with two Ø30 bosses matched no builder at all, so a fully specified part
+    came back as "this part has no deterministic builder".
+
+    Each boss is a circle sketched on the top face and padded up, which is what
+    it is. The bore is one cut from the boss top straight down through the boss
+    and the base beneath it, rather than a hole in the pad profile plus a
+    second hole in the boss — one feature, one obligation, and no seam where
+    the two would have had to meet.
+
+    The volume stays closed form because the bosses are disjoint (checked) and
+    each bore is a single cylinder of known length::
+
+        + n*pi*boss_r^2*boss_h  -  n*pi*boss_hole_r^2*(boss_h + T)
+    """
+    boss_r = _num(req, "boss_r")
+    if not boss_r or boss_r <= 0:
+        return volume
+    boss_h = _num(req, "boss_height")
+    if not boss_h or boss_h <= 0:
+        raise GeneratorError(
+            "a boss needs a height above the base; a diameter alone is a circle")
+    n = req.get("boss_count")
+    n = int(n) if n else 1
+    if n not in (1, 2):
+        # Two bosses on the length axis, or one in the middle. Any other count
+        # needs a pattern this builder cannot infer, and inventing one is the
+        # failure this module exists to prevent.
+        raise GeneratorError(
+            f"this builder places one boss centrally or two along the length, "
+            f"not {n}; the positions of {n} bosses are not implied by a count")
+
+    gap = _num(req, "boss_edge_gap")
+    spacing = _num(req, "boss_spacing")
+    if n == 1:
+        if gap is not None or spacing is not None:
+            raise GeneratorError(
+                "a single boss sits at the centre; a spacing or an edge "
+                "distance places two or more")
+        dx = 0.0
+    elif spacing is not None:
+        dx = spacing / 2.0
+    elif gap is not None:
+        dx = L / 2.0 - gap
+    else:
+        raise GeneratorError(
+            "two bosses need a position — how far in from each end their "
+            "centres sit, or how far apart they are")
+
+    if dx <= 0:
+        raise GeneratorError(
+            "the two bosses are placed on top of each other at the centre")
+    if dx + boss_r > L / 2 or boss_r > W / 2:
+        raise GeneratorError(
+            f"a {boss_r * 2:g} mm boss centred {dx:g} mm from the middle "
+            f"overhangs a {L:g} x {W:g} mm plate")
+    if n == 2 and 2 * dx < 2 * boss_r:
+        raise GeneratorError(
+            f"two {boss_r * 2:g} mm bosses {2 * dx:g} mm apart intersect")
+
+    # A boss standing over the pocket has no floor under it. The two footprints
+    # are checked against each other rather than left to the kernel, because
+    # the result there is a boss cantilevered over a 6 mm void that still
+    # builds, still measures, and is not a part anyone can machine.
+    pl, pw, pd = (_num(req, "pocket_l"), _num(req, "pocket_w"),
+                  _num(req, "pocket_depth"))
+    # Both footprints straddle y = 0, so they always overlap across the width;
+    # the length is what decides it.
+    if pl and pw and pd and dx - boss_r < pl / 2:
+        clear = 2 * (dx - boss_r)
+        if clear <= 0:
+            raise GeneratorError(
+                f"the pocket sits under the boss: a {boss_r * 2:g} mm boss "
+                f"centred {dx:g} mm from the middle covers the centre of the "
+                f"plate, where the {pl:g} x {pw:g} mm pocket is")
+        raise GeneratorError(
+            f"the pocket and the bosses overlap: {boss_r * 2:g} mm bosses "
+            f"centred {dx:g} mm either side of the middle leave {clear:g} mm "
+            f"of flat between them, and the pocket is {pl:g} mm long. Shorten "
+            f"the pocket to under {clear:g} mm, or move the bosses further "
+            f"apart")
+
+    hole_r = _num(req, "boss_hole_r")
+    if hole_r is not None and hole_r >= boss_r:
+        raise GeneratorError(
+            f"a {hole_r * 2:g} mm bore through a {boss_r * 2:g} mm boss "
+            f"leaves no wall")
+
+    v["boss_r"] = boss_r
+    v["boss_h"] = boss_h
+    # ``None`` rather than the string "0": a sketch coordinate that references
+    # no variable stops being parametric, and the static check refuses it.
+    centres = [None] if n == 1 else ["dx", "-dx"]
+    if n == 2:
+        v["dx"] = dx
+
+    for i, cx in enumerate(centres):
+        features += [
+            {"id": f"s_boss{i}", "type": "Sketch", "parameters": {}},
+            {"id": f"boss{i}", "type": "Pad",
+             "rationale": "cylindrical boss on the top face",
+             "parameters": {"Length": "boss_h", "Type": "Length"}},
+        ]
+        args = {"r": "boss_r"} if cx is None else {"r": "boss_r", "cx": cx}
+        sketches.append({
+            "id": f"s_boss{i}", "plane": "XY", "z": "T",
+            "profile": {"builder": "circle", "args": args}})
+        deps.append({"source": f"s_boss{i}", "target": f"boss{i}",
+                     "kind": "profile"})
+    volume = f"{volume} + {n}*pi*boss_r**2*boss_h"
+    derivation.append({
+        "step": len(derivation) + 1, "eq": f"V = {volume}",
+        "why": f"{n} boss(es) padded off the top face; disjoint from each "
+               f"other and from the plate outline, so the cylinders add exactly"})
+
+    if hole_r:
+        v["boss_hole_r"] = hole_r
+        features += [
+            {"id": "s_boss_bore", "type": "Sketch", "parameters": {}},
+            {"id": "boss_bores", "type": "Pocket",
+             "rationale": "bore through each boss and the base under it",
+             "parameters": {"Length": "boss_h + T", "Type": "Length"}},
+        ]
+        if n == 1:
+            bore_profile = {"builder": "circle", "args": {"r": "boss_hole_r"}}
+        else:
+            # Two holes at (+dx, 0) and (-dx, 0): a two-hole bolt circle on the
+            # X axis is exactly that, and keeps the coordinates parametric.
+            bore_profile = {"builder": "bolt_circle",
+                            "args": {"n": "2", "r_bc": "dx",
+                                     "r_hole": "boss_hole_r"}}
+        sketches.append({"id": "s_boss_bore", "plane": "XY", "z": "T + boss_h",
+                         "profile": bore_profile})
+        deps.append({"source": "s_boss_bore", "target": "boss_bores",
+                     "kind": "profile"})
+        volume = f"{volume} - {n}*pi*boss_hole_r**2*(boss_h + T)"
+        derivation.append({
+            "step": len(derivation) + 1, "eq": f"V = {volume}",
+            "why": "each boss bored from its top face right through the base, "
+                   "one cylinder of length boss_h + T per boss"})
+    return volume
 
 
 def _vertical_fillet(req: dict, v: dict, features: list, inexact: list,

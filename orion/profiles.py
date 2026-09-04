@@ -159,6 +159,46 @@ def rounded_rect(w, h, r, cx=0.0, cy=0.0):
     return {"geometry": g, "area": area, "centroid": (cx, cy), "loops": 1}
 
 
+def rounded_rect_with_holes(w, h, r, holes, cx=0.0, cy=0.0):
+    """Rounded rectangle minus circular holes, area still exact.
+
+    Exists because the two were mutually exclusive and the plate builder
+    resolved that by dropping the corner radius: a plate with both a stated
+    corner radius and a bolt pattern was built square-cornered, and since the
+    fulfillment check does not inspect fillets, nobody was told. Trading the
+    part the user asked for against an exact volume is the wrong trade when a
+    third option exists — the areas are independent, so both are exact here.
+
+    ``holes`` = [(hx, hy, r), ...] absolute. A hole is checked against the
+    rounded outline, not its bounding rectangle, so one tucked into a corner
+    cannot silently breach the arc.
+    """
+    base = rounded_rect(w, h, r, cx, cy)
+    geo = list(base["geometry"])
+    area = base["area"]
+    mx = base["centroid"][0] * area
+    my = base["centroid"][1] * area
+    a_half, b_half = w / 2, h / 2
+    for hx, hy, hr in holes:
+        _require(hr > 0, f"hole needs r > 0, got {hr}")
+        dx, dy = abs(hx - cx), abs(hy - cy)
+        _require(dx + hr < a_half + 1e-9 and dy + hr < b_half + 1e-9,
+                 f"hole at ({hx},{hy}) r={hr} leaves the rectangle")
+        # Inside a corner quadrant the boundary is the arc, not the sides.
+        if dx > a_half - r and dy > b_half - r:
+            reach = math.hypot(dx - (a_half - r), dy - (b_half - r))
+            _require(reach + hr < r + 1e-9,
+                     f"hole at ({hx},{hy}) r={hr} breaks the {r} mm corner arc")
+        geo.append(_circle(len(geo), hx, hy, hr))
+        a = math.pi * hr * hr
+        area -= a
+        mx -= hx * a
+        my -= hy * a
+    _require(area > 0, "holes consumed the whole plate")
+    return {"geometry": geo, "area": area,
+            "centroid": (mx / area, my / area), "loops": 1 + len(holes)}
+
+
 def slot(length, r, cx=0.0, cy=0.0):
     """Stadium: straight length between two semicircle caps, along X."""
     _require(length > 0 and r > 0, f"slot needs length,r > 0, got {length}, {r}")
@@ -405,6 +445,7 @@ BUILDERS = {
     "rect": rect,
     "rect_with_holes": rect_with_holes,
     "rounded_rect": rounded_rect,
+    "rounded_rect_with_holes": rounded_rect_with_holes,
     "slot": slot,
     "bolt_circle": bolt_circle,
     "regular_polygon": regular_polygon,

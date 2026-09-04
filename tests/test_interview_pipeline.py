@@ -536,9 +536,36 @@ def test_a_plain_part_keeps_the_stronger_claim():
     assert "no_closed_form" not in payload["design_plan"]
 
 
-def test_a_corner_radius_and_an_external_fillet_are_not_both_accepted():
-    """One rounds the outline in the sketch where the area is exact; the other
-    rounds the same edges afterwards where it is not."""
+def test_the_same_radius_under_two_names_is_one_rounding():
+    """R8 in both slots is one request stated twice, not a contradiction.
+
+    A single sentence — "external vertical-edge fillets: R8" — lands in both
+    ``fillet`` and ``corner_radius``, because the reader has two homes for it
+    and no way to know they name the same four edges. Refusing that asked the
+    user to choose between a radius and itself, and on a real bracket prompt it
+    fired twice and ended the design. The in-profile form wins: it is the exact
+    one, so the volume claim stays tier 1 rather than dropping to mesh
+    convergence.
+    """
+    payload = interview.build(
+        iv(
+            "rect_plate",
+            length=300,
+            width=220,
+            thickness=16,
+            fillet=8,
+            corner_radius=8,
+        )
+    )
+    assert payload["variables"]["cr"] == 8
+    assert not any(f["type"] == "Fillet" for f in payload["template"]["features"])
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+    assert body["tier"] == 1
+    assert "cr" in body["target"]
+
+
+def test_two_different_radii_on_the_same_edges_are_still_refused():
+    """A real disagreement is still a refusal, and it names both values."""
     with pytest.raises(blueprint_gen.GeneratorError, match="Give one"):
         interview.build(
             iv(
@@ -547,8 +574,133 @@ def test_a_corner_radius_and_an_external_fillet_are_not_both_accepted():
                 width=220,
                 thickness=16,
                 fillet=8,
-                corner_radius=8,
+                corner_radius=5,
             )
+        )
+
+
+def test_a_corner_radius_survives_a_hole_pattern():
+    """It used to be deleted to keep the closed form exact.
+
+    A plate with both a stated corner radius and a bolt pattern was built with
+    square corners, and because the fulfillment check does not inspect fillets,
+    nobody was told: the wrong part graded VERIFIED. Both areas are exact
+    independently, so there was never a trade to make.
+    """
+    payload = interview.build(
+        iv(
+            "rect_plate",
+            length=120,
+            width=80,
+            thickness=10,
+            corner_radius=5,
+            hole_count=4,
+            hole_d=8,
+            hole_edge_gap=15,
+        )
+    )
+    assert payload["variables"]["cr"] == 5
+    sketch = payload["template"]["sketches"][0]
+    assert sketch["profile"]["builder"] == "rounded_rect_with_holes"
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+    assert body["tier"] == 1
+    assert "(4 - pi)*cr**2" in body["target"]
+
+
+def test_a_pocket_corner_radius_lands_on_the_pocket():
+    """Not on the plate's outline, which is where it used to go.
+
+    There was no slot for it and the unaccounted-dimension guard insists every
+    stated number lands somewhere, so a pocket's R3 took the only radius slot
+    on offer and gave the plate 3 mm corners nobody asked for.
+    """
+    payload = interview.build(
+        iv(
+            "rect_plate",
+            length=120,
+            width=80,
+            thickness=10,
+            pocket_l=50,
+            pocket_w=30,
+            pocket_depth=6,
+            pocket_corner_radius=3,
+        )
+    )
+    v = payload["variables"]
+    assert v["pcr"] == 3
+    assert "cr" not in v                       # the plate outline is untouched
+    pocket = next(s for s in payload["template"]["sketches"]
+                  if s["id"] == "s_pocket")
+    assert pocket["profile"]["builder"] == "rounded_rect"
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+    assert "pcr" in body["target"] and body["tier"] == 1
+
+
+def test_a_plate_carries_bored_bosses():
+    """The feature that made every mounting-bracket prompt unbuildable.
+
+    A plate with two bored bosses matched no builder at all, so a fully
+    dimensioned part came back as "this part has no deterministic builder".
+    """
+    payload = interview.build(
+        iv(
+            "rect_plate",
+            length=120,
+            width=80,
+            thickness=10,
+            boss_count=2,
+            boss_d=30,
+            boss_height=25,
+            boss_hole_d=12,
+            boss_edge_gap=25,
+        )
+    )
+    ids = [f["id"] for f in payload["template"]["features"]]
+    assert "boss0" in ids and "boss1" in ids and "boss_bores" in ids
+    v = payload["variables"]
+    assert (v["boss_r"], v["boss_h"], v["boss_hole_r"], v["dx"]) == (15, 25, 6, 35)
+    body = next(a for a in payload["assertions"] if a["id"] == "body")
+    # Cylinders add exactly and each bore is one cylinder through boss + plate.
+    assert "2*pi*boss_r**2*boss_h" in body["target"]
+    assert "2*pi*boss_hole_r**2*(boss_h + T)" in body["target"]
+    assert body["tier"] == 1
+
+
+def test_a_boss_named_but_never_placed_becomes_a_question():
+    """Same discipline as the hole patterns: a count is not a position.
+
+    A feature named but never placed is the worst of both — the obligation is
+    recorded, the builder has no coordinates so it pads nothing, and
+    fulfillment then refuses a part the user was never asked a question about.
+    """
+    gaps = [g.name for g in interview.missing(
+        "rect_plate",
+        {"length": 120, "width": 80, "thickness": 10,
+         "boss_count": 2, "boss_d": 30, "boss_height": 25})]
+    assert "boss_edge_gap" in gaps
+
+
+def test_a_boss_diameter_alone_asks_for_the_height_and_the_count():
+    """A circle on a face is not a boss, and a count decides the placement."""
+    gaps = [g.name for g in interview.missing(
+        "rect_plate",
+        {"length": 120, "width": 80, "thickness": 10, "boss_d": 30})]
+    assert "boss_height" in gaps and "boss_count" in gaps
+
+
+def test_a_pocket_under_a_boss_is_refused_with_the_number_that_fixes_it():
+    """The real bracket prompt was over-constrained and nothing said so.
+
+    Ø30 bosses centred 25 mm from each end of a 120 mm plate leave 40 mm of
+    flat between them; a 50 mm pocket cannot fit there. Built anyway it is a
+    boss cantilevered over a 6 mm void — which measures fine and cannot be
+    machined.
+    """
+    with pytest.raises(blueprint_gen.GeneratorError, match="40 mm of flat"):
+        interview.build(
+            iv("rect_plate", length=120, width=80, thickness=10,
+               boss_count=2, boss_d=30, boss_height=25, boss_edge_gap=25,
+               pocket_l=50, pocket_w=30, pocket_depth=6)
         )
 
 
