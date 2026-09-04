@@ -58,7 +58,15 @@ def bolted_joint(d: float = 8.0, plate_t: float = 10.0, n_bolts: int = 2,
     # protrude at least two pitches past the nut, the usual shop rule
     length = grip + washer_t + g["nut_h"] + 2.0 * g["pitch"]
     length = math.ceil(length / 5.0) * 5.0        # to the next stock length
-    hole_dx = 25.0 + 2.0 * d
+    if n_bolts < 2:
+        raise ValueError(
+            "a bolted joint needs at least two bolts; one leaves the joint "
+            "free to spin about it")
+    # Half the span between the outermost bolts. Scaled by the count so the
+    # pitch between adjacent bolts stays constant and the plate grows, rather
+    # than the bolts crowding into a fixed span. n_bolts=2 is unchanged.
+    pitch = 2.0 * (25.0 + 2.0 * d)
+    hole_dx = (n_bolts - 1) * pitch / 2.0
     plate_l = 2.0 * hole_dx + 6.0 * d
     plate_w = 6.0 * d
     torque = F.bolt_torque_nm(d, cls)
@@ -66,11 +74,11 @@ def bolted_joint(d: float = 8.0, plate_t: float = 10.0, n_bolts: int = 2,
     comps = [
         {"id": "plate_lower", "family": "clearance_plate",
          "params": dict(length=plate_l, width=plate_w, t=plate_t,
-                        hole_r=hole_r, hole_dx=hole_dx),
+                        hole_r=hole_r, hole_dx=hole_dx, n_holes=n_bolts),
          "pos": [0.0, 0.0, 0.0], "process": "laser cut + drilled"},
         {"id": "plate_upper", "family": "clearance_plate",
          "params": dict(length=plate_l, width=plate_w, t=plate_t,
-                        hole_r=hole_r, hole_dx=hole_dx),
+                        hole_r=hole_r, hole_dx=hole_dx, n_holes=n_bolts),
          "pos": [0.0, 0.0, plate_t], "process": "laser cut + drilled"},
     ]
     mates = [{"id": "faying_surface", "type": "coincident",
@@ -80,7 +88,11 @@ def bolted_joint(d: float = 8.0, plate_t: float = 10.0, n_bolts: int = 2,
               "assembly_order": 1, "tolerance": "flatness 0.1 over the faying area"}]
 
     for k in range(n_bolts):
-        x = -hole_dx if k == 0 else hole_dx
+        # Every bolt after the first used to land on ``+hole_dx`` — the same
+        # point — so a three-bolt joint stacked two bolts inside one another.
+        # It built, and only the non-interference proof caught it: the fusion
+        # came up 2.6% short of the component sum.
+        x = (2.0 * k / (n_bolts - 1) - 1.0) * hole_dx
         comps += [
             {"id": f"bolt{k}", "family": "hex_bolt",
              "params": dict(d=d, length=length, cls=cls),

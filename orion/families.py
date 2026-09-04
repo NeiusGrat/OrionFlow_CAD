@@ -183,25 +183,48 @@ def washer(d: float, od: float, t: float) -> Blueprint:
 # structural / rotating
 # --------------------------------------------------------------------------- #
 def clearance_plate(length: float, width: float, t: float, hole_r: float,
-                    hole_dx: float) -> Blueprint:
-    """Flat plate with two clearance holes on the X axis — the joined member
-    in a bolted joint."""
+                    hole_dx: float, n_holes: int = 2) -> Blueprint:
+    """Flat plate with a row of clearance holes on the X axis — the joined
+    member in a bolted joint.
+
+    ``hole_dx`` is the half-span: the outermost holes sit at ``+/-hole_dx`` and
+    the rest are spaced evenly between them, so ``n_holes=2`` is exactly the
+    two-hole plate this was before.
+
+    It was fixed at two, which is what made a three- or four-bolt joint
+    impossible: the plate had two holes however many bolts the joint asked for,
+    and the extra bolts had nowhere to go.
+    """
+    n = int(n_holes)
+    if n < 2:
+        raise ValueError("a clearance plate carries at least two holes")
+    coords = [(2.0 * i / (n - 1) - 1.0) for i in range(n)]
+    holes = [[f"{c:.10f}*hole_dx", "0", "hole_r"] for c in coords]
     return Blueprint(
         part_class="clearance_plate",
         variables={"length": length, "width": width, "t": t,
-                   "hole_r": hole_r, "hole_dx": hole_dx},
+                   "hole_r": hole_r, "hole_dx": hole_dx,
+                   "n_holes": float(n)},
         datums={"A": "bottom face z=0", "B": "long edge", "C": "first hole"},
         design_plan={"derivation": [
-            {"step": 1, "eq": "V = length*width*t - 2*pi*hole_r^2*t",
-             "why": "plate blank less two clearance holes, disjoint"},
+            {"step": 1, "eq": "V = length*width*t - n_holes*pi*hole_r^2*t",
+             "why": f"plate blank less {n} clearance holes, disjoint"},
         ]},
         assertions=[
             {"id": "edge_distance", "kind": "precondition", "tier": 1,
              "target": "length/2 - hole_dx - hole_r - 1.5*hole_r"},
             {"id": "side_land", "kind": "precondition", "tier": 1,
              "target": "width/2 - hole_r - 1.5*hole_r"},
+            # Adjacent holes must not run into one another, which only has
+            # anything to say once there are more than two of them.
+            {"id": "hole_pitch", "kind": "precondition", "tier": 1,
+             "target": ("2*hole_dx/(n_holes - 1) - 3*hole_r" if n > 2
+                        else "hole_dx - hole_r")},
+            # ``n_holes`` is carried in the expression rather than baked in as
+            # a literal: a count the geometry depends on and no expression
+            # mentions is a magic number, and the static check says so.
             {"id": "body", "kind": "body_volume", "tier": 1, "tol_rel": 1e-06,
-             "target": "length*width*t - 2*pi*hole_r**2*t"},
+             "target": "length*width*t - n_holes*pi*hole_r**2*t"},
             {"id": "one_solid", "kind": "solids", "tier": 1, "tol_rel": 1e-09,
              "target": "1"},
         ],
@@ -216,8 +239,7 @@ def clearance_plate(length: float, width: float, t: float, hole_r: float,
                 {"id": "s_p", "plane": "XY", "profile": {
                     "builder": "rect_with_holes",
                     "args": {"w": "length", "h": "width",
-                             "holes": [["-hole_dx", "0", "hole_r"],
-                                       ["hole_dx", "0", "hole_r"]]}}},
+                             "holes": holes}}},
             ],
             "dependencies": [{"source": "s_p", "target": "plate",
                               "kind": "profile"}],

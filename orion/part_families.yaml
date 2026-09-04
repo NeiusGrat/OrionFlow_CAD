@@ -283,3 +283,108 @@ families:
       cbore_depth:   {ask: "Counterbore depth?"}
       fillet:        {ask: "External fillet radius?"}
       chamfer:       {ask: "Edge chamfer size?"}
+
+  # ------------------------------------------------------------------------ #
+  # Assemblies
+  # ------------------------------------------------------------------------ #
+  # Many parts, placed, with their mates checked. These are not compiled by
+  # `blueprint_gen` — each is a catalogue spec in `orion/assembly_spec.py` that
+  # resolves to a set of component Blueprints, and `app/services/
+  # assembly_service.py` builds them. They live in this file anyway because the
+  # interview prompt is generated FROM it, so an assembly is asked about the
+  # same way a part is and cannot drift from its schema.
+  #
+  # What an assembly proves that a part cannot: non-interference, exactly. If
+  # no two components share space the fused volume equals the sum of the
+  # component volumes, so the deficit IS the interpenetration. That check found
+  # a real bug the first time it ran here — `bolted_joint` placed every bolt
+  # after the first at the same coordinate.
+
+  bolted_joint:
+    label: bolted joint
+    required:
+      d:        {ask: "What bolt diameter?"}
+      plate_t:  {ask: "How thick is each plate?"}
+    optional:
+      n_bolts:  {ask: "How many bolts?", unit: ""}
+      cls:      {ask: "Bolt strength class?", unit: "", text: true}
+
+  bearing_stack:
+    label: bearing stack
+    required:
+      bore:      {ask: "What is the bearing bore?"}
+    optional:
+      ring_t:    {ask: "How thick are the bearing rings?"}
+      ball_gap:  {ask: "What is the ball gap?"}
+      width:     {ask: "How wide is the bearing?"}
+      shaft_len: {ask: "How long is the shaft?"}
+
+  planetary_stage:
+    label: planetary gear stage
+    required:
+      module:      {ask: "What module are the gears?"}
+      z_sun:       {ask: "How many teeth on the sun?", unit: ""}
+      z_planet:    {ask: "How many teeth on each planet?", unit: ""}
+      n_planets:   {ask: "How many planets?", unit: ""}
+    optional:
+      face_width:  {ask: "How wide is each gear in the stage?"}
+      sun_bore:    {ask: "What is the sun bore?"}
+      planet_bore: {ask: "What is each planet bore?"}
+
+  belt_drive:
+    label: belt drive
+    required:
+      d1:      {ask: "What is the driving pulley diameter?"}
+      d2:      {ask: "What is the driven pulley diameter?"}
+      centres: {ask: "What is the centre distance?"}
+    optional:
+      width:   {ask: "How wide are the pulleys?"}
+      bore1:   {ask: "What is the driving pulley bore?"}
+      bore2:   {ask: "What is the driven pulley bore?"}
+
+  lead_screw_drive:
+    label: lead screw drive
+    required:
+      d:       {ask: "What is the screw diameter?"}
+      length:  {ask: "How long is the screw?"}
+    optional:
+      starts:  {ask: "How many thread starts?", unit: ""}
+      nut_od:  {ask: "What is the nut outside diameter?"}
+      nut_len: {ask: "How long is the nut?"}
+      travel:  {ask: "How much travel is needed?"}
+
+  spring_plunger:
+    label: spring plunger
+    required:
+      wire_d:     {ask: "What is the spring wire diameter?"}
+      coil_d:     {ask: "What is the coil mean diameter?"}
+      free_len:   {ask: "What is the spring free length?"}
+    optional:
+      n_active:   {ask: "How many active coils?", unit: ""}
+      plunger_d:  {ask: "What is the plunger diameter?"}
+      bore_d:     {ask: "What is the housing bore?"}
+      preload_mm: {ask: "How much preload?"}
+      stroke:     {ask: "What stroke is needed?"}
+
+  keyed_coupling:
+    label: keyed coupling
+    required:
+      shaft_d:   {ask: "What is the shaft diameter?"}
+      hub_od:    {ask: "What is the hub outside diameter?"}
+    optional:
+      hub_len:   {ask: "How long is the hub?"}
+      shaft_len: {ask: "How long is the shaft?"}
+      torque_nm: {ask: "What torque must it carry, in Nm?", unit: "Nm"}
+
+  four_bar:
+    label: four-bar linkage
+    required:
+      ground:    {ask: "How long is the ground link?"}
+      crank:     {ask: "How long is the crank?"}
+      coupler:   {ask: "How long is the coupler?"}
+      rocker:    {ask: "How long is the rocker?"}
+    optional:
+      theta_deg: {ask: "At what crank angle, in degrees?", unit: "deg"}
+      link_w:    {ask: "How wide is each link?"}
+      link_t:    {ask: "How thick is each link?"}
+      hole_r:    {ask: "What is the pin hole radius?"}

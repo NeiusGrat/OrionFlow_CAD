@@ -785,6 +785,13 @@ class Proposal:
     #: its own contract; this grades the part against mechanics.
     mechanical: dict = field(default_factory=dict)
 
+    #: Set when the request is an assembly rather than a single part. The
+    #: payload/blueprint_hash fields stay empty: an assembly is a set of
+    #: component Blueprints placed against each other, not one Blueprint, and
+    #: pretending otherwise would put a hash on the wrong object.
+    assembly: str = ""
+    assembly_slots: dict = field(default_factory=dict)
+
     route: dict = field(default_factory=dict)
     reasoning: Optional[dict] = None
     citations: list = field(default_factory=list)
@@ -1287,7 +1294,10 @@ class StudioAgent:
                 ).to_dict(),
             )
 
-        if iv.family not in blueprint_gen.BUILDERS:
+        from app.services import assembly_service
+
+        if iv.family not in blueprint_gen.BUILDERS \
+                and not assembly_service.is_assembly(iv.family):
             return None
 
         _emit_step(
@@ -1319,6 +1329,36 @@ class StudioAgent:
                 error="; ".join(asks),
                 questions=asks,
                 reasoning=iv.to_dict(),
+            )
+
+        if assembly_service.is_assembly(iv.family):
+            # No Blueprint to compile or freeze: the components are frozen
+            # individually by the assembly builder, each against its own
+            # assertions, and the assembly's own claims are about how they sit
+            # together. Built in ``build`` like everything else so the repair
+            # loop, ranking and reporting stay one path.
+            _emit_step(
+                on_event,
+                "specify",
+                "Specifying the design",
+                "done",
+                f"{interview.FAMILIES[iv.family].label} — components and mates "
+                f"from the catalogue",
+                [f"{k} = {v}" for k, v in sorted(iv.slots.items())],
+            )
+            return Proposal(
+                ok=True,
+                assembly=iv.family,
+                assembly_slots=dict(iv.slots),
+                part_class=iv.family,
+                variables=dict(iv.slots),
+                reasoning=iv.to_dict(),
+                model=f"compiled:{read_by}",
+                route=design_router.Route(
+                    design_router.DIRECT,
+                    "assembly compiled from the interview",
+                ).to_dict(),
+                request=prompt,
             )
 
         try:
@@ -1630,6 +1670,36 @@ class StudioAgent:
 
         if not proposal.ok:
             return _failed_bundle(proposal)
+
+        if proposal.assembly:
+            from app.services import assembly_service
+
+            _emit_step(
+                on_event,
+                "build",
+                "Building the model",
+                "active",
+                "compiling each component, then placing and fusing them",
+            )
+            if on_event:
+                on_event("phase", {"phase": "building"})
+            bundle = assembly_service.build(
+                proposal.assembly, proposal.assembly_slots
+            )
+            bundle["model"] = proposal.model
+            bundle["route"] = proposal.route
+            bundle["reasoning"] = proposal.reasoning
+            rep = bundle.get("verification") or {}
+            _emit_step(
+                on_event,
+                "build",
+                "Building the model",
+                "done" if rep.get("verdict") == "verified" else "fail",
+                f"{(bundle.get('stats') or {}).get('components', 0)} components, "
+                f"{len(rep.get('checks') or [])} checks",
+                [f"{c['label']}: {c['status']}" for c in rep.get("checks") or []],
+            )
+            return bundle
 
         _emit_step(
             on_event,

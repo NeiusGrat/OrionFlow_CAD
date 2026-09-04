@@ -134,8 +134,13 @@ def test_a_family_with_no_builder_falls_through_to_the_model(agent, monkeypatch)
 def test_the_identify_prompt_offers_a_way_out():
     """Pinned because removing it is silent: every request would still be
     classified, just wrongly."""
+    from app.services import assembly_service
+
     assert "other" in interview.IDENTIFY_SYSTEM
-    assert set(interview.FAMILY_NAMES) <= set(blueprint_gen.BUILDERS)
+    # Assemblies are classified here too and built by ``assembly_service``, so
+    # the set a request may be classified into is both registries.
+    buildable = set(blueprint_gen.BUILDERS) | set(assembly_service.catalogue())
+    assert set(interview.FAMILY_NAMES) <= buildable
 
 
 def test_a_dead_endpoint_is_not_a_statement_about_the_part(agent, monkeypatch):

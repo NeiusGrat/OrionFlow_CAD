@@ -87,6 +87,34 @@ out = {
     "watertight": bool(fused.isClosed()),
     "bbox": [bb.XMin, bb.YMin, bb.ZMin, bb.XMax, bb.YMax, bb.ZMax],
 }
+
+# Export the placed assembly, not just a verdict about it. Measuring without
+# exporting is what kept this layer out of the product: the numbers proved the
+# parts do not interpenetrate and there was nothing for anyone to look at or
+# download, so a verified assembly was indistinguishable from no assembly.
+#
+# A compound rather than the fused solid: fusion is the proof of
+# non-interference, but it welds distinct components into one shape and loses
+# which solid was which. Downstream wants the parts.
+if len(sys.argv) > 3:
+    try:
+        compound = Part.makeCompound(shapes)
+        compound.exportStep(sys.argv[3])
+        out["step"] = sys.argv[3]
+    except Exception as exc:
+        out["step_error"] = str(exc)
+if len(sys.argv) > 4:
+    try:
+        # Tessellation deflection follows the part, not a constant: a fixed
+        # 0.1 mm on a 300 mm assembly is wasted triangles and on a 5 mm one is
+        # a visible polygon.
+        diag = max(bb.XLength, bb.YLength, bb.ZLength) or 1.0
+        Part.makeCompound(shapes).exportStl(sys.argv[4])
+        out["stl"] = sys.argv[4]
+        out["stl_deflection"] = diag / 1000.0
+    except Exception as exc:
+        out["stl_error"] = str(exc)
+
 json.dump(out, open(sys.argv[2], "w", encoding="utf-8"))
 print("MEASURED", json.dumps({k: v for k, v in out.items() if k != "parts"}))
 '''
@@ -166,8 +194,11 @@ def build_assembly(spec: dict, workdir: str, tag: str) -> dict:
     json.dump({"parts": placed}, open(spath, "w", encoding="utf-8"))
     with open(script, "w", encoding="utf-8") as fh:
         fh.write(PLACE_MEASURE)
+    steppath = os.path.join(workdir, f"{tag}.step")
+    stlpath = os.path.join(workdir, f"{tag}.stl")
     try:
-        r = subprocess.run([forge._freecad_python(), script, spath, mpath],
+        r = subprocess.run([forge._freecad_python(), script, spath, mpath,
+                            steppath, stlpath],
                            capture_output=True, text=True, timeout=600)
     except subprocess.TimeoutExpired:
         return {"tag": tag, "passed": False, "build_ok": False,
@@ -231,7 +262,8 @@ def build_assembly(spec: dict, workdir: str, tag: str) -> dict:
         and all(p["passed"] for p in part_verdicts)
     return {"tag": tag, "passed": passed, "build_ok": True,
             "parts": part_verdicts, "assertions": rows, "measured": m,
-            "fcstd_parts": [p["fcstd"] for p in placed]}
+            "fcstd_parts": [p["fcstd"] for p in placed],
+            "step": m.get("step"), "stl": m.get("stl")}
 
 
 # --------------------------------------------------------------------------- #

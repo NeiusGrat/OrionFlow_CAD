@@ -38,8 +38,17 @@ def test_every_family_declares_required_fields():
 
 def test_every_family_in_the_schema_has_a_builder():
     """A family that can be asked about but not built is a dead end for a user
-    who has just answered five questions."""
-    assert set(interview.FAMILIES) <= set(blueprint_gen.BUILDERS)
+    who has just answered five questions.
+
+    Two kinds of builder now: ``blueprint_gen`` compiles a single part, and
+    ``assembly_service`` places a set of components and checks their mates. The
+    invariant is that every family has one of them — not that every family is a
+    Blueprint, which stopped being true when assemblies reached the live path.
+    """
+    from app.services import assembly_service
+
+    buildable = set(blueprint_gen.BUILDERS) | set(assembly_service.catalogue())
+    assert set(interview.FAMILIES) <= buildable
 
 
 def test_a_malformed_schema_raises_rather_than_degrading(tmp_path):
