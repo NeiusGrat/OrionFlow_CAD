@@ -118,16 +118,23 @@ class Settings(BaseSettings):
     )
 
     k2think_api_key: Optional[str] = Field(
-        default=None, description="K2 Think API key (IFM-... bearer token)"
+        default=None, description="MBZUAI-IFM API key (IFM-... bearer token)"
     )
 
+    # The developer API moved from api.k2think.ai to api.ifm.ai, and the model
+    # ids dropped their vendor prefix in the move: the new host serves
+    # "IFM/K2-Think-v2" and "IFM/K2-Horizon-375B-A23B". These two defaults are
+    # a matched pair — the old host answers 403 model_origin_not_allowed for
+    # Horizon, and the new host does not know "MBZUAI-IFM/K2-Think-v2" — so
+    # overriding one without the other is always a misconfiguration.
     k2think_base_url: str = Field(
-        default="https://api.k2think.ai/v1/chat/completions",
-        description="K2 Think chat completions endpoint",
+        default="https://api.ifm.ai/v1/chat/completions",
+        description="MBZUAI-IFM chat completions endpoint",
     )
 
     k2think_model: str = Field(
-        default="MBZUAI-IFM/K2-Think-v2", description="K2 Think model id"
+        default="IFM/K2-Horizon-375B-A23B",
+        description="MBZUAI-IFM model id (K2-Horizon 375B MoE, 23B active)",
     )
 
     ofl_k2think_timeout_seconds: int = Field(

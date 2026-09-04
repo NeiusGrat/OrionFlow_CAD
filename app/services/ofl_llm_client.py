@@ -392,17 +392,29 @@ class OFLLLMClient:
                     continue
                 response.raise_for_status()
                 message = response.json()["choices"][0]["message"]
-                # Some gateway responses omit "content" — text can land under
-                # "reasoning_content" or "reasoning" (observed shapes).
-                raw = (
-                    message.get("content")
-                    or message.get("reasoning_content")
-                    or message.get("reasoning")
-                    or ""
-                )
+                # Some gateway responses omit "content" — the text can land
+                # under "reasoning_content" or "reasoning" (observed shapes).
+                #
+                # That fallback is only sound when the reasoning field actually
+                # carries the answer behind a marker, which is the K2-Think-v1
+                # inline shape. K2-Horizon separates them: "reasoning" holds the
+                # derivation and "content" holds the answer, so "reasoning" is
+                # populated on every reply. Reaching for it on an empty content
+                # would hand a page of deliberation back as OFL code, which then
+                # fails to execute and spends a repair round on prose. An empty
+                # content there means the budget went to the derivation and
+                # there is no answer — say that, and let the retry run.
+                raw = message.get("content") or ""
+                if not raw:
+                    for field in ("reasoning_content", "reasoning"):
+                        text = message.get(field) or ""
+                        if "</think>" in text or "</answer>" in text:
+                            raw = text
+                            break
                 if not raw:
                     raise RuntimeError(
-                        f"K2 Think returned an empty message: keys={list(message)}"
+                        f"K2 Think returned no answer (all budget went to the "
+                        f"derivation): keys={list(message)}"
                     )
                 return self._strip_reasoning(raw)
             except (requests.RequestException, RuntimeError) as exc:

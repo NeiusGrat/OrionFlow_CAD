@@ -1,9 +1,11 @@
-"""k2v2 think adapter — MBZUAI-IFM K2-Think-v2.
+"""MBZUAI-IFM reasoning adapter — K2-Horizon-375B-A23B, K2-Think-v2.
 
-Targets the official developer API at ``api.k2think.ai/v1/chat/completions``,
-which is OpenAI-compatible (standard ``choices[0].message.content``). The model
-emits its chain-of-thought inline, terminated by a ``</think>`` marker; this
-adapter splits that reasoning out of the final answer.
+Targets the official developer API at ``api.ifm.ai/v1/chat/completions``, which
+is OpenAI-compatible (standard ``choices[0].message.content``). Two reasoning
+shapes are handled because the vendor serves both: Horizon returns its
+derivation in a separate ``message.reasoning`` field, K2-Think-v1 inlined it in
+``content`` terminated by a ``</think>`` marker. Either way this adapter splits
+the reasoning out of the final answer.
 
 Tool calls are carried by the prompt-based protocol
 (:mod:`orion_agent.harness.llm.tool_protocol`) so the agent loop always receives
@@ -59,8 +61,15 @@ class K2ThinkClient(LLMClient):
     #: When k2think *is* the configured provider the generic names still win, so
     #: an existing deployment that points ORION_LLM_BASE_URL at k2think is
     #: unaffected.
-    _ENDPOINT = "https://api.k2think.ai/v1/chat/completions"
-    _MODEL = "MBZUAI-IFM/K2-Think-v2"
+    #:
+    #: The developer API moved from api.k2think.ai to api.ifm.ai and the model
+    #: ids lost their vendor prefix with it. Endpoint and model are a matched
+    #: pair: the old host answers 403 ``model_origin_not_allowed`` for Horizon,
+    #: and the new host does not serve ``MBZUAI-IFM/K2-Think-v2``. Overriding
+    #: one of ``K2THINK_BASE_URL`` / ``K2THINK_MODEL`` without the other is
+    #: always a misconfiguration.
+    _ENDPOINT = "https://api.ifm.ai/v1/chat/completions"
+    _MODEL = "IFM/K2-Horizon-375B-A23B"
 
     def __init__(self, config=None):
         cfg = (config or get_config()).llm
@@ -261,18 +270,37 @@ class K2ThinkClient(LLMClient):
                 content="[k2think: malformed response]", finish_reason="error", raw=body
             )
 
-        # K2-Think v2 returns the derivation in its own ``reasoning`` field and
-        # omits ``content`` entirely when the token budget ran out mid-thought.
-        # Requiring ``content`` therefore reported a working endpoint as
-        # malformed, which reads as "the vendor is broken" rather than "ask for
-        # more tokens". v1 inlined the reasoning in ``content``, so both shapes
-        # are accepted: an explicit field wins, otherwise fall back to splitting.
+        # K2-Think v2 and Horizon return the derivation in their own
+        # ``reasoning`` field and omit ``content`` entirely when the token
+        # budget ran out mid-thought. Requiring ``content`` therefore reported a
+        # working endpoint as malformed, which reads as "the vendor is broken"
+        # rather than "ask for more tokens". v1 inlined the reasoning in
+        # ``content``, so both shapes are accepted: an explicit field wins,
+        # otherwise fall back to splitting.
         raw_content = message.get("content") or ""
         field_reasoning = (message.get("reasoning") or "").strip()
         if field_reasoning:
             thinking, answer = field_reasoning, raw_content.strip()
         else:
             thinking, answer = self._split_reasoning(raw_content)
+
+        # A ``length`` finish with no ``reasoning`` field and no terminator in
+        # ``content`` is the third shape: generation died mid-derivation. The
+        # server-side reasoning parser only fills ``reasoning`` once the
+        # derivation closes, so everything written up to the cutoff spills into
+        # ``content`` untagged — measured on Horizon at max_tokens=64, which
+        # returned 64 tokens of raw deliberation as ``content`` and ``""`` as
+        # ``reasoning``. ``_split_reasoning`` has no marker to cut on and hands
+        # the whole chain-of-thought back as the answer, which the studio would
+        # print as the model's prose and the tool protocol would scan for calls.
+        # Classify it as what it is: reasoning, and no answer.
+        if (
+            finish == "length"
+            and not field_reasoning
+            and "</think>" not in raw_content
+            and "</answer>" not in raw_content
+        ):
+            thinking, answer = raw_content.strip(), ""
 
         if not answer and thinking and finish == "length":
             # All budget went to the derivation. Say so — an empty string here
