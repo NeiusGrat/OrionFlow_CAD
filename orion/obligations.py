@@ -189,6 +189,36 @@ def _grid_pattern(req: dict) -> dict:
     }
 
 
+def _base_pattern(req: dict) -> dict:
+    """The mounting holes through an L-bracket's base.
+
+    Its own rule, and its own diameter. ``bolt_square`` above covers the motor
+    pattern on the upright, and a bracket carries both — Ø3.5 into a NEMA 17
+    and Ø6.5 through the base. With no obligation of its own the base pattern
+    could be dropped entirely and the part still verified, because every other
+    check is derived from the same requirements that lost it.
+
+    Two placements, because the request states one or the other: a pitch
+    between the holes, or a distance in from each corner. The corner form is
+    expressed as the grid it is, so the existing span check measures it.
+    """
+    r = _f(req, "base_hole_r")
+    if r is None:
+        r = _f(req, "hole_r")
+    gap = _f(req, "base_hole_edge_gap")
+    px, py = _f(req, "base_hole_pitch_x"), _f(req, "base_hole_pitch_y")
+    if r is None:
+        return {"count": None, "radius": None, "placement": None}
+    if gap is not None:
+        L, W = _f(req, "base_length"), _f(req, "base_width")
+        placement = ({"form": GRID, "pitch": [L - 2 * gap, W - 2 * gap]}
+                     if L is not None and W is not None else None)
+        return {"count": 4, "radius": r, "placement": placement}
+    count = (2 if px is not None else 1) * (2 if py is not None else 1)
+    return {"count": count, "radius": r,
+            "placement": {"form": GRID, "pitch": [px, py]}}
+
+
 def _ports(req: dict) -> dict:
     return {
         "count": _i(req, "port_count"),
@@ -286,6 +316,9 @@ RULES: dict[str, tuple[Rule, ...]] = {
         Rule("pilot_bore", BORE, "pilot bore", ("bore_r",), _centred("bore_r")),
         Rule("bolt_square", HOLE_PATTERN, "mounting hole pattern",
              ("hole_r", "bolt_square"), _square_pattern),
+        Rule("base_mount", HOLE_PATTERN, "mounting holes through the base",
+             ("base_hole_r", "base_hole_edge_gap", "base_hole_pitch_x",
+              "base_hole_pitch_y"), _base_pattern),
         Rule("counterbore", HOLE_PATTERN, "counterbore",
              ("cbore_r", "cbore_depth"), _sized("cbore_r")),
         Rule("slots", SLOT, "mounting slots",

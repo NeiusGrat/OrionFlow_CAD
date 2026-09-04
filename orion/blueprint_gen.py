@@ -32,6 +32,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Optional
 
+from . import holes as H
+
 
 class GeneratorError(ValueError):
     """The requirements cannot produce buildable geometry."""
@@ -881,38 +883,65 @@ def l_bracket(req: dict) -> dict:
     # rule, because a bracket bolted through two holes is as common as four.
     base_holes: list[list[str]] = []
     base_cut = ""
+    base_group = None
     bpx, bpy = _num(req, "base_hole_pitch_x"), _num(req, "base_hole_pitch_y")
-    if hole_r and (bpx or bpy):
-        if hole_r <= 0:
-            raise GeneratorError("mounting hole radius must be positive")
-        if bpx and bpx / 2.0 + hole_r >= BL / 2.0:
-            raise GeneratorError(
-                f"a {bpx} mm hole pitch runs off a {BL} mm base plate")
-        if bpy and bpy / 2.0 + hole_r >= BW / 2.0:
-            raise GeneratorError(
-                f"a {bpy} mm hole pitch runs off a {BW} mm wide base")
+    # The base pattern's own diameter. It used to share ``hole_d`` with the
+    # motor pattern on the upright, and a bracket has both at different sizes:
+    # a NEMA 17 mount is Ø3.5 into the motor and Ø6.5 through the base. One slot
+    # cannot hold two numbers, so the request either lost the second diameter
+    # entirely or cut the base holes at the upright's size — measured, both
+    # happened. Falls back to ``hole_r`` when the request states one diameter,
+    # so every bracket that was expressible before is unchanged.
+    base_r = _num(req, "base_hole_r")
+    base_gap = _num(req, "base_hole_edge_gap")
+    r_here = base_r or hole_r
+    if r_here and (bpx or bpy or base_gap):
+        if base_gap:
+            base_group = H.Group(
+                id="base_mount", face="base", radius=r_here,
+                placement="corners", params={"edge_gap": base_gap},
+                prefix="base_" if base_r else "")
+        else:
+            base_group = H.Group(
+                id="base_mount", face="base", radius=r_here, placement="grid",
+                params={"pitch_u": bpx, "pitch_v": bpy},
+                prefix="base_" if base_r else "")
+        face = H.FACES["l_bracket"]["base"]
+        numbers = {"BL": BL, "BW": BW, "BT": BT}
+        try:
+            H.validate(base_group, face, numbers)
+        except H.HoleError as exc:
+            raise GeneratorError(str(exc)) from exc
         # The upright stands on x=0..UT. A hole under it is not a hole, it is
         # an interference, and its volume term would be wrong as well.
-        if BL / 2.0 - (bpx / 2.0 if bpx else 0.0) - hole_r <= UT:
+        nearest = (BL / 2.0 - (bpx / 2.0 if bpx else 0.0) if not base_gap
+                   else base_gap)
+        if nearest - r_here <= UT:
             raise GeneratorError(
-                "the base holes run under the upright; move them or lengthen "
-                "the base")
-        v["hole_r"] = hole_r
-        xs = ["BL/2 - base_half_x", "BL/2 + base_half_x"] if bpx else ["BL/2"]
-        ys = ["-base_half_y", "+base_half_y"] if bpy else ["0"]
-        if bpx:
-            v["base_half_x"] = bpx / 2.0
-        if bpy:
-            v["base_half_y"] = bpy / 2.0
-        for bx in xs:
-            for by in ys:
-                base_holes.append([bx, by, "hole_r"])
-        n_base = len(xs) * len(ys)
+                f"the base holes run under the upright: a {2 * r_here:g} mm "
+                f"hole centred {nearest:g} mm from the end reaches "
+                f"{nearest - r_here:g} mm, and the {UT:g} mm upright stands on "
+                f"the first {UT:g} mm of the base. Move them to at least "
+                f"{UT + r_here:g} mm in, or lengthen the base")
+        base_holes = H.coordinates(base_group, face, v, numbers)
+        # ``grid`` names its own spacing variables; the historic ones are kept
+        # for a bracket that states a single diameter so its hash is unchanged.
+        if not base_r and base_group.placement == "grid":
+            v.pop("half_u", None)
+            v.pop("half_v", None)
+            if bpx:
+                v["base_half_x"] = bpx / 2.0
+            if bpy:
+                v["base_half_y"] = bpy / 2.0
+            base_holes = [[c[0].replace("half_u", "base_half_x"),
+                           c[1].replace("half_v", "base_half_y"), c[2]]
+                          for c in base_holes]
+        n_base = H.count_of(base_group)
         # Recorded, not applied: the counterbore branch below rebuilds
         # ``volume`` from scratch rather than appending to it, so subtracting
         # here would be silently discarded for any counterbored bracket and the
         # claim would overstate the solid by exactly these holes.
-        base_cut = f"{n_base}*pi*hole_r**2*BT"
+        base_cut = f"{n_base}*pi*{base_group.r_var}**2*BT"
 
     # ---- counterbores, as a thickness split rather than a cut ------------- #
     #

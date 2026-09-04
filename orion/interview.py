@@ -542,6 +542,14 @@ def designations(request: str, slots: dict) -> dict:
                 out["critical_tolerance"] = float(m.group(1))
             except ValueError:
                 pass
+    if not out.get("datum"):
+        m = re.search(
+            r"(?:MEASURED|DIMENSIONED|DATUM(?:ED)?)[^.]{0,20}?FROM THE "
+            r"([A-Z]+(?: [A-Z]+)?) FACE", text)
+        if m is None:
+            m = re.search(r"DATUM (?:IS|=) THE ([A-Z]+(?: [A-Z]+)?) FACE", text)
+        if m:
+            out["datum"] = f"{m.group(1).lower()} face"
     for name, table in (("process", PROCESS_WORDS), ("function", FUNCTION_WORDS)):
         if out.get(name):
             continue
@@ -703,14 +711,41 @@ OPTIONAL (report only if stated):
 Reply with ONE JSON object of field names to values, and nothing else."""
 
 
+#: Slots :func:`designations` reads out of the request text, so the extraction
+#: never needs to be asked for them.
+#:
+#: Keeping them in the prompt was not merely redundant, it was destructive.
+#: Measured on the NEMA 17 bracket against K2-Horizon, same request, same
+#: budget of 8192 tokens::
+#:
+#:     29 fields   218.3 s   finish=length   60,758 chars of reasoning   0 keys
+#:     24 fields   106.2 s   finish=stop     12,170 chars               12 keys
+#:
+#: Every optional field is something to deliberate about, and a reasoning model
+#: deliberates about all of them before it writes anything. Five soft fields —
+#: a process, a function, a tolerance class, a band and a datum, none of which
+#: is a dimension — cost five times the reasoning and the entire answer: the
+#: reply ran out of budget mid-thought and every stated dimension of a fully
+#: specified bracket was lost. They are read from the text deterministically
+#: anyway, which is both cheaper and repeatable.
+READ_DETERMINISTICALLY = frozenset({
+    "motor_frame", "process", "function",
+    "tolerance_class", "critical_tolerance", "datum",
+})
+
+
 def extract_prompt(family: str) -> str:
-    """The extraction system prompt for one family, naming its slots."""
+    """The extraction system prompt for one family, naming its slots.
+
+    Only the slots a model has to read. Anything :func:`designations` recovers
+    from the request text is left out — see :data:`READ_DETERMINISTICALLY`.
+    """
     fam = FAMILIES[family]
 
     def show(slots) -> str:
         return "\n".join(
             f"  {s.name} — {s.prompt}" + (" (diameter)" if s.diameter else "")
-            for s in slots
+            for s in slots if s.name not in READ_DETERMINISTICALLY
         ) or "  (none)"
 
     return EXTRACT_SYSTEM % (
