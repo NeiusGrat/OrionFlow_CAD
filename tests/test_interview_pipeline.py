@@ -51,6 +51,66 @@ def test_every_family_in_the_schema_has_a_builder():
     assert set(interview.FAMILIES) <= buildable
 
 
+def test_the_outage_message_names_every_family_that_still_builds():
+    """What we tell the user we can build must be what we can build.
+
+    When no fine-tuned model is reachable the studio answers with the families
+    it still compiles deterministically. That sentence was assembled from
+    ``blueprint_gen.BUILDERS`` alone, so it named the seven single-part
+    families and silently dropped the eight assembly classes — which compile
+    from the interview's slots with no model authoring anything, and are
+    therefore exactly the families an outage does not affect. A planetary stage
+    that had verified minutes earlier was reported as one we could not build.
+
+    Asserted against the same union ``test_every_interview_family_is_buildable``
+    uses, so a family added to one side cannot drift out of the message.
+    """
+    from app.services import assembly_service
+    from app.services.studio_agent import _buildable_families
+
+    said = _buildable_families()
+    for name in set(blueprint_gen.BUILDERS) | set(assembly_service.catalogue()):
+        label = interview.FAMILIES[name].label if name in interview.FAMILIES else name
+        assert label in said, f"{name} builds but the outage message omits it"
+
+
+def test_the_identify_prompt_never_sends_a_family_we_build_to_other():
+    """The prompt must not contradict its own list.
+
+    ``IDENTIFY_SYSTEM`` ends with the list of families to choose from and also
+    carries a line naming what belongs in "other". That line used to read
+    "Springs, gears, castings and anything not listed are 'other'" while
+    ``spur_gear``, ``planetary_stage`` and ``spring_plunger`` were all on the
+    list — an instruction to discard three families we compile.
+
+    Checked against the labels rather than the slugs because the model reads
+    prose: "gears" and "springs" are how ``spur_gear`` and ``spring_plunger``
+    appear in a request.
+    """
+    import re
+
+    # Only sentences that *assign* something to "other". A rule saying a thing
+    # is NOT "other" mentions the word too, and is the opposite of the defect.
+    sentences = [x for x in re.split(r"(?<=\.)\s+", interview.IDENTIFY_SYSTEM)
+                 if re.search(r'are\s+"other"', x)]
+    assert sentences, "the prompt no longer says what belongs in 'other'"
+
+    # Head nouns of every family label: the words a request would actually use.
+    words = set()
+    for fam in interview.FAMILIES.values():
+        for token in re.findall(r"[a-z]+", fam.label.lower()):
+            if len(token) > 3 and token not in {"open", "plate", "stage", "drive"}:
+                words.add(token)
+
+    for sentence in sentences:
+        low = sentence.lower()
+        for word in sorted(words):
+            assert word not in low, (
+                f"the identify prompt routes {word!r} to 'other', but it is a "
+                f"family we build: {sentence.strip()!r}"
+            )
+
+
 def test_a_malformed_schema_raises_rather_than_degrading(tmp_path):
     """Silently loading no required fields would stop the interview asking
     anything at all — an invisible failure."""

@@ -254,6 +254,26 @@ def planetary_stage_spec(module: float = 2.0, z_sun: int = 24,
     the ``mates`` field and a quarter of the assembly corpus would have taught
     assemblies *without relationships* — which is the one thing an assembly
     dataset must not do.
+
+    ``sun_bore`` and ``planet_bore`` are **diameters**, as every other bore in
+    this module is (``bearing_stack`` halves ``bore``, ``belt_drive`` halves
+    ``bore1``) and as the interview's "What is the sun bore?" is answered. They
+    used to be passed to ``spur_gear`` as ``bore_r`` unhalved, so a stage asked
+    for a 10 mm sun bore was built with a 20 mm hole — every bore in the stage
+    exactly twice its stated size.
+
+    Nothing caught it because the one assertion that reads a bore, ``sun_rim``,
+    was written in the same wrong unit: it subtracted ``sun_bore`` from the root
+    radius, so the rim check agreed with the geometry and the stage graded
+    VERIFIED. A dimension is only checked when the check is derived from the
+    *request*, not from the same expression the builder used — which is why the
+    unit is now stated here, the radius is published as its own variable, and
+    the assertion consumes that.
+
+    The old reading also refused work it should have accepted: with the sampler
+    picking sun bores of 6-10 mm, treating them as radii left too little rim
+    under the tooth root on small suns and ``sun_rim`` rejected combinations
+    that are entirely ordinary once the number means what it says.
     """
     a = module * (z_sun + z_planet) / 2.0
     z_ring = z_sun + 2 * z_planet
@@ -268,7 +288,7 @@ def planetary_stage_spec(module: float = 2.0, z_sun: int = 24,
             raise ValueError(f"planetary gear z={z}: " + "; ".join(probs))
 
     comps = [{"id": "sun", "family": "spur_gear",
-              "params": dict(module=module, teeth=z_sun, bore_r=sun_bore,
+              "params": dict(module=module, teeth=z_sun, bore_r=sun_bore / 2.0,
                              t=face_width, alpha=20.0, fpts=_fpts(z_sun)),
               "pos": [0.0, 0.0, 0.0], "rot_z": 0.0,
               "process": "CNC hobbed, case hardened"}]
@@ -277,7 +297,8 @@ def planetary_stage_spec(module: float = 2.0, z_sun: int = 24,
         th = 2.0 * math.pi * k / n_planets
         comps.append({
             "id": f"planet{k}", "family": "spur_gear",
-            "params": dict(module=module, teeth=z_planet, bore_r=planet_bore,
+            "params": dict(module=module, teeth=z_planet,
+                           bore_r=planet_bore / 2.0,
                            t=face_width, alpha=20.0, fpts=_fpts(z_planet)),
             "pos": [a * math.cos(th), a * math.sin(th), 0.0],
             # phase each planet so its teeth land in the sun's gaps
@@ -308,6 +329,7 @@ def planetary_stage_spec(module: float = 2.0, z_sun: int = 24,
         "module": module, "z_sun": float(z_sun), "z_planet": float(z_planet),
         "n_planets": float(n_planets), "face_width": face_width,
         "sun_bore": sun_bore, "planet_bore": planet_bore,
+        "sun_bore_r": sun_bore / 2.0, "planet_bore_r": planet_bore / 2.0,
         "a": a, "z_ring": float(z_ring), "d_tip_planet": d_tip_planet,
     }
     return {
@@ -322,7 +344,8 @@ def planetary_stage_spec(module: float = 2.0, z_sun: int = 24,
             {"id": "planet_clearance", "kind": "precondition", "tier": 1,
              "target": "2*a*sin(pi/n_planets) - d_tip_planet - 1.0"},
             {"id": "sun_rim", "kind": "precondition", "tier": 1,
-             "target": "module*z_sun/2 - 1.25*module - sun_bore - 1.5*module"},
+             "target": "module*z_sun/2 - 1.25*module - sun_bore_r "
+                       "- 1.5*module"},
             {"id": "no_interference", "kind": "no_interference", "tier": 1,
              "tol_rel": 1e-09},
             {"id": "part_count", "kind": "part_count", "tier": 1,

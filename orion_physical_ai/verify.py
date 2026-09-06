@@ -233,6 +233,14 @@ def fulfillment_rows(design_plan: Optional[dict], topology: Optional[dict],
     return rows + F.check(obligations, topology, template=template)
 
 
+#: Row kinds whose ``label`` is already a complete sentence.
+#:
+#: ``fulfillment_rows`` synthesises these two itself, rather than deriving them
+#: from an obligation, and phrases them as full claims. Everything else comes
+#: from ``orion.obligations`` as a bare feature name.
+_SENTENCE_KINDS = frozenset({"unsupported", "unavailable"})
+
+
 def fulfillment_checks(rows: Optional[list[dict]]) -> list[dict]:
     """Turn fulfillment records into checks. One row per obligation.
 
@@ -249,10 +257,20 @@ def fulfillment_checks(rows: Optional[list[dict]]) -> list[dict]:
     out = []
     for row in rows or []:
         status = row.get("status") or WARN
+        label = row.get("label") or row.get("id")
+        if row.get("kind") not in _SENTENCE_KINDS:
+            # Obligation labels are noun phrases from ``orion.obligations``
+            # ("centre bore", "mounting hole pattern"), so they need the
+            # predicate. The two rows synthesised above already carry a whole
+            # sentence, and appending to those produced "10 mm is a supported
+            # capability exists in the built solid" in the studio's
+            # verification panel — of a row that is specifically about
+            # something the solid does not and cannot contain.
+            label = f"{label} exists in the built solid"
         out.append(
             _check(
                 row.get("check_id") or f"feature:{row.get('id')}",
-                f"{row.get('label') or row.get('id')} exists in the built solid",
+                label,
                 status if status in (PASS, FAIL, WARN) else WARN,
                 row.get("detail") or "",
                 {

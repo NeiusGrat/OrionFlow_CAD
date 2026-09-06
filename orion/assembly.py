@@ -283,6 +283,12 @@ def planetary_stage(module: float, z_sun: int, z_planet: int, n_planets: int,
     * **planet clearance** ``2*a*sin(pi/n) > d_tip_planet`` — adjacent planets
       must not collide, which is the constraint that actually limits how many
       planets a stage can carry.
+
+    ``sun_bore`` and ``planet_bore`` are diameters; see
+    ``assembly_spec.planetary_stage_spec``, which is the version the live path
+    builds from. Kept in step deliberately — this copy has no caller today, and
+    a dormant second definition that still halves nothing is exactly how the
+    bug comes back.
     """
     from .gear_family import make_blueprint
 
@@ -292,14 +298,14 @@ def planetary_stage(module: float, z_sun: int, z_planet: int, n_planets: int,
     fpts = 5
 
     parts = [{"id": "sun",
-              "blueprint": make_blueprint(module, z_sun, sun_bore,
+              "blueprint": make_blueprint(module, z_sun, sun_bore / 2.0,
                                           face_width, 20.0, fpts),
               "pos": [0.0, 0.0, 0.0], "rot_z": 0.0}]
     for k in range(n_planets):
         th = 2.0 * math.pi * k / n_planets
         parts.append({
             "id": f"planet{k}",
-            "blueprint": make_blueprint(module, z_planet, planet_bore,
+            "blueprint": make_blueprint(module, z_planet, planet_bore / 2.0,
                                         face_width, 20.0, fpts),
             "pos": [a * math.cos(th), a * math.sin(th), 0.0],
             # Counter-rotate each planet so its teeth sit in the sun's gaps
@@ -313,6 +319,7 @@ def planetary_stage(module: float, z_sun: int, z_planet: int, n_planets: int,
         "module": module, "z_sun": float(z_sun), "z_planet": float(z_planet),
         "n_planets": float(n_planets), "face_width": face_width,
         "sun_bore": sun_bore, "planet_bore": planet_bore,
+        "sun_bore_r": sun_bore / 2.0, "planet_bore_r": planet_bore / 2.0,
         "a": a, "z_ring": float(z_ring), "d_tip_planet": d_tip_planet,
     }
     return {
@@ -326,7 +333,8 @@ def planetary_stage(module: float, z_sun: int, z_planet: int, n_planets: int,
             {"id": "planet_clearance", "kind": "precondition", "tier": 1,
              "target": "2*a*sin(pi/n_planets) - d_tip_planet - 1.0"},
             {"id": "sun_rim", "kind": "precondition", "tier": 1,
-             "target": "module*z_sun/2 - 1.25*module - sun_bore - 1.5*module"},
+             "target": "module*z_sun/2 - 1.25*module - sun_bore_r "
+                       "- 1.5*module"},
             {"id": "no_interference", "kind": "no_interference", "tier": 1,
              "tol_rel": 1e-09},
             {"id": "part_count", "kind": "part_count", "tier": 1,

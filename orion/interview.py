@@ -684,12 +684,20 @@ Read the request and name the part family. Nothing else.
 
 Choose "other" unless the request is clearly one of the listed families. A wrong
 match is worse than no match: it sends the request down a path that cannot build
-it. Springs, gears, castings and anything not listed are "other".
+it. Castings, weldments, sheet-metal bends and anything not listed are "other".
 
 "disc" is any part turned from round stock, whatever it is called: washers,
 plain cylinders, tubes and sleeves, spacers, shaft collars, pulley blanks,
 flanges, cover discs and grilles are all discs — optionally bored, optionally
 holed. Length does not disqualify one: a 40 mm long tube is a disc.
+
+Two families say "bearing" and they are different requests. A "bearing_housing"
+is the block that carries a bearing: a bore, a body around it, mounting holes.
+A "bearing_stack" is the bearing itself on its shaft: a bore, ring thickness, a
+ball gap, a width, a shaft length. Ring or ball dimensions mean bearing_stack;
+a block to bolt down means bearing_housing. A rolling bearing, a shaft running
+in a bearing, and a bearing named by catalogue number ("6206", "608") are all
+bearing_stack — being a size you could also buy does not make it "other".
 
 Reply with ONE JSON object and nothing else:
 {"family": "<one of: %s, other>"}

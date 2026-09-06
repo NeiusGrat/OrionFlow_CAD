@@ -478,6 +478,32 @@ def _with_provenance(payload: dict, request: str, chain: Any = None) -> dict:
 _NOTHING, _BUILT_UNVERIFIED, _UNSOURCED, _UNMEASURED, _VERIFIED = 1, 2, 3, 4, 5
 
 
+def _buildable_families() -> str:
+    """Every family that compiles without a model authoring a Blueprint.
+
+    Both callers below tell the user what is still available when the
+    fine-tuned model cannot be reached, and both used to name only
+    ``blueprint_gen.BUILDERS`` — the seven single-part families. The eight
+    assembly classes in ``assembly_service`` are compiled the same way, from
+    the interview's slots straight into a spec, and are just as unaffected by
+    the outage. Omitting them understated our capability by more than half:
+    a planetary stage that had verified minutes earlier was reported as
+    something we could not build at all.
+
+    ``tests/test_interview_pipeline.py`` already defines the buildable set as
+    this union when it asserts every interview family is reachable; this is the
+    same set, said to the user.
+    """
+    from app.services import assembly_service
+    from orion import blueprint_gen, interview
+
+    names = set(blueprint_gen.BUILDERS) | set(assembly_service.catalogue())
+    return ", ".join(
+        interview.FAMILIES[f].label if f in interview.FAMILIES else f
+        for f in sorted(names)
+    )
+
+
 def _rank(bundle: dict) -> int:
     if not bundle:
         return 0
@@ -1111,14 +1137,9 @@ class StudioAgent:
         # so now: a general model spends two sampling rounds arriving at "no
         # Blueprint JSON in completion" — measured 22-49s for a spur gear — and
         # a stated limit is a better answer than a slow parse error, especially
-        # since the four compiled families above are unaffected by the outage.
+        # since the compiled families above are unaffected by the outage.
         if not any(serving_fine_tune(p) and not _is_down(p) for p in _providers()):
-            from orion import blueprint_gen, interview
-
-            buildable = ", ".join(
-                interview.FAMILIES[f].label if f in interview.FAMILIES else f
-                for f in sorted(blueprint_gen.BUILDERS)
-            )
+            buildable = _buildable_families()
             _emit_step(
                 on_event,
                 "understand",
@@ -1289,10 +1310,7 @@ class StudioAgent:
             # bench, and a compiled family — report that it could not be built
             # deterministically. The request was never read; nothing at all is
             # known about which family it is.
-            buildable = ", ".join(
-                interview.FAMILIES[f].label if f in interview.FAMILIES else f
-                for f in sorted(blueprint_gen.BUILDERS)
-            )
+            buildable = _buildable_families()
             _emit_step(
                 on_event,
                 "understand",

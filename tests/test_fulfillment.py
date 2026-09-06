@@ -997,3 +997,41 @@ def test_a_clean_feature_warning_is_not_a_provenance_warning():
     failed = feature_only + [
         {"id": "solid:valid", "status": verify.FAIL, "label": "", "detail": ""}]
     assert verify.verdict_for(failed) == verify.REFUSED
+
+
+# --------------------------------------------------------------------------- #
+# How a fulfillment row reads
+# --------------------------------------------------------------------------- #
+def test_a_row_that_already_reads_as_a_sentence_is_not_completed_again():
+    """The predicate belongs only on rows whose label is a bare feature name.
+
+    ``fulfillment_checks`` appends "exists in the built solid" so an obligation
+    label from ``orion.obligations`` — "centre bore", "mounting hole pattern" —
+    becomes a claim. Two rows are synthesised by ``fulfillment_rows`` itself and
+    are already whole sentences, and the suffix landed on those too. A bearing
+    housing whose request mentioned an unplaced 10 mm dimension rendered
+
+        10 mm is a supported capability exists in the built solid
+
+    in the studio's verification panel, on the one row that is specifically
+    about something the solid does not contain and never could.
+    """
+    rows = [
+        {"check_id": "unsupported:vent slot", "id": "vent slot",
+         "kind": "unsupported", "label": "vent slot is a supported capability",
+         "status": "warn", "detail": "x"},
+        {"id": "feature_verification", "kind": "unavailable",
+         "label": "Requested features can be checked",
+         "status": "warn", "detail": "y"},
+        {"id": "central_bore", "kind": "bore", "label": "centre bore",
+         "status": "pass", "detail": "z"},
+    ]
+    labels = [c["label"] for c in verify.fulfillment_checks(rows)]
+
+    assert labels[0] == "vent slot is a supported capability"
+    assert labels[1] == "Requested features can be checked"
+    # The obligation row still gets the predicate that makes it a claim.
+    assert labels[2] == "centre bore exists in the built solid"
+    for label in labels:
+        assert "capability exists" not in label
+        assert "checked exists" not in label
