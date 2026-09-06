@@ -402,6 +402,28 @@ def build(family: str, slots: dict, request_id: Optional[str] = None) -> dict:
                 shutil.copy2(src, os.path.join(outdir, name))
                 files[kind] = f"/outputs/{name}"
 
+        # The viewer renders GLB and nothing else: ``Workspace.tsx`` passes
+        # ``files.glb`` to <Viewer/>, ``Viewer.tsx`` rejects any URL that does
+        # not end in ``.glb``, and ``studioStore`` only calls ``showInViewer``
+        # when that key is present. Single parts have always converted their
+        # STL here; assemblies never did, so an assembly that built and
+        # verified perfectly showed the user an empty viewport — the checks
+        # all green, the STEP downloadable, and nothing on screen.
+        #
+        # Same converter as the single-part path, on the same STL, so the
+        # assembly arrives in the viewer the way every other part does.
+        stl_name = files.get("stl", "").rsplit("/", 1)[-1]
+        if stl_name:
+            try:
+                from app.services.stl_to_glb import stl_to_glb
+
+                glb = stl_to_glb(os.path.join(outdir, stl_name))
+                if glb and os.path.exists(glb):
+                    files["glb"] = f"/outputs/{os.path.basename(glb)}"
+            except Exception as exc:  # noqa: BLE001 - geometry still stands
+                logger.warning("assembly_glb_failed", family=family,
+                               error=str(exc))
+
         verdict = "verified" if result.get("passed") else (
             "refused" if failed else "unproven")
         return {

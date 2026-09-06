@@ -464,3 +464,61 @@ def test_a_studio_assembly_request_reaches_the_remote_builder(
     assert out["success"] is True
     assert out["files"]["step"].endswith(".step")
     assert out["stats"]["components"] == 3
+
+
+# --------------------------------------------------------------------------- #
+# the viewer's one requirement
+# --------------------------------------------------------------------------- #
+def test_an_assembly_offers_the_glb_the_viewer_actually_renders(
+    monkeypatch, tmp_path
+):
+    """A verified assembly with no GLB is an empty viewport.
+
+    The studio renders GLB and nothing else: ``Workspace.tsx`` passes
+    ``files.glb`` to the viewer, ``Viewer.tsx`` rejects any URL not ending in
+    ``.glb``, and ``studioStore`` only calls ``showInViewer`` when that key is
+    present. Single parts have always converted their STL; assemblies emitted
+    only STEP and STL, so a planetary stage that built and passed all eleven
+    checks in production showed the user nothing at all — every check green,
+    the STEP downloadable, and a blank screen.
+    """
+    import trimesh
+
+    from app.config import settings
+    from app.services import assembly_service as S
+
+    # A real STL, because the converter is real: a stub would prove nothing
+    # about whether an assembly's mesh actually survives the trip.
+    stl = tmp_path / "asm.stl"
+    trimesh.creation.box(extents=(10.0, 20.0, 30.0)).export(str(stl))
+    step = tmp_path / "asm.step"
+    step.write_text("ISO-10303-21;", encoding="utf-8")
+
+    def _built(spec, workdir, tag, kernel=None):
+        return {
+            "tag": tag, "passed": True, "build_ok": True,
+            "parts": [{"id": "a", "passed": True, "assertions": []}],
+            "assertions": [], "step": str(step), "stl": str(stl),
+            "measured": {"parts": [{"id": "a", "volume": 6000.0}],
+                         "sum_volume": 6000.0, "fused_volume": 6000.0,
+                         "solids": 1, "watertight": True,
+                         "bbox": [0.0, 0.0, 0.0, 10.0, 20.0, 30.0]},
+        }
+
+    monkeypatch.setattr(A, "build_assembly", _built)
+    monkeypatch.setattr(settings, "output_dir", tmp_path / "out")
+
+    out = S.build("bearing_stack", {"bore": 30.0, "ring_t": 5.0,
+                                    "ball_gap": 6.0, "width": 16.0,
+                                    "shaft_len": 90.0})
+
+    assert "glb" in out["files"], (
+        "no GLB: the studio viewer has nothing to render for this assembly"
+    )
+    assert out["files"]["glb"].endswith(".glb")
+    # Same three keys a single part offers the viewer and the download menu.
+    assert {"step", "stl", "glb"} <= set(out["files"])
+
+    produced = tmp_path / "out" / os.path.basename(out["files"]["glb"])
+    assert produced.exists() and produced.stat().st_size > 0
+    assert len(trimesh.load(str(produced)).geometry) >= 1
