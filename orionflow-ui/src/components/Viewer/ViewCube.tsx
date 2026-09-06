@@ -17,16 +17,27 @@ import { useUIStore } from "../../store/uiStore";
 
 const FACES = {
     dark: {
-        color: "#1F2126",
-        hoverColor: "#2C2F36",
-        textColor: "#F5F2ED",
-        strokeColor: "#3B3F47",
+        // Lifted well clear of the viewport, which is #0A0A0B at its darkest
+        // and #17181A at its lightest. The cube used to be #1F2126 with a
+        // #3B3F47 stroke — one step off the ground behind it, so on the dark
+        // theme it was a black cube on a black background and users could not
+        // find the control at all.
+        //
+        // Real CAD nav cubes solve this the same way: the cube is a lit object
+        // sitting in front of the scene, not a tint of it. #454B55 is the
+        // lightest value that still reads as part of this interface rather
+        // than as a white box pasted on top, and the stroke is bright enough
+        // to draw the silhouette against both the viewport and the part.
+        color: "#454B55",
+        hoverColor: "#5E6675",
+        textColor: "#F7F5F1",
+        strokeColor: "#9AA3B2",
     },
     light: {
         color: "#FBF9F6",
         hoverColor: "#E9E4DC",
         textColor: "#11100E",
-        strokeColor: "#B4ADA3",
+        strokeColor: "#8E877C",
     },
 } as const;
 

@@ -320,6 +320,45 @@ def _refusal(rid: str, family: str, why: str, started: float,
     }
 
 
+def _assembly_glb(component_meshes: dict, fused_stl: str,
+                  out_path: str) -> Optional[str]:
+    """One GLB carrying each component as its own named node.
+
+    The fused ``assembly.stl`` is a single welded mesh: a viewer loading it can
+    only show the assembly as one undifferentiated body, so a four-gear stage
+    arrives as a single grey lump with no way to colour a planet differently
+    from the sun or to click one and be told which it is.
+
+    Each node is named for its component id, which is the same id the mates,
+    the per-component verdicts and the assertion rows use — so a selection in
+    the viewport can be resolved back to the engineering record without a
+    lookup table.
+
+    Falls back to the fused mesh when per-component meshes are unavailable: a
+    single-body preview is worth much more than no preview, and that was the
+    behaviour before this existed.
+    """
+    import trimesh
+
+    scene = trimesh.Scene()
+    for cid, path in sorted(component_meshes.items()):
+        if not path or not os.path.exists(path):
+            continue
+        mesh = trimesh.load(path, force="mesh")
+        if mesh is None or mesh.is_empty:
+            continue
+        scene.add_geometry(mesh, node_name=str(cid), geom_name=str(cid))
+
+    if not scene.geometry:
+        from app.services.stl_to_glb import stl_to_glb
+
+        return stl_to_glb(fused_stl, out_path)
+
+    with open(out_path, "wb") as fh:
+        fh.write(scene.export(file_type="glb"))
+    return out_path
+
+
 def build(family: str, slots: dict, request_id: Optional[str] = None) -> dict:
     """Build one assembly and return it in the studio's bundle shape.
 
@@ -415,11 +454,15 @@ def build(family: str, slots: dict, request_id: Optional[str] = None) -> dict:
         stl_name = files.get("stl", "").rsplit("/", 1)[-1]
         if stl_name:
             try:
-                from app.services.stl_to_glb import stl_to_glb
-
-                glb = stl_to_glb(os.path.join(outdir, stl_name))
-                if glb and os.path.exists(glb):
-                    files["glb"] = f"/outputs/{os.path.basename(glb)}"
+                glb_path = os.path.join(
+                    outdir, stl_name.replace(".stl", ".glb"))
+                made = _assembly_glb(
+                    result.get("component_meshes") or {},
+                    os.path.join(outdir, stl_name),
+                    glb_path,
+                )
+                if made:
+                    files["glb"] = f"/outputs/{os.path.basename(made)}"
             except Exception as exc:  # noqa: BLE001 - geometry still stands
                 logger.warning("assembly_glb_failed", family=family,
                                error=str(exc))

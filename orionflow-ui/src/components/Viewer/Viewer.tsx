@@ -16,6 +16,7 @@ import {
     applyCadToneMapping,
     createEdgeMaterial,
     createPartMaterial,
+    componentTint,
 } from "../../lib/cadAppearance";
 import { useDesignStore } from "../../store/designStore";
 import { useUIStore } from "../../store/uiStore";
@@ -139,9 +140,50 @@ function ensureEdges(mesh: THREE.Mesh) {
     mesh.userData.__edgesAdded = true;
 }
 
+/** Materials for one component of an assembly, cached by tint index.
+ *
+ *  Built lazily and kept, because a fresh MeshStandardMaterial per frame
+ *  recompiles a shader per frame. Index 0 reuses the shared singletons so a
+ *  single-body part allocates nothing and looks exactly as it always has.
+ */
+const COMPONENT_MATS = new Map<
+    number,
+    { base: THREE.Material; hover: THREE.Material; selected: THREE.Material }
+>();
+
+function componentMaterials(index: number) {
+    if (index <= 0) return { base: MAT_BASE, hover: MAT_HOVER, selected: MAT_SELECTED };
+    const hit = COMPONENT_MATS.get(index);
+    if (hit) return hit;
+
+    const tint = new THREE.Color(componentTint(index));
+    // Hover and selection are the *same metal*, lifted and tinted — a
+    // component must stay recognisable as itself while it is being pointed
+    // at, so selection changes its value rather than replacing its colour.
+    const made = {
+        base: createPartMaterial({ color: tint }),
+        hover: createPartMaterial({
+            color: tint.clone().lerp(new THREE.Color("#FFFFFF"), 0.18),
+            roughness: 0.26,
+            envMapIntensity: 1.2,
+        }),
+        selected: createPartMaterial({
+            color: tint.clone().lerp(new THREE.Color("#A8BDEE"), 0.35),
+            metalness: 0.65,
+            roughness: 0.3,
+            emissive: new THREE.Color("#24468F"),
+            emissiveIntensity: 0.14,
+            envMapIntensity: 1.1,
+        }),
+    };
+    COMPONENT_MATS.set(index, made);
+    return made;
+}
+
 function styleMesh(mesh: THREE.Mesh, state: "base" | "hover" | "selected") {
+    const mats = componentMaterials((mesh.userData.__tintIndex as number) ?? 0);
     mesh.material =
-        state === "selected" ? MAT_SELECTED : state === "hover" ? MAT_HOVER : MAT_BASE;
+        state === "selected" ? mats.selected : state === "hover" ? mats.hover : mats.base;
     const edges = mesh.getObjectByName("__edges") as THREE.LineSegments | undefined;
     if (edges) edges.material = state === "selected" ? EDGE_MAT_SELECTED : EDGE_MAT;
 }
@@ -336,6 +378,31 @@ function Model({ url, onBounds }: { url: string; onBounds: (b: SceneBounds) => v
         hasFramed.current = false;
         setSelectedMesh(null);
     }, [url]);
+
+    /** Give every mesh a stable tint index.
+     *
+     *  An assembly GLB carries one node per component, named for the component
+     *  id the mates and the verdicts use. Sorting by that name — rather than
+     *  by scene-graph order, which glTF does not guarantee — means a planet
+     *  keeps its colour across rebuilds instead of swapping with its
+     *  neighbour every time the file is written.
+     *
+     *  A single-body part has one mesh, so it takes index 0 and stays the
+     *  neutral aluminium it has always been. */
+    useEffect(() => {
+        if (!scene) return;
+        const meshes: THREE.Mesh[] = [];
+        scene.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) meshes.push(child as THREE.Mesh);
+        });
+        if (meshes.length < 2) {
+            meshes.forEach((m) => (m.userData.__tintIndex = 0));
+            return;
+        }
+        [...meshes]
+            .sort((a, b) => (a.name || a.uuid).localeCompare(b.name || b.uuid))
+            .forEach((m, i) => (m.userData.__tintIndex = i));
+    }, [scene, url]);
 
     /** Whole-mesh styling, for a part with no sidecar. Skipped once the mesh is
      *  grouped by feature, because that path owns the material array. */

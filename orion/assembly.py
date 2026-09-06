@@ -279,6 +279,11 @@ def build_assembly(spec: dict, workdir: str, tag: str, kernel=None) -> dict:
             "parts": part_verdicts, "assertions": rows, "measured": m,
             "fcstd_parts": [c.get("fcstd") for c in result.get("components") or []
                             if c.get("fcstd")],
+            # id -> its own mesh, in assembly coordinates. What lets a viewer
+            # show the assembly as parts rather than as one welded body.
+            "component_meshes": {c["id"]: c["stl"]
+                                 for c in result.get("components") or []
+                                 if c.get("stl")},
             "step": m.get("step"), "stl": m.get("stl")}
 
 

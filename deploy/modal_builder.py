@@ -238,8 +238,16 @@ def build_assembly_graphs(spec: dict) -> dict:
         if fcstd and os.path.exists(fcstd):
             with open(fcstd, "rb") as fh:
                 artifacts[os.path.basename(fcstd)] = fh.read()
+        # The per-component mesh, in assembly coordinates. Named so the caller
+        # can tell it apart from the fused assembly.stl and reassociate it
+        # with its component without parsing a path.
+        cstl = comp.get("stl")
+        if cstl and os.path.exists(cstl):
+            with open(cstl, "rb") as fh:
+                artifacts[f"component_{comp['id']}.stl"] = fh.read()
         # The builder's own paths mean nothing to the caller.
         comp.pop("fcstd", None)
+        comp.pop("stl", None)
 
     return {"build_log": log, "components": payload.get("components") or [],
             "assembly": payload.get("assembly") or {},

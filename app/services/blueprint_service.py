@@ -214,6 +214,8 @@ def run_assembly_builder(spec: dict, workdir: str) -> dict:
     # is identical in both modes.
     os.makedirs(workdir, exist_ok=True)
     assembly = dict(result.get("assembly") or {})
+    components = result.get("components") or []
+    by_id = {c.get("id"): c for c in components}
     for name, blob in (result.get("artifacts") or {}).items():
         if not blob:
             continue
@@ -224,8 +226,14 @@ def run_assembly_builder(spec: dict, workdir: str) -> dict:
             assembly["step"] = path
         elif name == "assembly.stl":
             assembly["stl"] = path
+        elif name.startswith("component_") and name.endswith(".stl"):
+            # Re-attached to its component, so both modes hand the caller the
+            # same shape: a component that knows where its own mesh landed.
+            comp = by_id.get(name[len("component_"):-len(".stl")])
+            if comp is not None:
+                comp["stl"] = path
 
-    return {"components": result.get("components") or [], "assembly": assembly}
+    return {"components": components, "assembly": assembly}
 
 
 def _build_locally(

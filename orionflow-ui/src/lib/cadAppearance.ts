@@ -35,6 +35,44 @@ export const CAD_SURFACE = {
     envMapIntensity: 1.15,
 } as const;
 
+/** Per-component tints for an assembly.
+ *
+ * An assembly arrives as one GLB node per component (see
+ * `assembly_service._assembly_glb`), and painting every node the same
+ * machined aluminium makes a four-gear stage read as a single grey lump — the
+ * user cannot tell the sun from a planet, which is the one thing the picture
+ * is for.
+ *
+ * These are **tinted metals, not category colours.** Every entry sits in the
+ * same narrow value range as {@link CAD_SURFACE} and keeps its metalness, so
+ * the set reads as a bill of materials — aluminium, steel, brass, bronze,
+ * anodised — rather than as a chart. A saturated primary palette would
+ * distinguish the parts just as well and make the viewport look like a toy,
+ * which is the opposite of what a CAD surface is trying to say.
+ *
+ * Index 0 is the neutral aluminium, so a single-body part is unchanged and
+ * the first component of an assembly matches what a lone part looks like.
+ *
+ * Assigned by sorted component id, so the same assembly is always coloured the
+ * same way — a planet does not change colour because a rebuild reordered the
+ * scene graph.
+ */
+export const CAD_COMPONENT_TINTS = [
+    "#C2C7CF", // aluminium, the neutral
+    "#9FB6CE", // steel blue
+    "#C9B27E", // brass
+    "#B4907A", // bronze
+    "#A6BAAE", // patina
+    "#B0A6C0", // anodised violet
+    "#CBBEA6", // champagne
+    "#93AFB8", // titanium
+] as const;
+
+/** The tint for a component, by its position in the sorted component list. */
+export function componentTint(index: number): string {
+    return CAD_COMPONENT_TINTS[index % CAD_COMPONENT_TINTS.length];
+}
+
 /** Edge lines. Subtle rather than black-and-hard: an engineering viewport
  *  shows the geometry, it does not outline it like a cartoon. */
 export const CAD_EDGE = {

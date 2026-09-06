@@ -146,7 +146,21 @@ def _run(args):
             "recompute_errors": report.get("recompute_errors", []),
             "built": report.get("built", []),
         }
-        components.append({"id": cid, "measured": measured, "fcstd": fcstd})
+        # Each component as its own mesh, in assembly coordinates.
+        #
+        # The fused compound STL is one mesh, so a viewer loading it can only
+        # ever show the assembly as a single undifferentiated body — no
+        # per-part colour, no click-to-select a gear. Exported here because
+        # this is the only place the *placed* shapes exist separately; after
+        # the fuse below they are welded together and cannot be recovered.
+        cstl = os.path.abspath(os.path.join(args.workdir, f"{cid}.stl"))
+        try:
+            placed.exportStl(cstl)
+        except Exception:  # noqa: BLE001 - a preview mesh is not the proof
+            cstl = ""
+
+        components.append({"id": cid, "measured": measured, "fcstd": fcstd,
+                           "stl": cstl})
         shapes.append(placed)
         per_part.append({"id": cid, "volume": placed.Volume})
 

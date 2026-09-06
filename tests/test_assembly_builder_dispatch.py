@@ -522,3 +522,92 @@ def test_an_assembly_offers_the_glb_the_viewer_actually_renders(
     produced = tmp_path / "out" / os.path.basename(out["files"]["glb"])
     assert produced.exists() and produced.stat().st_size > 0
     assert len(trimesh.load(str(produced)).geometry) >= 1
+
+
+def test_each_component_is_its_own_node_in_the_assembly_glb(monkeypatch, tmp_path):
+    """One node per component, named for it — not one welded body.
+
+    The fused assembly.stl is a single mesh, so a GLB made from it can only
+    ever be shown as one undifferentiated lump: no per-part colour, and no way
+    to click a planet and be told which it is. The node names are the same ids
+    the mates, the per-component verdicts and the assertion rows use, so a
+    selection in the viewport resolves back to the engineering record directly.
+    """
+    import trimesh
+
+    from app.config import settings
+    from app.services import assembly_service as S
+
+    parts = {"shaft": (10.0, 10.0, 40.0), "inner_ring": (20.0, 20.0, 8.0),
+             "outer_ring": (30.0, 30.0, 8.0)}
+    meshes = {}
+    for cid, extents in parts.items():
+        path = tmp_path / f"{cid}.stl"
+        trimesh.creation.box(extents=extents).export(str(path))
+        meshes[cid] = str(path)
+
+    fused = tmp_path / "asm.stl"
+    trimesh.creation.box(extents=(30.0, 30.0, 40.0)).export(str(fused))
+    step = tmp_path / "asm.step"
+    step.write_text("ISO-10303-21;", encoding="utf-8")
+
+    def _built(spec, workdir, tag, kernel=None):
+        return {
+            "tag": tag, "passed": True, "build_ok": True,
+            "parts": [{"id": c, "passed": True, "assertions": []} for c in parts],
+            "assertions": [], "step": str(step), "stl": str(fused),
+            "component_meshes": meshes,
+            "measured": {"parts": [{"id": c, "volume": 1.0} for c in parts],
+                         "sum_volume": 3.0, "fused_volume": 3.0, "solids": 3,
+                         "watertight": True,
+                         "bbox": [0.0, 0.0, 0.0, 30.0, 30.0, 40.0]},
+        }
+
+    monkeypatch.setattr(A, "build_assembly", _built)
+    monkeypatch.setattr(settings, "output_dir", tmp_path / "out")
+
+    out = S.build("bearing_stack", {"bore": 30.0, "ring_t": 5.0,
+                                    "ball_gap": 6.0, "width": 16.0,
+                                    "shaft_len": 90.0})
+
+    glb = tmp_path / "out" / os.path.basename(out["files"]["glb"])
+    loaded = trimesh.load(str(glb))
+    assert set(loaded.geometry) == set(parts), (
+        f"expected one node per component, got {sorted(loaded.geometry)}"
+    )
+
+
+def test_an_assembly_without_component_meshes_still_gets_a_preview(
+    monkeypatch, tmp_path
+):
+    """Falling back to the fused mesh beats showing the user nothing.
+
+    A single-body preview is worth far more than an empty viewport, so a
+    builder that could not write the per-component meshes must not cost the
+    user the picture entirely.
+    """
+    import trimesh
+
+    from app.config import settings
+    from app.services import assembly_service as S
+
+    fused = tmp_path / "asm.stl"
+    trimesh.creation.box(extents=(10.0, 20.0, 30.0)).export(str(fused))
+    step = tmp_path / "asm.step"
+    step.write_text("ISO-10303-21;", encoding="utf-8")
+
+    monkeypatch.setattr(A, "build_assembly", lambda *a, **k: {
+        "tag": "t", "passed": True, "build_ok": True,
+        "parts": [{"id": "a", "passed": True, "assertions": []}],
+        "assertions": [], "step": str(step), "stl": str(fused),
+        "component_meshes": {},            # the builder gave us none
+        "measured": {"parts": [{"id": "a", "volume": 1.0}], "sum_volume": 1.0,
+                     "fused_volume": 1.0, "solids": 1, "watertight": True,
+                     "bbox": [0.0, 0.0, 0.0, 10.0, 20.0, 30.0]},
+    })
+    monkeypatch.setattr(settings, "output_dir", tmp_path / "out")
+
+    out = S.build("bearing_stack", {"bore": 30.0, "ring_t": 5.0,
+                                    "ball_gap": 6.0, "width": 16.0,
+                                    "shaft_len": 90.0})
+    assert "glb" in out["files"]
