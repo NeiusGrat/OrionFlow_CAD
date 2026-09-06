@@ -220,7 +220,88 @@ def _checks(result: dict) -> list[dict]:
     return rows
 
 
-def _refusal(rid: str, family: str, why: str, started: float) -> dict:
+#: What each kernel failure means to the person who asked for a gearbox.
+#:
+#: The reasons are the engineering event; these are the sentences. Two of them
+#: are about *us* rather than about the design, and they say so — a user whose
+#: request was fine deserves to know the fault was ours. None of them names a
+#: file, a container or an environment variable: the studio used to surface
+#: "set ORION_FREECAD_PYTHON to one that can `import FreeCAD`" for this whole
+#: class, which told the user nothing they could act on and told anyone else
+#: how we are deployed.
+#:
+#: Keyed by the reason strings in ``orion.assembly``; a reason with no sentence
+#: here falls back to the placement one rather than leaking a raw detail.
+_KERNEL_MESSAGES = {
+    "builder_unavailable": (
+        "The CAD build service is not reachable right now, so this assembly "
+        "could not be built. This is an outage on our side, not a limit of "
+        "the design — the same request should work once it is back."
+    ),
+    "kernel_unavailable": (
+        "No CAD kernel is available to build assemblies on this deployment. "
+        "This is a configuration fault on our side, not a problem with what "
+        "you asked for."
+    ),
+    "component_failed": (
+        "One of the components could not be built as dimensioned, so the "
+        "assembly was not completed."
+    ),
+    "placement_failed": (
+        "The components were built but could not be placed and joined into a "
+        "single assembly."
+    ),
+    "export_failed": (
+        "The assembly was built and measured, but its CAD files could not be "
+        "written, so there is nothing to download."
+    ),
+}
+
+#: Reasons whose detail is about the *geometry*, so it helps the user to see
+#: it. The availability reasons carry stack traces and hostnames instead, and
+#: are logged rather than shown.
+_DETAIL_IS_SAFE = ("component_failed", "placement_failed")
+
+#: Marks of our own plumbing. A detail containing any of these is not the
+#: geometry explanation ``_DETAIL_IS_SAFE`` assumes it is, whatever the reason
+#: on it says.
+#:
+#: The reason-based rule alone was not enough, and its own test proved it: a
+#: component build that fails *because* the kernel went missing is classified
+#: ``component_failed`` and carries the interpreter error as its detail, so the
+#: exact string this whole change exists to suppress came straight back out
+#: under a different reason. Whether a detail is safe is a property of the
+#: detail, not of the label attached to it.
+_INTERNAL_MARKS = (
+    "ORION_",
+    "import FreeCAD",
+    "FreeCAD interpreter",
+    "/root/",
+    "Traceback",
+    ":\\",       # a Windows absolute path
+)
+
+
+def _detail_is_showable(detail: str) -> bool:
+    return bool(detail) and not any(m in detail for m in _INTERNAL_MARKS)
+
+
+def _kernel_message(exc) -> str:
+    """A sentence for the user, plus the detail only where it is safe.
+
+    Two independent conditions, and both must hold: the reason has to be one
+    whose detail is about the design, *and* the detail must not name any of our
+    own plumbing. Failing either, the user gets the sentence alone — which is
+    still true, still actionable, and never a deployment detail.
+    """
+    base = _KERNEL_MESSAGES.get(exc.reason) or _KERNEL_MESSAGES["placement_failed"]
+    if exc.reason in _DETAIL_IS_SAFE and _detail_is_showable(exc.detail):
+        return f"{base} {exc.detail.strip()[:300]}"
+    return base
+
+
+def _refusal(rid: str, family: str, why: str, started: float,
+             reason: str = "") -> dict:
     """A request that never reached the kernel. No geometry, and no pretence."""
     return {
         "success": False,
@@ -228,6 +309,9 @@ def _refusal(rid: str, family: str, why: str, started: float) -> dict:
         "part_class": family,
         "assembly": True,
         "error": why,
+        # Named so the studio, the tests and the logs all agree on which
+        # failure this was without parsing the sentence.
+        "failure_reason": reason,
         "verification": {"verdict": "refused", "checks": [], "failed": [],
                          "measured": {}},
         "files": {},
@@ -275,7 +359,19 @@ def build(family: str, slots: dict, request_id: Optional[str] = None) -> dict:
                 "configuration, so there is no geometry to build",
                 started)
         spec = S.resolve_spec(raw)
-        result = A.build_assembly(spec, workdir=workdir, tag=family)
+        from app.services.blueprint_service import run_assembly_builder
+
+        try:
+            # The kernel is injected rather than imported by ``orion.assembly``:
+            # in modal mode it dispatches to the FreeCAD container, and this
+            # process never looks for a local interpreter at all.
+            result = A.build_assembly(spec, workdir=workdir, tag=family,
+                                      kernel=run_assembly_builder)
+        except A.AssemblyKernelError as exc:
+            logger.warning("assembly_kernel_failed", family=family,
+                           reason=exc.reason, detail=exc.detail[:400])
+            return _refusal(rid, family, _kernel_message(exc), started,
+                            reason=exc.reason)
 
         checks = _checks(result)
         failed = [c for c in checks if c["status"] == "fail"]

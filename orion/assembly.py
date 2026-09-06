@@ -36,92 +36,97 @@ from .blueprint import Blueprint
 from . import expr as E
 from . import forge
 
-PLACE_MEASURE = r'''
-import json, sys
-import FreeCAD as App
-import Part
-
-spec = json.load(open(sys.argv[1], encoding="utf-8"))
-doc = App.newDocument("asm")
-shapes = []
-per_part = []
-for p in spec["parts"]:
-    src = App.openDocument(p["fcstd"])
-    # Take the PartDesign Body tip, NOT the largest solid. A PartDesign
-    # document exposes every feature as its own object with a Shape — the Pad
-    # before the Pocket as well as the Pocket result — so max-by-volume always
-    # picks the pre-pocket blank. Any part whose last operation removes
-    # material was silently measured without it.
-    bodies = [o for o in src.Objects if o.TypeId == "PartDesign::Body"
-              and getattr(o, "Shape", None) is not None
-              and not o.Shape.isNull()]
-    if bodies:
-        body = bodies[0]
-    else:
-        solids = [o for o in src.Objects
-                  if getattr(o, "Shape", None) is not None
-                  and not o.Shape.isNull() and o.Shape.Volume > 1e-9]
-        if not solids:
-            print("NO SOLID in %s" % p["fcstd"]); sys.exit(2)
-        body = max(solids, key=lambda o: o.Shape.Volume)
-    sh = body.Shape.copy()
-    x, y, z = p["pos"]
-    ang = p.get("rot_z", 0.0)
-    sh.rotate(App.Vector(0, 0, 0), App.Vector(0, 0, 1), ang)
-    sh.translate(App.Vector(x, y, z))
-    shapes.append(sh)
-    per_part.append({"id": p["id"], "volume": sh.Volume})
-    App.closeDocument(src.Name)
-
-fused = shapes[0]
-for s in shapes[1:]:
-    fused = fused.fuse(s)
-fused = fused.removeSplitter()
-
-bb = fused.BoundBox
-out = {
-    "parts": per_part,
-    "sum_volume": sum(p["volume"] for p in per_part),
-    "fused_volume": fused.Volume,
-    "solids": len(fused.Solids),
-    "watertight": bool(fused.isClosed()),
-    "bbox": [bb.XMin, bb.YMin, bb.ZMin, bb.XMax, bb.YMax, bb.ZMax],
-}
-
-# Export the placed assembly, not just a verdict about it. Measuring without
-# exporting is what kept this layer out of the product: the numbers proved the
-# parts do not interpenetrate and there was nothing for anyone to look at or
-# download, so a verified assembly was indistinguishable from no assembly.
-#
-# A compound rather than the fused solid: fusion is the proof of
-# non-interference, but it welds distinct components into one shape and loses
-# which solid was which. Downstream wants the parts.
-if len(sys.argv) > 3:
-    try:
-        compound = Part.makeCompound(shapes)
-        compound.exportStep(sys.argv[3])
-        out["step"] = sys.argv[3]
-    except Exception as exc:
-        out["step_error"] = str(exc)
-if len(sys.argv) > 4:
-    try:
-        # Tessellation deflection follows the part, not a constant: a fixed
-        # 0.1 mm on a 300 mm assembly is wasted triangles and on a 5 mm one is
-        # a visible polygon.
-        diag = max(bb.XLength, bb.YLength, bb.ZLength) or 1.0
-        Part.makeCompound(shapes).exportStl(sys.argv[4])
-        out["stl"] = sys.argv[4]
-        out["stl_deflection"] = diag / 1000.0
-    except Exception as exc:
-        out["stl_error"] = str(exc)
-
-json.dump(out, open(sys.argv[2], "w", encoding="utf-8"))
-print("MEASURED", json.dumps({k: v for k, v in out.items() if k != "parts"}))
-'''
 
 
 class AssemblyError(ValueError):
     pass
+
+
+#: Why an assembly could not be built, in the caller's vocabulary.
+#:
+#: The point of naming these is that the studio can say something true and
+#: useful for each. Before this existed, a missing FreeCAD in the API container
+#: surfaced to the user as "set ORION_FREECAD_PYTHON to one that can `import
+#: FreeCAD`" — an internal environment variable, shown to someone who asked for
+#: a gearbox.
+BUILDER_UNAVAILABLE = "builder_unavailable"
+KERNEL_UNAVAILABLE = "kernel_unavailable"
+COMPONENT_FAILED = "component_failed"
+PLACEMENT_FAILED = "placement_failed"
+EXPORT_FAILED = "export_failed"
+
+
+class AssemblyKernelError(AssemblyError):
+    """The kernel step failed, with a reason the caller can act on."""
+
+    def __init__(self, reason: str, detail: str = ""):
+        self.reason = reason
+        self.detail = detail
+        super().__init__(detail or reason)
+
+
+def local_kernel(spec: dict, workdir: str, timeout_s: int = 900) -> dict:
+    """Build an assembly in a local FreeCAD subprocess. One process, not N+1.
+
+    The default kernel, and the only one ``orion`` knows how to reach by
+    itself: dispatching to a remote builder needs the API layer's transport,
+    which this package must not import (it is the lower layer, and the import
+    would be a cycle). ``assembly_service`` injects that one.
+    """
+    from .freecad_python import freecad_python
+
+    try:
+        fc_python = freecad_python()
+    except RuntimeError as exc:
+        raise AssemblyKernelError(
+            KERNEL_UNAVAILABLE,
+            "no CAD kernel is available to this process",
+        ) from exc
+
+    spath = os.path.join(workdir, "assembly.spec.json")
+    mpath = os.path.join(workdir, "assembly.measured.json")
+    step = os.path.join(workdir, "assembly.step")
+    stl = os.path.join(workdir, "assembly.stl")
+    with open(spath, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+
+    runner = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "build_assembly_fc.py")
+    cmd = [fc_python, runner, "--spec", spath, "--out", mpath,
+           "--workdir", workdir, "--step", step, "--stl", stl]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           timeout=timeout_s)
+    except subprocess.TimeoutExpired as exc:
+        raise AssemblyKernelError(
+            PLACEMENT_FAILED, "the kernel did not finish in time") from exc
+
+    return _read_kernel_output(mpath, r.returncode, r.stderr or "")
+
+
+def _read_kernel_output(mpath: str, returncode: int, stderr: str) -> dict:
+    """The runner's JSON, or the classified failure it recorded.
+
+    A runner that failed writes ``{"error": {reason, detail}}`` rather than
+    leaving the caller to guess from stderr, so the reason a user is shown is
+    the one the stage that failed actually chose.
+    """
+    payload = None
+    if os.path.exists(mpath):
+        try:
+            with open(mpath, encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except (OSError, ValueError):
+            payload = None
+
+    if isinstance(payload, dict) and payload.get("error"):
+        err = payload["error"]
+        raise AssemblyKernelError(
+            str(err.get("reason") or PLACEMENT_FAILED),
+            str(err.get("detail") or ""))
+    if payload is None or returncode != 0:
+        raise AssemblyKernelError(PLACEMENT_FAILED, (stderr or "")[-400:])
+    return payload
 
 
 def _num(value, variables: dict) -> float:
@@ -129,12 +134,26 @@ def _num(value, variables: dict) -> float:
         else float(value)
 
 
-def build_assembly(spec: dict, workdir: str, tag: str) -> dict:
+def build_assembly(spec: dict, workdir: str, tag: str, kernel=None) -> dict:
     """Compile every component, place them, fuse, and measure.
 
     ``spec`` = {name, variables, parts:[{id, blueprint, pos:[x,y,z], rot_z}],
     assertions:[...]}. Component blueprints are ordinary frozen Blueprints.
+
+    Three zones, and only the middle one needs a CAD kernel:
+
+    1. preconditions, hash verification and ``Blueprint.resolve()`` — arithmetic
+       over the spec, and the placements resolved to plain numbers;
+    2. ``kernel`` — compile each component, place, fuse, measure, export;
+    3. per-component and assembly assertions against what came back.
+
+    ``kernel(spec, workdir) -> dict`` is injected so zone 2 can run somewhere
+    else. That is the whole reason the split exists: the API container has no
+    FreeCAD, and until this was separated an assembly request there died on
+    ``freecad_python()`` with an environment variable in the error. It defaults
+    to :func:`local_kernel`, so a box that does have FreeCAD is unchanged.
     """
+    kernel = kernel or local_kernel
     os.makedirs(workdir, exist_ok=True)
     variables = spec["variables"]
 
@@ -150,66 +169,62 @@ def build_assembly(spec: dict, workdir: str, tag: str) -> dict:
                 "failed_preconditions": failed_pre, "assertions": [],
                 "build_ok": False}
 
-    # ---- compile each component through the existing verified path ------- #
-    placed, part_verdicts = [], []
+    # ---- zone 1: resolve every component, without a kernel --------------- #
+    #
+    # verify_hash and each component's own preconditions are checked here, as
+    # ``forge.run_blueprint`` used to, so a component that cannot be built is
+    # refused before anything is dispatched anywhere.
+    components, blueprints = [], {}
     for p in spec["parts"]:
         bp: Blueprint = p["blueprint"]
-        ptag = f"{tag}_{p['id']}"
-        # Assembly components are often gears, which cost an order of
-        # magnitude more kernel time than the prismatic parts BUILD_TIMEOUT_S
-        # was tuned for — a 396-segment sun measured 89 s against a 90 s
-        # budget, passing alone and failing under load. A flaky corpus is worse
-        # than a slow one.
-        v = forge.run_blueprint(bp, tag=ptag, workdir=workdir, timeout_s=300)
-        # Retry ONLY when the kernel produced no measurement at all. That is an
-        # infrastructure event — after ~50 sequential FreeCAD invocations a
-        # build intermittently returns nothing, and the identical spec passes
-        # on a second attempt. A failed *assertion* is never retried: that is
-        # the geometry disagreeing with its prediction, which is exactly the
-        # signal this corpus exists to record.
-        if not v.get("passed") and not v.get("build_ok") \
-                and not v.get("refused"):
-            v = forge.run_blueprint(bp, tag=ptag, workdir=workdir,
-                                    timeout_s=300)
-            v["retried"] = True
-        part_verdicts.append({"id": p["id"], "passed": bool(v.get("passed")),
-                              "retried": bool(v.get("retried")),
-                              "assertions": v.get("assertions", [])})
-        if not v.get("passed"):
+        if not bp.verify_hash():
+            raise AssemblyError(
+                f"component {p['id']}: blueprint hash does not verify")
+        pre = forge.failed_preconditions(bp)
+        if pre:
             return {"tag": tag, "passed": False, "build_ok": False,
-                    "parts": part_verdicts,
-                    "error": f"component {p['id']} failed its own assertions",
+                    "refused": True, "failed_preconditions": pre,
+                    "parts": [{"id": p["id"], "passed": False,
+                               "assertions": []}],
+                    "error": f"component {p['id']} refused its preconditions",
                     "assertions": []}
-        placed.append({
+        graph = bp.resolve()
+        blueprints[p["id"]] = (bp, graph)
+        components.append({
             "id": p["id"],
-            "fcstd": os.path.join(workdir, f"{ptag}.FCStd"),
+            "graph": graph,
             "pos": [_num(c, variables) for c in p.get("pos", [0, 0, 0])],
             "rot_z": _num(p.get("rot_z", 0.0), variables),
         })
 
-    # ---- place, fuse, measure -------------------------------------------- #
-    spath = os.path.join(workdir, f"{tag}.asm.json")
-    mpath = os.path.join(workdir, f"{tag}.asm.measured.json")
-    script = os.path.join(workdir, "_place_measure.py")
-    json.dump({"parts": placed}, open(spath, "w", encoding="utf-8"))
-    with open(script, "w", encoding="utf-8") as fh:
-        fh.write(PLACE_MEASURE)
-    steppath = os.path.join(workdir, f"{tag}.step")
-    stlpath = os.path.join(workdir, f"{tag}.stl")
-    try:
-        r = subprocess.run([forge._freecad_python(), script, spath, mpath,
-                            steppath, stlpath],
-                           capture_output=True, text=True, timeout=600)
-    except subprocess.TimeoutExpired:
-        return {"tag": tag, "passed": False, "build_ok": False,
-                "parts": part_verdicts, "error": "assembly fuse timed out",
-                "assertions": []}
-    if r.returncode != 0 or not os.path.exists(mpath):
-        return {"tag": tag, "passed": False, "build_ok": False,
-                "parts": part_verdicts,
-                "error": f"fuse failed: {(r.stderr or '')[-300:]}",
-                "assertions": []}
-    m = json.load(open(mpath, encoding="utf-8"))
+    # ---- zone 2: the only step that needs a CAD kernel -------------------- #
+    result = kernel({"components": components}, workdir)
+    m = result["assembly"]
+
+    # ---- zone 3: check what came back ------------------------------------ #
+    part_verdicts = []
+    for comp in result.get("components") or []:
+        bp, graph = blueprints[comp["id"]]
+        measured = comp.get("measured") or {}
+        # The graph resolved in zone 1, not a second resolve: it is
+        # deterministic, but recomputing it here would be the same arithmetic
+        # twice per component for nothing.
+        rows = forge.check_assertions(
+            bp, measured, analysis=graph.get("_analysis")) if measured else []
+        passed = bool(rows) and all(r["passed"] for r in rows)
+        part_verdicts.append({"id": comp["id"], "passed": passed,
+                              "assertions": rows})
+        if not passed:
+            return {"tag": tag, "passed": False, "build_ok": False,
+                    "parts": part_verdicts, "reason": COMPONENT_FAILED,
+                    "error": f"component {comp['id']} failed its own assertions",
+                    "assertions": []}
+
+    if m.get("step_error") or m.get("stl_error"):
+        raise AssemblyKernelError(
+            EXPORT_FAILED,
+            str(m.get("step_error") or m.get("stl_error")))
+
 
     # ---- assembly-level assertions --------------------------------------- #
     rows = []
@@ -262,7 +277,8 @@ def build_assembly(spec: dict, workdir: str, tag: str) -> dict:
         and all(p["passed"] for p in part_verdicts)
     return {"tag": tag, "passed": passed, "build_ok": True,
             "parts": part_verdicts, "assertions": rows, "measured": m,
-            "fcstd_parts": [p["fcstd"] for p in placed],
+            "fcstd_parts": [c.get("fcstd") for c in result.get("components") or []
+                            if c.get("fcstd")],
             "step": m.get("step"), "stl": m.get("stl")}
 
 

@@ -138,6 +138,9 @@ def observations(
 BUILDER_MODE = os.environ.get("ORION_BUILDER_MODE", "local").lower()
 MODAL_BUILDER_APP = os.environ.get("ORION_MODAL_BUILDER_APP", "orionflow-builder")
 MODAL_BUILDER_FN = os.environ.get("ORION_MODAL_BUILDER_FN", "build_blueprint")
+MODAL_ASSEMBLY_FN = os.environ.get(
+    "ORION_MODAL_ASSEMBLY_FN", "build_assembly_graphs"
+)
 
 
 def needs_mesh_body(bp) -> bool:
@@ -163,6 +166,66 @@ def run_builder(
     if BUILDER_MODE == "modal":
         return _build_on_modal(graph, workdir, mesh_body)
     return _build_locally(graph, workdir, mesh_body)
+
+
+def run_assembly_builder(spec: dict, workdir: str) -> dict:
+    """Build an assembly wherever FreeCAD lives. The kernel for ``orion.assembly``.
+
+    Deliberately the same shape as :func:`run_builder`, reusing the same
+    ``BUILDER_MODE`` and the same Modal app — an assembly is not a different
+    kind of deployment, it is the same builder asked for more than one body, so
+    a second transport would be a second thing to configure, monitor and get
+    wrong.
+
+    Injected into ``orion.assembly.build_assembly`` as its ``kernel``. That
+    package cannot import this one (it is the lower layer, and the import would
+    be a cycle), which is exactly why the kernel is a parameter.
+    """
+    from orion import assembly as A
+
+    if BUILDER_MODE != "modal":
+        return A.local_kernel(spec, workdir)
+
+    try:
+        import modal
+    except ImportError as exc:
+        raise A.AssemblyKernelError(
+            A.BUILDER_UNAVAILABLE,
+            "the build service client is not installed on this deployment",
+        ) from exc
+
+    try:
+        fn = modal.Function.from_name(MODAL_BUILDER_APP, MODAL_ASSEMBLY_FN)
+        result = fn.remote(spec)
+    except Exception as exc:  # noqa: BLE001
+        raise A.AssemblyKernelError(
+            A.BUILDER_UNAVAILABLE,
+            f"the build service is unreachable: {exc}",
+        ) from exc
+
+    if result.get("error"):
+        err = result["error"]
+        raise A.AssemblyKernelError(
+            str(err.get("reason") or A.PLACEMENT_FAILED),
+            str(err.get("detail") or ""))
+
+    # Artifacts land in workdir exactly as the local kernel leaves them, so
+    # everything downstream — the copy into output_dir, the download route —
+    # is identical in both modes.
+    os.makedirs(workdir, exist_ok=True)
+    assembly = dict(result.get("assembly") or {})
+    for name, blob in (result.get("artifacts") or {}).items():
+        if not blob:
+            continue
+        path = os.path.join(workdir, name)
+        with open(path, "wb") as fh:
+            fh.write(blob)
+        if name == "assembly.step":
+            assembly["step"] = path
+        elif name == "assembly.stl":
+            assembly["stl"] = path
+
+    return {"components": result.get("components") or [], "assembly": assembly}
 
 
 def _build_locally(

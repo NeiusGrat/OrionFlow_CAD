@@ -146,6 +146,106 @@ def build_blueprint(graph: dict, mesh_body: bool = False) -> dict:
     return {"build_log": log, "measured": measured, "artifacts": artifacts}
 
 
+@app.function(
+    image=freecad_image,
+    cpu=2,
+    # An assembly holds every component's shape in memory at once before it
+    # fuses them, so it needs more headroom than a single part. A three-planet
+    # stage is four involute gears, each a few hundred faces.
+    memory=8192,
+    # Longer than build_blueprint's 300s: this one call replaces what used to
+    # be N+1 separate builds, so its budget has to cover all of them. The
+    # runner is still bounded inside, and the caller bounds it again.
+    timeout=1800,
+    scaledown_window=300,
+)
+def build_assembly_graphs(spec: dict) -> dict:
+    """Compile, place, fuse and measure an assembly. One FreeCAD process.
+
+    The assembly counterpart to :func:`build_blueprint`, and deliberately the
+    same shape of contract: a *failed build* is a normal return carrying
+    ``error``, an unreachable builder is the caller's problem, and artifacts
+    come back as bytes so the API container never needs a filesystem the
+    builder can see.
+
+    ``spec`` is ``{"components": [{"id", "graph", "pos", "rot_z"}]}`` — every
+    placement already a number, every component already a resolved
+    FeatureGraph. Nothing here evaluates an expression or knows what a
+    Blueprint is: that arithmetic stays in the API container, which is what
+    keeps this function a kernel and not a second copy of the design logic.
+
+    Returns ``{"components": [{"id", "measured"}], "assembly": {...},
+    "artifacts": {"assembly.step": bytes, "assembly.stl": bytes,
+    "<id>.FCStd": bytes}, "error": {"reason", "detail"} | None}``.
+    """
+    import json
+    import os
+    import subprocess
+    import sys
+    import tempfile
+
+    workdir = tempfile.mkdtemp(prefix="asm_")
+    spath = os.path.join(workdir, "assembly.spec.json")
+    mpath = os.path.join(workdir, "assembly.measured.json")
+    step = os.path.join(workdir, "assembly.step")
+    stl = os.path.join(workdir, "assembly.stl")
+    with open(spath, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh)
+
+    cmd = [sys.executable, "/root/orion/build_assembly_fc.py",
+           "--spec", spath, "--out", mpath, "--workdir", workdir,
+           "--step", step, "--stl", stl]
+
+    timed_out = False
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=1680)
+        returncode, stdout, stderr = proc.returncode, proc.stdout, proc.stderr
+    except subprocess.TimeoutExpired:
+        returncode, timed_out = -9, True
+        stdout, stderr = "", "the kernel did not converge"
+
+    log = {"returncode": returncode, "stdout": stdout[-4000:],
+           "stderr": stderr[-4000:], "timeout": timed_out}
+
+    payload = None
+    if os.path.exists(mpath):
+        try:
+            with open(mpath, encoding="utf-8") as fh:
+                payload = json.load(fh)
+        except (OSError, ValueError):
+            payload = None
+
+    if payload is None or payload.get("error"):
+        error = (payload or {}).get("error") or {
+            "reason": "placement_failed",
+            "detail": ("the kernel did not finish in time" if timed_out
+                       else (stderr or "the kernel produced no measurement")[-400:]),
+        }
+        return {"build_log": log, "components": [], "assembly": {},
+                "artifacts": {}, "error": error}
+
+    # The component FCStd files travel back with the assembly for the same
+    # reason a single part's does: they carry the parametric document — the
+    # sketches and the feature tree — and they only exist inside this
+    # container. The STEP is the finished solid and remembers none of it.
+    artifacts = {}
+    for name, path in [("assembly.step", step), ("assembly.stl", stl)]:
+        if os.path.exists(path):
+            with open(path, "rb") as fh:
+                artifacts[name] = fh.read()
+    for comp in payload.get("components") or []:
+        fcstd = comp.get("fcstd")
+        if fcstd and os.path.exists(fcstd):
+            with open(fcstd, "rb") as fh:
+                artifacts[os.path.basename(fcstd)] = fh.read()
+        # The builder's own paths mean nothing to the caller.
+        comp.pop("fcstd", None)
+
+    return {"build_log": log, "components": payload.get("components") or [],
+            "assembly": payload.get("assembly") or {},
+            "artifacts": artifacts, "error": None}
+
+
 @app.function(image=freecad_image, cpu=2, memory=4096, timeout=600)
 def freecad_version() -> dict:
     """What FreeCAD this container actually has.
