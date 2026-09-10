@@ -2453,6 +2453,35 @@ def _engineering(family: str, req: dict, payload: dict) -> dict:
     }
     if assumptions:
         block["assumptions"] = assumptions
+
+    # Where every input to this check came from, carried on the block itself.
+    #
+    # It cannot ride with the dimension ledger: ``provenance.extend`` keys that
+    # to the *variables* a builder produced, and a load is not a variable — it
+    # is a fact about the world the part meets. Left there it would simply be
+    # dropped, and the most consequential number in the check would be the only
+    # one with no record of where it came from.
+    #
+    # Uniform on purpose: a value the user stated, one converted from the units
+    # they wrote, and one this module defaulted all appear here with a source
+    # and a basis, so a reader never has to know which mechanism supplied a
+    # number to find out. Inside ``blueprint_hash`` with the rest of the block.
+    inherited = (req.get("provenance") or {})
+    prov: dict[str, dict] = {}
+    for name in ("load_n", "material", "safety_factor", "max_deflection_mm",
+                 "support"):
+        entry = inherited.get(name)
+        if entry:
+            prov[name] = dict(entry)
+    prov.setdefault("material", {"source": "stated",
+                                 "basis": "named in the request"})
+    if "safety_factor" in assumptions:
+        prov["safety_factor"] = {"source": "default",
+                                 "basis": assumptions["safety_factor"]}
+    if "support" in assumptions:
+        prov["support"] = {"source": "default",
+                           "basis": assumptions["support"]}
+    block["provenance"] = prov
     return block
 
 

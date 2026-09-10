@@ -132,9 +132,99 @@ MATERIALS: dict[str, dict[str, float]] = {
 }
 
 
+#: The alloy or grade designation that names exactly one row above. These are
+#: the tokens that carry the identity: "6061" is an aluminium alloy whoever
+#: writes it, and nothing else in this table answers to it.
+_ALLOY_TOKENS: dict[str, str] = {
+    "6061": "aluminium_6061_t6",
+    "7075": "aluminium_7075_t6",
+    "1018": "steel_1018",
+    "4140": "steel_4140",
+    "304": "stainless_304",
+    "ti6al4v": "titanium_ti6al4v",
+    "6al4v": "titanium_ti6al4v",
+    "c360": "brass_c360",
+    "pa12": "nylon_pa12",
+}
+
+#: The material word. Several rows may answer to one of these — "steel" is both
+#: 1018 and 4140 — and that is the point: a word that names more than one
+#: material names none of them, and the caller is told so rather than given the
+#: first match.
+_FAMILY_TOKENS: dict[str, tuple[str, ...]] = {
+    "aluminium": ("aluminium_6061_t6", "aluminium_7075_t6"),
+    "aluminum": ("aluminium_6061_t6", "aluminium_7075_t6"),
+    "al": ("aluminium_6061_t6", "aluminium_7075_t6"),
+    "steel": ("steel_1018", "steel_4140"),
+    "stainless": ("stainless_304",),
+    "titanium": ("titanium_ti6al4v",),
+    "brass": ("brass_c360",),
+    "abs": ("abs",),
+    "pla": ("pla",),
+    "nylon": ("nylon_pa12",),
+}
+
+#: Trade names with one settled meaning. Kept explicit and small: each is a
+#: convention someone could argue with, so it is written down where it can be
+#: argued with rather than inferred.
+_TRADE_NAMES: dict[str, str] = {
+    "mild steel": "steel_1018",
+    "mild_steel": "steel_1018",
+    "chromoly": "steel_4140",
+    "chrome moly": "steel_4140",
+    "18/8": "stainless_304",
+    "a2": "stainless_304",
+}
+
+_TOKEN = re.compile(r"[a-z0-9/]+")
+
+
+def resolve_material(name: Any) -> Optional[str]:
+    """The canonical material key a phrase names, or ``None``.
+
+    Deterministic, and it refuses rather than guesses. "6061-T6 aluminium",
+    "Al 6061", "aluminum 6061 T6" and "aluminium_6061_t6" are all one material;
+    bare "steel" is two and therefore resolves to nothing, because picking one
+    would silently decide a yield strength that differs by 285 MPa between them.
+
+    Ambiguity returning ``None`` is the same contract as a missing material: no
+    engineering block, no check, and nothing claimed.
+    """
+    if not isinstance(name, str) or not name.strip():
+        return None
+    text = name.strip().lower().replace("-", " ").replace("_", " ")
+    text = " ".join(text.split())
+
+    if text.replace(" ", "_") in MATERIALS:      # already canonical
+        return text.replace(" ", "_")
+    for phrase, key in _TRADE_NAMES.items():
+        if phrase in text:
+            return key
+
+    tokens = set(_TOKEN.findall(text))
+
+    by_alloy = {_ALLOY_TOKENS[t] for t in tokens if t in _ALLOY_TOKENS}
+    if len(by_alloy) == 1:
+        return by_alloy.pop()
+    if len(by_alloy) > 1:
+        return None                               # names two alloys at once
+
+    by_family: set[str] = set()
+    for t in tokens:
+        by_family.update(_FAMILY_TOKENS.get(t, ()))
+    return by_family.pop() if len(by_family) == 1 else None
+
+
 def material(name: str) -> dict:
-    """Look a material up, or raise with the list of what is known."""
-    key = name.strip().lower().replace("-", "_").replace(" ", "_")
+    """Look a material up, or raise with the list of what is known.
+
+    Accepts anything :func:`resolve_material` can name unambiguously, so the
+    caller need not know the table's spelling. A phrase naming two materials, or
+    none, raises — it is never resolved to whichever matched first.
+    """
+    key = resolve_material(name)
+    if key is None:
+        key = str(name).strip().lower().replace("-", "_").replace(" ", "_")
     if key not in MATERIALS:
         raise KeyError(f"unknown material {name!r}; known: "
                        f"{', '.join(sorted(MATERIALS))}")

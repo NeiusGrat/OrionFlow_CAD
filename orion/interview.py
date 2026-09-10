@@ -226,6 +226,15 @@ class Interview:
     #: rather than dropped: "unsupported" and "never requested" are different
     #: facts, and losing the difference is the last silent-omission path.
     unsupported: list[dict] = field(default_factory=list)
+    #: Values this code computed and knows the basis for: ``{name: why}``.
+    #:
+    #: Only :func:`engineering_duty` writes here so far, and it needs to,
+    #: because a converted load is not the number the user typed. Classifying it
+    #: against the request text would find 490.3 nowhere and report it
+    #: ``unsourced`` — the ledger would accuse us of inventing the one number we
+    #: were most careful about. The basis carries the arithmetic instead:
+    #: "50 kg converted at 9.80665 N per kg = 490.3 N".
+    derived: dict[str, str] = field(default_factory=dict)
     #: Why the model could not be reached, when that is what happened.
     #:
     #: An empty family means two very different things — "this is a spring and
@@ -286,7 +295,8 @@ class Interview:
 
         text = self.request + "\n" + "\n".join(
             f"{name}: {value}" for name, value in self.answers)
-        self.provenance = P.classify(text, self.slots, notes=self.notes)
+        self.provenance = P.classify(text, self.slots, notes=self.notes,
+                                     derived=self.derived)
         return self.provenance
 
 
@@ -510,6 +520,193 @@ FUNCTION_WORDS = (
     ("ENCLOSURE", "enclosure"),
     ("HOUSING", "enclosure"),
 )
+
+
+#: Words that name a support condition, and the slot value they resolve to.
+#: Read from the text rather than trusted from the model, for the same reason
+#: ``designations`` reads NEMA: it is a token, not a judgement.
+_SUPPORT_WORDS = (
+    ("simply supported", "supported both ends"),
+    ("supported at both ends", "supported both ends"),
+    ("supported both ends", "supported both ends"),
+    ("both ends", "supported both ends"),
+    ("cantilever", "fixed one end"),
+    ("fixed at one end", "fixed one end"),
+    ("fixed one end", "fixed one end"),
+    ("one end", "fixed one end"),
+)
+
+
+def engineering_duty(request: str, slots: dict) -> tuple[dict, dict, list[str]]:
+    """``(slots, derived, notes)`` — the duty, normalised and gated.
+
+    The third deterministic post-step, and the one that turns prose into a
+    check. It exists because the two halves of reading a load belong to
+    different things:
+
+    **Which number is the load is a language question.** "A bracket that carries
+    50 kg" and "a 50 kg bracket" are different claims and only a reader can tell
+    them apart, so the extraction proposes it.
+
+    **What that number is worth is not.** The value that reaches the Blueprint is
+    always Python's conversion of what the request literally says, taken from
+    :func:`orion.duty.force_readings`. A model may propose the load in newtons,
+    in kilograms, or rounded; none of those numbers is used. This is the same
+    rule that already stops the model halving a diameter or recalling a
+    clearance hole, applied to the one quantity where nothing downstream could
+    catch an error — a wrong dimension disagrees with the geometry, a wrong load
+    disagrees with nothing.
+
+    **A load must carry its unit.** A bare number is not accepted as a force,
+    which closes, for loads specifically, the hole :mod:`orion.duty` documents:
+    "a plate 120 x 80 x 10" can no longer support a load of 120 N. It costs
+    nothing real, because a load written without a unit is ambiguous to a person
+    too.
+
+    Anything that cannot be tied to the request is dropped and noted, never
+    rounded into place. A dropped load simply means no engineering block, which
+    :func:`orion.blueprint_gen._engineering` already treats as "nothing was
+    claimed" rather than "it passed".
+    """
+    from . import duty as D, provenance as P
+
+    text = request or ""
+    out = dict(slots)
+    derived: dict[str, str] = {}
+    notes: list[str] = []
+
+    # ---- load: the model chooses which, this chooses what ----------------- #
+    readings = D.force_readings(text)
+    out.pop("load_n", None)
+    match = None
+
+    proposed = slots.get("load_n")
+    try:
+        value = float(proposed) if proposed not in (None, "") else None
+    except (TypeError, ValueError):
+        value = None
+
+    if value is not None and value > 0:
+        if not readings:
+            notes.append(
+                f"a load of {value:g} was proposed but the request states no "
+                f"force with a unit, so it was not used")
+        else:
+            # The reading the proposal was reaching for: either the model
+            # already converted (490.3 against "50 kg") or it reported the
+            # number as written (50). Both name the same statement.
+            for r in readings:
+                if (P.corroborated(value, [r["newtons"]], rel_tol=D.REL_TOL)
+                        or P.corroborated(value, [r["value"]],
+                                          rel_tol=D.REL_TOL)):
+                    match = r
+                    break
+            if match is None:
+                notes.append(
+                    f"a load of {value:g} N was proposed but no force in the "
+                    f"request supports it, so it was not used")
+
+    if match is None and len(readings) == 1:
+        # Either the extraction missed the load, or it proposed one the request
+        # does not support. Both leave a request that states exactly one force
+        # and no reading of it, and one force is not a choice — so reading it
+        # here is recovery rather than a guess. Two or more would be a choice,
+        # and this does not make it.
+        match = readings[0]
+    elif match is None and len(readings) > 1:
+        notes.append(
+            "the request states more than one force ("
+            + ", ".join(r["text"] for r in readings)
+            + ") and none was identified as the design load, so no "
+              "engineering check was declared")
+
+    if match is not None:
+        out["load_n"] = match["newtons"]
+        derived["load_n"] = (
+            f"stated as {match['text']}" if match["factor"] == 1.0 else
+            f"{match['text']} converted at {match['factor']:g} N per "
+            f"{match['unit']} = {match['newtons']:.4g} N")
+
+    # ---- safety factor: dimensionless, so a bare number is its evidence --- #
+    out, derived, notes = _gate_bare(
+        out, derived, notes, "safety_factor", text,
+        lambda v: 1.0 <= v <= 20.0,
+        "a safety factor outside 1 to 20 is not a factor anyone stated")
+
+    # ---- deflection limit: a length, and must be written as one ----------- #
+    limit = out.get("max_deflection_mm")
+    if limit is not None and limit != "":
+        try:
+            value = float(limit)
+        except (TypeError, ValueError):
+            value = None
+        lengths = [n for n, unit in P.literals_with_units(text)
+                   if unit in P.LENGTH_UNITS]
+        if value is None or value <= 0:
+            out.pop("max_deflection_mm", None)
+        elif not P.corroborated(value, lengths):
+            out.pop("max_deflection_mm", None)
+            notes.append(
+                f"a deflection limit of {value:g} mm was proposed but no "
+                f"length in the request supports it, so it was not used")
+        else:
+            out["max_deflection_mm"] = value
+            derived["max_deflection_mm"] = "stated as a length in the request"
+
+    # ---- support: a token, read from the text ----------------------------- #
+    lowered = text.lower()
+    for phrase, value in _SUPPORT_WORDS:
+        if phrase in lowered:
+            out["support"] = value
+            derived["support"] = f"the request says {phrase!r}"
+            break
+    else:
+        # Never trust a support the model supplied but the text does not say:
+        # the difference is 4x in stress, which is too much to infer.
+        if out.get("support"):
+            notes.append(
+                f"a support condition {out['support']!r} was proposed but the "
+                f"request does not state one, so it was not used")
+            out.pop("support", None)
+
+    return out, derived, notes
+
+
+def _gate_bare(out: dict, derived: dict, notes: list, name: str, text: str,
+               sane, complaint: str) -> tuple[dict, dict, list]:
+    """Keep a dimensionless value only when the request states that number.
+
+    Exact match, deliberately not :func:`provenance.corroborated`. That function
+    credits a value that is half or double a stated number, because
+    ``interview.resolve`` halves every stated diameter into a radius — a real
+    property of dimensions and a false one here. A dimensionless factor is
+    nobody's radius, and the allowance let "8 mm thick" support a safety factor
+    of 4: the model's invention, waved through by an unrelated dimension.
+    """
+    from . import provenance as P
+
+    raw = out.get(name)
+    if raw is None or raw == "":
+        return out, derived, notes
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        out.pop(name, None)
+        return out, derived, notes
+    stated = any(abs(value - lit) <= 1e-6 * max(1.0, abs(value), abs(lit))
+                 for lit in P.literals(text))
+    if not sane(value):
+        out.pop(name, None)
+        notes.append(complaint)
+    elif not stated:
+        out.pop(name, None)
+        notes.append(
+            f"a {name.replace('_', ' ')} of {value:g} was proposed but the "
+            f"request does not state it, so it was not used")
+    else:
+        out[name] = value
+        derived[name] = "stated in the request"
+    return out, derived, notes
 
 
 def designations(request: str, slots: dict) -> dict:
@@ -1082,8 +1279,14 @@ def read_request(client, request: str, max_tokens: int = READ_TOKENS) -> Intervi
     slots, unsupported = _known_slots(family, raw if isinstance(raw, dict) else {})
     slots = designations(request, slots)
     slots, notes = apply_standards(slots, family)
+    # The duty, normalised and gated. Last of the three deterministic
+    # post-steps, and the only one that converts a unit: the load that reaches
+    # the Blueprint is Python's reading of what the request says, never the
+    # model's arithmetic.
+    slots, eng_derived, eng_notes = engineering_duty(request, slots)
+    notes = list(notes) + eng_notes
     iv = Interview(request=request, family=family, slots=slots, notes=notes,
-                   unsupported=unsupported)
+                   unsupported=unsupported, derived=eng_derived)
     # Classified here, against the request the model was actually shown. This
     # is the only place both are in hand: after this the slots travel on and the
     # request does not, and "did the user say 120?" stops being answerable.

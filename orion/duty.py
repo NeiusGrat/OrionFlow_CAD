@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass, field as dc_field
 from typing import Any, Optional
 
@@ -162,6 +163,64 @@ def _json_of(text: str) -> Optional[dict]:
                     return None
                 return parsed if isinstance(parsed, dict) else None
     return None
+
+
+#: Force and mass units, to newtons. A mass is read as the weight it exerts at
+#: standard gravity, because "a bracket that carries 50 kg" is a statement about
+#: load and every engineer reading it means 490 N.
+#:
+#: Separate from ``provenance._UNITS`` on purpose: that table maps to
+#: millimetres and is what ``unclaimed_lengths`` filters on, so a force in it
+#: would be read as a dimension nobody placed. Same idiom, different quantity.
+FORCE_UNITS: dict[str, float] = {
+    "n": 1.0, "newton": 1.0, "newtons": 1.0,
+    "kn": 1000.0, "kilonewton": 1000.0, "kilonewtons": 1000.0,
+    "kgf": 9.80665, "kg": 9.80665, "kilogram": 9.80665,
+    "kilograms": 9.80665, "kilo": 9.80665, "kilos": 9.80665,
+    "lbf": 4.4482216, "lb": 4.4482216, "lbs": 4.4482216,
+    "pound": 4.4482216, "pounds": 4.4482216,
+    "tonne": 9806.65, "tonnes": 9806.65, "ton": 9806.65, "tons": 9806.65,
+}
+
+#: Longest-first, so ``kgf`` is not read as ``kg`` and ``kN`` is not read as
+#: ``N``. A bare ``t`` is deliberately absent: it collides with too much
+#: ordinary text to be worth a tonne.
+_FORCE = re.compile(
+    r"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>"
+    + "|".join(sorted(FORCE_UNITS, key=len, reverse=True))
+    + r")\b",
+    re.IGNORECASE,
+)
+
+
+def force_readings(request: str) -> list[dict]:
+    """Every force the request states, in newtons, with how it was written.
+
+    Only numbers carrying an explicit force or mass unit. A bare number is not
+    a force here — that is the hole the module docstring names, and leaving it
+    open for dimensions is survivable because a dimension is checked against
+    geometry. A load is checked against nothing else, so it has to say its unit.
+
+    The returned ``newtons`` is Python's conversion of what was written, and it
+    is what the rest of the pipeline uses. A model may propose the load in any
+    form; it never supplies the number that gets built on.
+    """
+    out: list[dict] = []
+    for m in _FORCE.finditer(request or ""):
+        try:
+            value = float(m.group("value"))
+        except ValueError:
+            continue
+        unit = m.group("unit").lower()
+        factor = FORCE_UNITS[unit]
+        out.append({
+            "newtons": value * factor,
+            "value": value,
+            "unit": unit,
+            "factor": factor,
+            "text": m.group(0).strip(),
+        })
+    return out
 
 
 #: Fields that *are* lengths, and may therefore be supported by a length.
