@@ -505,3 +505,128 @@ def test_a_probe_from_an_unbuildable_state_claims_nothing(family):
     found = DS.bounds(family, {}, broken)
 
     assert all(b.source != DS.BUILDER for b in found)
+
+
+# --------------------------------------------------------------------------- #
+# Evidence
+#
+# Six families can be searched; two can be judged. Before this, the other four
+# reported feasible=True on no structural evidence at all and carried no mass
+# either — a search pointed at a bearing housing had neither a constraint nor an
+# objective, and would have thinned it until only the family range objected.
+# --------------------------------------------------------------------------- #
+
+#: The families with a closed form for a load, and those without.
+JUDGED = ("l_bracket", "rect_plate")
+UNJUDGED_FAMILIES = ("disc", "shelled_box", "bearing_housing", "manifold")
+
+ALUMINIUM = {"material": "6061-T6 aluminium"}
+
+
+def _with(family: str, extra: dict) -> DS.State:
+    return DS.initial_state(family, _reqs(family, {**CONFIGS[family], **extra},
+                                          request="a part carrying 4000 N"))
+
+
+@pytest.mark.parametrize("family", UNJUDGED_FAMILIES)
+def test_a_stated_load_nothing_can_judge_is_not_feasible(family):
+    """The hazard this closes.
+
+    `orion.engineering` already settles which way this falls: a thing that must
+    hold and cannot be evaluated is a failure, not a silence.
+    """
+    obs = DS.evaluate(_with(family, {**ALUMINIUM, "load_n": 4000.0}))
+
+    assert obs.evidence == DS.UNJUDGED
+    assert obs.feasible is False
+    assert "no closed form" in obs.unjudged_duty
+    assert str(4000) in obs.unjudged_duty or "4000" in obs.unjudged_duty
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_a_part_nobody_stated_a_load_for_is_feasible(family):
+    """Something nobody claimed is absent, not failed — the opposite rule, and
+    the reason `no_duty` and `unjudged` are different tiers."""
+    obs = DS.evaluate(_with(family, ALUMINIUM))
+
+    assert obs.evidence == DS.NO_DUTY
+    assert obs.feasible is True
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_every_family_now_has_a_mass_to_rank_on(family):
+    """A material is stated far more often than a load, and it is all a mass
+    needs. Without this, four of six families had no objective."""
+    obs = DS.evaluate(_with(family, ALUMINIUM))
+
+    assert obs.metrics["mass_g"] > 0
+    assert obs.metrics["volume_mm3"] > 0
+
+
+def test_a_duty_that_is_met_reads_as_screened_not_verified():
+    """`screened` is analytic. VERIFIED means a measured solid matched its
+    contract, and nothing here is measured."""
+    st = DS.initial_state("l_bracket", _reqs(
+        "l_bracket", {**CONFIGS["l_bracket"], **ALUMINIUM, "load_n": 100.0}))
+    obs = DS.evaluate(st)
+
+    assert obs.evidence == DS.SCREENED
+    assert obs.feasible is True
+    assert obs.metrics["safety_factor"] > 1.5
+
+
+def test_a_duty_that_is_not_met_reads_as_failed():
+    st = DS.initial_state("l_bracket", _reqs(
+        "l_bracket", {**CONFIGS["l_bracket"], **ALUMINIUM, "load_n": 4000.0}))
+    obs = DS.evaluate(st)
+
+    assert obs.evidence == DS.FAILED
+    assert obs.feasible is False
+
+
+def test_broken_geometry_outranks_an_unjudged_duty():
+    """A part that cannot exist is reported as such, whatever else is unknown
+    about it."""
+    st = _with("bearing_housing", {**ALUMINIUM, "load_n": 4000.0})
+    st.params = {**st.params, "H": 1.0}          # seat deeper than the block
+
+    obs = DS.evaluate(st)
+
+    assert obs.evidence == DS.BROKEN
+    assert obs.feasible is False
+
+
+def test_a_refused_move_reports_that_and_not_a_verdict():
+    st = _with("l_bracket", {**ALUMINIUM, "load_n": 100.0})
+    obs = DS.step(st, DS.Action("UT", 9999.0))
+
+    assert obs.evidence == DS.NOT_APPLIED
+    assert obs.feasible is False
+
+
+def test_no_material_means_no_mass_rather_than_a_guessed_one():
+    obs = DS.evaluate(DS.initial_state(
+        "rect_plate", _reqs("rect_plate", CONFIGS["rect_plate"])))
+
+    assert "mass_g" not in obs.metrics
+    assert obs.metrics["volume_mm3"] > 0
+
+
+def test_an_ambiguous_material_yields_no_mass():
+    """"Steel" is 1018 and 4140; their densities differ and neither is ours to
+    pick."""
+    obs = DS.evaluate(DS.initial_state("rect_plate", _reqs(
+        "rect_plate", {**CONFIGS["rect_plate"], "material": "steel"})))
+
+    assert "mass_g" not in obs.metrics
+
+
+def test_the_evidence_tiers_do_not_borrow_the_verdict_ladder():
+    """Reusing VERIFIED for a kernel-free screen would claim evidence that does
+    not exist — the same mistake `orion.dfm` avoids with REFUSED."""
+    from orion_physical_ai import verify
+
+    tiers = {DS.BROKEN, DS.UNJUDGED, DS.FAILED, DS.SCREENED, DS.NO_DUTY,
+             DS.NOT_APPLIED}
+    assert verify.VERIFIED not in tiers
+    assert verify.REFUSED not in tiers

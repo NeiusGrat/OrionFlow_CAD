@@ -80,6 +80,29 @@ DEFAULT = "default"
 #: not be. Only the builder's own guards qualify: it raises on them.
 HARD = frozenset({BUILDER})
 
+# --------------------------------------------------------------------------- #
+# What is known about a candidate
+#
+# Deliberately not the verdict ladder's words. VERIFIED there means a measured
+# solid agreed with its frozen contract; nothing in this module is measured or
+# built, so reusing the term would claim evidence that does not exist.
+# --------------------------------------------------------------------------- #
+
+#: A builder relation does not hold. The part cannot exist.
+BROKEN = "broken"
+#: A duty was stated and nothing here can evaluate it. Not feasible: see
+#: :attr:`Observation.feasible`.
+UNJUDGED = "unjudged"
+#: A declared check ran and did not pass.
+FAILED = "failed"
+#: Every declared check passed — analytically, on the closed form.
+SCREENED = "screened"
+#: Nothing was claimed, so nothing is owed. Buildable and unjudged, which is
+#: the honest reading of a request that states no load.
+NO_DUTY = "no_duty"
+#: The move was never legal, so nothing was evaluated at all.
+NOT_APPLIED = "not_applied"
+
 
 @dataclass(frozen=True)
 class Bound:
@@ -749,16 +772,51 @@ class Observation:
     metrics: dict[str, float] = field(default_factory=dict)
     #: Why an action was refused, or a relation reported.
     notes: list[str] = field(default_factory=list)
+    #: Whether a duty was stated that nothing here can evaluate. Set by
+    #: :func:`evaluate`; see :attr:`evidence`.
+    unjudged_duty: str = ""
+
+    @property
+    def evidence(self) -> str:
+        """*Why* this candidate is or is not acceptable, not just whether.
+
+        A bare boolean cannot carry the difference between "every check passed"
+        and "no check ran", and the difference is the whole safety question for
+        a search. Four of the six families have no closed form for a load, so a
+        policy ranking on a boolean would drive them to minimum size with
+        nothing objecting — silence reading as approval.
+
+        The names are deliberately not the verdict ladder's. ``VERIFIED`` in
+        this codebase means a measured solid matched its frozen contract;
+        nothing here is measured and nothing is built, so borrowing the word
+        would be the same mistake ``orion.dfm`` refuses when it declines to say
+        "refused" about machining cost.
+        """
+        if not self.applied:
+            return NOT_APPLIED
+        if self.violations:
+            return BROKEN
+        if self.unjudged_duty:
+            return UNJUDGED
+        if any(r.get("passed") is False for r in self.checks):
+            return FAILED
+        return SCREENED if self.checks else NO_DUTY
 
     @property
     def feasible(self) -> bool:
-        """Every declared relation holds and no declared check failed.
+        """Nothing that was asked of this candidate objected.
 
-        Analytic only. A part that is feasible here has not been built, and the
-        verdict still belongs to the build — see the module docstring.
+        ``UNJUDGED`` is not feasible, and that is the point of this change. A
+        load the user stated and no model here can evaluate is a duty going
+        unchecked, and :mod:`orion.engineering` already settles which way that
+        falls: a thing a design says must hold, that cannot be evaluated, is a
+        failure rather than a silence. Something nobody claimed is simply
+        absent, which is why ``NO_DUTY`` is feasible and ``UNJUDGED`` is not.
+
+        Analytic only either way. A feasible candidate has not been built, and
+        the verdict still belongs to the build.
         """
-        return (self.applied and not self.violations
-                and all(r.get("passed") is not False for r in self.checks))
+        return self.evidence in (SCREENED, NO_DUTY)
 
 
 def initial_state(family: str, requirements: dict) -> State:
@@ -808,18 +866,59 @@ def evaluate(state: State) -> Observation:
             if isinstance(value, (int, float)) and not isinstance(value, bool):
                 obs.metrics[key] = float(value)
 
+    # A load the user stated that no model here can evaluate. Four of the six
+    # families are in this position — a bearing housing fails through bore hoop
+    # stress and bolt pull-out, a manifold through pressure, and neither is a
+    # rectangular cantilever. Inventing a beam model for them would produce a
+    # defensible-looking safety factor describing loading the part never sees,
+    # which is the mistake ``_BEAM_MODEL`` exists to avoid.
+    #
+    # So the duty is reported unjudged rather than either faked or ignored.
+    # Ignoring it was the real hazard: a search minimising mass on one of those
+    # four had nothing objecting and would thin the part until only the family
+    # range stopped it.
+    if not obs.checks:
+        load = state.requirements.get("load_n")
+        if isinstance(load, (int, float)) and not isinstance(load, bool) \
+                and load > 0:
+            obs.unjudged_duty = (
+                f"a load of {float(load):g} N was stated and {state.family} "
+                f"has no closed form for it, so nothing here can say whether "
+                f"the part carries it")
+
     volume = _volume_of(state)
     if volume is not None:
         obs.metrics["volume_mm3"] = volume
-        material = (block or {}).get("material")
-        if material:
-            from . import calc
-            try:
-                obs.metrics["mass_g"] = calc.mass_properties(
-                    volume, material)["mass_g"]
-            except (KeyError, TypeError, ValueError):
-                pass
+        mass = _mass_of(state, volume)
+        if mass is not None:
+            obs.metrics["mass_g"] = mass
     return obs
+
+
+def _mass_of(state: State, volume: float) -> Optional[float]:
+    """Mass from the material, whether or not a duty was declared.
+
+    It used to come only from the engineering block, so the four families with
+    no closed form for a load reported no mass either — leaving a search with
+    neither a constraint nor an objective on two thirds of the catalogue.
+
+    A material is stated far more often than a load, and it is all a mass
+    needs: the volume is the closed form the Blueprint already grades itself
+    against and the density is a table lookup. The block is still preferred
+    when there is one, because its material name has already been resolved and
+    frozen into the hash.
+    """
+    from . import calc
+
+    named = ((state.engineering or {}).get("material")
+             or (state.requirements or {}).get("material"))
+    if not named:
+        return None
+    try:
+        return calc.mass_properties(volume, str(named))["mass_g"]
+    except (KeyError, TypeError, ValueError):
+        # An unresolvable or ambiguous material is no mass, not a guessed one.
+        return None
 
 
 def _volume_of(state: State) -> Optional[float]:
