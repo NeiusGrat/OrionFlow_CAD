@@ -2310,17 +2310,33 @@ def _manufacturing(family: str, req: dict, payload: dict) -> dict:
 #: which is the same rule the rest of this module runs on: silence beats a
 #: number nobody can defend.
 _BEAM_MODEL: dict[str, dict[str, str]] = {
-    # A plate cantilevered from one edge and pushed on its face.
-    "rect_plate": {"id": "plate_bending", "length": "L", "width": "W",
-                   "height": "T",
+    # A plate cantilevered from one edge and pushed on its face. One member is
+    # all a plate is, so the closed form is the whole structure.
+    "rect_plate": {"id": "plate_bending", "calc": "beam_bending",
+                   "label": "Beam stress within yield",
+                   "args": {"length_mm": "L", "width_mm": "W",
+                            "height_mm": "T"},
+                   "supports_case": True,
                    "models": "the plate as a beam of its full width, "
                              "loaded perpendicular to its face"},
-    # The upright, which is a cantilever standing off the base whatever else
-    # the bracket does. Its thickness is what resists a horizontal load.
-    "l_bracket": {"id": "upright_bending", "length": "UH", "width": "UW",
-                  "height": "UT",
-                  "models": "the upright as a cantilever off the base, "
-                            "loaded perpendicular to its face"},
+    # A bracket is two members, and until now only one of them was read. The
+    # closed form graded the upright as a cantilever and said nothing about the
+    # base, so a search asked to lighten a bracket carrying 400 N thinned the
+    # base plate to 1 mm and no declared check objected. Solving both members
+    # together (orion.fem) puts the moment from the upright into the base,
+    # where it belongs: at the same geometry the base is the *worst* member,
+    # and at 1 mm its safety factor is 0.10.
+    "l_bracket": {"id": "frame_stress", "calc": "frame_l_bracket",
+                  "label": "Frame stress within yield",
+                  "args": {"base_length_mm": "BL", "base_width_mm": "BW",
+                           "base_thickness_mm": "BT",
+                           "upright_height_mm": "UH",
+                           "upright_width_mm": "UW",
+                           "upright_thickness_mm": "UT"},
+                  "supports_case": False,
+                  "models": "both members solved together as a frame: the "
+                            "load bends the upright and its moment is carried "
+                            "along the base"},
 }
 
 #: Minimum safety factor applied when a load is stated and a required factor is
@@ -2398,19 +2414,25 @@ def _engineering(family: str, req: dict, payload: dict) -> dict:
         return {}
 
     v = payload.get("variables") or {}
-    if any(model[k] not in v for k in ("length", "width", "height")):
+    if any(var not in v for var in model["args"].values()):
         return {}
 
     assumptions: dict[str, str] = {}
 
-    stated_support = str(req.get("support") or "").strip().lower()
-    key = stated_support.replace(" ", "_").replace("-", "_")
-    case = _SUPPORT_CASES.get(key)
-    if case is None:
-        case = _DEFAULT_SUPPORT
-        assumptions["support"] = (
-            f"{_DEFAULT_SUPPORT}: the support was not stated, so the "
-            f"conservative case is used")
+    # Only a single-member model has a support *case* to choose between. A
+    # frame's supports are part of its geometry — the base is bolted at its far
+    # end — so there is no cantilever-or-simply-supported question to answer,
+    # and inventing one would offer a choice that changes nothing.
+    case = ""
+    if model.get("supports_case"):
+        stated_support = str(req.get("support") or "").strip().lower()
+        key = stated_support.replace(" ", "_").replace("-", "_")
+        case = _SUPPORT_CASES.get(key) or ""
+        if not case:
+            case = _DEFAULT_SUPPORT
+            assumptions["support"] = (
+                f"{_DEFAULT_SUPPORT}: the support was not stated, so the "
+                f"conservative case is used")
 
     factor = _num(req, "safety_factor")
     if not factor or factor <= 0:
@@ -2428,20 +2450,19 @@ def _engineering(family: str, req: dict, payload: dict) -> dict:
     if limit and limit > 0:
         expect["deflection_mm"] = {"max": limit}
 
+    args: dict = {"load_n": load, "material_name": "@material"}
+    for arg, variable in model["args"].items():
+        args[arg] = f"={variable}"
+    if case:
+        args["case"] = case
+
     block: dict = {
         "material": resolved,
         "checks": [{
             "id": model["id"],
-            "label": "Beam stress within yield",
-            "calc": "beam_bending",
-            "args": {
-                "load_n": load,
-                "length_mm": f"={model['length']}",
-                "width_mm": f"={model['width']}",
-                "height_mm": f"={model['height']}",
-                "material_name": "@material",
-                "case": case,
-            },
+            "label": model.get("label") or "Structural stress within yield",
+            "calc": model["calc"],
+            "args": args,
             "expect": expect,
         }],
         # What this check is a statement about. A safety factor with no stated

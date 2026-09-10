@@ -108,9 +108,13 @@ def test_dimensions_are_expressions_over_the_frozen_variables():
                                   "material": "aluminium 6061 t6"})
     args = bp["design_plan"]["engineering"]["checks"][0]["args"]
 
-    assert args["length_mm"] == "=UH"
-    assert args["width_mm"] == "=UW"
-    assert args["height_mm"] == "=UT"
+    # Both members, because a bracket is a frame and not a lone cantilever.
+    assert args["upright_height_mm"] == "=UH"
+    assert args["upright_width_mm"] == "=UW"
+    assert args["upright_thickness_mm"] == "=UT"
+    assert args["base_length_mm"] == "=BL"
+    assert args["base_width_mm"] == "=BW"
+    assert args["base_thickness_mm"] == "=BT"
     assert args["material_name"] == "@material"
     # The load is the one fact about the world rather than the part.
     assert args["load_n"] == 300.0
@@ -127,22 +131,41 @@ def test_the_graded_section_follows_the_geometry_it_was_built_from():
     thin_sf = _rows(thin)[0]["result"]["safety_factor"]
     thick_sf = _rows(thick)[0]["result"]["safety_factor"]
 
-    # I = w*h^3/12, so tripling the thickness is roughly a ninefold gain.
-    assert thick_sf > thin_sf * 8
+    # A thicker upright is stiffer and less stressed. The gain is no longer
+    # the lone member's h^3 — the base now carries the same moment and does
+    # not change — which is exactly the physics the frame model added.
+    assert thick_sf > thin_sf
 
 
 def test_the_bending_dimension_is_the_thickness_not_the_width():
-    """The load bends the upright *through* its thickness.
+    """The load bends each member *through* its thickness.
 
     Getting this backwards produces a number that looks fine and describes the
     wrong axis, which is exactly the failure the mapping is declared to avoid.
+    Checked on the plate, whose single-member model names the two dimensions
+    directly; the bracket's frame is checked through its members instead.
     """
-    bp = G.generate("l_bracket", {**BRACKET, "load_n": 300.0,
-                                  "material": "aluminium 6061 t6"})
+    bp = G.generate("rect_plate", {**PLATE, "load_n": 300.0,
+                                   "material": "aluminium 6061 t6"})
     r = _rows(bp)[0]["result"]
 
-    assert r["height_mm"] == bp["variables"]["UT"] == 6.0
-    assert r["width_mm"] == bp["variables"]["UW"] == 60.0
+    assert r["height_mm"] == bp["variables"]["T"] == 10.0
+    assert r["width_mm"] == bp["variables"]["W"] == 80.0
+
+
+def test_the_bracket_base_carries_the_uprights_moment():
+    """The whole reason `orion.fem` exists: thinning the base must cost
+    something. Graded alone, the upright's check never saw it."""
+    thick = G.generate("l_bracket", {**BRACKET, "base_thickness": 10.0,
+                                     "load_n": 400.0,
+                                     "material": "aluminium 6061 t6"})
+    thin = G.generate("l_bracket", {**BRACKET, "base_thickness": 2.0,
+                                    "load_n": 400.0,
+                                    "material": "aluminium 6061 t6"})
+
+    assert (_rows(thin)[0]["result"]["safety_factor"]
+            < _rows(thick)[0]["result"]["safety_factor"])
+    assert _rows(thin)[0]["result"]["worst_member"] == "base"
 
 
 # --------------------------------------------------------------------------- #
@@ -156,7 +179,7 @@ def test_a_generated_block_reaches_the_analytic_tier():
     rows = _rows(bp)
 
     assert len(rows) == 1
-    assert rows[0]["calc"] == "beam_bending"
+    assert rows[0]["calc"] == "frame_l_bracket"
     # Graded, not merely observed.
     assert rows[0]["passed"] is True
     assert rows[0]["result"]["max_stress_mpa"] > 0
@@ -211,13 +234,28 @@ def test_an_unstated_deflection_limit_is_reported_not_graded():
 
 
 def test_an_unstated_support_defaults_conservatively_and_says_so():
-    bp = G.generate("l_bracket", {**BRACKET, "load_n": 300.0,
-                                  "material": "aluminium 6061 t6"})
+    """Only a single-member model has a support case to choose between.
+
+    A frame's supports are part of its geometry — the base is bolted at its far
+    end — so the bracket has no cantilever-or-simply-supported question and is
+    not asked one. The plate still is.
+    """
+    bp = G.generate("rect_plate", {**PLATE, "load_n": 300.0,
+                                   "material": "aluminium 6061 t6"})
     block = bp["design_plan"]["engineering"]
 
     assert block["checks"][0]["args"]["case"] == "cantilever_end"
     assert "support" in block["assumptions"]
     assert "safety_factor" in block["assumptions"]
+
+
+def test_a_frame_is_not_asked_which_support_case_it_is():
+    bp = G.generate("l_bracket", {**BRACKET, "load_n": 300.0,
+                                  "material": "aluminium 6061 t6"})
+    block = bp["design_plan"]["engineering"]
+
+    assert "case" not in block["checks"][0]["args"]
+    assert "support" not in (block.get("assumptions") or {})
 
 
 def test_a_stated_support_is_used_and_raises_no_assumption():

@@ -281,11 +281,13 @@ def test_candidate_parameters_reach_the_engineering_calculator():
     st = _state({**BASE, **DUTY, "upright_thickness": 4.0})
     obs = DS.evaluate(st)
 
-    assert obs.checks and obs.checks[0]["calc"] == "beam_bending"
+    assert obs.checks and obs.checks[0]["calc"] == "frame_l_bracket"
     assert obs.metrics["max_stress_mpa"] > 0
     assert obs.metrics["deflection_mm"] > 0
-    # The section graded is the one the candidate has.
-    assert obs.checks[0]["result"]["height_mm"] == st.params["UT"] == 4.0
+    # Both members are graded, and the section each is graded on is the one the
+    # candidate has: a 4 mm upright is the thin member here.
+    assert obs.metrics["upright_stress_mpa"] > 0
+    assert obs.metrics["base_stress_mpa"] > 0
 
 
 def test_a_candidate_that_fails_its_duty_is_not_feasible():

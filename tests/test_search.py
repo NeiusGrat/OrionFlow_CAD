@@ -164,21 +164,41 @@ def test_no_candidate_would_be_refused_by_the_environment(bracket):
 # --------------------------------------------------------------------------- #
 
 
-def test_a_parameter_no_check_reads_is_named(bracket):
-    """The beam check reads the upright. Nothing reads the base thickness, so
-    a search drives it to its bound and nothing objects."""
+def test_a_parameter_no_check_reads_is_named():
+    """A plate's corner radius changes its mass and not its beam stress, so a
+    search drives it to a bound and nothing objects."""
+    plate = _state({"length": 120.0, "width": 80.0, "thickness": 10.0,
+                    "corner_radius": 8.0, **DUTY}, family="rect_plate")
+    result = S.explore(plate)
+
+    assert "cr" in result.unconstrained
+    # And the ones the check does read are not named.
+    assert "T" not in result.unconstrained
+
+
+def test_the_unconstrained_warning_reaches_the_explanation():
+    plate = _state({"length": 120.0, "width": 80.0, "thickness": 10.0,
+                    "corner_radius": 8.0, **DUTY}, family="rect_plate")
+    text = " ".join(S.explain(S.explore(plate)))
+
+    assert "No declared check reads cr" in text
+    assert "unverified" in text
+
+
+def test_the_bracket_base_is_no_longer_unread(bracket):
+    """The regression guard for why `orion.fem` exists.
+
+    With the upright graded alone, `BT` was unconstrained and the search
+    thinned the base to 1 mm. Solving both members as a frame puts the
+    upright's moment into the base, so nothing about this bracket is now
+    unread.
+    """
     result = S.explore(bracket)
 
-    assert "BT" in result.unconstrained
-    # And the ones the check does read are not named.
-    assert "UT" not in result.unconstrained
-
-
-def test_the_unconstrained_warning_reaches_the_explanation(bracket):
-    text = " ".join(S.explain(S.explore(bracket)))
-
-    assert "No declared check reads BT" in text
-    assert "unverified" in text
+    assert result.unconstrained == []
+    for candidate in result.considered:
+        if candidate.feasible:
+            assert candidate.params["BT"] >= bracket.params["BT"] * 0.5,                 "a feasible design still thinned the base by half"
 
 
 def test_a_design_with_no_duty_names_nothing_unconstrained():

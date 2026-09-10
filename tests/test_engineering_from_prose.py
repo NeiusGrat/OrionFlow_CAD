@@ -54,10 +54,13 @@ BASE_SLOTS = {"base_length": 80, "base_width": 60, "base_thickness": 8,
               "upright_height": 70, "upright_thickness": 8}
 
 
+PLATE_SLOTS = {"length": 120.0, "width": 80.0, "thickness": 10.0}
+
+
 def _run(request: str, slots: dict, family: str = "l_bracket"):
     """The live path, end to end, and everything it produced along the way."""
-    iv = interview.read_request(_Model(family, {**BASE_SLOTS, **slots}),
-                               request)
+    base = PLATE_SLOTS if family == "rect_plate" else BASE_SLOTS
+    iv = interview.read_request(_Model(family, {**base, **slots}), request)
     bp = Blueprint.from_dict(
         G.generate(iv.family, interview.requirements(iv))).freeze()
     # `to_dict()` is what `blueprint_service` hands the checker.
@@ -75,10 +78,17 @@ VALID = ("Design a 6061-T6 aluminium bracket that carries 50 kg, with a safety "
 
 
 def test_valid_prose_reaches_a_verdict():
+    """The request this whole link exists for, all the way to a verdict.
+
+    The duty is graded on the frame, so both members have to carry it — a
+    bracket that passed when only its upright was read does not necessarily
+    pass now, which is the point. The geometry here is one that does.
+    """
     iv, bp, rows, verdict = _run(
         VALID,
         {"material": "6061-T6 aluminium", "load_n": 50,
-         "safety_factor": 2, "max_deflection_mm": 0.5},
+         "safety_factor": 2, "max_deflection_mm": 0.5,
+         "base_thickness": 16.0, "upright_thickness": 16.0},
     )
 
     block = bp.design_plan["engineering"]
@@ -87,7 +97,7 @@ def test_valid_prose_reaches_a_verdict():
         "safety_factor": {"min": 2.0},
         "deflection_mm": {"max": 0.5},
     }
-    assert rows[0]["passed"] is True
+    assert rows[0]["passed"] is True, rows[0]["detail"]
     assert verdict == verify.VERIFIED
 
 
@@ -240,12 +250,23 @@ def test_an_unstated_safety_factor_is_not_taken_from_the_model():
     assert block["provenance"]["safety_factor"]["source"] == "default"
 
 
+PLATE_PROSE = "120 x 80 x 10 mm."
+
+
 def test_an_unstated_support_is_not_taken_from_the_model():
-    """4x in stress. Too much to accept on a model's say-so."""
-    request = "A 6061-T6 aluminium bracket that carries 50 kg. " + GEOMETRY
+    """4x in stress. Too much to accept on a model's say-so.
+
+    Asserted on the plate, because only a single-member model has a support
+    case at all. A bracket is solved as a frame and its supports are part of
+    its geometry — the base is bolted at its far end — so there is no
+    cantilever-or-simply-supported question to get wrong.
+    """
+    request = ("A 6061-T6 aluminium plate that carries 50 kg, "
+               + PLATE_PROSE)
     iv, bp, _, _ = _run(request, {"material": "6061-T6 aluminium",
                                   "load_n": 50,
-                                  "support": "supported both ends"})
+                                  "support": "supported both ends"},
+                        family="rect_plate")
 
     assert "support" not in iv.slots
     assert bp.design_plan["engineering"]["checks"][0]["args"]["case"] == \
@@ -253,14 +274,24 @@ def test_an_unstated_support_is_not_taken_from_the_model():
 
 
 def test_a_support_the_request_states_is_used():
-    request = ("A 6061-T6 aluminium beam simply supported at both ends "
-               "carrying 50 kg. " + GEOMETRY)
+    request = ("A 6061-T6 aluminium plate simply supported at both ends "
+               "carrying 50 kg, " + PLATE_PROSE)
     iv, bp, _, _ = _run(request, {"material": "6061-T6 aluminium",
-                                  "load_n": 50})
+                                  "load_n": 50}, family="rect_plate")
 
     assert iv.slots["support"] == "supported both ends"
     assert bp.design_plan["engineering"]["checks"][0]["args"]["case"] == \
         "simply_supported_centre"
+
+
+def test_a_bracket_is_a_frame_and_is_not_asked_for_a_support_case():
+    request = "A 6061-T6 aluminium bracket that carries 50 kg. " + GEOMETRY
+    _, bp, _, _ = _run(request, {"material": "6061-T6 aluminium",
+                                 "load_n": 50})
+
+    args = bp.design_plan["engineering"]["checks"][0]["args"]
+    assert "case" not in args
+    assert args["base_thickness_mm"] == "=BT"
 
 
 # --------------------------------------------------------------------------- #
@@ -283,8 +314,10 @@ def test_provenance_survives_the_blueprint_round_trip():
     assert "490.3" in prov["load_n"]["basis"]
     # Stated values say so; assumed ones say that instead.
     assert prov["safety_factor"]["source"] in ("stated", "derived")
-    assert prov["support"]["source"] == "default"
     assert prov["material"]["source"] in ("stated", "derived")
+    # A frame has no support case to assume, so none is recorded. The plate
+    # still records one — see test_an_unstated_support_is_not_taken_from_the_model.
+    assert "support" not in prov
 
 
 def test_the_duty_is_inside_the_frozen_hash():

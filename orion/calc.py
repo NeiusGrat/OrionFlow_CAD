@@ -398,6 +398,60 @@ def thread_engagement(d_mm: float, pitch_mm: float, bolt_uts_mpa: float,
             "min_engagement_mm": le, "engagement_diameters": le / d_mm}
 
 
+def frame_l_bracket(load_n: float, base_length_mm: float,
+                    base_width_mm: float, base_thickness_mm: float,
+                    upright_height_mm: float, upright_width_mm: float,
+                    upright_thickness_mm: float,
+                    material_name: str) -> dict:
+    """The whole bracket as a frame, not the upright as a cantilever.
+
+    :func:`beam_bending` reads the upright and nothing else, so a bracket's
+    base plate could be thinned to nothing and no declared check would notice.
+    A search asked to lighten a bracket carrying 400 N did exactly that,
+    reaching 1 mm — correct against the evidence, and not a bracket.
+
+    This solves both members together (:mod:`orion.fem`), so the moment at the
+    top of the upright travels down it, through the corner and along the base
+    as bending. The base's own section carries it, and ``base_thickness_mm``
+    appears cubed in the answer the way it does in the real part.
+
+    Exact at the nodes for prismatic members — a two-node Timoshenko element's
+    stiffness *is* the closed-form solution of the beam equation, so a frame of
+    one member reproduces :func:`beam_bending` to machine precision. It is
+    still nominal-section stress: a frame has no fillet and no hole, so a real
+    part peaks higher at every re-entrant corner, and the fully fixed end here
+    is stiffer than the bolted joint it stands for.
+    """
+    from . import fem
+
+    mat = material(material_name)
+    frame = fem.l_bracket_frame(
+        base_length=base_length_mm, base_width=base_width_mm,
+        base_thickness=base_thickness_mm, upright_height=upright_height_mm,
+        upright_width=upright_width_mm, upright_thickness=upright_thickness_mm,
+        load_n=load_n, modulus=mat["E"], poisson=mat["nu"],
+    )
+    solution = fem.solve(frame)
+    worst = solution.worst
+    stress = solution.max_stress_mpa
+    per_member = {f"{m.name}_stress_mpa": m.bending_mpa + abs(m.axial_mpa)
+                  for m in solution.members}
+    return {
+        "model": "frame",
+        "load_n": load_n,
+        "material": mat["material"],
+        "max_stress_mpa": stress,
+        "deflection_mm": solution.deflection_at(2),
+        "yield_mpa": mat["yield"],
+        "safety_factor": (mat["yield"] / stress) if stress > 0
+        else float("inf"),
+        # Which member is the problem, not only that there is one.
+        "worst_member": worst.name if worst else "",
+        "stress_basis": "nominal section, frame; no stress concentration",
+        **per_member,
+    }
+
+
 # --------------------------------------------------------------------------- #
 # re-exports — one registry, so nothing has to know where a formula lives
 # --------------------------------------------------------------------------- #
@@ -437,6 +491,7 @@ CALCULATORS = {
     "centre_of_mass": centre_of_mass,
     "pappus_revolution": pappus_revolution,
     "beam_bending": beam_bending,
+    "frame_l_bracket": frame_l_bracket,
     "thermal_expansion": thermal_expansion,
     "bearing_life_l10": bearing_life_l10,
     "thread_engagement": thread_engagement,
