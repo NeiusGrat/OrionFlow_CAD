@@ -1021,11 +1021,36 @@ def _with_parameter(state: State, action: Action) -> dict:
 
     Only parameters with a requirement of their own can be moved this way, and
     :data:`SEARCHABLE` contains no others.
+
+    **The move is recorded in the ledger.** A dimension a search chose is not a
+    number the user stated, and left unclassified it comes out ``unsourced`` —
+    which is the ledger correctly refusing to vouch for a figure that appeared
+    from nowhere. But it did not appear from nowhere: it was chosen
+    deterministically, inside bounds this module derived from the builder, to
+    satisfy a stated objective. That is ``derived``, and the basis says by what.
+
+    Without this the loop could never close. A search-chosen part builds
+    perfectly, matches every frozen assertion, and still cannot rise above
+    ``UNSOURCED`` — so confirming it would be pointless. Measured on the first
+    bracket through the confirmation path, which built to 1e-14 and graded
+    UNSOURCED on one moved dimension.
     """
     slot = _REQUIREMENT_OF.get(state.family, {}).get(action.parameter)
     if slot is None:
         return dict(state.requirements)
-    return {**state.requirements, slot: float(action.to)}
+
+    moved = {**state.requirements, slot: float(action.to)}
+    was = state.params.get(action.parameter)
+    ledger = dict(state.requirements.get("provenance") or {})
+    ledger[slot] = {
+        "source": "derived",
+        "basis": (f"chosen by search within the bounds this family declares"
+                  + (f", from {float(was):g}" if isinstance(was, (int, float))
+                     and not isinstance(was, bool) else "")
+                  + f" to {float(action.to):g}"),
+    }
+    moved["provenance"] = ledger
+    return moved
 
 
 def actions(state: State, steps: int = 4) -> list[Action]:
