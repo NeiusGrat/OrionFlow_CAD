@@ -32,6 +32,21 @@ families:
       thickness: {ask: "How thick should it be?"}
     optional:
       material:      {ask: "Material?", unit: "", text: true}
+      # A stated load is what makes an engineering check possible: with a
+      # material it lets orion/calc.py size the section and orion/engineering.py
+      # grade the result against the built solid. All three are OPTIONAL and
+      # none is ever guessed — a request that states no load gets no check, not
+      # a check against an invented duty. See orion/blueprint_gen.py::_engineering.
+      load_n:        {ask: "What load must it carry, in newtons?", unit: "N"}
+      # Cantilever and simply-supported differ by 4x in stress and 16x in
+      # deflection, so this is not a detail. Unstated, the conservative reading
+      # is used and recorded as a default rather than a fact.
+      support:       {ask: "How is it held — fixed at one end, or supported at both ends?", unit: "", text: true}
+      safety_factor: {ask: "Minimum safety factor it must meet?", unit: ""}
+      # No default: how much deflection is acceptable is entirely the
+      # application's business, so an unstated limit means no deflection
+      # check rather than a guessed one.
+      max_deflection_mm: {ask: "Maximum allowable deflection under that load?"}
       # Neither shapes geometry — a milled plate and a cast one of the
       # same dimensions are the same solid — but both decide what can
       # be claimed about the part. See orion/dfm.py.
@@ -257,6 +272,21 @@ families:
       upright_thickness: {ask: "How thick is the vertical plate?", mirrors: base_thickness}
     optional:
       material:       {ask: "Material?", unit: "", text: true}
+      # A stated load is what makes an engineering check possible: with a
+      # material it lets orion/calc.py size the section and orion/engineering.py
+      # grade the result against the built solid. All three are OPTIONAL and
+      # none is ever guessed — a request that states no load gets no check, not
+      # a check against an invented duty. See orion/blueprint_gen.py::_engineering.
+      load_n:        {ask: "What load must it carry, in newtons?", unit: "N"}
+      # Cantilever and simply-supported differ by 4x in stress and 16x in
+      # deflection, so this is not a detail. Unstated, the conservative reading
+      # is used and recorded as a default rather than a fact.
+      support:       {ask: "How is it held — fixed at one end, or supported at both ends?", unit: "", text: true}
+      safety_factor: {ask: "Minimum safety factor it must meet?", unit: ""}
+      # No default: how much deflection is acceptable is entirely the
+      # application's business, so an unstated limit means no deflection
+      # check rather than a guessed one.
+      max_deflection_mm: {ask: "Maximum allowable deflection under that load?"}
       # Neither shapes geometry — a milled plate and a cast one of the
       # same dimensions are the same solid — but both decide what can
       # be claimed about the part. See orion/dfm.py.

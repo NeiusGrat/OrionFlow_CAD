@@ -2188,6 +2188,11 @@ INFORMATIONAL = frozenset({
     # What the dimensions are allowed to be, and what they are measured from.
     # Neither changes the solid; both change what can be claimed about it.
     "tolerance_class", "critical_tolerance", "datum",
+    # What the part must survive. None of it moves a face — a bracket holding
+    # 500 N and one holding nothing are the same solid — but together with the
+    # material they are what lets the calculators say whether the solid is
+    # adequate. Recorded rather than consumed, exactly like ``process``.
+    "load_n", "support", "safety_factor", "max_deflection_mm",
     "material", "bearing_series", "mounting_type",
     "thread", "hole_thread", "port_thread", "inlet_thread",
     # A frame designation shapes nothing itself: ``interview.apply_standards``
@@ -2282,6 +2287,175 @@ def _manufacturing(family: str, req: dict, payload: dict) -> dict:
     return out
 
 
+#: Which families can be read as a beam, and which of their own variables give
+#: the section. Declared per family rather than inferred, because guessing which
+#: dimension resists a load is how a bracket gets checked about the wrong axis
+#: and passes.
+#:
+#: ``beam_bending`` takes ``I = width*height**3/12``, so ``height`` is always the
+#: dimension in the bending direction — the one the load tries to bend *through*.
+#: For a plate pushed on its face that is the thickness, not the width.
+#:
+#: Only two families are here, and the omissions are deliberate rather than
+#: unfinished:
+#:
+#:   * ``disc``, ``bearing_housing`` — loads arrive through a bore or a bearing
+#:     seat, not as bending of a prismatic section. A beam model would be a
+#:     number with no relationship to how the part is actually loaded.
+#:   * ``shelled_box``, ``manifold`` — thin-walled and pressurised respectively.
+#:     Both want a different closed form than this one.
+#:   * ``spur_gear`` — tooth bending is Lewis, not a rectangular cantilever.
+#:
+#: A family absent from here states its load in the plan and gets no check,
+#: which is the same rule the rest of this module runs on: silence beats a
+#: number nobody can defend.
+_BEAM_MODEL: dict[str, dict[str, str]] = {
+    # A plate cantilevered from one edge and pushed on its face.
+    "rect_plate": {"id": "plate_bending", "length": "L", "width": "W",
+                   "height": "T",
+                   "models": "the plate as a beam of its full width, "
+                             "loaded perpendicular to its face"},
+    # The upright, which is a cantilever standing off the base whatever else
+    # the bracket does. Its thickness is what resists a horizontal load.
+    "l_bracket": {"id": "upright_bending", "length": "UH", "width": "UW",
+                  "height": "UT",
+                  "models": "the upright as a cantilever off the base, "
+                            "loaded perpendicular to its face"},
+}
+
+#: Minimum safety factor applied when a load is stated and a required factor is
+#: not. General-purpose value for a ductile metal under a known static load;
+#: it is recorded as a ``default`` in the block so it can never be mistaken for
+#: something the user asked for.
+_DEFAULT_SAFETY_FACTOR = 1.5
+
+#: Support model used when a load is stated and the support is not.
+#:
+#: Cantilever is the conservative reading: for the same span it is 4x the stress
+#: and 16x the deflection of a simply-supported beam. Assuming it can only
+#: refuse a part a truer model would pass, never pass one a truer model would
+#: refuse — which is the correct direction for an assumption to fail in.
+_DEFAULT_SUPPORT = "cantilever_end"
+
+#: The words a user might use, mapped to the cases ``calc.beam_bending`` knows.
+_SUPPORT_CASES = {
+    "cantilever": "cantilever_end",
+    "cantilever_end": "cantilever_end",
+    "fixed": "cantilever_end",
+    "fixed_one_end": "cantilever_end",
+    "one_end": "cantilever_end",
+    "simply_supported": "simply_supported_centre",
+    "simply_supported_centre": "simply_supported_centre",
+    "both_ends": "simply_supported_centre",
+    "supported_both_ends": "simply_supported_centre",
+    "two_ends": "simply_supported_centre",
+}
+
+
+def _engineering(family: str, req: dict, payload: dict) -> dict:
+    """The frozen inputs to :mod:`orion.engineering`, or ``{}``.
+
+    Emitted only when the request states **both** a load and a material this
+    system has properties for. That conjunction is the whole safety argument:
+    a load with no material cannot be turned into a stress, a material with no
+    load is just a density, and inventing either would put a number on the
+    report that nobody asked for and nothing supports.
+
+    Dimensions are written as ``=VAR`` expressions over the builder's own
+    variables, never as literals. :mod:`orion.engineering` resolves them against
+    the frozen variable set, so the section that is checked is necessarily the
+    section that was built — a design cannot author an 8 mm upright and grade a
+    20 mm one.
+
+    **The stress this declares is root stress, and that is deliberate.**
+    ``max_stress_mpa`` is taken at the section carrying the largest moment: the
+    fixed end. It is not, and must not be confused with, the region-based metric
+    an FEA verifier reports, which deliberately *excludes* the support zone
+    because a fully-fixed face there is an idealisation that manufactures its
+    own singularity. On a 100x10x10 cantilever the two differ by 20% (60 MPa at
+    the root against 48 MPa away from it) and both are correct answers to
+    different questions. Root stress is the conservative one, so it is the one
+    that gates. Anyone later reconciling the two by moving this onto a
+    region-based value would be silently weakening the gate; the numbers must be
+    reported side by side under their own names instead.
+    """
+    model = _BEAM_MODEL.get(family)
+    if model is None:
+        return {}
+
+    load = _num(req, "load_n")
+    material = req.get("material")
+    if not load or load <= 0 or not material:
+        return {}
+
+    # The material has to be one the calculators have properties for. A name
+    # they cannot resolve is reported as unsupported rather than silently
+    # dropping the check a stated load has earned.
+    from . import calc
+    try:
+        resolved = calc.material(str(material))["material"]
+    except (KeyError, TypeError, ValueError):
+        return {}
+
+    v = payload.get("variables") or {}
+    if any(model[k] not in v for k in ("length", "width", "height")):
+        return {}
+
+    assumptions: dict[str, str] = {}
+
+    stated_support = str(req.get("support") or "").strip().lower()
+    key = stated_support.replace(" ", "_").replace("-", "_")
+    case = _SUPPORT_CASES.get(key)
+    if case is None:
+        case = _DEFAULT_SUPPORT
+        assumptions["support"] = (
+            f"{_DEFAULT_SUPPORT}: the support was not stated, so the "
+            f"conservative case is used")
+
+    factor = _num(req, "safety_factor")
+    if not factor or factor <= 0:
+        factor = _DEFAULT_SAFETY_FACTOR
+        assumptions["safety_factor"] = (
+            f"{_DEFAULT_SAFETY_FACTOR}: no required factor was stated")
+
+    expect: dict = {"safety_factor": {"min": factor}}
+
+    # A deflection limit is never defaulted. How much movement is acceptable is
+    # the application's business and nothing about the part implies it, so an
+    # unstated limit means the deflection is *reported* — it travels as an
+    # observation on the same row — and not graded.
+    limit = _num(req, "max_deflection_mm")
+    if limit and limit > 0:
+        expect["deflection_mm"] = {"max": limit}
+
+    block: dict = {
+        "material": resolved,
+        "checks": [{
+            "id": model["id"],
+            "label": "Beam stress within yield",
+            "calc": "beam_bending",
+            "args": {
+                "load_n": load,
+                "length_mm": f"={model['length']}",
+                "width_mm": f"={model['width']}",
+                "height_mm": f"={model['height']}",
+                "material_name": "@material",
+                "case": case,
+            },
+            "expect": expect,
+        }],
+        # What this check is a statement about. A safety factor with no stated
+        # model is a number an engineer cannot argue with.
+        "models": model["models"],
+        "stress_basis": (
+            "root: taken at the section of largest moment. Not comparable "
+            "with an FEA region metric measured away from the supports."),
+    }
+    if assumptions:
+        block["assumptions"] = assumptions
+    return block
+
+
 def generate(family: str, requirements: dict) -> dict:
     """Blueprint dict for a family, from resolved requirements.
 
@@ -2368,6 +2542,15 @@ def generate(family: str, requirements: dict) -> dict:
     manufacturing = _manufacturing(family, requirements, payload)
     if manufacturing:
         payload["design_plan"]["manufacturing"] = manufacturing
+
+    # What the part must survive, and the section that has to survive it.
+    # Frozen here for the same reason as the manufacturing block: the check runs
+    # after the build, so the duty it is graded against has to be committed
+    # before one. A design that states no load emits nothing and hashes exactly
+    # as it did before.
+    engineering = _engineering(family, requirements, payload)
+    if engineering:
+        payload["design_plan"]["engineering"] = engineering
 
     tolerance = {
         k: v for k, v in (

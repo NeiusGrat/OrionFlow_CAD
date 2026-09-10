@@ -46,6 +46,20 @@ unaffected — which is every Blueprint in the existing corpus.
 says "this must hold", being unable to evaluate it is a defect in the design.
 That is the opposite of the rule for things nobody claimed, which are simply
 absent.
+
+**The stress graded here is root stress.** ``beam_bending`` reports the section
+carrying the largest moment — the fixed end. A finite-element verifier reports
+something different on purpose: a region metric that *excludes* the support
+zone, because a fully-fixed face there is an idealisation that manufactures its
+own stress singularity, and a peak that chases the mesh is an artifact rather
+than a load path. On a 100x10x10 steel cantilever the two read 60 MPa and
+48 MPa, and both are right about different questions.
+
+Root stress is the conservative of the two, so it is the one that gates. When
+an FEA tier lands it must report its region metric under its own name beside
+this one, never in place of it. Substituting a region value here would look
+like reconciling two numbers and would in fact be weakening the gate by 20% on
+the case above — silently, and in the direction that passes parts.
 """
 
 from __future__ import annotations
