@@ -948,7 +948,8 @@ def _volume_of(state: State) -> Optional[float]:
     return None
 
 
-def step(state: State, action: Action) -> Observation:
+def step(state: State, action: Action,
+         intervals: Optional[dict] = None) -> Observation:
     """Apply one action and report. The environment's only transition.
 
     An action outside the parameter's current interval is **refused** rather
@@ -956,9 +957,17 @@ def step(state: State, action: Action) -> Observation:
     refusal says the move was never available, while an infeasible result says
     it was available and turned out badly. A policy that cannot tell them apart
     would learn to avoid legal moves because an illegal one near them failed.
+
+    ``intervals`` lets a caller that has already computed the space for *this
+    state* pass it back in. Probing is most of what a step costs and a search
+    enumerating many moves from one state would otherwise recompute the same
+    answer for each of them. It must be the space of this state; passing
+    another's would check the move against the wrong bounds, so callers other
+    than :mod:`orion.search` should leave it alone.
     """
-    intervals = space(state.family, state.params, state.requirements,
-                      state.unlocked)
+    if intervals is None:
+        intervals = space(state.family, state.params, state.requirements,
+                          state.unlocked)
     interval = intervals.get(action.parameter)
 
     if interval is None:
