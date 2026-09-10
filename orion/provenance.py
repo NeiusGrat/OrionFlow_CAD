@@ -119,6 +119,40 @@ def literals_with_units(request: str) -> list[tuple[float, str]]:
     return out
 
 
+def literal_readings(request: str) -> list[tuple[list[float], str]]:
+    """Every quantity the request states, grouped by the numeral that wrote it.
+
+    A number written with a unit has two admissible readings - its face value
+    and its conversion to millimetres - and both belong to the *same*
+    statement. :func:`literals_with_units` flattens them, which is right when
+    asking "is this value supported?", because either reading may be the
+    support. It is wrong when asking the reverse. "25 cm" flattened into an
+    unclaimed 25 and an unclaimed 250, so one stated dimension raised two
+    questions and answering either left the other outstanding - a loop the
+    user cannot get out of, because they only ever wrote one number.
+    """
+    text = (request or "").lower()
+    out: list[tuple[list[float], str]] = []
+
+    for word, value in _WORDS.items():
+        if re.search(rf"{word}", text):
+            out.append(([float(value)], ""))
+
+    for match in _NUMBER.finditer(text):
+        try:
+            value = float(match.group("value"))
+        except ValueError:
+            continue
+        unit = (match.group("unit") or "").strip().rstrip(".")
+        readings = [value]
+        factor = _UNITS.get(unit)
+        if factor is not None and factor != 1.0:
+            readings.append(value * factor)
+        out.append((readings, unit))
+
+    return out
+
+
 def literals(request: str) -> set[float]:
     """Every quantity the request states, in the units a Blueprint stores.
 
@@ -170,13 +204,16 @@ def unclaimed_lengths(request: str, values: Any) -> list[float]:
 
     pool = [n for v in (values or {}).values() for n in _numbers(v)]
     out: list[float] = []
-    for value, unit in literals_with_units(request):
+    for readings, unit in literal_readings(request):
         if unit not in LENGTH_UNITS:
             continue
-        if any(corroborated(v, [value]) for v in pool):
+        # Either reading of the same numeral settles it. Testing them
+        # separately asks about a dimension the user never wrote.
+        if any(corroborated(v, readings) for v in pool):
             continue
-        if value not in out:
-            out.append(value)
+        stated = readings[-1]      # millimetres, the form the question quotes
+        if stated not in out:
+            out.append(stated)
     return out
 
 

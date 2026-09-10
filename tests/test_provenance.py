@@ -248,3 +248,24 @@ def test_setting_a_dimension_by_hand_clears_its_warning():
     assert all(e["source"] == P.STATED for e in ledger.values())
     # And the edit is no longer the thing that was hashed.
     assert edited["blueprint_hash"] == ""
+
+
+def test_one_stated_dimension_raises_at_most_one_question():
+    """A number written with a unit has two readings, not two dimensions.
+
+    "25 cm" used to be reported as an unclaimed 25 *and* an unclaimed 250, so
+    the interview asked twice about a dimension the user wrote once and no
+    answer could clear both.
+    """
+    from orion.provenance import unclaimed_lengths
+
+    request = "a bracket for a 25 cm robot with a 22 mm bore"
+    assert unclaimed_lengths(request, {}) == [250.0, 22.0]
+    assert unclaimed_lengths(request, {"height": 250.0}) == [22.0]
+    assert unclaimed_lengths(request, {"height": 250.0, "bore_r": 11.0}) == []
+
+
+def test_a_bare_millimetre_reading_still_settles_its_own_numeral():
+    from orion.provenance import unclaimed_lengths
+
+    assert unclaimed_lengths("a 40 mm plate", {"width": 40.0}) == []
