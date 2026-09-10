@@ -973,10 +973,36 @@ FAMILIES = {
 
 
 def make(family: str, **params) -> Blueprint:
+    """Resolve a family reference into a Blueprint an assembly can place.
+
+    Three palettes, searched in order: the gear tier, the component primitives
+    below, and the part families the interview designs.
+
+    That last fall-through is the point. This module holds fasteners and
+    transmission primitives - rings, bolts, keys, pulleys - and an assembly
+    spec could reference nothing else. So none of the seven parts the app can
+    actually design was available as a component, and "a bracket carrying a
+    bearing" was unbuildable no matter how it was asked for: not because the
+    assembly builder could not place a bracket, but because no spec could name
+    one. The part builders already emit the same Blueprint fields, so they only
+    ever needed to be reachable from here.
+    """
     if family == "spur_gear":                      # lives with the gear tier
         from .gear_family import make_blueprint
         return make_blueprint(**params)
-    if family not in FAMILIES:
-        raise KeyError(f"unknown family {family!r}; have "
-                       f"{sorted(list(FAMILIES) + ['spur_gear'])}")
-    return FAMILIES[family](**params)
+    if family in FAMILIES:
+        return FAMILIES[family](**params)
+
+    from . import blueprint_gen
+    builder = blueprint_gen.BUILDERS.get(family)
+    if builder is not None:
+        # Every builder in this module returns a frozen Blueprint, and
+        # `build_assembly` verifies each component's hash before it places
+        # anything. The part builders hand back the fields unfrozen, so a
+        # designed part entered the spec fine and then failed the hash check
+        # one step later.
+        return Blueprint.from_dict(builder(dict(params))).freeze()
+
+    raise KeyError(
+        f"unknown family {family!r}; have "
+        f"{sorted(set(FAMILIES) | set(blueprint_gen.BUILDERS) | {'spur_gear'})}")

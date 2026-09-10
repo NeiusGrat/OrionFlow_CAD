@@ -212,3 +212,22 @@ def test_the_sun_rim_check_reads_the_same_bore_the_gear_is_cut_with():
     from orion.expr import evaluate
 
     assert evaluate(rim["target"], spec["variables"]) > 0
+
+
+def test_every_interview_part_family_resolves_as_a_component():
+    from orion import blueprint_gen, families as F
+
+    for name in blueprint_gen.BUILDERS:
+        assert name in F.FAMILIES or callable(blueprint_gen.BUILDERS[name])
+
+
+def test_an_unknown_family_names_both_palettes():
+    from orion import families as F
+
+    try:
+        F.make("no_such_family")
+    except KeyError as exc:
+        message = str(exc)
+        assert "rect_plate" in message and "hex_bolt" in message
+    else:
+        raise AssertionError("expected KeyError")
