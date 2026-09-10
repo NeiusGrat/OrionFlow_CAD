@@ -81,11 +81,16 @@ def test_a_relation_that_cannot_be_evaluated_counts_as_broken():
     assert not DS.feasible(FAMILY, {"BL": 80.0})       # everything else absent
 
 
-def test_an_unknown_family_has_no_declared_space():
-    """Silence reads as "nothing known to be safe", not "anything goes"."""
-    assert DS.space("rect_plate", {"L": 100.0}) == {}
-    assert DS.relations("rect_plate") == []
-    assert DS.bounds("rect_plate", {"L": 100.0}) == []
+def test_a_family_with_no_declared_space_offers_none():
+    """Silence reads as "nothing known to be safe", not "anything goes".
+
+    `spur_gear` is the real case: module, tooth count and pressure angle are
+    mesh compatibility, so none of them is a dimension to search.
+    """
+    assert "spur_gear" not in DS.SEARCHABLE
+    assert DS.space("spur_gear", {"module": 2.0}) == {}
+    assert DS.relations("spur_gear") == []
+    assert DS.bounds("spur_gear", {"module": 2.0}) == []
 
 
 # --------------------------------------------------------------------------- #
@@ -98,9 +103,12 @@ def test_the_binding_end_names_the_bound_that_produced_it():
     st = _state({**BASE, "base_length": 25.0, "upright_thickness": 6.0})
     ut = DS.space(FAMILY, st.params, st.requirements)["UT"]
 
-    assert ut.high == 25.0
-    assert ut.strict_high, "UT < BL is strict; 25 is not available"
-    assert "builder" in ut.high_from and "UT < BL" in ut.high_from
+    # The probe stops just short of the boundary the builder refuses at, and
+    # reports the builder's own sentence rather than a restatement of it.
+    assert 24.99 < ut.high < 25.0
+    assert not ut.holds(25.0), "UT < BL; 25 is not available"
+    assert "builder" in ut.high_from
+    assert "upright thickness exceeds the base length" in ut.high_from
 
 
 def test_a_process_minimum_raises_the_floor_and_says_so():
@@ -114,13 +122,14 @@ def test_a_process_minimum_raises_the_floor_and_says_so():
     assert "process" in c.low_from
 
 
-def test_a_strict_boundary_excludes_its_own_endpoint():
+def test_the_excluded_endpoint_is_excluded():
     st = _state({**BASE, "base_length": 25.0, "upright_thickness": 6.0})
     ut = DS.space(FAMILY, st.params, st.requirements)["UT"]
 
     assert not ut.holds(25.0)          # UT < BL
     assert ut.holds(24.0)
-    assert str(ut).endswith(")")
+    # And the printed form must not round back to the value it excludes.
+    assert str(ut) != "[1, 25]"
 
 
 def test_every_allowed_value_actually_builds():
@@ -144,7 +153,7 @@ def test_every_allowed_value_actually_builds():
         for name, interval in DS.space(FAMILY, st.params, req).items():
             if interval.locked:
                 continue
-            slot = DS._REQUIREMENT_OF[name]
+            slot = DS._REQUIREMENT_OF[FAMILY][name]
             for value in np.arange(0.5, 200.0, 0.5):
                 value = round(float(value), 4)
                 if not interval.holds(value):
@@ -349,3 +358,150 @@ def test_evaluating_a_state_never_mutates_it():
     DS.actions(st)
 
     assert st.params == before
+
+
+# --------------------------------------------------------------------------- #
+# The other five families
+#
+# `l_bracket` is covered above in depth. These prove the same contract holds for
+# every family that has a declared space, and — the load-bearing part — that the
+# space each one reports is a space the builder agrees with.
+# --------------------------------------------------------------------------- #
+
+#: One buildable configuration per family, in interview slot names (diameters,
+#: not radii — `interview.resolve` halves them on the way in).
+CONFIGS = {
+    "l_bracket": {"base_length": 80.0, "base_width": 60.0,
+                  "base_thickness": 8.0, "upright_height": 70.0,
+                  "upright_thickness": 8.0, "inside_fillet": 5.0},
+    "rect_plate": {"length": 120.0, "width": 80.0, "thickness": 10.0,
+                   "corner_radius": 8.0},
+    "disc": {"outer_d": 80.0, "thickness": 10.0, "bore_d": 24.0},
+    "shelled_box": {"length": 80.0, "width": 60.0, "height": 40.0,
+                    "wall": 3.0, "floor": 3.0, "corner_radius": 6.0},
+    "bearing_housing": {"length": 70.0, "width": 60.0, "height": 30.0,
+                        "bore_d": 32.0, "seat_depth": 12.0},
+    "manifold": {"length": 100.0, "width": 50.0, "height": 50.0,
+                 "passage_d": 20.0},
+}
+
+FAMILIES = sorted(CONFIGS)
+
+
+def _reqs(family: str, slots: dict, request: str = "") -> dict:
+    iv = I.Interview(request=request or "a part", family=family,
+                     slots=dict(slots))
+    iv.classify()
+    return I.requirements(iv)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_every_declared_family_reports_a_space(family):
+    req = _reqs(family, CONFIGS[family])
+    st = DS.initial_state(family, req)
+    intervals = DS.space(family, st.params, req)
+
+    assert set(intervals) == set(DS.SEARCHABLE[family])
+    for name, interval in intervals.items():
+        assert not interval.empty, f"{family}.{name} has no room at all"
+        assert interval.holds(st.params[name]), \
+            f"{family}.{name} excludes the value it currently has"
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_every_family_starts_feasible(family):
+    req = _reqs(family, CONFIGS[family])
+    st = DS.initial_state(family, req)
+
+    assert DS.feasible(family, st.params), DS.violations(family, st.params)
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_every_allowed_value_builds_for_every_family(family):
+    """The invariant, family by family.
+
+    Anything `space` permits, `blueprint_gen` must accept. This is what makes
+    the probe worth its cost: the bounds are the builder's own, so a guard
+    nobody transcribed still shapes the space.
+    """
+    req = _reqs(family, CONFIGS[family])
+    st = DS.initial_state(family, req)
+    checked = 0
+    for name, interval in DS.space(family, st.params, req).items():
+        if interval.locked:
+            continue
+        slot = DS._REQUIREMENT_OF[family][name]
+        for value in np.arange(0.25, 260.0, 0.5):
+            value = round(float(value), 4)
+            if not interval.holds(value):
+                continue
+            G.generate(family, {**req, slot: value})    # must not raise
+            checked += 1
+    assert checked > 0, "the sweep tested nothing"
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_every_family_refuses_a_move_outside_its_space(family):
+    req = _reqs(family, CONFIGS[family])
+    st = DS.initial_state(family, req)
+    name = DS.SEARCHABLE[family][0]
+
+    obs = DS.step(st, DS.Action(name, 9999.0))
+
+    assert obs.applied is False
+    assert obs.state.params == st.params
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_every_enumerated_action_is_accepted_for_every_family(family):
+    req = _reqs(family, CONFIGS[family])
+    st = DS.initial_state(family, req)
+
+    for action in DS.actions(st, steps=3):
+        assert DS.step(st, action).applied, \
+            f"{family}: {action.parameter} -> {action.to}"
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_every_family_reports_a_volume(family):
+    """The objective a search would rank on, closed form and kernel-free."""
+    req = _reqs(family, CONFIGS[family])
+    obs = DS.evaluate(DS.initial_state(family, req))
+
+    assert obs.metrics["volume_mm3"] > 0
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_a_bound_names_the_builder_that_produced_it(family):
+    """A probed edge carries the builder's own sentence, not a restatement.
+
+    At least one parameter in each family is bounded by something the builder
+    said; if none were, the probe would not be earning its cost.
+    """
+    req = _reqs(family, CONFIGS[family])
+    st = DS.initial_state(family, req)
+    froms = [
+        f for interval in DS.space(family, st.params, req).values()
+        for f in (interval.low_from, interval.high_from) if f
+    ]
+    assert any(f.startswith("builder:") for f in froms), \
+        f"{family}: nothing is bounded by the builder"
+
+
+def test_a_gear_is_not_searchable_and_says_why():
+    """Mesh compatibility is not a dimension to optimise."""
+    assert "spur_gear" not in DS.SEARCHABLE
+    assert "module" in DS.UNSAFE_TO_SEARCH
+    assert DS.space("spur_gear", {"module": 2.0, "teeth": 24}) == {}
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_a_probe_from_an_unbuildable_state_claims_nothing(family):
+    """Probing outward from a state that does not build measures nothing, so
+    only the declared bounds may be reported."""
+    req = _reqs(family, CONFIGS[family])
+    broken = {**req, DS._REQUIREMENT_OF[family][DS.SEARCHABLE[family][0]]: -5.0}
+
+    found = DS.bounds(family, {}, broken)
+
+    assert all(b.source != DS.BUILDER for b in found)

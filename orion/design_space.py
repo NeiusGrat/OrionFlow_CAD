@@ -40,9 +40,23 @@ is worth building — not that it built. The verdict still belongs to the build.
 That is the correct division: this is cheap enough to call thousands of times,
 and it screens rather than decides.
 
-Only ``l_bracket`` is described so far. A family with no entry has no declared
-space, which reads as "nothing is known to be safe to move" rather than
-"anything goes" — the same direction of silence as the rest of the system.
+Six families are described: ``l_bracket``, ``rect_plate``, ``disc``,
+``shelled_box``, ``bearing_housing`` and ``manifold``. ``spur_gear`` is
+deliberately absent — module, tooth count and pressure angle are mesh
+compatibility rather than sizing, and a search that moved one would produce a
+gear that no longer meshes with whatever it was cut to run against. A family
+with no entry has no declared space, which reads as "nothing is known to be
+safe to move" rather than "anything goes" — the same direction of silence as
+the rest of the system.
+
+**What a move costs.** :func:`space` asks the builder where the edge is, which
+is about twenty builder calls per bound: ~15 ms for a full space and ~34 ms for
+a :func:`step`, so roughly thirty moves a second. That is comfortable for an
+interactive tool and slow for a search doing thousands of evaluations, which
+will want to cache by parameter vector or pass ``probe=False`` to
+:func:`bounds` and accept a space that may be wider than what builds. The
+default is correctness, because a space that quietly disagrees with the builder
+is the one failure this module cannot be allowed to have.
 """
 
 from __future__ import annotations
@@ -167,8 +181,11 @@ class Interval:
         return True
 
     def __str__(self) -> str:
-        lo = "unbounded" if self.low is None else f"{self.low:g}"
-        hi = "unbounded" if self.high is None else f"{self.high:g}"
+        # .10g rather than g: a probed edge is a real number just short of the
+        # boundary, and rounding 24.99997 to "25" would print the one value the
+        # interval excludes.
+        lo = "unbounded" if self.low is None else f"{self.low:.10g}"
+        hi = "unbounded" if self.high is None else f"{self.high:.10g}"
         return (("(" if self.strict_low else "[") + lo + ", " + hi
                 + (")" if self.strict_high else "]"))
 
@@ -189,31 +206,81 @@ class Interval:
 #: :data:`UNSAFE_TO_SEARCH`.
 SEARCHABLE: dict[str, tuple[str, ...]] = {
     "l_bracket": ("BT", "UT", "UH", "UW", "BL", "BW", "in_r"),
+    "rect_plate": ("L", "W", "T", "cr"),
+    "disc": ("R", "T"),
+    "shelled_box": ("L", "W", "H", "wall", "floor_t", "cr"),
+    "bearing_housing": ("L", "W", "H"),
+    "manifold": ("L", "W", "H"),
+    # spur_gear is deliberately absent: see UNSAFE_TO_SEARCH. Module, tooth
+    # count and pressure angle are mesh compatibility, not sizing.
 }
 
-#: Requirement names, for the parameters that have one. A user who stated a
-#: dimension has made a decision, and a search may not overturn it.
-_REQUIREMENT_OF = {
-    "BL": "base_length",
-    "BW": "base_width",
-    "BT": "base_thickness",
-    "UH": "upright_height",
-    "UT": "upright_thickness",
-    "UW": "upright_width",
-    "in_r": "inside_fillet",
+#: Builder variable to the requirement that sets it. A parameter with no
+#: requirement of its own cannot be moved by this environment at all — there is
+#: no input to change — so every searchable name appears here.
+_REQUIREMENT_OF: dict[str, dict[str, str]] = {
+    "l_bracket": {
+        "BL": "base_length", "BW": "base_width", "BT": "base_thickness",
+        "UH": "upright_height", "UT": "upright_thickness",
+        "UW": "upright_width", "in_r": "inside_fillet",
+    },
+    "rect_plate": {
+        "L": "length", "W": "width", "T": "thickness", "cr": "corner_radius",
+    },
+    "disc": {"R": "outer_r", "T": "thickness"},
+    "shelled_box": {
+        "L": "length", "W": "width", "H": "height", "wall": "wall",
+        "floor_t": "floor", "cr": "corner_radius",
+    },
+    "bearing_housing": {"L": "length", "W": "width", "H": "height"},
+    "manifold": {"L": "length", "W": "width", "H": "height"},
 }
 
-#: Family design ranges. The softest bounds here and the only invented ones:
-#: they exist so a search cannot wander somewhere absurd, not because the
-#: boundary is physical. Stated as a judgement so it can be argued with.
-_FAMILY_BOUNDS: dict[str, tuple[float, float]] = {
-    "BL": (20.0, 400.0),
-    "BW": (20.0, 400.0),
-    "BT": (1.0, 40.0),
-    "UH": (10.0, 400.0),
-    "UT": (1.0, 40.0),
-    "UW": (10.0, 400.0),
-    "in_r": (0.0, 40.0),
+#: Family design ranges. The softest bounds here and the only invented numbers
+#: in this module: they exist so a search cannot wander somewhere absurd, not
+#: because the boundary is physical. Stated as a judgement so it can be argued
+#: with.
+_FAMILY_BOUNDS: dict[str, dict[str, tuple[float, float]]] = {
+    "l_bracket": {
+        "BL": (20.0, 400.0), "BW": (20.0, 400.0), "BT": (1.0, 40.0),
+        "UH": (10.0, 400.0), "UT": (1.0, 40.0), "UW": (10.0, 400.0),
+        "in_r": (0.0, 40.0),
+    },
+    "rect_plate": {
+        "L": (10.0, 1000.0), "W": (10.0, 1000.0), "T": (0.5, 100.0),
+        "cr": (0.0, 200.0),
+    },
+    "disc": {"R": (5.0, 500.0), "T": (0.5, 100.0)},
+    "shelled_box": {
+        "L": (20.0, 600.0), "W": (20.0, 600.0), "H": (10.0, 600.0),
+        "wall": (0.5, 40.0), "floor_t": (0.5, 40.0), "cr": (0.0, 200.0),
+    },
+    "bearing_housing": {
+        "L": (20.0, 400.0), "W": (20.0, 400.0), "H": (5.0, 300.0),
+    },
+    "manifold": {"L": (20.0, 500.0), "W": (20.0, 500.0), "H": (20.0, 500.0)},
+}
+
+#: Which parameters are a *wall* — the thing a process has a minimum for.
+_WALL_VARS: dict[str, tuple[str, ...]] = {
+    "l_bracket": ("BT", "UT"),
+    "rect_plate": ("T",),
+    "disc": ("T",),
+    "shelled_box": ("wall", "floor_t"),
+    "bearing_housing": (),
+    "manifold": (),
+}
+
+#: Which are an *internal* radius, and so cannot be smaller than the tool that
+#: has to cut them. An external corner is not one of these: a cutter rounds the
+#: outside of a plate by going around it, at any radius it likes.
+_INTERNAL_RADIUS_VARS: dict[str, tuple[str, ...]] = {
+    "l_bracket": ("in_r",),
+    "rect_plate": (),
+    "disc": (),
+    "shelled_box": ("cr",),
+    "bearing_housing": (),
+    "manifold": (),
 }
 
 
@@ -239,21 +306,31 @@ def _tool_radius() -> float:
     return dfm._SMALLEST_END_MILL_D / 2.0
 
 
-# Every relation below is one the builder raises on, transcribed from
-# ``blueprint_gen.l_bracket``. Nothing here is an engineering rule this system
-# cannot check: a relation that only a solver could confirm would be a claim
-# the environment is not entitled to make.
-def _relations_l_bracket() -> list[Relation]:
-    def pos(name: str) -> Callable[[dict], bool]:
-        return lambda p, n=name: float(p.get(n, 0.0)) > 0.0
+# --------------------------------------------------------------------------- #
+# Named relations
+#
+# Every one is transcribed from a guard the builder already raises on, and the
+# transcription is deliberately partial: these are the relations a person should
+# see named, not the complete feasible set. The complete set is whatever the
+# builder accepts, and ``_probe`` below asks it directly rather than trying to
+# restate it. There are far more guards than are written here — a plate's pocket
+# depth against its thickness, a housing's bolt pattern against its footprint, a
+# box's bore against its wall — and each one nobody transcribed would otherwise
+# be a hole in the space.
+# --------------------------------------------------------------------------- #
 
-    rels = [
+
+def _positive(names: tuple[str, ...]) -> list[Relation]:
+    return [
         Relation(f"positive:{n}", f"{n} > 0", BUILDER,
                  "blueprint_gen._assert_positive refuses a non-positive "
-                 "dimension", pos(n))
-        for n in ("BL", "BW", "BT", "UH", "UT")
+                 "dimension", lambda p, n=n: float(p.get(n, 0.0)) > 0.0)
+        for n in names
     ]
-    rels += [
+
+
+def _relations_l_bracket() -> list[Relation]:
+    return _positive(("BL", "BW", "BT", "UH", "UT")) + [
         Relation(
             "upright_fits_base", "UT < BL", BUILDER,
             "an upright thicker than the base is long has no base left to "
@@ -263,34 +340,100 @@ def _relations_l_bracket() -> list[Relation]:
         Relation(
             "upright_clears_base", "UH > BT", BUILDER,
             "the upright is measured from the ground, so it must rise above "
-            "the base it sits on; blueprint_gen raises 'upright height must "
-            "exceed the base thickness'",
+            "the base it sits on",
             lambda p: float(p["UH"]) > float(p["BT"])),
         Relation(
             "upright_within_base", "UW <= BW", BUILDER,
-            "an upright wider than the base overhangs into nothing; "
-            "blueprint_gen raises 'the upright is W wide and the base only B'",
+            "an upright wider than the base overhangs into nothing",
             lambda p: float(p.get("UW", p["BW"])) <= float(p["BW"])),
         Relation(
             "fillet_fits_upright", "in_r < UH - BT", BUILDER,
             "a fillet taller than the exposed upright has no corner left to "
-            "round; blueprint_gen raises 'inside fillet is taller than the "
-            "upright above the base'",
+            "round",
             lambda p: (not p.get("in_r")
                        or float(p["in_r"]) < float(p["UH"]) - float(p["BT"]))),
         Relation(
             "fillet_fits_base", "in_r < BL - UT", BUILDER,
             "a fillet longer than the base in front of the upright runs off "
-            "the end; blueprint_gen raises 'inside fillet is longer than the "
-            "base in front of the upright'",
+            "the end",
             lambda p: (not p.get("in_r")
                        or float(p["in_r"]) < float(p["BL"]) - float(p["UT"]))),
     ]
-    return rels
+
+
+def _relations_rect_plate() -> list[Relation]:
+    return _positive(("L", "W", "T")) + [
+        Relation(
+            "corner_fits_plate", "cr <= min(L, W) / 2", BUILDER,
+            "a corner radius past half the shorter side has consumed the "
+            "side; blueprint_gen raises 'corner radius exceeds half the "
+            "shorter side'",
+            lambda p: (not p.get("cr")
+                       or float(p["cr"]) <= min(float(p["L"]),
+                                                float(p["W"])) / 2.0)),
+    ]
+
+
+def _relations_disc() -> list[Relation]:
+    return _positive(("R", "T"))
+
+
+def _relations_shelled_box() -> list[Relation]:
+    return _positive(("L", "W", "H", "wall")) + [
+        Relation(
+            "floor_positive", "floor_t > 0", BUILDER,
+            "blueprint_gen raises 'floor thickness must be positive'",
+            lambda p: float(p.get("floor_t", 0.0)) > 0.0),
+        Relation(
+            "walls_leave_a_cavity", "2 * wall < min(L, W)", BUILDER,
+            "walls that meet in the middle leave nothing to shell",
+            lambda p: 2 * float(p["wall"]) < min(float(p["L"]),
+                                                 float(p["W"]))),
+        Relation(
+            "floor_leaves_depth", "floor_t < H", BUILDER,
+            "a floor as deep as the box is tall leaves no box",
+            lambda p: float(p.get("floor_t", 0.0)) < float(p["H"])),
+        Relation(
+            "corner_fits_box", "cr <= min(L, W) / 2", BUILDER,
+            "as the plate: a corner radius past half the shorter side has "
+            "consumed the side",
+            lambda p: (not p.get("cr")
+                       or float(p["cr"]) <= min(float(p["L"]),
+                                                float(p["W"])) / 2.0)),
+    ]
+
+
+def _relations_bearing_housing() -> list[Relation]:
+    return _positive(("L", "W", "H", "seat_r", "seat_d")) + [
+        Relation(
+            "bore_fits_footprint", "2 * seat_r < min(L, W)", BUILDER,
+            "a bore wider than the block it sits in",
+            lambda p: 2 * float(p["seat_r"]) < min(float(p["L"]),
+                                                   float(p["W"]))),
+        Relation(
+            "seat_within_height", "seat_d < H", BUILDER,
+            "blueprint_gen raises 'seat depth must be less than height'",
+            lambda p: float(p["seat_d"]) < float(p["H"])),
+    ]
+
+
+def _relations_manifold() -> list[Relation]:
+    return _positive(("L", "W", "H", "pr")) + [
+        Relation(
+            "passage_fits_block", "2 * pr < min(W, H)", BUILDER,
+            "blueprint_gen raises 'main passage does not fit inside the "
+            "block'",
+            lambda p: 2 * float(p["pr"]) < min(float(p["W"]), float(p["H"]))),
+    ]
 
 
 _RELATIONS: dict[str, Callable[[], list[Relation]]] = {
     "l_bracket": _relations_l_bracket,
+    "rect_plate": _relations_rect_plate,
+    "disc": _relations_disc,
+    "shelled_box": _relations_shelled_box,
+    "bearing_housing": _relations_bearing_housing,
+    "manifold": _relations_manifold,
 }
 
 
@@ -300,90 +443,132 @@ def relations(family: str) -> list[Relation]:
     return build() if build else []
 
 
-def bounds(family: str, params: dict,
-           requirements: Optional[dict] = None) -> list[Bound]:
+# --------------------------------------------------------------------------- #
+# Asking the builder where the edge is
+# --------------------------------------------------------------------------- #
+
+#: How close to the true boundary a probe gets, in mm. Finer than any dimension
+#: anybody designs to, and about twenty bisection steps.
+_PROBE_TOL = 1e-3
+
+
+def _builds(family: str, requirements: dict, slot: str,
+            value: float) -> Optional[str]:
+    """``None`` if the builder accepts this value, else why it did not."""
+    from . import blueprint_gen as G
+
+    try:
+        G.generate(family, {**requirements, slot: value})
+        return None
+    except Exception as exc:  # noqa: BLE001 - any refusal is a refusal
+        return str(exc)
+
+
+def _edge(family: str, requirements: dict, slot: str,
+          good: float, bad: float) -> tuple[float, str]:
+    """Bisect between a value that builds and one that does not.
+
+    Returns the last value that builds and the message from the first that did
+    not. Assumes the feasible set is connected in this one variable, which
+    every guard in ``blueprint_gen`` satisfies: they are inequalities linear in
+    one dimension once the others are fixed.
+    """
+    why = _builds(family, requirements, slot, bad) or ""
+    while abs(bad - good) > _PROBE_TOL:
+        mid = (good + bad) / 2.0
+        msg = _builds(family, requirements, slot, mid)
+        if msg is None:
+            good = mid
+        else:
+            bad, why = mid, msg
+    return good, why
+
+
+def _probe(family: str, requirements: dict, name: str, slot: str,
+           current: float, low: Optional[float],
+           high: Optional[float]) -> list[Bound]:
+    """The interval the builder itself accepts for one parameter.
+
+    The builder is the authority on what exists, so rather than restate its
+    guards this asks it. Every feature interaction comes for free — a pocket
+    against a plate's thickness, a bolt circle against its footprint — including
+    the ones nobody transcribed, and the bound comes back carrying the builder's
+    own sentence as its basis.
+
+    Bounded by the declared range so a probe cannot run off to infinity. A
+    parameter whose whole declared range builds simply keeps it.
+    """
+    out: list[Bound] = []
+    if _builds(family, requirements, slot, current) is not None:
+        # The state does not build as it stands. Probing outward from an
+        # infeasible point measures nothing, so the declared bounds are all
+        # that can honestly be said.
+        return out
+
+    if low is not None and _builds(family, requirements, slot, low) is not None:
+        edge, why = _edge(family, requirements, slot, current, low)
+        out.append(Bound(name, edge, None, BUILDER, _trim(why)))
+    if high is not None and _builds(family, requirements, slot,
+                                    high) is not None:
+        edge, why = _edge(family, requirements, slot, current, high)
+        out.append(Bound(name, None, edge, BUILDER, _trim(why)))
+    return out
+
+
+def _trim(message: str) -> str:
+    one = " ".join(str(message).split())
+    return one if len(one) <= 160 else one[:157] + "..."
+
+
+def bounds(family: str, params: dict, requirements: Optional[dict] = None,
+           probe: bool = True) -> list[Bound]:
     """Every bound in force, each carrying where it came from.
 
-    Both the fixed kind (a family range, a process minimum) and the kind that
-    depends on the current state — ``UT < BL`` is a bound on ``UT`` only once
-    ``BL`` has a value.
+    The declared kinds — a family range, a process minimum — are cheap and come
+    from the tables above. The builder's own limit is found by asking it (see
+    :func:`_probe`); ``probe=False`` skips that, which is faster and reports a
+    space that may be wider than what actually builds.
     """
     if family not in SEARCHABLE:
         return []
 
     req = requirements or {}
     out: list[Bound] = []
+    label = family.replace("_", " ")
 
-    for name, (low, high) in _FAMILY_BOUNDS.items():
+    for name, (low, high) in _FAMILY_BOUNDS.get(family, {}).items():
         out.append(Bound(name, low, high, FAMILY,
-                         f"the range an {family.replace('_', ' ')} is a "
-                         f"sensible design within"))
+                         f"the range a {label} is a sensible design within"))
 
     wall = _min_wall(req.get("process"))
     if wall is not None:
-        for name in ("BT", "UT"):
+        for name in _WALL_VARS.get(family, ()):
             out.append(Bound(name, wall, None, PROCESS,
                              f"{req.get('process')} holds a wall of "
                              f"{wall:g} mm (orion.dfm)"))
     if req.get("process") == "machined":
         r = _tool_radius()
-        out.append(Bound("in_r", r, None, PROCESS,
-                         f"an internal radius below {r:g} mm cannot be cut by "
-                         f"the smallest common end mill (orion.dfm)"))
+        for name in _INTERNAL_RADIUS_VARS.get(family, ()):
+            out.append(Bound(name, r, None, PROCESS,
+                             f"an internal radius below {r:g} mm cannot be cut "
+                             f"by the smallest common end mill (orion.dfm)"))
 
-    # State-dependent bounds, transcribed from the same guards as the relations
-    # so the two cannot disagree.
-    def _f(name: str) -> Optional[float]:
-        v = params.get(name)
-        return float(v) if isinstance(v, (int, float)) else None
-
-    BL, BW, BT, UH, UT = (_f("BL"), _f("BW"), _f("BT"), _f("UH"), _f("UT"))
-    if BL is not None:
-        out.append(Bound("UT", None, BL, BUILDER, "UT < BL", strict_high=True))
-    if UT is not None:
-        out.append(Bound("BL", UT, None, BUILDER, "UT < BL", strict_low=True))
-    if BT is not None:
-        out.append(Bound("UH", BT, None, BUILDER, "UH > BT", strict_low=True))
-    if UH is not None:
-        out.append(Bound("BT", None, UH, BUILDER, "UH > BT", strict_high=True))
-    if BW is not None:
-        # The one non-strict guard: an upright exactly as wide as the base is
-        # the common case, not an edge case.
-        out.append(Bound("UW", None, BW, BUILDER, "UW <= BW"))
-    if _f("UW") is not None and req.get("upright_width"):
-        # Only when the upright's width was actually asked for. Left unstated
-        # it follows the base — ``UW = upright_width or BW`` — so narrowing the
-        # base narrows the upright with it and no bound applies. Adding one
-        # anyway would forbid a move that rebuilds perfectly well.
-        out.append(Bound("BW", _f("UW"), None, BUILDER, "UW <= BW"))
-    # Each fillet guard constrains all three of its terms, and every direction
-    # has to be projected. Writing only the bound on ``in_r`` left an interval
-    # for ``UT`` whose upper values broke ``in_r < BL - UT`` — legal against
-    # the bound that mentions UT, refused by the one that does not.
-    in_r = _f("in_r")
-    if UH is not None and BT is not None:
-        out.append(Bound("in_r", None, UH - BT, BUILDER, "in_r < UH - BT",
-                         strict_high=True))
-    if in_r:
-        if BT is not None:
-            out.append(Bound("UH", BT + in_r, None, BUILDER,
-                             "in_r < UH - BT", strict_low=True))
-        if UH is not None:
-            out.append(Bound("BT", None, UH - in_r, BUILDER,
-                             "in_r < UH - BT", strict_high=True))
-    if BL is not None and UT is not None:
-        out.append(Bound("in_r", None, BL - UT, BUILDER, "in_r < BL - UT",
-                         strict_high=True))
-    if in_r:
-        if UT is not None:
-            out.append(Bound("BL", UT + in_r, None, BUILDER,
-                             "in_r < BL - UT", strict_low=True))
-        if BL is not None:
-            out.append(Bound("UT", None, BL - in_r, BUILDER,
-                             "in_r < BL - UT", strict_high=True))
+    if probe:
+        declared = _FAMILY_BOUNDS.get(family, {})
+        for name in SEARCHABLE[family]:
+            slot = _REQUIREMENT_OF.get(family, {}).get(name)
+            value = params.get(name)
+            if slot is None or not isinstance(value, (int, float)):
+                continue
+            low, high = declared.get(name, (None, None))
+            # Probe from the tightest floor already in force, so a builder edge
+            # below a process minimum is never reported as reachable.
+            floors = [b.low for b in out if b.name == name and b.low is not None]
+            floor = max(floors) if floors else low
+            out.extend(_probe(family, req, name, slot, float(value),
+                              floor, high))
 
     return out
-
 
 def violations(family: str, params: dict) -> list[Violation]:
     """Every declared relation this parameter set breaks.
@@ -444,7 +629,7 @@ def space(family: str, params: dict,
     freed = unlocked or frozenset()
     all_bounds = bounds(family, params, req)
     stated = {
-        name for name, slot in _REQUIREMENT_OF.items()
+        name for name, slot in _REQUIREMENT_OF.get(family, {}).items()
         if _is_stated(req, slot) and name not in freed
     }
 
@@ -474,8 +659,10 @@ def space(family: str, params: dict,
             low_from=low_from, high_from=high_from,
             strict_low=strict_low, strict_high=strict_high,
             locked=name in stated,
-            lock_reason=(f"the request states {_REQUIREMENT_OF[name]}"
-                         if name in stated else ""),
+            lock_reason=(
+                f"the request states "
+                f"{_REQUIREMENT_OF.get(family, {}).get(name, name)}"
+                if name in stated else ""),
         )
     return out
 
@@ -727,7 +914,7 @@ def _with_parameter(state: State, action: Action) -> dict:
     Only parameters with a requirement of their own can be moved this way, and
     :data:`SEARCHABLE` contains no others.
     """
-    slot = _REQUIREMENT_OF.get(action.parameter)
+    slot = _REQUIREMENT_OF.get(state.family, {}).get(action.parameter)
     if slot is None:
         return dict(state.requirements)
     return {**state.requirements, slot: float(action.to)}
@@ -790,4 +977,47 @@ UNSAFE_TO_SEARCH: dict[str, str] = {
     "slot_edge_gap": "moving it moves the mounting positions.",
     "base_hole_r": "as hole_r.",
     "base_hole_edge_gap": "as slot_edge_gap.",
+
+    # disc, rect_plate
+    "bore_r": "a bore is sized to the shaft, bearing or pipe that passes "
+              "through it.",
+    "pcd_r": "a bolt circle matches the flange it bolts to. Moving it makes a "
+             "part that no longer mates.",
+    "hole_pitch": "as pcd_r: the pattern belongs to the mating part.",
+    "pd": "pocket depth is a clearance or a weight-saving decision somebody "
+          "made; this module cannot tell which.",
+
+    # bearing_housing — the whole reason only L, W and H are searchable
+    "seat_r": "the seat is the bearing's outside diameter, from a catalogue. "
+              "Changing it does not resize a bearing, it selects a different "
+              "one, and nothing here is entitled to do that.",
+    "seat_d": "seat depth is the bearing's width, from the same catalogue "
+              "row.",
+    "shoulder": "the shoulder is what the bearing's inner ring abuts. Its "
+                "size comes from the manufacturer's permissible abutment, not "
+                "from what would be lighter.",
+    "recess_r": "a seal or cover recess, sized to the part that sits in it.",
+    "recess_depth": "as recess_r.",
+
+    # manifold
+    "pr": "a flow passage is sized by the flow it has to carry and the "
+          "pressure drop that is acceptable. Neither is visible here, and "
+          "narrowing a passage to save material would change what the part "
+          "does rather than how heavy it is.",
+    "port_r": "as pr, and additionally set by the fitting that threads into "
+              "it.",
+
+    # shelled_box
+    "end_bore_r": "a bore through a wall is a cable gland, a bearing or a "
+                  "connector. All three are interfaces.",
+    "bore_height": "where a bore sits is set by what lines up with it.",
+
+    # spur_gear — excluded entirely, which is why the family has no space
+    "module": "module is mesh compatibility. Two gears mesh only at the same "
+              "module, so changing it does not resize a gear, it stops it "
+              "engaging with whatever it was cut to run against.",
+    "teeth": "tooth count sets the ratio, which is the thing the gear was "
+             "specified to achieve.",
+    "pressure_angle": "as module: a mesh property shared with the mating "
+                      "gear, not a free dimension.",
 }
