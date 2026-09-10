@@ -1,0 +1,10 @@
+# Fetched provenance: re-downloadable from the HF Space, ~5.5 MB of LFS meshes
+source/meshes/
+
+# Intermediates: staged meshes, per-source BREP, reports
+work/
+
+# Build products: the assembly STEP alone is ~95 MB
+out/
+
+__pycache__/
