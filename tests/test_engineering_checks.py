@@ -576,3 +576,55 @@ def test_the_engineering_block_is_part_of_the_frozen_contract():
     b = Blueprint.from_dict(_plate(loosened)).freeze().blueprint_hash
 
     assert a != b, "relaxing a safety factor must not be invisible to the hash"
+
+
+# --------------------------------------------------------------------------- #
+# Shear deflection
+#
+# `beam_bending` was Euler-Bernoulli only, which treats a beam as infinitely
+# stiff in shear. That is close enough for a slender rib and wrong for the
+# stubby arms this system generates, and `deflection_mm` is a key a design can
+# declare a bound on — so the error landed straight in the verdict.
+# --------------------------------------------------------------------------- #
+
+
+def test_a_stubby_beam_is_not_reported_as_stiffer_than_it_is():
+    from orion import calc
+
+    # L/H = 2: a bracket arm, not a textbook beam.
+    r = calc.beam_bending(load_n=100.0, length_mm=20.0, width_mm=10.0,
+                          height_mm=10.0, material_name="steel_1018")
+
+    assert r["deflection_shear_mm"] > 0.0
+    assert r["deflection_mm"] > r["deflection_bending_mm"]
+    # Shear carries about a sixth of the deflection at this aspect ratio.
+    assert 0.14 < r["shear_fraction"] < 0.18
+    assert r["slenderness"] == 2.0
+
+
+def test_a_slender_beam_still_matches_euler_bernoulli():
+    """The correction must not disturb the regime where E-B is right."""
+    from orion import calc
+
+    r = calc.beam_bending(load_n=100.0, length_mm=200.0, width_mm=10.0,
+                          height_mm=10.0, material_name="steel_1018")
+
+    assert r["shear_fraction"] < 0.01
+    assert r["deflection_mm"] == pytest.approx(r["deflection_bending_mm"],
+                                               rel=0.01)
+
+
+def test_every_material_carries_a_poisson_ratio():
+    """A shear modulus cannot be guessed from E alone."""
+    from orion import calc
+
+    for name, props in calc.MATERIALS.items():
+        assert 0.0 < props["nu"] < 0.5, name
+
+
+def test_a_beam_with_no_thickness_is_refused_not_infinite():
+    from orion import calc
+
+    with pytest.raises(ValueError):
+        calc.beam_bending(load_n=100.0, length_mm=50.0, width_mm=10.0,
+                          height_mm=0.0, material_name="steel_1018")

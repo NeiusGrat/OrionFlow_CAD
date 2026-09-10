@@ -100,30 +100,35 @@ def check_stated_volume(payload: dict, thinking: str,
 # --------------------------------------------------------------------------- #
 # materials — nominal handbook values, room temperature
 # --------------------------------------------------------------------------- #
-#: density kg/m^3, E MPa, yield MPa, alpha 1e-6/K. Nominal wrought values for
-#: sizing and mass estimates; a real stress case wants the supplier's cert, not
-#: this table, and callers should say so when they quote from it.
+#: density kg/m^3, E MPa, yield MPa, alpha 1e-6/K, nu dimensionless. Nominal
+#: wrought values for sizing and mass estimates; a real stress case wants the
+#: supplier's cert, not this table, and callers should say so when they quote
+#: from it.
+#:
+#: ``nu`` is here because a shear modulus cannot be guessed from E alone, and
+#: without one every beam in this module was implicitly infinitely stiff in
+#: shear. See :func:`beam_bending`.
 MATERIALS: dict[str, dict[str, float]] = {
     "aluminium_6061_t6": {"density": 2700.0, "E": 68900.0, "yield": 276.0,
-                          "alpha": 23.6},
+                          "alpha": 23.6, "nu": 0.33},
     "aluminium_7075_t6": {"density": 2810.0, "E": 71700.0, "yield": 503.0,
-                          "alpha": 23.4},
+                          "alpha": 23.4, "nu": 0.33},
     "steel_1018":        {"density": 7870.0, "E": 205000.0, "yield": 370.0,
-                          "alpha": 11.9},
+                          "alpha": 11.9, "nu": 0.29},
     "steel_4140":        {"density": 7850.0, "E": 205000.0, "yield": 655.0,
-                          "alpha": 12.3},
+                          "alpha": 12.3, "nu": 0.29},
     "stainless_304":     {"density": 8000.0, "E": 193000.0, "yield": 215.0,
-                          "alpha": 17.3},
+                          "alpha": 17.3, "nu": 0.29},
     "titanium_ti6al4v":  {"density": 4430.0, "E": 113800.0, "yield": 880.0,
-                          "alpha": 8.6},
+                          "alpha": 8.6, "nu": 0.342},
     "brass_c360":        {"density": 8500.0, "E": 97000.0, "yield": 310.0,
-                          "alpha": 20.5},
+                          "alpha": 20.5, "nu": 0.34},
     "abs":               {"density": 1040.0, "E": 2200.0, "yield": 40.0,
-                          "alpha": 90.0},
+                          "alpha": 90.0, "nu": 0.35},
     "pla":               {"density": 1240.0, "E": 3500.0, "yield": 50.0,
-                          "alpha": 68.0},
+                          "alpha": 68.0, "nu": 0.36},
     "nylon_pa12":        {"density": 1010.0, "E": 1700.0, "yield": 48.0,
-                          "alpha": 110.0},
+                          "alpha": 110.0, "nu": 0.39},
 }
 
 
@@ -193,25 +198,54 @@ def beam_bending(load_n: float, length_mm: float, width_mm: float,
     ``simply_supported_centre``. Second moment I = b*h^3/12 about the neutral
     axis, so height dominates cubically — the single most useful fact when a
     rib is being sized.
+
+    **Deflection includes shear.** Euler-Bernoulli alone treats the beam as
+    infinitely stiff in shear, which is close enough for a slender rib and
+    badly wrong for the stubby ones this system actually generates: at a
+    length-to-height ratio of 2 it underpredicts deflection by 16%, and at 1.5
+    by 26%. ``deflection_mm`` is the Timoshenko total, because that is the key
+    a design declares a bound on and it must be the honest one. The two terms
+    stay available separately so a reader can see which dominates.
+
+    ``kappa`` = 5/6, the Timoshenko shear coefficient for a rectangle.
+
+    ``max_stress_mpa`` is the stress at the section carrying the largest
+    moment — the *root* for a cantilever. That is deliberately the worst
+    section and not comparable with an FEA metric measured away from the
+    supports; see ``slenderness`` and the note in :mod:`orion.engineering`.
     """
     mat = material(material_name)
+    if min(length_mm, width_mm, height_mm) <= 0:
+        raise ValueError("beam dimensions must be positive")
     inertia = width_mm * height_mm ** 3 / 12.0
     c = height_mm / 2.0
+    area = width_mm * height_mm
+    kappa = 5.0 / 6.0
+    shear_modulus = mat["E"] / (2.0 * (1.0 + mat["nu"]))
     if case == "cantilever_end":
         moment = load_n * length_mm
-        defl = load_n * length_mm ** 3 / (3.0 * mat["E"] * inertia)
+        defl_bend = load_n * length_mm ** 3 / (3.0 * mat["E"] * inertia)
+        defl_shear = load_n * length_mm / (kappa * shear_modulus * area)
     elif case == "simply_supported_centre":
         moment = load_n * length_mm / 4.0
-        defl = load_n * length_mm ** 3 / (48.0 * mat["E"] * inertia)
+        defl_bend = load_n * length_mm ** 3 / (48.0 * mat["E"] * inertia)
+        defl_shear = load_n * length_mm / (4.0 * kappa * shear_modulus * area)
     else:
         raise ValueError("case must be cantilever_end or "
                          "simply_supported_centre")
     stress = moment * c / inertia
+    defl = defl_bend + defl_shear
     return {"case": case, "load_n": load_n, "length_mm": length_mm,
             "width_mm": width_mm, "height_mm": height_mm,
             "material": mat["material"], "I_mm4": inertia,
             "moment_nmm": moment, "max_stress_mpa": stress,
-            "deflection_mm": defl, "yield_mpa": mat["yield"],
+            "deflection_mm": defl,
+            "deflection_bending_mm": defl_bend,
+            "deflection_shear_mm": defl_shear,
+            "shear_fraction": defl_shear / defl if defl > 0 else 0.0,
+            "slenderness": length_mm / height_mm,
+            "poisson_ratio": mat["nu"], "G_mpa": shear_modulus,
+            "yield_mpa": mat["yield"],
             "safety_factor": (mat["yield"] / stress) if stress > 0 else
             float("inf")}
 
