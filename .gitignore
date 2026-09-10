@@ -120,3 +120,9 @@ htmlcov/
 # Benchmark run outputs (the frozen prompt set IS committed)
 benchmarks/results/
 freecad/variants/
+
+# Vendor reference catalogues (third-party copyright, ~72MB)
+pdf files/
+
+# Internal audit / architecture reports — repo is public
+ORIONFLOW_*.md
