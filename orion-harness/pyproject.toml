@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orion-harness"
+version = "0.1.0"
+description = "OrionFlow unified runtime/eval/RL harness (OF-TR-002). M0+M1 scope: contracts, runner, T0/T1 geometry tier."
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "pydantic>=2.12,<3",
+    "PyYAML>=6.0,<7",
+    "build123d==0.10.0",
+    "cryptography>=42,<46",
+    "trimesh>=4.0,<5",
+    "scipy>=1.13,<2",
+    "numpy>=2.0,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+orion-harness = "orion_harness.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

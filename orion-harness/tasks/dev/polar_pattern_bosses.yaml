@@ -1,0 +1,14 @@
+task_id: polar_pattern_bosses
+family: feature_coverage
+pillar: modify
+split: dev
+difficulty: 2
+provenance: hand_authored
+prompt: |
+  Arrange six 2mm-radius, 8mm-tall bosses radially (60 degree spacing) around a 10mm-radius, 8mm-tall disk.
+checks:
+  - {name: schema_valid, verifier: tier0.schema, kind: gate}
+  - {name: single_solid, verifier: tier1.single_solid, kind: gate}
+  - {name: watertight, verifier: tier1.watertight, kind: gate}
+  - {name: rebuild_deterministic, verifier: tier1.rebuild_deterministic, kind: gate}
+timeout_s: 120

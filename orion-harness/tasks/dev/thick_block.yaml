@@ -1,0 +1,20 @@
+task_id: thick_block
+family: prismatic_plate
+pillar: reconstruct
+split: dev
+difficulty: 1
+provenance: derived:orionflow_ofl.examples
+prompt: |
+  Reproduce the following OFL part exactly: Thick block 50x50x30mm
+checks:
+  - {name: schema_valid, verifier: tier0.schema, kind: gate}
+  - {name: single_solid, verifier: tier1.single_solid, kind: gate}
+  - {name: watertight, verifier: tier1.watertight, kind: gate}
+  - {name: rebuild_deterministic, verifier: tier1.rebuild_deterministic, kind: gate}
+  - name: mass_g
+    verifier: tier1.mass
+    kind: metric
+    params: {density_g_per_mm3: 0.00785}
+    target: {max: 700}
+    weight: 1.0
+timeout_s: 120

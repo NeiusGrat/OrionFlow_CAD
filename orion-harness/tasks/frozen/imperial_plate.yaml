@@ -1,0 +1,14 @@
+task_id: imperial_plate
+family: prismatic_plate
+pillar: reconstruct
+split: frozen
+difficulty: 2
+provenance: derived:orionflow_ofl.examples
+prompt: |
+  Reproduce the following OFL part exactly: Imperial plate with dimensions in inches (converted to mm)
+checks:
+  - {name: schema_valid, verifier: tier0.schema, kind: gate}
+  - {name: single_solid, verifier: tier1.single_solid, kind: gate}
+  - {name: watertight, verifier: tier1.watertight, kind: gate}
+  - {name: rebuild_deterministic, verifier: tier1.rebuild_deterministic, kind: gate}
+timeout_s: 120

@@ -1,0 +1,19 @@
+task_id: tag_stability_hole
+family: tag_stability
+pillar: modify
+split: dev
+difficulty: 2
+provenance: hand_authored
+prompt: |
+  Build a 100x40x6mm plate with one through mounting hole, 8mm diameter,
+  centered at (30, 0) in the plate's local XY frame.
+checks:
+  - {name: schema_valid, verifier: tier0.schema, kind: gate}
+  - {name: single_solid, verifier: tier1.single_solid, kind: gate}
+  - {name: watertight, verifier: tier1.watertight, kind: gate}
+  - name: mount_hole_present
+    verifier: tier1.hole_present
+    kind: gate
+    params: {at: [30, 0], diameter: 8, tolerance: 0.5}
+  - {name: rebuild_deterministic, verifier: tier1.rebuild_deterministic, kind: gate}
+timeout_s: 120

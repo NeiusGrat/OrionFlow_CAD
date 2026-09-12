@@ -1,0 +1,14 @@
+task_id: linear_pattern_pegs
+family: feature_coverage
+pillar: modify
+split: dev
+difficulty: 2
+provenance: hand_authored
+prompt: |
+  Pattern four 6mm-radius, 8mm-tall bosses in a row, 20mm apart, on a 100x20x4mm base plate.
+checks:
+  - {name: schema_valid, verifier: tier0.schema, kind: gate}
+  - {name: single_solid, verifier: tier1.single_solid, kind: gate}
+  - {name: watertight, verifier: tier1.watertight, kind: gate}
+  - {name: rebuild_deterministic, verifier: tier1.rebuild_deterministic, kind: gate}
+timeout_s: 120
