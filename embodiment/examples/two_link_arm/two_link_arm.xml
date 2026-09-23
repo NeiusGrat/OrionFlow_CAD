@@ -1,0 +1,46 @@
+<mujoco model="two_link_arm">
+  <compiler angle="radian" meshdir="meshes" autolimits="true"/>
+  <option timestep="0.001"/>
+  <default>
+    <default class="visual"><geom type="mesh" contype="0" conaffinity="0" group="2"/></default>
+    <default class="collision"><geom type="mesh" group="3"/></default>
+  </default>
+  <asset>
+    <mesh name="base_link_visual" file="base_link_visual.stl"/>
+    <mesh name="base_link_base_block_collision" file="base_link_base_block_collision.stl"/>
+    <mesh name="base_link_shoulder_servo_collision" file="base_link_shoulder_servo_collision.stl"/>
+    <mesh name="link_1_visual" file="link_1_visual.stl"/>
+    <mesh name="link_1_link_1_bar_collision" file="link_1_link_1_bar_collision.stl"/>
+    <mesh name="link_1_joint_2_servo_collision" file="link_1_joint_2_servo_collision.stl"/>
+    <mesh name="link_2_visual" file="link_2_visual.stl"/>
+    <mesh name="link_2_link_2_bar_collision" file="link_2_link_2_bar_collision.stl"/>
+  </asset>
+  <worldbody>
+    <body name="base_link">
+      <inertial pos="-1.78063488e-19 -0.02345 0.0378720092" mass="0.2784232" fullinertia="0.000181594537 0.000237716853 0.000141524456 1.54201322e-22 -5.04262103e-22 6.89688618e-21"/>
+      <geom class="visual" mesh="base_link_visual"/>
+      <geom class="collision" mesh="base_link_base_block_collision"/>
+      <geom class="collision" mesh="base_link_shoulder_servo_collision"/>
+      <body name="link_1" pos="0 0 0.06985" quat="0.707106781 -0.707106781 0 0">
+        <inertial pos="0.101100027 6.24080472e-20 -0.0151182619" mass="0.0802919179" fullinertia="2.36436901e-05 0.000133509736 0.000115890058 4.93094698e-23 2.74947356e-05 -4.07021942e-23"/>
+        <joint name="joint_1" type="hinge" axis="0 0 1" range="-1.57079633 1.57079633" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+        <geom class="visual" mesh="link_1_visual"/>
+        <geom class="collision" mesh="link_1_link_1_bar_collision"/>
+        <geom class="collision" mesh="link_1_joint_2_servo_collision"/>
+        <body name="link_2" pos="0.12 0 0.008" quat="1 0 0 0">
+          <inertial pos="0.05 1.42922998e-19 0.003" mass="0.0217207179" fullinertia="1.12700465e-06 2.73829754e-05 2.83796558e-05 -3.86972332e-23 0 -2.6324385e-27"/>
+          <joint name="joint_2" type="hinge" axis="0 0 1" range="-1.57079633 1.57079633" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+          <geom class="visual" mesh="link_2_visual"/>
+          <geom class="collision" mesh="link_2_link_2_bar_collision"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="joint_1_servo" joint="joint_1" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-1.57079633 1.57079633"/>
+    <position name="joint_2_servo" joint="joint_2" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-1.57079633 1.57079633"/>
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0 0" ctrl="0 0"/>
+  </keyframe>
+</mujoco>

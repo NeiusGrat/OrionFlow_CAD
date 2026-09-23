@@ -132,3 +132,7 @@ ORIONFLOW_*.md
 
 # MuJoCo writes its warning log to the working directory
 MUJOCO_LOG.TXT
+
+# Embodiment-compiler examples are committed whole: CAD, meshes and robot files
+!embodiment/examples/**/*.step
+!embodiment/examples/**/*.stl

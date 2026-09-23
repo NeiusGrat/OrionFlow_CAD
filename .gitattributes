@@ -1,0 +1,3 @@
+# Embodiment examples are compared byte for byte against report.json sha256s;
+# no line-ending conversion may touch them.
+embodiment/examples/** -text

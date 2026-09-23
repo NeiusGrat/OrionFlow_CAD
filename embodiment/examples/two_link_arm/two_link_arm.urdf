@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<robot name="two_link_arm">
+  <link name="base_link">
+    <inertial>
+      <origin xyz="-1.78063488e-19 -0.02345 0.0378720092" rpy="0 0 0"/>
+      <mass value="0.2784232"/>
+      <inertia ixx="0.000181594537" iyy="0.000237716853" izz="0.000141524456" ixy="1.54201322e-22" ixz="-5.04262103e-22" iyz="6.89688618e-21"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/base_link_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/base_link_base_block_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/base_link_shoulder_servo_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="link_1">
+    <inertial>
+      <origin xyz="0.101100027 6.24080472e-20 -0.0151182619" rpy="0 0 0"/>
+      <mass value="0.0802919179"/>
+      <inertia ixx="2.36436901e-05" iyy="0.000133509736" izz="0.000115890058" ixy="4.93094698e-23" ixz="2.74947356e-05" iyz="-4.07021942e-23"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/link_1_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/link_1_link_1_bar_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/link_1_joint_2_servo_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="link_2">
+    <inertial>
+      <origin xyz="0.05 1.42922998e-19 0.003" rpy="0 0 0"/>
+      <mass value="0.0217207179"/>
+      <inertia ixx="1.12700465e-06" iyy="2.73829754e-05" izz="2.83796558e-05" ixy="-3.86972332e-23" ixz="0" iyz="-2.6324385e-27"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/link_2_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/link_2_link_2_bar_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <joint name="joint_1" type="revolute">
+    <parent link="base_link"/>
+    <child link="link_1"/>
+    <origin xyz="0 0 0.06985" rpy="-1.57079633 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57079633" upper="1.57079633" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="joint_2" type="revolute">
+    <parent link="link_1"/>
+    <child link="link_2"/>
+    <origin xyz="0.12 0 0.008" rpy="0 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57079633" upper="1.57079633" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+</robot>

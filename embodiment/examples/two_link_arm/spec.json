@@ -1,0 +1,18 @@
+{
+ "name": "two_link_arm",
+ "link_lengths_mm": [
+  120.0,
+  100.0
+ ],
+ "link_width_mm": 24.0,
+ "link_thickness_mm": 6.0,
+ "bore_diameter_mm": 6.0,
+ "base_footprint_mm": 70.0,
+ "base_height_mm": 60.0,
+ "gap_mm": 2.0,
+ "material": "pla",
+ "actuator": "mg996r_servo",
+ "joint_range_deg": 90.0,
+ "joint_damping_nms": 0.05,
+ "torque_safety_factor": 2.0
+}

@@ -1,0 +1,200 @@
+{
+ "accepted": true,
+ "files": {
+  "cad/base_block.featuregraph.json": "c79e414704429b7df16a6cc64787c1d0b91aaf12418aa3203e6dfbf1f952498f",
+  "cad/base_link.step": "8cd8e6fb969f5aaf64695795434fceb5e7c5f8d05aaabfdf3331d0184eb36635",
+  "cad/joint_2_servo.featuregraph.json": "33cc9b2471619e3bb96842ae4beea0fed3f0ba5cbadd88ceb995a84cecf4c2d0",
+  "cad/link_1.step": "4b572e25e975370ce6791599b2782cb456eb16c2294a5aea34b5ee78a1b1c5b7",
+  "cad/link_1_bar.featuregraph.json": "3d10b96748c5b755b14d2beaa34ca9164456377f52cb9ed675bd76b4e5afe66a",
+  "cad/link_2.step": "042a3d5a4c1c45830700024a05ff7c76b1823efd0a4ed2805a3c2f316699897c",
+  "cad/link_2_bar.featuregraph.json": "0026f4f776773d8c7b6cf94d419ecb3909020067dd5501705b6bdb2fa9e26565",
+  "cad/shoulder_servo.featuregraph.json": "e036dcf33a617bcc3029bd8d9e23d39a05852086df389b7bbcb961b0b06d4295",
+  "meshes/base_link_base_block_collision.stl": "13b386211987daf900f81f686a85973057b7a90d6550683f24fb38fcea1b679f",
+  "meshes/base_link_shoulder_servo_collision.stl": "27b7de4af8967cd2ea7213b5df91cd9df90135850424d1481f3a91c545788d67",
+  "meshes/base_link_visual.stl": "5e12091e1478134cd52debc619b5400f111485440bb11d777f5bc27f5c3daacb",
+  "meshes/link_1_joint_2_servo_collision.stl": "9f77134201084e022d0e66cb3b142a4f2b3c492a09e2b350cf9a325dd1b91bb5",
+  "meshes/link_1_link_1_bar_collision.stl": "311b6453ad4decef19b356b4774bd942e064519a120a4011bd8fdc20d72692db",
+  "meshes/link_1_visual.stl": "332b6a209b242ae1b1d257006aef7330d79414aefdc0ef7ba94d256113b89804",
+  "meshes/link_2_link_2_bar_collision.stl": "ef51a2ffd41644b75e500743c1068bc3ee57d37c07643f80f0af98138413cb2e",
+  "meshes/link_2_visual.stl": "cb4fdbcb8c40c4c364b22f9f9f5ce0bffc4bfb5ff47ee6b152ff68d6710d990e",
+  "spec.json": "ead54cf9a4ed58b684dbe69f7b3e3c25b031d71b4f7af81b21da880aaf358188",
+  "two_link_arm.urdf": "47fd3049cd620eae5dfe9627d5da21dda9f3ba0f905751698f9b0d75bd9ef644",
+  "two_link_arm.xml": "b884baa7f36ea1a7f57dab893638a7ce2468a702393748ff7fe466b7cb03a453"
+ },
+ "gates": {
+  "actuators": {
+   "joints": {
+    "joint_1": {
+     "margin": 9.314,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.115817
+    },
+    "joint_2": {
+     "margin": 101.286,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.01065
+    }
+   },
+   "passed": true
+  },
+  "geometry": {
+   "components": 5,
+   "passed": true
+  },
+  "inertia": {
+   "passed": true,
+   "problems": []
+  },
+  "interference": {
+   "clashes": [],
+   "passed": true
+  },
+  "robocheck": {
+   "passed": true,
+   "summary": {
+    "mjcf": {
+     "errors": 0,
+     "loaded": true,
+     "warnings": 0
+    },
+    "urdf": {
+     "errors": 0,
+     "loaded": true,
+     "warnings": 0
+    }
+   }
+  }
+ },
+ "links": {
+  "base_link": {
+   "com_m": [
+    -0.0,
+    -0.02345,
+    0.037872009
+   ],
+   "inertia_kg_m2": [
+    [
+     0.000181594537,
+     0.0,
+     -0.0
+    ],
+    [
+     0.0,
+     0.000237716853,
+     0.0
+    ],
+    [
+     -0.0,
+     0.0,
+     0.000141524456
+    ]
+   ],
+   "mass_kg": 0.2784232
+  },
+  "link_1": {
+   "com_m": [
+    0.101100027,
+    0.0,
+    -0.015118262
+   ],
+   "inertia_kg_m2": [
+    [
+     2.364369e-05,
+     0.0,
+     2.7494736e-05
+    ],
+    [
+     0.0,
+     0.000133509736,
+     -0.0
+    ],
+    [
+     2.7494736e-05,
+     -0.0,
+     0.000115890058
+    ]
+   ],
+   "mass_kg": 0.080291918
+  },
+  "link_2": {
+   "com_m": [
+    0.05,
+    0.0,
+    0.003
+   ],
+   "inertia_kg_m2": [
+    [
+     1.127005e-06,
+     -0.0,
+     0.0
+    ],
+    [
+     -0.0,
+     2.7382975e-05,
+     -0.0
+    ],
+    [
+     0.0,
+     -0.0,
+     2.8379656e-05
+    ]
+   ],
+   "mass_kg": 0.021720718
+  }
+ },
+ "robocheck": {
+  "mjcf": {
+   "errors": 0,
+   "findings": [],
+   "format": "mjcf",
+   "loaded": true,
+   "ok": true,
+   "source": "two_link_arm.xml",
+   "stats": {
+    "actuators": 2,
+    "bodies": 3,
+    "bodies_checked_against_geometry": 2,
+    "dofs": 2,
+    "floating_base": false,
+    "geoms": 8,
+    "joints": 2,
+    "mass_kg": 0.3804,
+    "rest_overlaps": 0,
+    "settle_peak_qvel": 0.63,
+    "settle_s": 2.0
+   },
+   "warnings": 0
+  },
+  "urdf": {
+   "errors": 0,
+   "findings": [],
+   "format": "urdf",
+   "loaded": true,
+   "ok": true,
+   "source": "two_link_arm.urdf",
+   "stats": {
+    "actuators": 0,
+    "bodies": 2,
+    "bodies_checked_against_geometry": 2,
+    "dofs": 2,
+    "floating_base": false,
+    "geoms": 5,
+    "joints": 2,
+    "links": 3,
+    "mass_kg": 0.102,
+    "rest_overlaps": 0,
+    "settle_peak_qvel": 2.241,
+    "settle_s": 2.0
+   },
+   "warnings": 0
+  }
+ },
+ "robot": "two_link_arm",
+ "total_mass_kg": 0.380435836
+}

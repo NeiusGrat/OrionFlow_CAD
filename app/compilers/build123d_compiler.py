@@ -140,13 +140,23 @@ class Build123dCompiler:
             raw = entity.params.get(k)
             return self._resolve_param(ctx, raw)
 
+        # Optional centre offset. Absent, an entity is centred on the sketch
+        # origin as it always was; a robot link needs its two joint bores at
+        # its two ends, which a centred-only sketch cannot express.
+        def centre():
+            return (
+                self._resolve_param(ctx, entity.params.get("cx", 0.0)),
+                self._resolve_param(ctx, entity.params.get("cy", 0.0)),
+            )
+
         if entity.type == "rectangle":
-            # Center defaults to (0,0) if not specified
-            # Build123d Rectangle is centered by default
-            Rectangle(width=val("width"), height=val("height"))
+            # Build123d Rectangle is centered on its location
+            with Locations(centre()):
+                Rectangle(width=val("width"), height=val("height"))
 
         elif entity.type == "circle":
-            Circle(radius=val("radius"))
+            with Locations(centre()):
+                Circle(radius=val("radius"))
 
         elif entity.type == "line":
             # Line((x1,y1), (x2,y2))

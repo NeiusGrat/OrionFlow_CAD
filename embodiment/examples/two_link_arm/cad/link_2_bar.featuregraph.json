@@ -1,0 +1,112 @@
+{
+ "density_from": [
+  "material",
+  "pla"
+ ],
+ "graph": {
+  "features": [
+   {
+    "depends_on": [],
+    "id": "extrude",
+    "params": {
+     "depth": "$thickness"
+    },
+    "sketch": "body",
+    "type": "extrude"
+   },
+   {
+    "depends_on": [
+     "extrude"
+    ],
+    "id": "bores",
+    "params": {
+     "depth": "$thickness"
+    },
+    "sketch": "cuts",
+    "type": "cut"
+   }
+  ],
+  "metadata": {},
+  "parameters": {
+   "bore_r": 3.0,
+   "length": 100.0,
+   "mid": 50.0,
+   "overall": 124.0,
+   "thickness": 6.0,
+   "width": 24.0
+  },
+  "sketches": [
+   {
+    "constraints": [],
+    "entities": [
+     {
+      "id": "plate",
+      "params": {
+       "cx": "$mid",
+       "cy": 0.0,
+       "height": "$width",
+       "width": "$overall"
+      },
+      "type": "rectangle"
+     }
+    ],
+    "id": "body",
+    "plane": "XY"
+   },
+   {
+    "constraints": [],
+    "entities": [
+     {
+      "id": "bore_0",
+      "params": {
+       "cx": 0.0,
+       "cy": 0.0,
+       "radius": "$bore_r"
+      },
+      "type": "circle"
+     },
+     {
+      "id": "bore_1",
+      "params": {
+       "cx": "$length",
+       "cy": 0.0,
+       "radius": "$bore_r"
+      },
+      "type": "circle"
+     }
+    ],
+    "id": "cuts",
+    "plane": "XY"
+   }
+  ],
+  "units": "mm",
+  "version": "v1"
+ },
+ "link": "link_2",
+ "placement_mm": [
+  [
+   1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   1.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   1.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ]
+}

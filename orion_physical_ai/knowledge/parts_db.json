@@ -141,13 +141,15 @@
     "name": "SG90 micro servo",
     "category": "motor",
     "body_mm": [22.8, 12.2, 28.5], "mount_hole_spacing_mm": 27.8,
-    "mount_hole_dia_mm": 2.0, "mass_g": 9, "torque_kg_cm": 1.8
+    "mount_hole_dia_mm": 2.0, "mass_g": 9, "torque_kg_cm": 1.8,
+    "speed_s_per_60deg": 0.1, "rated_voltage_v": 4.8
   },
   "mg996r_servo": {
     "name": "MG996R standard servo",
     "category": "motor",
     "body_mm": [40.7, 19.7, 42.9], "mount_hole_spacing_mm": [49.5, 10.0],
-    "mount_hole_dia_mm": 4.5, "mass_g": 55, "torque_kg_cm": 11
+    "mount_hole_dia_mm": 4.5, "mass_g": 55, "torque_kg_cm": 11,
+    "speed_s_per_60deg": 0.14, "rated_voltage_v": 6.0
   },
   "raspberry_pi_4b": {
     "name": "Raspberry Pi 4B",
