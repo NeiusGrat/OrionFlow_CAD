@@ -93,21 +93,27 @@ def build(pose: dict[str, float] | None = None, label: str = "zero",
 #: The two legs are mirror images, and so are their pitch axes: in the zero
 #: pose the left hip, knee and ankle turn about +Y, -Y, +Y and the right ones
 #: about -Y, +Y, -Y. The same angle therefore bends the two legs in opposite
-#: directions, and a flexion of (hip h, knee k) needs ankle k - h to keep the
-#: sole flat. An earlier table gave both legs the same signs and the knee the
-#: wrong one; every placement still "verified", because the check compared
-#: the CAD to itself, while the robot stood with splayed legs and upturned
-#: feet. `export_viewer.verify_viewer` now checks that the soles stay flat.
+#: directions. The legs are already bent at zero, so one direction folds them
+#: and the other straightens them: a flexion (hip h, knee k) folds with left
+#: = +(h, k, k - h) and right = -(h, k, k - h), the ankle's k - h keeping the
+#: sole flat.
+#:
+#: Two earlier tables were wrong while every placement "verified", because
+#: the checks compared the CAD to itself: the first gave both legs the same
+#: signs (the crouch had its feet turned 172 degrees), the second kept the
+#: soles flat but straightened the legs, so the "crouch" stood 12 mm taller.
+#: `export_viewer.verify_viewer` now checks both: soles flat, and each step
+#: zero -> stand -> crouch lowers the trunk toward the soles.
 #: The head in the crouch: neck and head pitch the same way to keep it level.
 POSES = {
     "zero": {},
     "stand": {
-        "left_hip_pitch": -0.25, "left_knee": -0.5, "left_ankle": -0.25,
-        "right_hip_pitch": 0.25, "right_knee": 0.5, "right_ankle": 0.25,
+        "left_hip_pitch": 0.25, "left_knee": 0.5, "left_ankle": 0.25,
+        "right_hip_pitch": -0.25, "right_knee": -0.5, "right_ankle": -0.25,
     },
     "crouch": {
-        "left_hip_pitch": -0.9, "left_knee": -1.5, "left_ankle": -0.6,
-        "right_hip_pitch": 0.9, "right_knee": 1.5, "right_ankle": 0.6,
+        "left_hip_pitch": 0.9, "left_knee": 1.5, "left_ankle": 0.6,
+        "right_hip_pitch": -0.9, "right_knee": -1.5, "right_ankle": -0.6,
         "neck_pitch": -0.3, "head_pitch": -0.3,
     },
 }

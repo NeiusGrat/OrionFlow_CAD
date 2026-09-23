@@ -307,6 +307,24 @@ for (const pose of Object.keys(duck.poses)) {
     ok(soleTilt(poseAngles(duck, pose)) < 0.5, `the soles are flat in the "${pose}" pose`);
 }
 
+// Flat soles are not enough: legs that straighten keep them flat too, which
+// is how a "crouch" that stood taller than rest once passed. Each pose must
+// bring the trunk down toward the feet, and a stepping leg must lift its foot.
+const trunkToSole = (a: Record<string, number>, foot = 'ankle_left') => {
+    const w = worldTransforms(duck, a);
+    return w.trunk_base[11] - w[foot][11];
+};
+const hz = ['zero', 'stand', 'crouch'].map((p) => trunkToSole(poseAngles(duck, p)));
+ok(hz[0] > hz[1] && hz[1] > hz[2], 'the trunk lowers from zero to stand to crouch', hz.map((h) => h.toFixed(1)).join(' > '));
+{
+    let lift = 0;
+    for (let k = 0; k < 64; k++) {
+        const a = walkAngles(duck, (k / 64) * Math.PI * 2);
+        lift = Math.max(lift, trunkToSole(poseAngles(duck, 'stand')) - trunkToSole(a));
+    }
+    ok(lift > 5, 'a stepping leg lifts its foot', `${lift.toFixed(1)} mm`);
+}
+
 eq(drivingJoint(duck, 'ankle_left')?.name, 'left_ankle', 'a body is moved by its own joint');
 eq(drivingJoint(duck, 'trunk_base'), null, 'the trunk is not moved by any joint');
 

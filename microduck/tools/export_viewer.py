@@ -299,6 +299,15 @@ def verify_viewer(sc: trimesh.Scene, manifest: dict, model: Model) -> list[str]:
             tilt = math.degrees(math.acos(max(-1.0, min(1.0, (np.trace(R) - 1) / 2))))
             if tilt > 0.5:
                 problems.append(f"{pose_name}: {f} sole tilted {tilt:.1f} deg")
+    # ...and a flat sole is not enough: legs that straighten keep their soles
+    # flat too. A crouch must bring the trunk down toward the feet.
+    def trunk_height(pose):
+        W = world_transforms(model, pose)
+        return float(np.mean([W["trunk_base"][2, 3] - W[f][2, 3] for f in feet]))
+    heights = [trunk_height(POSES[k]) for k in ("zero", "stand", "crouch") if k in POSES]
+    if any(b >= a for a, b in zip(heights, heights[1:])):
+        problems.append(f"trunk-to-sole height does not fall zero > stand > crouch: "
+                        f"{[round(h, 1) for h in heights]} mm")
     for p, info in manifest["parts"].items():
         if not info["valid"]:
             problems.append(f"part {p} is not a valid shape")

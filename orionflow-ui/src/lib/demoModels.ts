@@ -33,11 +33,11 @@ export interface DemoModel {
 /** Numbers from `microduck/work/assembly_report.json`, one entry per pose.
  *  The walk cycle starts from the stand pose, so it reports that one. */
 const MICRODUCK: Record<DuckPose, Pick<DemoModel, 'bbox_mm' | 'volume_mm3' | 'parts'>> = {
-    zero: { bbox_mm: [144.07, 141.0, 263.97], volume_mm3: 549695.0, parts: 71 },
-    stand: { bbox_mm: [185.22, 141.0, 262.83], volume_mm3: 549695.0, parts: 71 },
-    crouch: { bbox_mm: [149.53, 141.0, 251.7], volume_mm3: 549695.0, parts: 71 },
-    walk: { bbox_mm: [185.22, 141.0, 262.83], volume_mm3: 549695.0, parts: 71 },
-    rollers: { bbox_mm: [164.55, 141.0, 286.43], volume_mm3: 542327.6, parts: 77 },
+    zero: { bbox_mm: [144.07, 141.0, 263.97], volume_mm3: 549786.9, parts: 71 },
+    stand: { bbox_mm: [140.62, 141.0, 253.13], volume_mm3: 549786.9, parts: 71 },
+    crouch: { bbox_mm: [156.2, 141.0, 218.06], volume_mm3: 549786.9, parts: 71 },
+    walk: { bbox_mm: [140.62, 141.0, 253.13], volume_mm3: 549786.9, parts: 71 },
+    rollers: { bbox_mm: [164.55, 141.0, 286.43], volume_mm3: 542419.5, parts: 77 },
 };
 
 const NAMES = /\bmicro[\s_-]?duck\b/i;
