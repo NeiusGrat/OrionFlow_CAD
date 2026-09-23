@@ -1,0 +1,208 @@
+<?xml version="1.0"?>
+<robot name="quadruped">
+  <link name="torso">
+    <inertial>
+      <origin xyz="0 0 2.57973242e-19" rpy="0 0 0"/>
+      <mass value="0.37872"/>
+      <inertia ixx="0.00129709156" iyy="0.00092693314" izz="0.00220810172" ixy="0" ixz="-7.34835279e-21" iyz="1.12375614e-20"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/torso_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/torso_torso_plate_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/torso_fl_hip_servo_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/torso_fr_hip_servo_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/torso_rl_hip_servo_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/torso_rr_hip_servo_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="fl_thigh">
+    <inertial>
+      <origin xyz="0.0548182709 -5.42016745e-21 -0.0188814422" rpy="0 0 0"/>
+      <mass value="0.0664832779"/>
+      <inertia ixx="1.72903711e-05" iyy="3.72270742e-05" izz="2.42859016e-05" ixy="-4.02173147e-23" ixz="7.53812044e-06" iyz="5.81049781e-23"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/fl_thigh_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/fl_thigh_fl_thigh_bar_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/fl_thigh_fl_knee_servo_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="fl_shin">
+    <inertial>
+      <origin xyz="0.0314115267 -2.74441775e-19 0.003" rpy="0 0 0"/>
+      <mass value="0.0120224936"/>
+      <inertia ixx="4.59058239e-07" iyy="6.52688837e-06" izz="6.91381165e-06" ixy="1.28600402e-22" ixz="-1.44354999e-22" iyz="6.90460628e-24"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/fl_shin_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/fl_shin_fl_shin_foot_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="fr_thigh">
+    <inertial>
+      <origin xyz="0.0548182709 -5.42016745e-21 -0.0188814422" rpy="0 0 0"/>
+      <mass value="0.0664832779"/>
+      <inertia ixx="1.72903711e-05" iyy="3.72270742e-05" izz="2.42859016e-05" ixy="-4.02173147e-23" ixz="7.53812044e-06" iyz="5.81049781e-23"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/fr_thigh_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/fr_thigh_fr_thigh_bar_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/fr_thigh_fr_knee_servo_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="fr_shin">
+    <inertial>
+      <origin xyz="0.0314115267 -2.74441775e-19 0.003" rpy="0 0 0"/>
+      <mass value="0.0120224936"/>
+      <inertia ixx="4.59058239e-07" iyy="6.52688837e-06" izz="6.91381165e-06" ixy="1.28600402e-22" ixz="-1.44354999e-22" iyz="6.90460628e-24"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/fr_shin_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/fr_shin_fr_shin_foot_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="rl_thigh">
+    <inertial>
+      <origin xyz="0.0548182709 -5.42016745e-21 -0.0188814422" rpy="0 0 0"/>
+      <mass value="0.0664832779"/>
+      <inertia ixx="1.72903711e-05" iyy="3.72270742e-05" izz="2.42859016e-05" ixy="-4.02173147e-23" ixz="7.53812044e-06" iyz="5.81049781e-23"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/rl_thigh_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/rl_thigh_rl_thigh_bar_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/rl_thigh_rl_knee_servo_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="rl_shin">
+    <inertial>
+      <origin xyz="0.0314115267 -2.74441775e-19 0.003" rpy="0 0 0"/>
+      <mass value="0.0120224936"/>
+      <inertia ixx="4.59058239e-07" iyy="6.52688837e-06" izz="6.91381165e-06" ixy="1.28600402e-22" ixz="-1.44354999e-22" iyz="6.90460628e-24"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/rl_shin_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/rl_shin_rl_shin_foot_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="rr_thigh">
+    <inertial>
+      <origin xyz="0.0548182709 -5.42016745e-21 -0.0188814422" rpy="0 0 0"/>
+      <mass value="0.0664832779"/>
+      <inertia ixx="1.72903711e-05" iyy="3.72270742e-05" izz="2.42859016e-05" ixy="-4.02173147e-23" ixz="7.53812044e-06" iyz="5.81049781e-23"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/rr_thigh_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/rr_thigh_rr_thigh_bar_collision.stl"/></geometry>
+    </collision>
+    <collision>
+      <geometry><mesh filename="meshes/rr_thigh_rr_knee_servo_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <link name="rr_shin">
+    <inertial>
+      <origin xyz="0.0314115267 -2.74441775e-19 0.003" rpy="0 0 0"/>
+      <mass value="0.0120224936"/>
+      <inertia ixx="4.59058239e-07" iyy="6.52688837e-06" izz="6.91381165e-06" ixy="1.28600402e-22" ixz="-1.44354999e-22" iyz="6.90460628e-24"/>
+    </inertial>
+    <visual>
+      <geometry><mesh filename="meshes/rr_shin_visual.stl"/></geometry>
+    </visual>
+    <collision>
+      <geometry><mesh filename="meshes/rr_shin_rr_shin_foot_collision.stl"/></geometry>
+    </collision>
+  </link>
+  <joint name="fl_hip" type="revolute">
+    <parent link="torso"/>
+    <child link="fl_thigh"/>
+    <origin xyz="0.05 0.0949 0" rpy="-1.57079633 1.57079633 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="fl_knee" type="revolute">
+    <parent link="fl_thigh"/>
+    <child link="fl_shin"/>
+    <origin xyz="0.06 0 0.008" rpy="0 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="fr_hip" type="revolute">
+    <parent link="torso"/>
+    <child link="fr_thigh"/>
+    <origin xyz="0.05 -0.0949 0" rpy="1.57079633 1.57079633 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="fr_knee" type="revolute">
+    <parent link="fr_thigh"/>
+    <child link="fr_shin"/>
+    <origin xyz="0.06 0 0.008" rpy="0 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="rl_hip" type="revolute">
+    <parent link="torso"/>
+    <child link="rl_thigh"/>
+    <origin xyz="-0.05 0.0949 0" rpy="-1.57079633 1.57079633 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="rl_knee" type="revolute">
+    <parent link="rl_thigh"/>
+    <child link="rl_shin"/>
+    <origin xyz="0.06 0 0.008" rpy="0 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="rr_hip" type="revolute">
+    <parent link="torso"/>
+    <child link="rr_thigh"/>
+    <origin xyz="-0.05 -0.0949 0" rpy="1.57079633 1.57079633 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+  <joint name="rr_knee" type="revolute">
+    <parent link="rr_thigh"/>
+    <child link="rr_shin"/>
+    <origin xyz="0.06 0 0.008" rpy="0 -0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0943951" upper="2.0943951" effort="1.0787315" velocity="7.47998251"/>
+    <dynamics damping="0.05" friction="0"/>
+  </joint>
+</robot>

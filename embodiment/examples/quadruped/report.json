@@ -1,0 +1,465 @@
+{
+ "accepted": true,
+ "files": {
+  "cad/fl_hip_servo.featuregraph.json": "4abbe4c942a7b2b1167569b26cdb67786af909b517a0bff9006dba894677705a",
+  "cad/fl_knee_servo.featuregraph.json": "de9f08bcb474174af7dc5c0f5342d34e190aa636146deed5f563885a829d5bb3",
+  "cad/fl_shin.step": "a6d4b7c61dcb3e77d49c3b1a79b900148c865b22b524d1503c62d7c5f3b7886e",
+  "cad/fl_shin_foot.featuregraph.json": "4d9c0d0f172714fd314d21f2c9ddb7ffc0776a5556a19c6fc026f6d4efc9e589",
+  "cad/fl_thigh.step": "f7cf68c49f10cd744a17225cd6141d2a1c020070650b41240a9b595d2550440f",
+  "cad/fl_thigh_bar.featuregraph.json": "9af834c1d09b4664dfc1e00f1b6bbbedfe817ce88005a81443d36d021c71e1cb",
+  "cad/fr_hip_servo.featuregraph.json": "34b1e69b5bc28701cd4fbcb493ab1daa2d60a773e4d62587207d09a8638cc577",
+  "cad/fr_knee_servo.featuregraph.json": "a6a37ab574d87e14e1fafa74953464f7271c9e226168599989ff2070d86621de",
+  "cad/fr_shin.step": "a6d4b7c61dcb3e77d49c3b1a79b900148c865b22b524d1503c62d7c5f3b7886e",
+  "cad/fr_shin_foot.featuregraph.json": "6d538429b170c935723f25f7120e0f2ab025368833609f9cd98436248811bffa",
+  "cad/fr_thigh.step": "f7cf68c49f10cd744a17225cd6141d2a1c020070650b41240a9b595d2550440f",
+  "cad/fr_thigh_bar.featuregraph.json": "147e7ff10146fa36c19337886327c23bafc4a6c024833a3bcd46e02ebda9549e",
+  "cad/rl_hip_servo.featuregraph.json": "86bebddb262a92afacce9ff9d069d00ee09477a858be9fc31bfb1922ef71b06b",
+  "cad/rl_knee_servo.featuregraph.json": "2eab9c2491fc88698b56d1058d6d3f02bf6ab3004febf570e50f8fdf167a333c",
+  "cad/rl_shin.step": "a6d4b7c61dcb3e77d49c3b1a79b900148c865b22b524d1503c62d7c5f3b7886e",
+  "cad/rl_shin_foot.featuregraph.json": "c50bba22478aea4ce14a46e3c42e144cb99c6e7bc839d87ebe2218b430fb6890",
+  "cad/rl_thigh.step": "f7cf68c49f10cd744a17225cd6141d2a1c020070650b41240a9b595d2550440f",
+  "cad/rl_thigh_bar.featuregraph.json": "9b724957bb468d2676b372df346a092d612ef9f1e2cdc33f00fad254665c1a8d",
+  "cad/rr_hip_servo.featuregraph.json": "8f857cbc026d232b5f7816fe171a53d6b3a234c55ad3ae1e20e69cae5a7703e5",
+  "cad/rr_knee_servo.featuregraph.json": "6fe907692fb045dc7909beb49ad9e4a270a814cf7a5c6d0d6b9bc011c70f8356",
+  "cad/rr_shin.step": "a6d4b7c61dcb3e77d49c3b1a79b900148c865b22b524d1503c62d7c5f3b7886e",
+  "cad/rr_shin_foot.featuregraph.json": "0d88fd723272633b65391c79ae1624a5c3a6330422bf190c6f85e3e6b8d5c847",
+  "cad/rr_thigh.step": "f7cf68c49f10cd744a17225cd6141d2a1c020070650b41240a9b595d2550440f",
+  "cad/rr_thigh_bar.featuregraph.json": "5e0acf9487ba226ac2d16122d1d671fe5bb7dbc90678b3ac1bbfaa4321f6dae5",
+  "cad/torso.step": "5cf8af51b57838b8b502db3ffca4ebb157f55a8e520ece11defbae734dcc2718",
+  "cad/torso_plate.featuregraph.json": "3ff7f13844cdd714bffe13c3b38b3a979f801bd915b591cd31f86c35b81c3ebe",
+  "meshes/fl_shin_fl_shin_foot_collision.stl": "7880c7ad9b936abe6166cb9107e7ddfa868c5db647eabdd3e62cae7422a2c8a4",
+  "meshes/fl_shin_visual.stl": "7f452f6ae6e3303c0af551ad73381d8f19d0ef48ac1c48ce1c7b3fae705b71a9",
+  "meshes/fl_thigh_fl_knee_servo_collision.stl": "496ddf8c308c9e614c9f1cea35fa921811cafccd82f450d2a557a604b401fe27",
+  "meshes/fl_thigh_fl_thigh_bar_collision.stl": "fde896df19fa42637ea18a960290135ece7c946533a84968335b9138fe908301",
+  "meshes/fl_thigh_visual.stl": "16030260214e6420bad62ea966ffce312b311a47e80c57392c5cd908d79f2e1c",
+  "meshes/fr_shin_fr_shin_foot_collision.stl": "7880c7ad9b936abe6166cb9107e7ddfa868c5db647eabdd3e62cae7422a2c8a4",
+  "meshes/fr_shin_visual.stl": "7f452f6ae6e3303c0af551ad73381d8f19d0ef48ac1c48ce1c7b3fae705b71a9",
+  "meshes/fr_thigh_fr_knee_servo_collision.stl": "496ddf8c308c9e614c9f1cea35fa921811cafccd82f450d2a557a604b401fe27",
+  "meshes/fr_thigh_fr_thigh_bar_collision.stl": "fde896df19fa42637ea18a960290135ece7c946533a84968335b9138fe908301",
+  "meshes/fr_thigh_visual.stl": "16030260214e6420bad62ea966ffce312b311a47e80c57392c5cd908d79f2e1c",
+  "meshes/rl_shin_rl_shin_foot_collision.stl": "7880c7ad9b936abe6166cb9107e7ddfa868c5db647eabdd3e62cae7422a2c8a4",
+  "meshes/rl_shin_visual.stl": "7f452f6ae6e3303c0af551ad73381d8f19d0ef48ac1c48ce1c7b3fae705b71a9",
+  "meshes/rl_thigh_rl_knee_servo_collision.stl": "496ddf8c308c9e614c9f1cea35fa921811cafccd82f450d2a557a604b401fe27",
+  "meshes/rl_thigh_rl_thigh_bar_collision.stl": "fde896df19fa42637ea18a960290135ece7c946533a84968335b9138fe908301",
+  "meshes/rl_thigh_visual.stl": "16030260214e6420bad62ea966ffce312b311a47e80c57392c5cd908d79f2e1c",
+  "meshes/rr_shin_rr_shin_foot_collision.stl": "7880c7ad9b936abe6166cb9107e7ddfa868c5db647eabdd3e62cae7422a2c8a4",
+  "meshes/rr_shin_visual.stl": "7f452f6ae6e3303c0af551ad73381d8f19d0ef48ac1c48ce1c7b3fae705b71a9",
+  "meshes/rr_thigh_rr_knee_servo_collision.stl": "496ddf8c308c9e614c9f1cea35fa921811cafccd82f450d2a557a604b401fe27",
+  "meshes/rr_thigh_rr_thigh_bar_collision.stl": "fde896df19fa42637ea18a960290135ece7c946533a84968335b9138fe908301",
+  "meshes/rr_thigh_visual.stl": "16030260214e6420bad62ea966ffce312b311a47e80c57392c5cd908d79f2e1c",
+  "meshes/torso_fl_hip_servo_collision.stl": "2edd44c138d7944c60bbe209e74307a5730f04ab3bf2f734f00c7055d754f6fb",
+  "meshes/torso_fr_hip_servo_collision.stl": "9403e60694c4a04971ae0e463fda4b599d805d8dc8ca1481d95ea0b532fbafb4",
+  "meshes/torso_rl_hip_servo_collision.stl": "3d68b8c6c22a89724e53d026e3ad218ca4405e92cb8712fc5c50681c59f1e73c",
+  "meshes/torso_rr_hip_servo_collision.stl": "795460be693588621317fc11d09bd652033338752b16d1adde33faa88a5a7621",
+  "meshes/torso_torso_plate_collision.stl": "144e44cd637aa12baa2ef2cbd363775fc4a340de7d9f50ecf4d2b2ca6369ed27",
+  "meshes/torso_visual.stl": "57676c2817901398e8511a3c66ca89f1467b9c4d523a0cb5299cec4c3bd5fcef",
+  "quadruped.urdf": "ebec57191f84a1baf85283b996e7e34a18fd1302730ea5c6d0bacec5e4297375",
+  "quadruped.xml": "685d3ca3637dba7fe97c7f8b052cf784169e46c7617e3baf4c90ab7eb792178e",
+  "spec.json": "09841d70cb79154b42658ab0d4757361a5a677fbae6fa181988debd355318155"
+ },
+ "gates": {
+  "actuators": {
+   "joints": {
+    "fl_hip": {
+     "margin": 55.163,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.019555
+    },
+    "fl_knee": {
+     "margin": 21.97,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.049099
+    },
+    "fr_hip": {
+     "margin": 55.163,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.019555
+    },
+    "fr_knee": {
+     "margin": 21.97,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.049099
+    },
+    "rl_hip": {
+     "margin": 55.163,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.019555
+    },
+    "rl_knee": {
+     "margin": 21.97,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.049099
+    },
+    "rr_hip": {
+     "margin": 55.163,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.019555
+    },
+    "rr_knee": {
+     "margin": 21.97,
+     "passed": true,
+     "required_factor": 2.0,
+     "source": "parts_db.json:mg996r_servo",
+     "stall_torque_nm": 1.078731,
+     "worst_static_gravity_nm": 0.049099
+    }
+   },
+   "load_case": {
+    "assumption": "equal load on every foot",
+    "case": "standing",
+    "per_foot_n": 1.698372,
+    "poses": [
+     "stand"
+    ],
+    "weight_n": 6.793489
+   },
+   "passed": true
+  },
+  "geometry": {
+   "components": 17,
+   "passed": true
+  },
+  "inertia": {
+   "passed": true,
+   "problems": []
+  },
+  "interference": {
+   "clashes": [],
+   "passed": true,
+   "poses": [
+    "rest",
+    "stand"
+   ]
+  },
+  "robocheck": {
+   "passed": true,
+   "summary": {
+    "mjcf": {
+     "errors": 0,
+     "loaded": true,
+     "warnings": 0
+    },
+    "urdf": {
+     "errors": 0,
+     "loaded": true,
+     "warnings": 0
+    }
+   }
+  },
+  "stands": {
+   "bad_accelerations": 0,
+   "drift_m": 0.000545,
+   "end_height_m": 0.115064,
+   "feet_down": [
+    "fl_shin",
+    "fr_shin",
+    "rl_shin",
+    "rr_shin"
+   ],
+   "finite": true,
+   "min_height_m": 0.114849,
+   "other_bodies_on_floor": [],
+   "passed": true,
+   "seconds": 3.0,
+   "start_height_m": 0.115923,
+   "tilt_deg": 0.091
+  }
+ },
+ "links": {
+  "fl_shin": {
+   "com_m": [
+    0.031411527,
+    -0.0,
+    0.003
+   ],
+   "inertia_kg_m2": [
+    [
+     4.59058e-07,
+     0.0,
+     -0.0
+    ],
+    [
+     0.0,
+     6.526888e-06,
+     0.0
+    ],
+    [
+     -0.0,
+     0.0,
+     6.913812e-06
+    ]
+   ],
+   "mass_kg": 0.012022494
+  },
+  "fl_thigh": {
+   "com_m": [
+    0.054818271,
+    -0.0,
+    -0.018881442
+   ],
+   "inertia_kg_m2": [
+    [
+     1.7290371e-05,
+     -0.0,
+     7.53812e-06
+    ],
+    [
+     -0.0,
+     3.7227074e-05,
+     0.0
+    ],
+    [
+     7.53812e-06,
+     0.0,
+     2.4285902e-05
+    ]
+   ],
+   "mass_kg": 0.066483278
+  },
+  "fr_shin": {
+   "com_m": [
+    0.031411527,
+    -0.0,
+    0.003
+   ],
+   "inertia_kg_m2": [
+    [
+     4.59058e-07,
+     0.0,
+     -0.0
+    ],
+    [
+     0.0,
+     6.526888e-06,
+     0.0
+    ],
+    [
+     -0.0,
+     0.0,
+     6.913812e-06
+    ]
+   ],
+   "mass_kg": 0.012022494
+  },
+  "fr_thigh": {
+   "com_m": [
+    0.054818271,
+    -0.0,
+    -0.018881442
+   ],
+   "inertia_kg_m2": [
+    [
+     1.7290371e-05,
+     -0.0,
+     7.53812e-06
+    ],
+    [
+     -0.0,
+     3.7227074e-05,
+     0.0
+    ],
+    [
+     7.53812e-06,
+     0.0,
+     2.4285902e-05
+    ]
+   ],
+   "mass_kg": 0.066483278
+  },
+  "rl_shin": {
+   "com_m": [
+    0.031411527,
+    -0.0,
+    0.003
+   ],
+   "inertia_kg_m2": [
+    [
+     4.59058e-07,
+     0.0,
+     -0.0
+    ],
+    [
+     0.0,
+     6.526888e-06,
+     0.0
+    ],
+    [
+     -0.0,
+     0.0,
+     6.913812e-06
+    ]
+   ],
+   "mass_kg": 0.012022494
+  },
+  "rl_thigh": {
+   "com_m": [
+    0.054818271,
+    -0.0,
+    -0.018881442
+   ],
+   "inertia_kg_m2": [
+    [
+     1.7290371e-05,
+     -0.0,
+     7.53812e-06
+    ],
+    [
+     -0.0,
+     3.7227074e-05,
+     0.0
+    ],
+    [
+     7.53812e-06,
+     0.0,
+     2.4285902e-05
+    ]
+   ],
+   "mass_kg": 0.066483278
+  },
+  "rr_shin": {
+   "com_m": [
+    0.031411527,
+    -0.0,
+    0.003
+   ],
+   "inertia_kg_m2": [
+    [
+     4.59058e-07,
+     0.0,
+     -0.0
+    ],
+    [
+     0.0,
+     6.526888e-06,
+     0.0
+    ],
+    [
+     -0.0,
+     0.0,
+     6.913812e-06
+    ]
+   ],
+   "mass_kg": 0.012022494
+  },
+  "rr_thigh": {
+   "com_m": [
+    0.054818271,
+    -0.0,
+    -0.018881442
+   ],
+   "inertia_kg_m2": [
+    [
+     1.7290371e-05,
+     -0.0,
+     7.53812e-06
+    ],
+    [
+     -0.0,
+     3.7227074e-05,
+     0.0
+    ],
+    [
+     7.53812e-06,
+     0.0,
+     2.4285902e-05
+    ]
+   ],
+   "mass_kg": 0.066483278
+  },
+  "torso": {
+   "com_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "inertia_kg_m2": [
+    [
+     0.001297091557,
+     0.0,
+     -0.0
+    ],
+    [
+     0.0,
+     0.00092693314,
+     0.0
+    ],
+    [
+     -0.0,
+     0.0,
+     0.002208101717
+    ]
+   ],
+   "mass_kg": 0.37872
+  }
+ },
+ "robocheck": {
+  "mjcf": {
+   "errors": 0,
+   "findings": [],
+   "format": "mjcf",
+   "loaded": true,
+   "ok": true,
+   "source": "quadruped.xml",
+   "stats": {
+    "actuators": 8,
+    "bodies": 9,
+    "bodies_checked_against_geometry": 9,
+    "dofs": 14,
+    "floating_base": true,
+    "geoms": 26,
+    "joints": 9,
+    "mass_kg": 0.6927,
+    "rest_overlaps": 0,
+    "settle_peak_qvel": 1.121,
+    "settle_s": 2.0
+   },
+   "warnings": 0
+  },
+  "urdf": {
+   "errors": 0,
+   "findings": [],
+   "format": "urdf",
+   "loaded": true,
+   "ok": true,
+   "source": "quadruped.urdf",
+   "stats": {
+    "actuators": 0,
+    "bodies": 8,
+    "bodies_checked_against_geometry": 8,
+    "dofs": 8,
+    "floating_base": false,
+    "geoms": 17,
+    "joints": 8,
+    "links": 9,
+    "mass_kg": 0.314,
+    "rest_overlaps": 0,
+    "settle_peak_qvel": 0.0,
+    "settle_s": 2.0
+   },
+   "warnings": 0
+  }
+ },
+ "robot": "quadruped",
+ "total_mass_kg": 0.692743086
+}

@@ -77,10 +77,23 @@ class Joint:
 
 
 @dataclass
+class Foot:
+    """A round foot: the disc whose lowest point touches the ground."""
+    link: str
+    centre_mm: tuple[float, float, float]     # disc centre, link frame
+    radius_mm: float
+
+
+@dataclass
 class Robot:
     name: str
     links: list[Link]
     joints: list[Joint]
+    #: A floating base gets a free joint and must stand on its own feet.
+    floating: bool = False
+    #: Named joint-angle sets (radians). The first is the pose it rests in.
+    poses: dict[str, dict[str, float]] = field(default_factory=dict)
+    feet: list[Foot] = field(default_factory=list)
 
 
 # ── geometry as FeatureGraphs ──────────────────────────────────────────────

@@ -1,0 +1,113 @@
+{
+ "density_from": [
+  "material",
+  "pla"
+ ],
+ "graph": {
+  "features": [
+   {
+    "depends_on": [],
+    "id": "extrude",
+    "params": {
+     "depth": "$thickness"
+    },
+    "sketch": "body",
+    "type": "extrude"
+   },
+   {
+    "depends_on": [
+     "extrude"
+    ],
+    "id": "bores",
+    "params": {
+     "depth": "$thickness"
+    },
+    "sketch": "cuts",
+    "type": "cut"
+   }
+  ],
+  "metadata": {},
+  "parameters": {
+   "bar_len": 70.0,
+   "bar_mid": 25.0,
+   "bore_r": 3.0,
+   "foot_r": 12.0,
+   "length": 60.0,
+   "thickness": 6.0,
+   "width": 20.0
+  },
+  "sketches": [
+   {
+    "constraints": [],
+    "entities": [
+     {
+      "id": "bar",
+      "params": {
+       "cx": "$bar_mid",
+       "cy": 0.0,
+       "height": "$width",
+       "width": "$bar_len"
+      },
+      "type": "rectangle"
+     },
+     {
+      "id": "foot",
+      "params": {
+       "cx": "$length",
+       "cy": 0.0,
+       "radius": "$foot_r"
+      },
+      "type": "circle"
+     }
+    ],
+    "id": "body",
+    "plane": "XY"
+   },
+   {
+    "constraints": [],
+    "entities": [
+     {
+      "id": "knee_bore",
+      "params": {
+       "cx": 0.0,
+       "cy": 0.0,
+       "radius": "$bore_r"
+      },
+      "type": "circle"
+     }
+    ],
+    "id": "cuts",
+    "plane": "XY"
+   }
+  ],
+  "units": "mm",
+  "version": "v1"
+ },
+ "link": "rl_shin",
+ "placement_mm": [
+  [
+   1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   1.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   1.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ]
+}

@@ -1,0 +1,71 @@
+{
+ "density_from": [
+  "actuator",
+  "mg996r_servo"
+ ],
+ "graph": {
+  "features": [
+   {
+    "depends_on": [],
+    "id": "extrude",
+    "params": {
+     "depth": "$z"
+    },
+    "sketch": "body",
+    "type": "extrude"
+   }
+  ],
+  "metadata": {},
+  "parameters": {
+   "x": 40.7,
+   "y": 42.9,
+   "z": 19.7
+  },
+  "sketches": [
+   {
+    "constraints": [],
+    "entities": [
+     {
+      "id": "block",
+      "params": {
+       "height": "$y",
+       "width": "$x"
+      },
+      "type": "rectangle"
+     }
+    ],
+    "id": "body",
+    "plane": "XY"
+   }
+  ],
+  "units": "mm",
+  "version": "v1"
+ },
+ "link": "torso",
+ "placement_mm": [
+  [
+   1.0,
+   0.0,
+   0.0,
+   -50.0
+  ],
+  [
+   0.0,
+   1.0,
+   0.0,
+   71.45
+  ],
+  [
+   0.0,
+   0.0,
+   1.0,
+   -9.85
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ]
+}

@@ -127,16 +127,77 @@ def test_links_that_clash_at_rest_are_rejected(tmp_path):
     assert any(set(c["links"]) == {"link_1", "link_2"} for c in clashes)
 
 
-def test_the_committed_example_rebuilds_byte_for_byte(tmp_path):
-    # embodiment/examples/two_link_arm is the reproducible reference: its
-    # report lists every file's sha256, and building its spec again must
-    # write the very same bytes.
+# ── a free-standing legged robot ───────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def quadruped_build(tmp_path_factory):
+    from embodiment.legged import QuadrupedSpec
+    out = tmp_path_factory.mktemp("quad")
+    return out, compile_robot(QuadrupedSpec(), out)
+
+
+def test_the_quadruped_is_accepted_and_stands(quadruped_build):
+    _, r = quadruped_build
+    assert r["accepted"], {k: g for k, g in r["gates"].items() if not g["passed"]}
+    s = r["gates"]["stands"]
+    assert s["feet_down"] == ["fl_shin", "fr_shin", "rl_shin", "rr_shin"]
+    assert s["end_height_m"] >= 0.9 * s["start_height_m"] and s["tilt_deg"] < 5
+    # interference was checked in the stance too, not only at q = 0
+    assert r["gates"]["interference"]["poses"] == ["rest", "stand"]
+    for fmt in ("urdf", "mjcf"):
+        assert r["robocheck"][fmt]["errors"] == 0 and r["robocheck"][fmt]["warnings"] == 0
+
+
+def test_mirrored_legs_get_mirrored_angles_and_feet_land_under_the_hips():
+    # the MicroDuck lesson: no sign is written by hand, so check what the
+    # derivation produced - left and right opposite, every foot under its hip
+    from embodiment.legged import QuadrupedSpec, expand_quadruped
+    robot = expand_quadruped(QuadrupedSpec())
+    q = robot.poses["stand"]
+    assert q["fl_hip"] == -q["fr_hip"] and q["fl_knee"] == -q["fr_knee"]
+    W = _world(robot, q)
+    for f in robot.feet:
+        leg = f.link[:2]
+        foot = (W[f.link] @ np.array([*f.centre_mm, 1.0]))[:3]
+        assert foot[0] == pytest.approx(W[f"{leg}_thigh"][0, 3], abs=1e-9)
+
+
+def test_a_robot_without_its_servos_does_not_stand(quadruped_build, tmp_path):
+    import re
+
+    from embodiment.stand import stand_test
+    out, _ = quadruped_build
+    xml = (out / "quadruped.xml").read_text()
+    xml = re.sub(r"<actuator>.*?</actuator>", "", xml, flags=re.S)
+    xml = re.sub(r' ctrl="[^"]*"', "", xml)
+    limp = out / "limp.xml"
+    limp.write_text(xml)
+    r = stand_test(limp, ["fl_shin", "fr_shin", "rl_shin", "rr_shin"], "stand")
+    assert not r["passed"]
+    assert r["end_height_m"] < 0.9 * r["start_height_m"]
+
+
+def test_a_quadruped_its_servos_cannot_hold_is_rejected(tmp_path):
+    from embodiment.legged import QuadrupedSpec
+    # a 40 mm solid torso on SG90s in a deep crouch: the knees need more than
+    # half the stall torque
+    spec = QuadrupedSpec(name="heavy", torso_mm=(160.0, 100.0, 40.0), actuator="sg90_servo",
+                         stance_hip_deg=60.0)
+    r = compile_robot(spec, tmp_path / "heavy")
+    assert not r["accepted"]
+    assert not r["gates"]["actuators"]["passed"]
+
+
+@pytest.mark.parametrize("example", ["two_link_arm", "quadruped"])
+def test_every_committed_example_rebuilds_byte_for_byte(example, tmp_path):
     import json
     from pathlib import Path
 
-    example = Path(__file__).resolve().parent.parent / "examples" / "two_link_arm"
-    committed = json.loads((example / "report.json").read_text())
-    spec = ArmSpec.model_validate_json((example / "spec.json").read_text())
+    from embodiment.legged import QuadrupedSpec
+    folder = Path(__file__).resolve().parent.parent / "examples" / example
+    committed = json.loads((folder / "report.json").read_text())
+    data = json.loads((folder / "spec.json").read_text())
+    spec = QuadrupedSpec.model_validate(data) if data.get("kind") == "quadruped" else ArmSpec.model_validate(data)
     rebuilt = compile_robot(spec, tmp_path / "rebuilt")
     assert committed["accepted"] and rebuilt["accepted"]
     assert rebuilt["files"] == committed["files"]

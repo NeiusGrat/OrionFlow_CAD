@@ -20,6 +20,8 @@ from .massprops import MassProps
 #: MuJoCo integration step. Fine enough that the position actuators, whose
 #: stiffness is integrated explicitly, stay stable on these light links.
 TIMESTEP = 0.001
+#: A legged robot's shins are lighter still, and it also has contact.
+LEGGED_TIMESTEP = 0.0005
 
 
 @dataclass
@@ -119,7 +121,11 @@ def urdf(name: str, links: list[CompiledLink], joints: list[CompiledJoint]) -> s
     return "\n".join(out) + "\n"
 
 
-def mjcf(name: str, links: list[CompiledLink], joints: list[CompiledJoint]) -> str:
+def mjcf(name: str, links: list[CompiledLink], joints: list[CompiledJoint], *,
+         floating: bool = False, poses: dict[str, dict[str, float]] | None = None,
+         root_pos_m: tuple[float, float, float] = (0.0, 0.0, 0.0), timestep: float = TIMESTEP) -> str:
+    """MJCF for the robot; a floating one gets a free joint and a keyframe
+    per named pose, its root placed so the pose's feet touch z = 0."""
     by_child = {j.child: j for j in joints}
     children: dict[str, list[str]] = {}
     for j in joints:
@@ -131,7 +137,9 @@ def mjcf(name: str, links: list[CompiledLink], joints: list[CompiledJoint]) -> s
         pad = "  " * depth
         l = by_name[lname]
         j = by_child.get(lname)
-        if j is None:
+        if j is None and floating:
+            head = f'{pad}<body name="{lname}" pos="{_vec(root_pos_m)}">'
+        elif j is None:
             head = f'{pad}<body name="{lname}">'
         else:
             R, p = j.origin_mm[:3, :3], j.origin_mm[:3, 3] * 1e-3
@@ -140,6 +148,8 @@ def mjcf(name: str, links: list[CompiledLink], joints: list[CompiledJoint]) -> s
         lines = [head,
                  f'{pad}  <inertial pos="{_vec(l.mass.com_m)}" mass="{_f(l.mass.mass_kg)}" '
                  f'fullinertia="{_f(I[0,0])} {_f(I[1,1])} {_f(I[2,2])} {_f(I[0,1])} {_f(I[0,2])} {_f(I[1,2])}"/>']
+        if j is None and floating:
+            lines.append(f'{pad}  <freejoint name="root"/>')
         if j is not None:
             lines.append(f'{pad}  <joint name="{j.name}" type="hinge" axis="{_vec(j.axis)}" '
                          f'range="{_f(j.lower)} {_f(j.upper)}" damping="{_f(j.damping)}" '
@@ -155,7 +165,7 @@ def mjcf(name: str, links: list[CompiledLink], joints: list[CompiledJoint]) -> s
     root = next(l.name for l in links if l.name not in by_child)
     out = [f'<mujoco model="{name}">',
            '  <compiler angle="radian" meshdir="meshes" autolimits="true"/>',
-           f'  <option timestep="{_f(TIMESTEP)}"/>',
+           f'  <option timestep="{_f(timestep)}"/>',
            "  <default>",
            '    <default class="visual"><geom type="mesh" contype="0" conaffinity="0" group="2"/></default>',
            '    <default class="collision"><geom type="mesh" group="3"/></default>',
@@ -170,9 +180,15 @@ def mjcf(name: str, links: list[CompiledLink], joints: list[CompiledJoint]) -> s
     out += [f'    <position name="{j.name}_servo" joint="{j.name}" kp="{_f(j.kp)}" '
             f'forcerange="{_f(-j.effort_nm)} {_f(j.effort_nm)}" ctrlrange="{_f(j.lower)} {_f(j.upper)}"/>'
             for j in joints]
-    out += ["  </actuator>", "  <keyframe>",
-            f'    <key name="home" qpos="{_vec([0.0] * len(joints))}" ctrl="{_vec([0.0] * len(joints))}"/>',
-            "  </keyframe>", "</mujoco>"]
+    out += ["  </actuator>", "  <keyframe>"]
+    if poses:
+        for pname, q in poses.items():
+            angles = [q.get(j.name, 0.0) for j in joints]
+            root = [*root_pos_m, 1.0, 0.0, 0.0, 0.0] if floating else []
+            out.append(f'    <key name="{pname}" qpos="{_vec(root + angles)}" ctrl="{_vec(angles)}"/>')
+    else:
+        out.append(f'    <key name="home" qpos="{_vec([0.0] * len(joints))}" ctrl="{_vec([0.0] * len(joints))}"/>')
+    out += ["  </keyframe>", "</mujoco>"]
     return "\n".join(out) + "\n"
 
 

@@ -1,0 +1,71 @@
+{
+ "density_from": [
+  "material",
+  "pla"
+ ],
+ "graph": {
+  "features": [
+   {
+    "depends_on": [],
+    "id": "extrude",
+    "params": {
+     "depth": "$z"
+    },
+    "sketch": "body",
+    "type": "extrude"
+   }
+  ],
+  "metadata": {},
+  "parameters": {
+   "x": 160.0,
+   "y": 100.0,
+   "z": 8.0
+  },
+  "sketches": [
+   {
+    "constraints": [],
+    "entities": [
+     {
+      "id": "block",
+      "params": {
+       "height": "$y",
+       "width": "$x"
+      },
+      "type": "rectangle"
+     }
+    ],
+    "id": "body",
+    "plane": "XY"
+   }
+  ],
+  "units": "mm",
+  "version": "v1"
+ },
+ "link": "torso",
+ "placement_mm": [
+  [
+   1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   1.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   1.0,
+   -4.0
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ]
+}

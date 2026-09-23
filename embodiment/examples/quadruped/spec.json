@@ -1,0 +1,23 @@
+{
+ "kind": "quadruped",
+ "name": "quadruped",
+ "torso_mm": [
+  160.0,
+  100.0,
+  8.0
+ ],
+ "hip_spacing_mm": 100.0,
+ "thigh_mm": 60.0,
+ "shin_mm": 60.0,
+ "link_width_mm": 20.0,
+ "link_thickness_mm": 6.0,
+ "bore_diameter_mm": 6.0,
+ "foot_radius_mm": 12.0,
+ "gap_mm": 2.0,
+ "material": "pla",
+ "actuator": "mg996r_servo",
+ "joint_range_deg": 120.0,
+ "joint_damping_nms": 0.05,
+ "stance_hip_deg": 30.0,
+ "torque_safety_factor": 2.0
+}

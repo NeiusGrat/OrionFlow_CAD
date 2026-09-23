@@ -1,0 +1,113 @@
+<mujoco model="quadruped">
+  <compiler angle="radian" meshdir="meshes" autolimits="true"/>
+  <option timestep="0.0005"/>
+  <default>
+    <default class="visual"><geom type="mesh" contype="0" conaffinity="0" group="2"/></default>
+    <default class="collision"><geom type="mesh" group="3"/></default>
+  </default>
+  <asset>
+    <mesh name="torso_visual" file="torso_visual.stl"/>
+    <mesh name="torso_torso_plate_collision" file="torso_torso_plate_collision.stl"/>
+    <mesh name="torso_fl_hip_servo_collision" file="torso_fl_hip_servo_collision.stl"/>
+    <mesh name="torso_fr_hip_servo_collision" file="torso_fr_hip_servo_collision.stl"/>
+    <mesh name="torso_rl_hip_servo_collision" file="torso_rl_hip_servo_collision.stl"/>
+    <mesh name="torso_rr_hip_servo_collision" file="torso_rr_hip_servo_collision.stl"/>
+    <mesh name="fl_thigh_visual" file="fl_thigh_visual.stl"/>
+    <mesh name="fl_thigh_fl_thigh_bar_collision" file="fl_thigh_fl_thigh_bar_collision.stl"/>
+    <mesh name="fl_thigh_fl_knee_servo_collision" file="fl_thigh_fl_knee_servo_collision.stl"/>
+    <mesh name="fl_shin_visual" file="fl_shin_visual.stl"/>
+    <mesh name="fl_shin_fl_shin_foot_collision" file="fl_shin_fl_shin_foot_collision.stl"/>
+    <mesh name="fr_thigh_visual" file="fr_thigh_visual.stl"/>
+    <mesh name="fr_thigh_fr_thigh_bar_collision" file="fr_thigh_fr_thigh_bar_collision.stl"/>
+    <mesh name="fr_thigh_fr_knee_servo_collision" file="fr_thigh_fr_knee_servo_collision.stl"/>
+    <mesh name="fr_shin_visual" file="fr_shin_visual.stl"/>
+    <mesh name="fr_shin_fr_shin_foot_collision" file="fr_shin_fr_shin_foot_collision.stl"/>
+    <mesh name="rl_thigh_visual" file="rl_thigh_visual.stl"/>
+    <mesh name="rl_thigh_rl_thigh_bar_collision" file="rl_thigh_rl_thigh_bar_collision.stl"/>
+    <mesh name="rl_thigh_rl_knee_servo_collision" file="rl_thigh_rl_knee_servo_collision.stl"/>
+    <mesh name="rl_shin_visual" file="rl_shin_visual.stl"/>
+    <mesh name="rl_shin_rl_shin_foot_collision" file="rl_shin_rl_shin_foot_collision.stl"/>
+    <mesh name="rr_thigh_visual" file="rr_thigh_visual.stl"/>
+    <mesh name="rr_thigh_rr_thigh_bar_collision" file="rr_thigh_rr_thigh_bar_collision.stl"/>
+    <mesh name="rr_thigh_rr_knee_servo_collision" file="rr_thigh_rr_knee_servo_collision.stl"/>
+    <mesh name="rr_shin_visual" file="rr_shin_visual.stl"/>
+    <mesh name="rr_shin_rr_shin_foot_collision" file="rr_shin_rr_shin_foot_collision.stl"/>
+  </asset>
+  <worldbody>
+    <body name="torso" pos="0 0 0.115923048">
+      <inertial pos="0 0 2.57973242e-19" mass="0.37872" fullinertia="0.00129709156 0.00092693314 0.00220810172 0 -7.34835279e-21 1.12375614e-20"/>
+      <freejoint name="root"/>
+      <geom class="visual" mesh="torso_visual"/>
+      <geom class="collision" mesh="torso_torso_plate_collision"/>
+      <geom class="collision" mesh="torso_fl_hip_servo_collision"/>
+      <geom class="collision" mesh="torso_fr_hip_servo_collision"/>
+      <geom class="collision" mesh="torso_rl_hip_servo_collision"/>
+      <geom class="collision" mesh="torso_rr_hip_servo_collision"/>
+      <body name="fl_thigh" pos="0.05 0.0949 0" quat="0.5 -0.5 0.5 0.5">
+        <inertial pos="0.0548182709 -5.42016745e-21 -0.0188814422" mass="0.0664832779" fullinertia="1.72903711e-05 3.72270742e-05 2.42859016e-05 -4.02173147e-23 7.53812044e-06 5.81049781e-23"/>
+        <joint name="fl_hip" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+        <geom class="visual" mesh="fl_thigh_visual"/>
+        <geom class="collision" mesh="fl_thigh_fl_thigh_bar_collision"/>
+        <geom class="collision" mesh="fl_thigh_fl_knee_servo_collision"/>
+        <body name="fl_shin" pos="0.06 0 0.008" quat="1 0 0 0">
+          <inertial pos="0.0314115267 -2.74441775e-19 0.003" mass="0.0120224936" fullinertia="4.59058239e-07 6.52688837e-06 6.91381165e-06 1.28600402e-22 -1.44354999e-22 6.90460628e-24"/>
+          <joint name="fl_knee" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+          <geom class="visual" mesh="fl_shin_visual"/>
+          <geom class="collision" mesh="fl_shin_fl_shin_foot_collision"/>
+        </body>
+      </body>
+      <body name="fr_thigh" pos="0.05 -0.0949 0" quat="0.5 0.5 0.5 -0.5">
+        <inertial pos="0.0548182709 -5.42016745e-21 -0.0188814422" mass="0.0664832779" fullinertia="1.72903711e-05 3.72270742e-05 2.42859016e-05 -4.02173147e-23 7.53812044e-06 5.81049781e-23"/>
+        <joint name="fr_hip" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+        <geom class="visual" mesh="fr_thigh_visual"/>
+        <geom class="collision" mesh="fr_thigh_fr_thigh_bar_collision"/>
+        <geom class="collision" mesh="fr_thigh_fr_knee_servo_collision"/>
+        <body name="fr_shin" pos="0.06 0 0.008" quat="1 0 0 0">
+          <inertial pos="0.0314115267 -2.74441775e-19 0.003" mass="0.0120224936" fullinertia="4.59058239e-07 6.52688837e-06 6.91381165e-06 1.28600402e-22 -1.44354999e-22 6.90460628e-24"/>
+          <joint name="fr_knee" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+          <geom class="visual" mesh="fr_shin_visual"/>
+          <geom class="collision" mesh="fr_shin_fr_shin_foot_collision"/>
+        </body>
+      </body>
+      <body name="rl_thigh" pos="-0.05 0.0949 0" quat="0.5 -0.5 0.5 0.5">
+        <inertial pos="0.0548182709 -5.42016745e-21 -0.0188814422" mass="0.0664832779" fullinertia="1.72903711e-05 3.72270742e-05 2.42859016e-05 -4.02173147e-23 7.53812044e-06 5.81049781e-23"/>
+        <joint name="rl_hip" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+        <geom class="visual" mesh="rl_thigh_visual"/>
+        <geom class="collision" mesh="rl_thigh_rl_thigh_bar_collision"/>
+        <geom class="collision" mesh="rl_thigh_rl_knee_servo_collision"/>
+        <body name="rl_shin" pos="0.06 0 0.008" quat="1 0 0 0">
+          <inertial pos="0.0314115267 -2.74441775e-19 0.003" mass="0.0120224936" fullinertia="4.59058239e-07 6.52688837e-06 6.91381165e-06 1.28600402e-22 -1.44354999e-22 6.90460628e-24"/>
+          <joint name="rl_knee" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+          <geom class="visual" mesh="rl_shin_visual"/>
+          <geom class="collision" mesh="rl_shin_rl_shin_foot_collision"/>
+        </body>
+      </body>
+      <body name="rr_thigh" pos="-0.05 -0.0949 0" quat="0.5 0.5 0.5 -0.5">
+        <inertial pos="0.0548182709 -5.42016745e-21 -0.0188814422" mass="0.0664832779" fullinertia="1.72903711e-05 3.72270742e-05 2.42859016e-05 -4.02173147e-23 7.53812044e-06 5.81049781e-23"/>
+        <joint name="rr_hip" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+        <geom class="visual" mesh="rr_thigh_visual"/>
+        <geom class="collision" mesh="rr_thigh_rr_thigh_bar_collision"/>
+        <geom class="collision" mesh="rr_thigh_rr_knee_servo_collision"/>
+        <body name="rr_shin" pos="0.06 0 0.008" quat="1 0 0 0">
+          <inertial pos="0.0314115267 -2.74441775e-19 0.003" mass="0.0120224936" fullinertia="4.59058239e-07 6.52688837e-06 6.91381165e-06 1.28600402e-22 -1.44354999e-22 6.90460628e-24"/>
+          <joint name="rr_knee" type="hinge" axis="0 0 1" range="-2.0943951 2.0943951" damping="0.05" actuatorfrcrange="-1.0787315 1.0787315"/>
+          <geom class="visual" mesh="rr_shin_visual"/>
+          <geom class="collision" mesh="rr_shin_rr_shin_foot_collision"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="fl_hip_servo" joint="fl_hip" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+    <position name="fl_knee_servo" joint="fl_knee" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+    <position name="fr_hip_servo" joint="fr_hip" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+    <position name="fr_knee_servo" joint="fr_knee" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+    <position name="rl_hip_servo" joint="rl_hip" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+    <position name="rl_knee_servo" joint="rl_knee" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+    <position name="rr_hip_servo" joint="rr_hip" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+    <position name="rr_knee_servo" joint="rr_knee" kp="12.3613524" forcerange="-1.0787315 1.0787315" ctrlrange="-2.0943951 2.0943951"/>
+  </actuator>
+  <keyframe>
+    <key name="stand" qpos="0 0 0.115923048 1 0 0 0 -0.523598776 1.04719755 0.523598776 -1.04719755 -0.523598776 1.04719755 0.523598776 -1.04719755" ctrl="-0.523598776 1.04719755 0.523598776 -1.04719755 -0.523598776 1.04719755 0.523598776 -1.04719755"/>
+  </keyframe>
+</mujoco>

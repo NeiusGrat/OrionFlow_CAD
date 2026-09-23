@@ -75,21 +75,56 @@ def _world(robot, q: dict[str, float]) -> dict[str, np.ndarray]:
     return W
 
 
-def _gravity_torques(robot, props: dict, q: dict[str, float]) -> dict[str, float]:
-    """Static torque each joint must hold against gravity at pose q (N m)."""
+def _descendants(robot, link: str) -> list[str]:
+    """`link` and every link below it in the kinematic tree."""
+    kids: dict[str, list[str]] = {}
+    for j in robot.joints:
+        kids.setdefault(j.parent, []).append(j.child)
+    out, stack = [], [link]
+    while stack:
+        n = stack.pop(0)
+        out.append(n)
+        stack += kids.get(n, [])
+    return out
+
+
+def _gravity_torques(robot, props: dict, q: dict[str, float], feet_load_n: float = 0.0) -> dict[str, float]:
+    """Static torque each joint must hold at pose q (N m).
+
+    The weight of everything below the joint, and - for a standing robot -
+    the ground's push up on every foot below it, `feet_load_n` each.
+    """
     W = _world(robot, q)
-    names = [l.name for l in robot.links]
     out = {}
     for j in robot.joints:
         axis = W[j.child][:3, :3] @ np.array(j.axis)
         p = W[j.child][:3, 3] * 1e-3
+        below = _descendants(robot, j.child)
         tau = 0.0
-        for lname in names[names.index(j.child):]:           # a serial chain: everything distal
+        for lname in below:
             com = (W[lname][:3, :3] @ props[lname].com_m) + W[lname][:3, 3] * 1e-3
             F = np.array([0.0, 0.0, -props[lname].mass_kg * G])
             tau += float(np.dot(axis, np.cross(com - p, F)))
+        for f in robot.feet:
+            if f.link in below and feet_load_n:
+                centre = (W[f.link] @ np.array([*f.centre_mm, 1.0]))[:3]
+                contact = (centre - np.array([0.0, 0.0, f.radius_mm])) * 1e-3
+                tau += float(np.dot(axis, np.cross(contact - p, np.array([0.0, 0.0, feet_load_n]))))
         out[j.name] = tau
     return out
+
+
+def _expand(spec):
+    from .legged import QuadrupedSpec, expand_quadruped
+    return expand_quadruped(spec) if isinstance(spec, QuadrupedSpec) else expand(spec)
+
+
+def _root_height_mm(robot) -> float:
+    """Root height that puts the lowest foot of the first pose on z = 0."""
+    q = next(iter(robot.poses.values()), {})
+    W = _world(robot, q)
+    lowest = min((W[f.link] @ np.array([*f.centre_mm, 1.0]))[2] - f.radius_mm for f in robot.feet)
+    return -lowest
 
 
 def _sha(path: Path) -> str:
@@ -107,7 +142,7 @@ def compile_robot(spec: ArmSpec, out_dir: str | Path, robot=None) -> dict:
         shutil.rmtree(out)
     (out / "meshes").mkdir(parents=True)
     (out / "cad").mkdir()
-    robot = robot or expand(spec)
+    robot = robot or _expand(spec)
     gates: dict[str, dict] = {}
 
     # 1. exact solids ------------------------------------------------------
@@ -146,24 +181,40 @@ def compile_robot(spec: ArmSpec, out_dir: str | Path, robot=None) -> dict:
         links_c.append(cl)
     gates["inertia"] = {"passed": not inertia_fail, "problems": inertia_fail}
 
-    # 3. interference at rest, on the exact solids -----------------------------
-    W0 = _world(robot, {})
-    world_solids = {l.name: [place(s, W0[l.name]) for _, s in placed[l.name]] for l in robot.links}
+    # 3. interference at rest and in every named pose, on the exact solids -----
     clashes = []
-    for a, b in itertools.combinations(world_solids, 2):
-        v = sum(_common_volume(x, y) for x in world_solids[a] for y in world_solids[b])
-        if v > INTERFERENCE_MM3:
-            clashes.append({"links": [a, b], "common_mm3": round(v, 4)})
-    gates["interference"] = {"passed": not clashes, "clashes": clashes}
+    for pose_name, q in [("rest", {}), *robot.poses.items()]:
+        Wp = _world(robot, q)
+        world_solids = {l.name: [place(s, Wp[l.name]) for _, s in placed[l.name]] for l in robot.links}
+        for a, b in itertools.combinations(world_solids, 2):
+            v = sum(_common_volume(x, y) for x in world_solids[a] for y in world_solids[b])
+            if v > INTERFERENCE_MM3:
+                clashes.append({"pose": pose_name, "links": [a, b], "common_mm3": round(v, 4)})
+    gates["interference"] = {"passed": not clashes, "clashes": clashes,
+                             "poses": ["rest", *robot.poses]}
 
-    # 4. actuators against gravity, over the whole joint range -------------------
+    # 4. actuators against gravity --------------------------------------------
+    # A fixed base must hold every pose in its range. A standing robot must
+    # hold its stance with the ground pushing up on each foot: weight shared
+    # equally, which is exact for this symmetric stance and is recorded as
+    # the assumption it is.
     joints_c, torque = [], {}
-    grids = [np.linspace(j.lower, j.upper, TORQUE_GRID) for j in robot.joints]
     worst = {j.name: 0.0 for j in robot.joints}
-    for qs in itertools.product(*grids):
-        tau = _gravity_torques(robot, props, dict(zip([j.name for j in robot.joints], qs)))
-        for k, v in tau.items():
-            worst[k] = max(worst[k], abs(v))
+    if robot.floating:
+        weight = sum(p.mass_kg for p in props.values()) * G
+        per_foot = weight / len(robot.feet)
+        for pose_name, q in robot.poses.items():
+            for k, v in _gravity_torques(robot, props, q, feet_load_n=per_foot).items():
+                worst[k] = max(worst[k], abs(v))
+        load_case = {"case": "standing", "poses": list(robot.poses), "weight_n": round(weight, 6),
+                     "per_foot_n": round(per_foot, 6), "assumption": "equal load on every foot"}
+    else:
+        grids = [np.linspace(j.lower, j.upper, TORQUE_GRID) for j in robot.joints]
+        for qs in itertools.product(*grids):
+            tau = _gravity_torques(robot, props, dict(zip([j.name for j in robot.joints], qs)))
+            for k, v in tau.items():
+                worst[k] = max(worst[k], abs(v))
+        load_case = {"case": "fixed base, whole joint range", "samples_per_joint": TORQUE_GRID}
     for j in robot.joints:
         lim = actuator_limits(j.actuator)
         need = worst[j.name] * spec.torque_safety_factor
@@ -176,10 +227,18 @@ def compile_robot(spec: ArmSpec, out_dir: str | Path, robot=None) -> dict:
             j.name, j.parent, j.child, j.origin, j.axis, j.lower, j.upper,
             lim["effort_nm"], lim["velocity_rad_s"], j.damping, kp=lim["effort_nm"] / STALL_AT_RAD))
     gates["actuators"] = {"passed": all(t["passed"] for t in torque.values()), "joints": torque}
+    if robot.floating:
+        gates["actuators"]["load_case"] = load_case
 
     # 5. write both robot files, then robocheck both -----------------------------
     (out / f"{spec.name}.urdf").write_text(export.urdf(spec.name, links_c, joints_c))
-    (out / f"{spec.name}.xml").write_text(export.mjcf(spec.name, links_c, joints_c))
+    if robot.floating:
+        root_mm = _root_height_mm(robot)
+        (out / f"{spec.name}.xml").write_text(export.mjcf(
+            spec.name, links_c, joints_c, floating=True, poses=robot.poses,
+            root_pos_m=(0.0, 0.0, root_mm * 1e-3), timestep=export.LEGGED_TIMESTEP))
+    else:
+        (out / f"{spec.name}.xml").write_text(export.mjcf(spec.name, links_c, joints_c))
     checks = {}
     for fmt, fname in (("urdf", f"{spec.name}.urdf"), ("mjcf", f"{spec.name}.xml")):
         r = check_file(out / fname).to_dict()
@@ -189,6 +248,12 @@ def compile_robot(spec: ArmSpec, out_dir: str | Path, robot=None) -> dict:
     gates["robocheck"] = {"passed": clean,
                           "summary": {k: {"loaded": v["loaded"], "errors": v["errors"], "warnings": v["warnings"]}
                                       for k, v in checks.items()}}
+
+    # 6. a free-standing robot has to stand ------------------------------------
+    if robot.floating:
+        from .stand import stand_test
+        gates["stands"] = stand_test(out / f"{spec.name}.xml", [f.link for f in robot.feet],
+                                     next(iter(robot.poses)))
 
     accepted = all(g["passed"] for g in gates.values())
     (out / "spec.json").write_text(spec.model_dump_json(indent=1))
