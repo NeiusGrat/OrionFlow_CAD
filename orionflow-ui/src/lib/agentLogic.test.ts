@@ -23,6 +23,14 @@ import { route } from './intent';
 import { readEdit, rankVariables, readAmount, describeVariable } from './dimensions';
 import { resolveSelection } from './selection';
 import { matchDemoModel } from './demoModels';
+import {
+    worldTransforms,
+    poseAngles,
+    walkAngles,
+    drivingJoint,
+    type AssemblyManifest,
+} from './assembly';
+import duckJson from '../../public/demo/microduck/microduck.json';
 import type { TopologyRecord } from './faceMap';
 
 let failures = 0;
@@ -232,10 +240,75 @@ eq(matchDemoModel('show the micro-duck crouching')?.pose, 'crouch', 'crouching p
 eq(matchDemoModel('build microduck on rollers')?.pose, 'rollers', 'rollers picks the rollers pose');
 eq(matchDemoModel('what is microduck?'), null, 'a question about it does not load it');
 eq(matchDemoModel('show me a duck-shaped bracket'), null, 'another part is not captured');
+eq(matchDemoModel('show microduck walking')?.assembly.pose, 'walk', 'walking plays the walk cycle');
+eq(matchDemoModel('build microduck on rollers')?.assembly.manifest, '/demo/microduck/microduck_rollers.json', 'rollers loads the rollers assembly');
 ok(
-    (matchDemoModel('show microduck')?.glb ?? '').startsWith('/demo/microduck/'),
+    (matchDemoModel('show microduck')?.assembly.glb ?? '').startsWith('/demo/microduck/'),
     'files are served from the frontend',
 );
+
+/* ══════════════════════ 5. the articulated assembly ══════════════════════ */
+
+section('assembly — the viewer moves joints exactly as the CAD was posed');
+
+const duck = duckJson as unknown as AssemblyManifest & {
+    check: Record<string, Record<string, number[]>>;
+};
+
+// The exporter wrote each body's world transform at every named pose from the
+// Python the STEP was built with. Recomputing them here from `rest` + joint
+// angles is the whole claim that dragging a slider shows the real robot.
+for (const pose of Object.keys(duck.check)) {
+    const got = worldTransforms(duck, poseAngles(duck, pose));
+    let worst = 0;
+    for (const [body, want] of Object.entries(duck.check[pose])) {
+        want.forEach((v, i) => (worst = Math.max(worst, Math.abs(v - got[body][i]))));
+    }
+    ok(worst < 1e-3, `pose "${pose}" matches the CAD placement`, `worst error ${worst}`);
+}
+
+eq(duck.joints.length, 14, 'fourteen actuated joints');
+eq(duck.instances.length, 71, 'all 71 part instances are in the viewer');
+ok(duck.instances.every((i) => i.part in duck.parts), 'every instance names a described part');
+ok(Math.abs(duck.totals.mass_g - 737.2) < 0.5, 'mass is the MJCF total', String(duck.totals.mass_g));
+
+// A walk cycle that pushes a joint past its stop would show a pose the real
+// robot cannot reach — and the soles must stay parallel to the trunk. Checked
+// on the geometry (each foot body's world rotation against rest), not on a
+// sum of angles: the legs' pitch axes are mirrored, and an angle-sum check is
+// exactly what let a pose table with upturned feet pass before.
+const soleTilt = (a: Record<string, number>) => {
+    const w = worldTransforms(duck, a);
+    const rest = worldTransforms(duck, {});
+    let worst = 0;
+    for (const f of ['ankle_left', 'ankle_right']) {
+        const R = w[f];
+        const R0 = rest[f];
+        // trace(R0ᵀ R) for the 3x3 blocks of two row-major 4x4 matrices
+        let tr = 0;
+        for (let i = 0; i < 3; i++) for (let k = 0; k < 3; k++) tr += R0[k * 4 + i] * R[k * 4 + i];
+        worst = Math.max(worst, Math.acos(Math.max(-1, Math.min(1, (tr - 1) / 2))));
+    }
+    return (worst * 180) / Math.PI;
+};
+let outOfRange = 0;
+let tilt = 0;
+for (let k = 0; k < 64; k++) {
+    const a = walkAngles(duck, (k / 64) * Math.PI * 2);
+    for (const b of duck.bodies) {
+        const j = b.joint;
+        if (j?.range && (a[j.name] < j.range[0] - 1e-9 || a[j.name] > j.range[1] + 1e-9)) outOfRange++;
+    }
+    tilt = Math.max(tilt, soleTilt(a));
+}
+eq(outOfRange, 0, 'the walk cycle never leaves a joint range');
+ok(tilt < 0.5, 'the soles stay parallel to the trunk through the walk cycle', `${tilt.toFixed(2)} deg`);
+for (const pose of Object.keys(duck.poses)) {
+    ok(soleTilt(poseAngles(duck, pose)) < 0.5, `the soles are flat in the "${pose}" pose`);
+}
+
+eq(drivingJoint(duck, 'ankle_left')?.name, 'left_ankle', 'a body is moved by its own joint');
+eq(drivingJoint(duck, 'trunk_base'), null, 'the trunk is not moved by any joint');
 
 /* ══════════════════════ report ══════════════════════ */
 

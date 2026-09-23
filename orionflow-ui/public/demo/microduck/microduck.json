@@ -1,0 +1,3008 @@
+{
+ "name": "MicroDuck",
+ "variant": "legs",
+ "units": "mm",
+ "up": "Z",
+ "source": {
+  "robot": "Pollen Robotics MicroDuck (open source)",
+  "onshape": "https://cad.onshape.com/documents/804927696f06d877f3f1803e/w/5b75db19292e71970de02dee/e/ef6e972847fec8d82570b35e",
+  "simulator": "huggingface.co/spaces/pollen-robotics/microduck-simulator",
+  "note": "Reference model rebuilt ahead of time from the open simulator's meshes; not generated from a prompt."
+ },
+ "joints": [
+  "left_hip_yaw",
+  "left_hip_roll",
+  "left_hip_pitch",
+  "left_knee",
+  "left_ankle",
+  "neck_pitch",
+  "head_pitch",
+  "head_yaw",
+  "head_roll",
+  "right_hip_yaw",
+  "right_hip_roll",
+  "right_hip_pitch",
+  "right_knee",
+  "right_ankle"
+ ],
+ "bodies": [
+  {
+   "name": "trunk_base",
+   "node": "b_trunk_base",
+   "parent": null,
+   "rest": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 199.22,
+   "joint": null
+  },
+  {
+   "name": "yaw2roll",
+   "node": "b_yaw2roll",
+   "parent": "trunk_base",
+   "rest": [
+    2.220446049250313e-16,
+    0.9999999999999998,
+    0.0,
+    6.0,
+    0.9999999999999998,
+    2.220446049250313e-16,
+    0.0,
+    17.5,
+    0.0,
+    0.0,
+    -0.9999999999999996,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 23.04,
+   "joint": {
+    "name": "left_hip_yaw",
+    "label": "Left hip yaw",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -0.4363323129985824,
+     0.5235987755982988
+    ]
+   }
+  },
+  {
+   "name": "hip_l",
+   "node": "b_hip_l",
+   "parent": "yaw2roll",
+   "rest": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    2.220446049250313e-16,
+    0.9999999999999998,
+    16.5,
+    0.0,
+    -0.9999999999999998,
+    2.220446049250313e-16,
+    12.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 6.19,
+   "joint": {
+    "name": "left_hip_roll",
+    "label": "Left hip roll",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -0.3839724354387525,
+     0.3839724354387525
+    ]
+   }
+  },
+  {
+   "name": "upper_leg_left",
+   "node": "b_upper_leg_left",
+   "parent": "hip_l",
+   "rest": [
+    0.0,
+    0.0,
+    1.0,
+    25.0,
+    -1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0,
+    0.0,
+    -18.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 48.21,
+   "joint": {
+    "name": "left_hip_pitch",
+    "label": "Left hip pitch",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.570796326795005,
+     1.5707963267947882
+    ]
+   }
+  },
+  {
+   "name": "leg",
+   "node": "b_leg",
+   "parent": "upper_leg_left",
+   "rest": [
+    2.220446049250313e-16,
+    0.9999999999999998,
+    0.0,
+    22.0,
+    0.9999999999999998,
+    2.220446049250313e-16,
+    0.0,
+    35.7771,
+    0.0,
+    0.0,
+    -0.9999999999999996,
+    -4.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 21.58,
+   "joint": {
+    "name": "left_knee",
+    "label": "Left knee",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.570796326795012,
+     1.570796326794781
+    ]
+   }
+  },
+  {
+   "name": "ankle_left",
+   "node": "b_ankle_left",
+   "parent": "leg",
+   "rest": [
+    1.0,
+    -0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0,
+    -0.0,
+    42.0,
+    0.0,
+    0.0,
+    -1.0,
+    -26.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 30.02,
+   "joint": {
+    "name": "left_ankle",
+    "label": "Left ankle",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.5707963267949019,
+     1.5707963267948912
+    ]
+   }
+  },
+  {
+   "name": "neck",
+   "node": "b_neck",
+   "parent": "trunk_base",
+   "rest": [
+    -0.9999999999999996,
+    0.0,
+    0.0,
+    26.0,
+    0.0,
+    2.220446049250313e-16,
+    -0.9999999999999998,
+    14.5,
+    -0.0,
+    -0.9999999999999998,
+    2.220446049250313e-16,
+    32.4215,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 36.84,
+   "joint": {
+    "name": "neck_pitch",
+    "label": "Neck pitch",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.5707963267948966,
+     1.0471975511965976
+    ]
+   }
+  },
+  {
+   "name": "neck_pitch",
+   "node": "b_neck_pitch",
+   "parent": "neck",
+   "rest": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0,
+    0.0,
+    -50.0,
+    0.0,
+    0.0,
+    -1.0,
+    -0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 5.72,
+   "joint": {
+    "name": "head_pitch",
+    "label": "Head pitch",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.5707963267948974,
+     1.5707963267948957
+    ]
+   }
+  },
+  {
+   "name": "yaw_roll_motion",
+   "node": "b_yaw_roll_motion",
+   "parent": "neck_pitch",
+   "rest": [
+    -0.9999999999999996,
+    0.0,
+    -0.0,
+    -0.0,
+    -0.0,
+    2.220446049250313e-16,
+    0.9999999999999998,
+    18.6931,
+    0.0,
+    0.9999999999999998,
+    2.220446049250313e-16,
+    -14.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 48.6,
+   "joint": {
+    "name": "head_yaw",
+    "label": "Head yaw",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -2.967059728390373,
+     2.967059728390348
+    ]
+   }
+  },
+  {
+   "name": "jaw_soft",
+   "node": "b_jaw_soft",
+   "parent": "yaw_roll_motion",
+   "rest": [
+    2.220446049250313e-16,
+    0.0,
+    -0.9999999999999998,
+    -17.9,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.9999999999999998,
+    0.0,
+    2.220446049250313e-16,
+    14.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 188.77,
+   "joint": {
+    "name": "head_roll",
+    "label": "Head roll",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -0.43633231299859127,
+     0.4363323129985735
+    ]
+   }
+  },
+  {
+   "name": "bearing_roll",
+   "node": "b_bearing_roll",
+   "parent": "trunk_base",
+   "rest": [
+    2.220446049250313e-16,
+    0.9999999999999998,
+    0.0,
+    6.0,
+    0.9999999999999998,
+    2.220446049250313e-16,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    -0.9999999999999996,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 23.04,
+   "joint": {
+    "name": "right_hip_yaw",
+    "label": "Right hip yaw",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -0.5235987755982988,
+     0.4363323129985824
+    ]
+   }
+  },
+  {
+   "name": "hip_l_2",
+   "node": "b_hip_l_2",
+   "parent": "bearing_roll",
+   "rest": [
+    -0.9999999999999996,
+    -0.0,
+    0.0,
+    -0.0,
+    0.0,
+    2.220446049250313e-16,
+    0.9999999999999998,
+    16.5,
+    -0.0,
+    0.9999999999999998,
+    2.220446049250313e-16,
+    12.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 6.19,
+   "joint": {
+    "name": "right_hip_roll",
+    "label": "Right hip roll",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -0.3839724354387525,
+     0.3839724354387525
+    ]
+   }
+  },
+  {
+   "name": "upper_leg_right",
+   "node": "b_upper_leg_right",
+   "parent": "hip_l_2",
+   "rest": [
+    0.0,
+    0.0,
+    1.0,
+    25.0,
+    -1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0,
+    0.0,
+    -18.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 48.21,
+   "joint": {
+    "name": "right_hip_pitch",
+    "label": "Right hip pitch",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.5707963267949268,
+     1.5707963267948664
+    ]
+   }
+  },
+  {
+   "name": "leg_2",
+   "node": "b_leg_2",
+   "parent": "upper_leg_right",
+   "rest": [
+    1.0,
+    0.0,
+    -0.0,
+    -22.0,
+    -0.0,
+    -1.0,
+    0.0,
+    35.7771,
+    0.0,
+    0.0,
+    -1.0,
+    -4.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 21.58,
+   "joint": {
+    "name": "right_knee",
+    "label": "Right knee",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.570796326794932,
+     1.570796326794861
+    ]
+   }
+  },
+  {
+   "name": "ankle_right",
+   "node": "b_ankle_right",
+   "parent": "leg_2",
+   "rest": [
+    2.220446049250313e-16,
+    0.9999999999999998,
+    -0.0,
+    -42.0,
+    0.9999999999999998,
+    2.220446049250313e-16,
+    0.0,
+    0.0,
+    0.0,
+    -0.0,
+    -0.9999999999999996,
+    -26.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "mass_g": 30.03,
+   "joint": {
+    "name": "right_ankle",
+    "label": "Right ankle",
+    "axis": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "range": [
+     -1.5707963267949054,
+     1.5707963267948877
+    ]
+   }
+  }
+ ],
+ "instances": [
+  {
+   "id": "trunk_base/seeed_bearing__configuration__22x16x4/0",
+   "node": "p_0",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "trunk_base",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/right_shell/1",
+   "node": "p_1",
+   "part": "right_shell",
+   "body": "trunk_base",
+   "color": [
+    0.8,
+    0.8,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/banana_pcb_locker/2",
+   "node": "p_2",
+   "part": "banana_pcb_locker",
+   "body": "trunk_base",
+   "color": [
+    0.647059,
+    0.647059,
+    0.647059,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/trunk_base/3",
+   "node": "p_3",
+   "part": "trunk_base",
+   "body": "trunk_base",
+   "color": [
+    0.34902,
+    0.376471,
+    0.4,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/xl330/4",
+   "node": "p_4",
+   "part": "xl330",
+   "body": "trunk_base",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/power_support/5",
+   "node": "p_5",
+   "part": "power_support",
+   "body": "trunk_base",
+   "color": [
+    0.901961,
+    0.901961,
+    0.901961,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/power_support/6",
+   "node": "p_6",
+   "part": "power_support",
+   "body": "trunk_base",
+   "color": [
+    0.901961,
+    0.901961,
+    0.901961,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/np_f970/7",
+   "node": "p_7",
+   "part": "np_f970",
+   "body": "trunk_base",
+   "color": [
+    0.901961,
+    0.901961,
+    0.901961,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/xl330/8",
+   "node": "p_8",
+   "part": "xl330",
+   "body": "trunk_base",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/left_shell/9",
+   "node": "p_9",
+   "part": "left_shell",
+   "body": "trunk_base",
+   "color": [
+    0.8,
+    0.8,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "trunk_base/seeed_bearing__configuration__22x16x4/10",
+   "node": "p_10",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "trunk_base",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw2roll/yaw2roll/0",
+   "node": "p_11",
+   "part": "yaw2roll",
+   "body": "yaw2roll",
+   "color": [
+    0.647059,
+    0.647059,
+    0.647059,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw2roll/xl330/1",
+   "node": "p_12",
+   "part": "xl330",
+   "body": "yaw2roll",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw2roll/seeed_bearing__configuration__22x16x4/2",
+   "node": "p_13",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "yaw2roll",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw2roll/bearing_roll/3",
+   "node": "p_14",
+   "part": "bearing_roll",
+   "body": "yaw2roll",
+   "color": [
+    0.262745,
+    0.282353,
+    0.301961,
+    1.0
+   ]
+  },
+  {
+   "id": "hip_l/seeed_bearing__configuration__22x16x4/0",
+   "node": "p_15",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "hip_l",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "hip_l/hip_l/1",
+   "node": "p_16",
+   "part": "hip_l",
+   "body": "hip_l",
+   "color": [
+    0.901961,
+    0.901961,
+    0.901961,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_left/upper_leg_left/0",
+   "node": "p_17",
+   "part": "upper_leg_left",
+   "body": "upper_leg_left",
+   "color": [
+    0.866667,
+    0.866667,
+    0.866667,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_left/xl330/1",
+   "node": "p_18",
+   "part": "xl330",
+   "body": "upper_leg_left",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_left/upper_leg_rigidity_plate/2",
+   "node": "p_19",
+   "part": "upper_leg_rigidity_plate",
+   "body": "upper_leg_left",
+   "color": [
+    0.537255,
+    0.854902,
+    0.827451,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_left/seeed_bearing__configuration__22x16x4/3",
+   "node": "p_20",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "upper_leg_left",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_left/xl330/4",
+   "node": "p_21",
+   "part": "xl330",
+   "body": "upper_leg_left",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "leg/leg/0",
+   "node": "p_22",
+   "part": "leg",
+   "body": "leg",
+   "color": [
+    0.811765,
+    0.858824,
+    0.898039,
+    1.0
+   ]
+  },
+  {
+   "id": "leg/xl330/1",
+   "node": "p_23",
+   "part": "xl330",
+   "body": "leg",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_left/sole_left/0",
+   "node": "p_24",
+   "part": "sole_left",
+   "body": "ankle_left",
+   "color": [
+    0.537255,
+    0.854902,
+    0.827451,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_left/foot_left/1",
+   "node": "p_25",
+   "part": "foot_left",
+   "body": "ankle_left",
+   "color": [
+    0.980392,
+    0.713725,
+    0.00392157,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_left/seeed_bearing__configuration_default/2",
+   "node": "p_26",
+   "part": "seeed_bearing__configuration_default",
+   "body": "ankle_left",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_left/ankle_left/3",
+   "node": "p_27",
+   "part": "ankle_left",
+   "body": "ankle_left",
+   "color": [
+    0.980392,
+    0.713725,
+    0.00392157,
+    1.0
+   ]
+  },
+  {
+   "id": "neck/neck/0",
+   "node": "p_28",
+   "part": "neck",
+   "body": "neck",
+   "color": [
+    0.8,
+    0.8,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "neck/xl330/1",
+   "node": "p_29",
+   "part": "xl330",
+   "body": "neck",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "neck/xl330/2",
+   "node": "p_30",
+   "part": "xl330",
+   "body": "neck",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "neck/neck/3",
+   "node": "p_31",
+   "part": "neck",
+   "body": "neck",
+   "color": [
+    0.8,
+    0.8,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "neck_pitch/neck_pitch/0",
+   "node": "p_32",
+   "part": "neck_pitch",
+   "body": "neck_pitch",
+   "color": [
+    0.34902,
+    0.376471,
+    0.4,
+    1.0
+   ]
+  },
+  {
+   "id": "neck_pitch/seeed_bearing__configuration__22x16x4/1",
+   "node": "p_33",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "neck_pitch",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw_roll_motion/yaw_roll_motion/0",
+   "node": "p_34",
+   "part": "yaw_roll_motion",
+   "body": "yaw_roll_motion",
+   "color": [
+    0.768627,
+    0.886275,
+    0.952941,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw_roll_motion/xl330/1",
+   "node": "p_35",
+   "part": "xl330",
+   "body": "yaw_roll_motion",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw_roll_motion/seeed_bearing__configuration__22x16x4/2",
+   "node": "p_36",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "yaw_roll_motion",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "yaw_roll_motion/seeed_bearing__configuration__22x16x4/3",
+   "node": "p_37",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "yaw_roll_motion",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/lens/0",
+   "node": "p_38",
+   "part": "lens",
+   "body": "jaw_soft",
+   "color": [
+    0.262745,
+    0.282353,
+    0.301961,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/face_part/1",
+   "node": "p_39",
+   "part": "face_part",
+   "body": "jaw_soft",
+   "color": [
+    0.34902,
+    0.376471,
+    0.4,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/xl330/2",
+   "node": "p_40",
+   "part": "xl330",
+   "body": "jaw_soft",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/jaw_soft/3",
+   "node": "p_41",
+   "part": "jaw_soft",
+   "body": "jaw_soft",
+   "color": [
+    0.85098,
+    0.756863,
+    0.866667,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/motor_support/4",
+   "node": "p_42",
+   "part": "motor_support",
+   "body": "jaw_soft",
+   "color": [
+    0.262745,
+    0.282353,
+    0.301961,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/top_head_shell/5",
+   "node": "p_43",
+   "part": "top_head_shell",
+   "body": "jaw_soft",
+   "color": [
+    0.901961,
+    0.901961,
+    0.901961,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/xl330/6",
+   "node": "p_44",
+   "part": "xl330",
+   "body": "jaw_soft",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/seeed_bearing__configuration_default/7",
+   "node": "p_45",
+   "part": "seeed_bearing__configuration_default",
+   "body": "jaw_soft",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/elec_rpi_robot_hat_pcb/8",
+   "node": "p_46",
+   "part": "elec_rpi_robot_hat_pcb",
+   "body": "jaw_soft",
+   "color": [
+    0.313725,
+    0.486275,
+    0.411765,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/soft_mouth_top/9",
+   "node": "p_47",
+   "part": "soft_mouth_top",
+   "body": "jaw_soft",
+   "color": [
+    0.85098,
+    0.756863,
+    0.866667,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/noenoeil/10",
+   "node": "p_48",
+   "part": "noenoeil",
+   "body": "jaw_soft",
+   "color": [
+    0.262745,
+    0.282353,
+    0.301961,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/jaw/11",
+   "node": "p_49",
+   "part": "jaw",
+   "body": "jaw_soft",
+   "color": [
+    0.980392,
+    0.713725,
+    0.00392157,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/bottom_head_shell/12",
+   "node": "p_50",
+   "part": "bottom_head_shell",
+   "body": "jaw_soft",
+   "color": [
+    0.980392,
+    0.713725,
+    0.00392157,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/m12_lens_holder/13",
+   "node": "p_51",
+   "part": "m12_lens_holder",
+   "body": "jaw_soft",
+   "color": [
+    0.262745,
+    0.282353,
+    0.301961,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/pcb__raspberry_pi_zero_2_w/14",
+   "node": "p_52",
+   "part": "pcb__raspberry_pi_zero_2_w",
+   "body": "jaw_soft",
+   "color": [
+    0.498039,
+    0.498039,
+    0.498039,
+    1.0
+   ]
+  },
+  {
+   "id": "jaw_soft/speaker/15",
+   "node": "p_53",
+   "part": "speaker",
+   "body": "jaw_soft",
+   "color": [
+    0.294118,
+    0.290196,
+    0.290196,
+    1.0
+   ]
+  },
+  {
+   "id": "bearing_roll/yaw2roll/0",
+   "node": "p_54",
+   "part": "yaw2roll",
+   "body": "bearing_roll",
+   "color": [
+    0.647059,
+    0.647059,
+    0.647059,
+    1.0
+   ]
+  },
+  {
+   "id": "bearing_roll/xl330/1",
+   "node": "p_55",
+   "part": "xl330",
+   "body": "bearing_roll",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "bearing_roll/bearing_roll/2",
+   "node": "p_56",
+   "part": "bearing_roll",
+   "body": "bearing_roll",
+   "color": [
+    0.262745,
+    0.282353,
+    0.301961,
+    1.0
+   ]
+  },
+  {
+   "id": "bearing_roll/seeed_bearing__configuration__22x16x4/3",
+   "node": "p_57",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "bearing_roll",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "hip_l_2/hip_l/0",
+   "node": "p_58",
+   "part": "hip_l",
+   "body": "hip_l_2",
+   "color": [
+    0.901961,
+    0.901961,
+    0.901961,
+    1.0
+   ]
+  },
+  {
+   "id": "hip_l_2/seeed_bearing__configuration__22x16x4/1",
+   "node": "p_59",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "hip_l_2",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_right/xl330/0",
+   "node": "p_60",
+   "part": "xl330",
+   "body": "upper_leg_right",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_right/seeed_bearing__configuration__22x16x4/1",
+   "node": "p_61",
+   "part": "seeed_bearing__configuration__22x16x4",
+   "body": "upper_leg_right",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_right/upper_leg_rigidity_plate/2",
+   "node": "p_62",
+   "part": "upper_leg_rigidity_plate",
+   "body": "upper_leg_right",
+   "color": [
+    0.537255,
+    0.854902,
+    0.827451,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_right/upper_leg_right/3",
+   "node": "p_63",
+   "part": "upper_leg_right",
+   "body": "upper_leg_right",
+   "color": [
+    0.866667,
+    0.866667,
+    0.866667,
+    1.0
+   ]
+  },
+  {
+   "id": "upper_leg_right/xl330/4",
+   "node": "p_64",
+   "part": "xl330",
+   "body": "upper_leg_right",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "leg_2/xl330/0",
+   "node": "p_65",
+   "part": "xl330",
+   "body": "leg_2",
+   "color": [
+    0.286275,
+    0.286275,
+    0.286275,
+    1.0
+   ]
+  },
+  {
+   "id": "leg_2/leg/1",
+   "node": "p_66",
+   "part": "leg",
+   "body": "leg_2",
+   "color": [
+    0.811765,
+    0.858824,
+    0.898039,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_right/ankle_right/0",
+   "node": "p_67",
+   "part": "ankle_right",
+   "body": "ankle_right",
+   "color": [
+    0.980392,
+    0.713725,
+    0.00392157,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_right/sole_right/1",
+   "node": "p_68",
+   "part": "sole_right",
+   "body": "ankle_right",
+   "color": [
+    0.537255,
+    0.854902,
+    0.827451,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_right/seeed_bearing__configuration_default/2",
+   "node": "p_69",
+   "part": "seeed_bearing__configuration_default",
+   "body": "ankle_right",
+   "color": [
+    0.713725,
+    0.760784,
+    0.8,
+    1.0
+   ]
+  },
+  {
+   "id": "ankle_right/foot_right/3",
+   "node": "p_70",
+   "part": "foot_right",
+   "body": "ankle_right",
+   "color": [
+    0.980392,
+    0.713725,
+    0.00392157,
+    1.0
+   ]
+  }
+ ],
+ "parts": {
+  "ankle_left": {
+   "label": "Ankle, left",
+   "file": "ankle_left",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 717,
+   "curved_faces": 0,
+   "triangles": 1144,
+   "volume_mm3": 7928.48,
+   "area_mm2": 5314.11,
+   "bbox_mm": [
+    39.489,
+    36.5,
+    25.5
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "ankle_right": {
+   "label": "Ankle, right",
+   "file": "ankle_right",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 1217,
+   "curved_faces": 13,
+   "triangles": 7902,
+   "volume_mm3": 7996.74,
+   "area_mm2": 5328.2,
+   "bbox_mm": [
+    39.489,
+    36.5,
+    25.5
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "banana_pcb_locker": {
+   "label": "PCB locker",
+   "file": "banana_pcb_locker",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 182,
+   "curved_faces": 0,
+   "triangles": 656,
+   "volume_mm3": 461.56,
+   "area_mm2": 816.24,
+   "bbox_mm": [
+    53.496,
+    3.8,
+    6.619
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "bearing_roll": {
+   "label": "Hip roll bearing housing",
+   "file": "bearing_roll",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 99,
+   "curved_faces": 28,
+   "triangles": 9284,
+   "volume_mm3": 622.75,
+   "area_mm2": 1460.78,
+   "bbox_mm": [
+    22.981,
+    3.0,
+    39.995
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 2
+  },
+  "bottom_head_shell": {
+   "label": "Head shell, bottom",
+   "file": "bottom_head_shell",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 4124,
+   "curved_faces": 0,
+   "triangles": 4766,
+   "volume_mm3": 23984.81,
+   "area_mm2": 28609.42,
+   "bbox_mm": [
+    91.744,
+    116.74,
+    20.132
+   ],
+   "closed_solid": false,
+   "valid": true,
+   "instances": 1
+  },
+  "elec_rpi_robot_hat_pcb": {
+   "label": "Robot HAT board",
+   "file": "elec_rpi_robot_hat_pcb",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 139,
+   "curved_faces": 52,
+   "triangles": 17396,
+   "volume_mm3": 1584.21,
+   "area_mm2": 4077.26,
+   "bbox_mm": [
+    65.012,
+    30.005,
+    0.84
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "face_part": {
+   "label": "Face plate",
+   "file": "face_part",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 1628,
+   "curved_faces": 187,
+   "triangles": 64577,
+   "volume_mm3": 5707.89,
+   "area_mm2": 8370.13,
+   "bbox_mm": [
+    87.574,
+    12.5,
+    44.547
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "foot_left": {
+   "label": "Foot, left",
+   "file": "foot_left",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 4901,
+   "curved_faces": 0,
+   "triangles": 4901,
+   "volume_mm3": 12184.47,
+   "area_mm2": 13094.62,
+   "bbox_mm": [
+    40.086,
+    53.985,
+    16.905
+   ],
+   "closed_solid": false,
+   "valid": true,
+   "instances": 1
+  },
+  "foot_right": {
+   "label": "Foot, right",
+   "file": "foot_right",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 3855,
+   "curved_faces": 0,
+   "triangles": 4916,
+   "volume_mm3": 12172.61,
+   "area_mm2": 13120.31,
+   "bbox_mm": [
+    40.086,
+    53.985,
+    16.909
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "hip_l": {
+   "label": "Hip bracket",
+   "file": "hip_l",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 3372,
+   "curved_faces": 0,
+   "triangles": 4010,
+   "volume_mm3": 4452.76,
+   "area_mm2": 3186.66,
+   "bbox_mm": [
+    32.45,
+    34.497,
+    19.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 2
+  },
+  "jaw": {
+   "label": "Jaw",
+   "file": "jaw",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 1958,
+   "curved_faces": 0,
+   "triangles": 2334,
+   "volume_mm3": 9430.62,
+   "area_mm2": 10962.42,
+   "bbox_mm": [
+    91.415,
+    68.702,
+    29.423
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "jaw_soft": {
+   "label": "Jaw, soft",
+   "file": "jaw_soft",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 1501,
+   "curved_faces": 0,
+   "triangles": 4470,
+   "volume_mm3": 18593.3,
+   "area_mm2": 6804.31,
+   "bbox_mm": [
+    87.506,
+    32.036,
+    8.438
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "left_shell": {
+   "label": "Body shell, left",
+   "file": "left_shell",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 6928,
+   "curved_faces": 0,
+   "triangles": 6928,
+   "volume_mm3": 11403.11,
+   "area_mm2": 11509.02,
+   "bbox_mm": [
+    33.707,
+    80.889,
+    41.691
+   ],
+   "closed_solid": false,
+   "valid": true,
+   "instances": 1
+  },
+  "leg": {
+   "label": "Lower leg",
+   "file": "leg",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 2367,
+   "curved_faces": 0,
+   "triangles": 3464,
+   "volume_mm3": 3437.67,
+   "area_mm2": 3243.14,
+   "bbox_mm": [
+    7.95,
+    20.0,
+    58.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 2
+  },
+  "lens": {
+   "label": "Camera lens",
+   "file": "lens",
+   "source": "revolved",
+   "source_note": "Rebuilt as a revolved profile. True circular edges, within 2% of the source volume.",
+   "faces": 17,
+   "curved_faces": 15,
+   "triangles": 2151,
+   "volume_mm3": 2771.59,
+   "area_mm2": 1173.42,
+   "bbox_mm": [
+    16.886,
+    18.867,
+    16.892
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "m12_lens_holder": {
+   "label": "M12 lens holder",
+   "file": "m12_lens_holder",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 1827,
+   "curved_faces": 0,
+   "triangles": 2082,
+   "volume_mm3": 1078.63,
+   "area_mm2": 1865.72,
+   "bbox_mm": [
+    23.079,
+    14.8,
+    15.999
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "motor_support": {
+   "label": "Motor support",
+   "file": "motor_support",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 576,
+   "curved_faces": 0,
+   "triangles": 904,
+   "volume_mm3": 7504.77,
+   "area_mm2": 9657.06,
+   "bbox_mm": [
+    73.5,
+    54.2,
+    18.8
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "neck": {
+   "label": "Neck link",
+   "file": "neck",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 27,
+   "curved_faces": 0,
+   "triangles": 96,
+   "volume_mm3": 431.91,
+   "area_mm2": 548.95,
+   "bbox_mm": [
+    2.0,
+    19.985,
+    10.985
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 2
+  },
+  "neck_pitch": {
+   "label": "Neck pitch bracket",
+   "file": "neck_pitch",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 966,
+   "curved_faces": 0,
+   "triangles": 1614,
+   "volume_mm3": 4238.62,
+   "area_mm2": 3701.11,
+   "bbox_mm": [
+    35.0,
+    18.0,
+    27.693
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "noenoeil": {
+   "label": "Eye",
+   "file": "noenoeil",
+   "source": "revolved",
+   "source_note": "Rebuilt as a revolved profile. True circular edges, within 2% of the source volume.",
+   "faces": 11,
+   "curved_faces": 7,
+   "triangles": 1895,
+   "volume_mm3": 4292.22,
+   "area_mm2": 2273.42,
+   "bbox_mm": [
+    29.951,
+    9.5,
+    29.938
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "np_f970": {
+   "label": "NP-F970 battery pack",
+   "file": "np_f970",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 2407,
+   "curved_faces": 0,
+   "triangles": 2446,
+   "volume_mm3": 47997.35,
+   "area_mm2": 9860.33,
+   "bbox_mm": [
+    38.55,
+    20.556,
+    70.754
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "pcb__raspberry_pi_zero_2_w": {
+   "label": "Raspberry Pi Zero 2 W",
+   "file": "pcb__raspberry_pi_zero_2_w",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 80,
+   "curved_faces": 40,
+   "triangles": 13268,
+   "volume_mm3": 3056.79,
+   "area_mm2": 4316.51,
+   "bbox_mm": [
+    65.0,
+    1.6,
+    30.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "power_support": {
+   "label": "Battery support",
+   "file": "power_support",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 2043,
+   "curved_faces": 0,
+   "triangles": 2780,
+   "volume_mm3": 10502.27,
+   "area_mm2": 12424.68,
+   "bbox_mm": [
+    54.493,
+    17.0,
+    83.489
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 2
+  },
+  "right_shell": {
+   "label": "Body shell, right",
+   "file": "right_shell",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 5532,
+   "curved_faces": 0,
+   "triangles": 6020,
+   "volume_mm3": 11274.51,
+   "area_mm2": 11255.06,
+   "bbox_mm": [
+    31.757,
+    80.897,
+    41.693
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "seeed_bearing__configuration__22x16x4": {
+   "label": "Bearing 22 x 16 x 4",
+   "file": "seeed_bearing__configuration__22x16x4",
+   "source": "modelled",
+   "source_note": "Hand-modelled from measurements. True CAD faces.",
+   "faces": 19,
+   "curved_faces": 4,
+   "triangles": 8464,
+   "volume_mm3": 483.28,
+   "area_mm2": 1228.36,
+   "bbox_mm": [
+    22.0,
+    21.993,
+    4.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 11
+  },
+  "seeed_bearing__configuration_default": {
+   "label": "Bearing (small)",
+   "file": "seeed_bearing__configuration_default",
+   "source": "modelled",
+   "source_note": "Hand-modelled from measurements. True CAD faces.",
+   "faces": 17,
+   "curved_faces": 4,
+   "triangles": 7118,
+   "volume_mm3": 181.99,
+   "area_mm2": 617.37,
+   "bbox_mm": [
+    15.0,
+    14.995,
+    3.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 3
+  },
+  "soft_mouth_top": {
+   "label": "Mouth top, soft",
+   "file": "soft_mouth_top",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 483,
+   "curved_faces": 0,
+   "triangles": 1556,
+   "volume_mm3": 2687.96,
+   "area_mm2": 6304.71,
+   "bbox_mm": [
+    87.82,
+    32.564,
+    3.274
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "sole_left": {
+   "label": "Sole, left",
+   "file": "sole_left",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 3848,
+   "curved_faces": 0,
+   "triangles": 3946,
+   "volume_mm3": 6244.27,
+   "area_mm2": 7013.76,
+   "bbox_mm": [
+    41.091,
+    54.0,
+    12.907
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "sole_right": {
+   "label": "Sole, right",
+   "file": "sole_right",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 3868,
+   "curved_faces": 0,
+   "triangles": 3972,
+   "volume_mm3": 6246.33,
+   "area_mm2": 7014.13,
+   "bbox_mm": [
+    41.093,
+    54.0,
+    12.897
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "speaker": {
+   "label": "Speaker",
+   "file": "speaker",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 6,
+   "curved_faces": 0,
+   "triangles": 12,
+   "volume_mm3": 6125.0,
+   "area_mm2": 2590.0,
+   "bbox_mm": [
+    35.0,
+    25.0,
+    7.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "top_head_shell": {
+   "label": "Head shell, top",
+   "file": "top_head_shell",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 3916,
+   "curved_faces": 0,
+   "triangles": 3916,
+   "volume_mm3": 29928.97,
+   "area_mm2": 34288.76,
+   "bbox_mm": [
+    91.602,
+    122.69,
+    46.334
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "trunk_base": {
+   "label": "Trunk base",
+   "file": "trunk_base",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 157,
+   "curved_faces": 1,
+   "triangles": 952,
+   "volume_mm3": 1410.19,
+   "area_mm2": 3161.69,
+   "bbox_mm": [
+    56.977,
+    35.989,
+    1.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "upper_leg_left": {
+   "label": "Upper leg, left",
+   "file": "upper_leg_left",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 2392,
+   "curved_faces": 0,
+   "triangles": 2748,
+   "volume_mm3": 4034.93,
+   "area_mm2": 8357.49,
+   "bbox_mm": [
+    28.0,
+    47.659,
+    60.996
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "upper_leg_right": {
+   "label": "Upper leg, right",
+   "file": "upper_leg_right",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 2267,
+   "curved_faces": 0,
+   "triangles": 2540,
+   "volume_mm3": 3979.79,
+   "area_mm2": 8226.25,
+   "bbox_mm": [
+    28.0,
+    47.654,
+    60.996
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  },
+  "upper_leg_rigidity_plate": {
+   "label": "Upper-leg stiffening plate",
+   "file": "upper_leg_rigidity_plate",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 224,
+   "curved_faces": 1,
+   "triangles": 1240,
+   "volume_mm3": 764.65,
+   "area_mm2": 1960.75,
+   "bbox_mm": [
+    1.0,
+    44.935,
+    58.031
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 2
+  },
+  "xl330": {
+   "label": "Dynamixel XL330 servo",
+   "file": "xl330",
+   "source": "slab",
+   "source_note": "Rebuilt as extruded profiles with true circles, within 2% of the source volume.",
+   "faces": 860,
+   "curved_faces": 0,
+   "triangles": 3056,
+   "volume_mm3": 15897.38,
+   "area_mm2": 5667.46,
+   "bbox_mm": [
+    29.0,
+    20.0,
+    34.0
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 15
+  },
+  "yaw2roll": {
+   "label": "Hip yaw-to-roll bracket",
+   "file": "yaw2roll",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 1582,
+   "curved_faces": 0,
+   "triangles": 2524,
+   "volume_mm3": 3006.1,
+   "area_mm2": 2671.56,
+   "bbox_mm": [
+    23.0,
+    25.8,
+    20.5
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 2
+  },
+  "yaw_roll_motion": {
+   "label": "Head yaw-roll bracket",
+   "file": "yaw_roll_motion",
+   "source": "faceted",
+   "source_note": "Source mesh sewn into a closed solid. Faces are flat triangles; curves are approximated.",
+   "faces": 1284,
+   "curved_faces": 0,
+   "triangles": 1284,
+   "volume_mm3": 4708.11,
+   "area_mm2": 4580.43,
+   "bbox_mm": [
+    34.0,
+    35.9,
+    22.466
+   ],
+   "closed_solid": true,
+   "valid": true,
+   "instances": 1
+  }
+ },
+ "poses": {
+  "zero": {},
+  "stand": {
+   "left_hip_pitch": -0.25,
+   "left_knee": -0.5,
+   "left_ankle": -0.25,
+   "right_hip_pitch": 0.25,
+   "right_knee": 0.5,
+   "right_ankle": 0.25
+  },
+  "crouch": {
+   "left_hip_pitch": -0.9,
+   "left_knee": -1.5,
+   "left_ankle": -0.6,
+   "right_hip_pitch": 0.9,
+   "right_knee": 1.5,
+   "right_ankle": 0.6,
+   "neck_pitch": -0.3,
+   "head_pitch": -0.3
+  }
+ },
+ "check": {
+  "zero": {
+   "trunk_base": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "yaw2roll": [
+    0.0,
+    1.0,
+    0.0,
+    6.0,
+    1.0,
+    0.0,
+    0.0,
+    17.5,
+    0.0,
+    0.0,
+    -1.0,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "hip_l": [
+    0.0,
+    0.0,
+    1.0,
+    22.5,
+    1.0,
+    0.0,
+    0.0,
+    17.5,
+    0.0,
+    1.0,
+    -0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "upper_leg_left": [
+    -0.0,
+    -1.0,
+    0.0,
+    4.0,
+    -0.0,
+    -0.0,
+    1.0,
+    42.5,
+    -1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "leg": [
+    -1.0,
+    -0.0,
+    -0.0,
+    -31.7771,
+    -0.0,
+    -0.0,
+    -1.0,
+    38.5,
+    0.0,
+    -1.0,
+    0.0,
+    -39.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "ankle_left": [
+    -1.0,
+    0.0,
+    0.0,
+    -31.7771,
+    -0.0,
+    0.0,
+    1.0,
+    64.5,
+    0.0,
+    1.0,
+    0.0,
+    -81.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "neck": [
+    -1.0,
+    0.0,
+    0.0,
+    26.0,
+    0.0,
+    0.0,
+    -1.0,
+    14.5,
+    0.0,
+    -1.0,
+    0.0,
+    32.4215,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "neck_pitch": [
+    -1.0,
+    0.0,
+    0.0,
+    26.0,
+    0.0,
+    -0.0,
+    1.0,
+    14.5,
+    0.0,
+    1.0,
+    -0.0,
+    82.4215,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "yaw_roll_motion": [
+    1.0,
+    0.0,
+    0.0,
+    26.0,
+    0.0,
+    1.0,
+    0.0,
+    -0.0,
+    0.0,
+    0.0,
+    1.0,
+    101.1146,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "jaw_soft": [
+    0.0,
+    0.0,
+    -1.0,
+    8.1,
+    0.0,
+    1.0,
+    0.0,
+    -0.0,
+    1.0,
+    0.0,
+    0.0,
+    115.6146,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "bearing_roll": [
+    0.0,
+    1.0,
+    0.0,
+    6.0,
+    1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    -1.0,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "hip_l_2": [
+    -0.0,
+    0.0,
+    1.0,
+    22.5,
+    -1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    -1.0,
+    -0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "upper_leg_right": [
+    -0.0,
+    -1.0,
+    -0.0,
+    4.0,
+    -0.0,
+    -0.0,
+    -1.0,
+    -42.5,
+    1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "leg_2": [
+    -0.0,
+    1.0,
+    0.0,
+    -31.7771,
+    -0.0,
+    0.0,
+    1.0,
+    -38.5,
+    1.0,
+    -0.0,
+    0.0,
+    -39.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "ankle_right": [
+    1.0,
+    0.0,
+    -0.0,
+    -31.7771,
+    0.0,
+    0.0,
+    -1.0,
+    -64.5,
+    -0.0,
+    1.0,
+    0.0,
+    -81.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  "stand": {
+   "trunk_base": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "yaw2roll": [
+    0.0,
+    1.0,
+    0.0,
+    6.0,
+    1.0,
+    0.0,
+    0.0,
+    17.5,
+    0.0,
+    0.0,
+    -1.0,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "hip_l": [
+    0.0,
+    0.0,
+    1.0,
+    22.5,
+    1.0,
+    0.0,
+    0.0,
+    17.5,
+    0.0,
+    1.0,
+    -0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "upper_leg_left": [
+    0.247404,
+    -0.968912,
+    0.0,
+    4.0,
+    0.0,
+    -0.0,
+    1.0,
+    42.5,
+    -0.968912,
+    -0.247404,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "leg": [
+    -0.968912,
+    -0.247404,
+    -0.0,
+    -25.221989,
+    -0.0,
+    -0.0,
+    -1.0,
+    38.5,
+    0.247404,
+    -0.968912,
+    0.0,
+    -47.667469,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "ankle_left": [
+    -1.0,
+    0.0,
+    0.0,
+    -35.612956,
+    -0.0,
+    0.0,
+    1.0,
+    64.5,
+    -0.0,
+    1.0,
+    0.0,
+    -88.361791,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "neck": [
+    -1.0,
+    0.0,
+    0.0,
+    26.0,
+    0.0,
+    0.0,
+    -1.0,
+    14.5,
+    0.0,
+    -1.0,
+    0.0,
+    32.4215,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "neck_pitch": [
+    -1.0,
+    0.0,
+    0.0,
+    26.0,
+    0.0,
+    -0.0,
+    1.0,
+    14.5,
+    0.0,
+    1.0,
+    -0.0,
+    82.4215,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "yaw_roll_motion": [
+    1.0,
+    0.0,
+    0.0,
+    26.0,
+    0.0,
+    1.0,
+    0.0,
+    -0.0,
+    0.0,
+    0.0,
+    1.0,
+    101.1146,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "jaw_soft": [
+    0.0,
+    0.0,
+    -1.0,
+    8.1,
+    0.0,
+    1.0,
+    0.0,
+    -0.0,
+    1.0,
+    0.0,
+    0.0,
+    115.6146,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "bearing_roll": [
+    0.0,
+    1.0,
+    0.0,
+    6.0,
+    1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    -1.0,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "hip_l_2": [
+    -0.0,
+    0.0,
+    1.0,
+    22.5,
+    -1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    -1.0,
+    -0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "upper_leg_right": [
+    -0.247404,
+    -0.968912,
+    -0.0,
+    4.0,
+    -0.0,
+    -0.0,
+    -1.0,
+    -42.5,
+    0.968912,
+    -0.247404,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "leg_2": [
+    0.247404,
+    0.968912,
+    0.0,
+    -25.221989,
+    0.0,
+    0.0,
+    1.0,
+    -38.5,
+    0.968912,
+    -0.247404,
+    0.0,
+    -47.667469,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "ankle_right": [
+    1.0,
+    -0.0,
+    -0.0,
+    -35.612956,
+    0.0,
+    -0.0,
+    -1.0,
+    -64.5,
+    0.0,
+    1.0,
+    0.0,
+    -88.361791,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  "crouch": {
+   "trunk_base": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "yaw2roll": [
+    0.0,
+    1.0,
+    0.0,
+    6.0,
+    1.0,
+    0.0,
+    0.0,
+    17.5,
+    0.0,
+    0.0,
+    -1.0,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "hip_l": [
+    0.0,
+    0.0,
+    1.0,
+    22.5,
+    1.0,
+    0.0,
+    0.0,
+    17.5,
+    0.0,
+    1.0,
+    -0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "upper_leg_left": [
+    0.783327,
+    -0.62161,
+    0.0,
+    4.0,
+    0.0,
+    -0.0,
+    1.0,
+    42.5,
+    -0.62161,
+    -0.783327,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "leg": [
+    -0.825336,
+    -0.564642,
+    -0.0,
+    -1.00621,
+    -0.0,
+    -0.0,
+    -1.0,
+    38.5,
+    0.564642,
+    -0.825336,
+    0.0,
+    -59.200584,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "ankle_left": [
+    -1.0,
+    -0.0,
+    0.0,
+    -24.721194,
+    -0.0,
+    0.0,
+    1.0,
+    64.5,
+    0.0,
+    1.0,
+    0.0,
+    -93.86468,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "neck": [
+    -0.955336,
+    -0.29552,
+    0.0,
+    26.0,
+    -0.0,
+    0.0,
+    -1.0,
+    14.5,
+    0.29552,
+    -0.955336,
+    0.0,
+    32.4215,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "neck_pitch": [
+    -1.0,
+    0.0,
+    0.0,
+    40.77601,
+    0.0,
+    -0.0,
+    1.0,
+    14.5,
+    0.0,
+    1.0,
+    -0.0,
+    80.188324,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "yaw_roll_motion": [
+    1.0,
+    0.0,
+    0.0,
+    40.77601,
+    -0.0,
+    1.0,
+    0.0,
+    -0.0,
+    -0.0,
+    -0.0,
+    1.0,
+    98.881424,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "jaw_soft": [
+    0.0,
+    0.0,
+    -1.0,
+    22.87601,
+    0.0,
+    1.0,
+    0.0,
+    -0.0,
+    1.0,
+    -0.0,
+    0.0,
+    113.381424,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "bearing_roll": [
+    0.0,
+    1.0,
+    0.0,
+    6.0,
+    1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    -1.0,
+    -5.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "hip_l_2": [
+    -0.0,
+    0.0,
+    1.0,
+    22.5,
+    -1.0,
+    0.0,
+    0.0,
+    -17.5,
+    0.0,
+    -1.0,
+    -0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "upper_leg_right": [
+    -0.783327,
+    -0.62161,
+    -0.0,
+    4.0,
+    -0.0,
+    -0.0,
+    -1.0,
+    -42.5,
+    0.62161,
+    -0.783327,
+    0.0,
+    -17.5,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "leg_2": [
+    0.564642,
+    0.825336,
+    0.0,
+    -1.00621,
+    0.0,
+    0.0,
+    1.0,
+    -38.5,
+    0.825336,
+    -0.564642,
+    0.0,
+    -59.200584,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ],
+   "ankle_right": [
+    1.0,
+    -0.0,
+    -0.0,
+    -24.721194,
+    0.0,
+    -0.0,
+    -1.0,
+    -64.5,
+    -0.0,
+    1.0,
+    0.0,
+    -93.86468,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  }
+ },
+ "totals": {
+  "parts": 38,
+  "instances": 71,
+  "mass_g": 737.2,
+  "by_source": {
+   "faceted": 21,
+   "slab": 13,
+   "revolved": 2,
+   "modelled": 2
+  },
+  "instances_by_source": {
+   "modelled": 14,
+   "faceted": 25,
+   "slab": 30,
+   "revolved": 2
+  },
+  "triangles": 378390
+ }
+}

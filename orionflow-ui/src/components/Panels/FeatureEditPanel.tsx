@@ -248,6 +248,20 @@ export default function FeatureEditPanel() {
         );
     }
 
+    // A reference assembly is many solids that move, with no feature history
+    // to trace a face back to. Its parts are inspected in the viewport.
+    if (part.assembly) {
+        return (
+            <>
+                <PanelKeyframes />
+                <Empty icon={<MousePointerClick size={20} />}>
+                    This is a reference assembly. Click any part in the viewport to see
+                    what it is, what moves it and how its geometry was recovered.
+                </Empty>
+            </>
+        );
+    }
+
     if (!topology) {
         return (
             <>

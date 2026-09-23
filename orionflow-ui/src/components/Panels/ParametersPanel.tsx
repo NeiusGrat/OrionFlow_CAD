@@ -64,6 +64,15 @@ export default function ParametersPanel() {
         );
     }
 
+    if (part.assembly) {
+        return (
+            <div style={empty}>
+                A reference assembly has no design parameters. Move its joints with the
+                sliders in the viewport.
+            </div>
+        );
+    }
+
     if (names.length === 0) {
         return <div style={empty}>This part declares no variables.</div>;
     }

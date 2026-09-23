@@ -19,11 +19,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #: Geometry sources, each a folder of BREP named by part.
 #:   faceted  - every mesh sewn into a B-rep with coplanar triangles merged
 #:   slab     - profiles recovered along an axis and extruded back
+#:   revolved - a round part's meridian profile swept through 360 degrees
 #:   modelled - written by hand from measurements, for parts the others cannot
 #: They were briefly one folder, which meant an accepted slab rebuild silently
 #: overwrote the 19-face hand-modelled bearing with a worse one.
 SOURCES = (("faceted", os.path.join(ROOT, "work", "brep")),
            ("slab", os.path.join(ROOT, "work", "slab")),
+           ("revolved", os.path.join(ROOT, "work", "revolved")),
            ("modelled", os.path.join(ROOT, "work", "modelled")))
 OUT = os.path.join(ROOT, "out")
 
@@ -189,4 +191,5 @@ def main():
         fh.write("\n".join(lines))
 
 
-main()
+if __name__ == "__main__":
+    main()

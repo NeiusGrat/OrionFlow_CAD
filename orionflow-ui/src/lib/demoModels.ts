@@ -16,24 +16,27 @@
  * store or a browser.
  */
 
-export type DuckPose = 'zero' | 'stand' | 'crouch' | 'rollers';
+export type DuckPose = 'zero' | 'stand' | 'crouch' | 'walk' | 'rollers';
 
 export interface DemoModel {
     id: string;
     title: string;
     pose: DuckPose;
-    /** Same-origin paths under `public/`. */
-    glb: string;
+    /** The articulated assembly: same-origin paths under `public/`, and the
+     *  pose (or "walk") the viewer should move to. */
+    assembly: { manifest: string; glb: string; pose: string };
     bbox_mm: [number, number, number];
     volume_mm3: number;
     parts: number;
 }
 
-/** Numbers from `microduck/work/assembly_report.json`, one entry per pose. */
-const MICRODUCK: Record<DuckPose, Omit<DemoModel, 'id' | 'title' | 'pose' | 'glb'>> = {
+/** Numbers from `microduck/work/assembly_report.json`, one entry per pose.
+ *  The walk cycle starts from the stand pose, so it reports that one. */
+const MICRODUCK: Record<DuckPose, Pick<DemoModel, 'bbox_mm' | 'volume_mm3' | 'parts'>> = {
     zero: { bbox_mm: [144.07, 141.0, 263.97], volume_mm3: 549695.0, parts: 71 },
     stand: { bbox_mm: [185.22, 141.0, 262.83], volume_mm3: 549695.0, parts: 71 },
     crouch: { bbox_mm: [149.53, 141.0, 251.7], volume_mm3: 549695.0, parts: 71 },
+    walk: { bbox_mm: [185.22, 141.0, 262.83], volume_mm3: 549695.0, parts: 71 },
     rollers: { bbox_mm: [164.55, 141.0, 286.43], volume_mm3: 542327.6, parts: 77 },
 };
 
@@ -43,7 +46,8 @@ const NAMES = /\bmicro[\s_-]?duck\b/i;
 const POSE_WORDS: [DuckPose, RegExp][] = [
     ['rollers', /\b(roller|rollers|wheel|wheels|wheeled|skate|skates)\b/i],
     ['crouch', /\b(crouch|crouching|crouched|squat|squatting|bent)\b/i],
-    ['stand', /\b(stand|standing|walk|walking|stride)\b/i],
+    ['walk', /\b(walk|walking|walks|step|stepping|march|marching|moving|motion|animate|animated)\b/i],
+    ['stand', /\b(stand|standing|stride)\b/i],
 ];
 
 /**
@@ -62,7 +66,11 @@ export function matchDemoModel(message: string): DemoModel | null {
         id: `microduck-${pose}`,
         title: 'MicroDuck',
         pose,
-        glb: `/demo/microduck/microduck_${pose}.glb`,
+        assembly: {
+            manifest: `/demo/microduck/${pose === 'rollers' ? 'microduck_rollers' : 'microduck'}.json`,
+            glb: `/demo/microduck/${pose === 'rollers' ? 'microduck_rollers' : 'microduck'}.glb`,
+            pose: pose === 'rollers' ? 'zero' : pose,
+        },
         ...MICRODUCK[pose],
     };
 }

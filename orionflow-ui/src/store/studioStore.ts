@@ -42,6 +42,9 @@ export interface DesignOutcome {
      *  no longer describe this geometry. The UI must stop presenting the
      *  verdict as a grade of this part. */
     contractBroken?: boolean;
+    /** Set when the part is an articulated reference assembly rather than a
+     *  single built solid; the workspace shows the assembly viewer for it. */
+    assembly?: { manifest: string; glb: string; pose: string };
 }
 
 /** One thing the assistant went and checked before it answered. */
@@ -428,21 +431,23 @@ function runDemo(
     message: string,
     demo: DemoModel,
 ) {
-    // Absolute, because `fullUrl` sends a relative path to the API host and
-    // these files are served by the frontend itself.
-    const files: StudioFiles = { glb: `${window.location.origin}${demo.glb}` };
+    // No `files`: the single-part viewer would otherwise download the whole
+    // assembly and face-map 378k triangles behind the assembly viewer that is
+    // actually on screen. The assembly carries its own GLB and manifest.
     const outcome: DesignOutcome = {
         partClass: `${demo.title} (${demo.pose})`,
         variables: {},
         blueprint: null,
-        files,
+        files: {},
         stats: { volume_mm3: demo.volume_mm3, bbox_mm: demo.bbox_mm, watertight: false },
         verification: null,
         generationTimeMs: 0,
         requestId: '',
         featureTree: null,
+        assembly: demo.assembly,
     };
     const [x, y, z] = demo.bbox_mm.map((v) => Math.round(v));
+    const posed = demo.pose === 'walk' ? 'playing a walk cycle' : `in the ${demo.pose} pose`;
 
     patch((m) => ({
         ...m,
@@ -452,11 +457,15 @@ function runDemo(
         design: outcome,
         content:
             `**Reference model — not generated from this prompt.** This is the ${demo.title} robot, ` +
-            `${demo.parts} parts in the ${demo.pose} pose, ${x} × ${y} × ${z} mm. It was rebuilt ahead of time ` +
+            `${demo.parts} parts ${posed}, ${x} × ${y} × ${z} mm. It was rebuilt ahead of time ` +
             `from Pollen Robotics' open MicroDuck simulator and checked part by part. ` +
             `Generating a multi-part robot like this directly from a description is on the roadmap. ` +
-            `Today the studio builds single parts and simple assemblies from text.\n\n` +
-            `Try "show microduck standing", "crouching" or "on rollers" for the other poses.`,
+            `Today the studio builds single parts and simple assemblies from text.
+
+` +
+            `Drag the joint sliders or use the pose buttons to move it, and click any part to see what it is ` +
+            `and how its geometry was recovered. "Geometry source" colours every part by that, so you can see ` +
+            `which are true CAD and which are still faceted from the source mesh.`,
         actions: [{ verb: 'loaded', what: `${demo.title} reference assembly`, note: demo.pose, tone: 'info' }],
     }));
     get().adopt(outcome, message, `${demo.title} (${demo.pose})`);

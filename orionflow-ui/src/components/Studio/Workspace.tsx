@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Boxes, MessageSquare, PanelLeft, Rows3 } from "lucide-react";
 import Viewer from "../Viewer/Viewer";
+import { useStudioStore } from "../../store/studioStore";
+
+// Only a reference assembly needs it, so it is not in the studio's first load.
+const AssemblyViewer = lazy(() => import("../Viewer/AssemblyViewer"));
 import AgentPanel from "../Panels/AgentPanel";
 import ModelDock from "../Panels/ModelDock";
 import TitleBar from "./TitleBar";
@@ -110,6 +114,7 @@ function PaneSwitch({ pane, onChange }: { pane: Pane; onChange: (p: Pane) => voi
 
 export default function Workspace() {
     const current = useDesignStore((s) => s.current);
+    const assembly = useStudioStore((s) => s.part?.assembly);
     const layout = useLayout();
     const dockOpen = useUIStore((s) => s.dockOpen);
     const toggleDock = useUIStore((s) => s.toggleDock);
@@ -172,7 +177,17 @@ export default function Workspace() {
                         borderRight: !stacked ? "1px solid var(--st-rule)" : "none",
                     }}
                 >
-                    <Viewer url={current ? current.files.glb : ""} />
+                    {/* An articulated assembly gets its own viewer; the single-part
+                        one stays mounted underneath so its WebGL context and
+                        camera survive switching back to a built part. */}
+                    <div style={{ position: "absolute", inset: 0, display: assembly ? "none" : "block" }}>
+                        <Viewer url={current ? current.files.glb : ""} />
+                    </div>
+                    {assembly && (
+                        <Suspense fallback={<div className="of-label" style={{ padding: 24 }}>Loading assembly…</div>}>
+                            <AssemblyViewer manifestUrl={assembly.manifest} glbUrl={assembly.glb} pose={assembly.pose} />
+                        </Suspense>
+                    )}
                     {/* A single soft pool of light over the stage. It is what
                         keeps a black panel beside a black viewport from reading
                         as one flat void. */}
