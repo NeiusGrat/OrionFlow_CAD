@@ -38,6 +38,40 @@ def _usage_of(body: dict) -> dict:
     }
 
 
+def _with_reasoning_field(wire: list[dict]) -> list[dict]:
+    """Give every assistant turn in the history a ``reasoning`` field.
+
+    Since 2026-09-23 api.ifm.ai rejects multi-turn history with 400 "Add a
+    supported thinking field to each assistant message" when any assistant
+    message lacks one. That turned every conversation past its first message
+    into "no model is reachable". ``reasoning`` is the one name both Horizon and
+    K2-Think-v2 accept (v2 refuses ``reasoning_content`` and ``thinking``), and
+    an empty string satisfies it — the derivation is not replayed.
+    """
+    for msg in wire:
+        if msg.get("role") == "assistant":
+            msg.setdefault("reasoning", "")
+    return wire
+
+
+def _http_error_detail(exc: Exception) -> str:
+    """``HTTP Error 400: Bad Request`` plus the body the server sent with it.
+
+    The body is where this vendor says what it rejected; dropping it left a
+    request-shape error indistinguishable from an outage in the logs.
+    """
+    import urllib.error
+
+    if isinstance(exc, urllib.error.HTTPError):
+        try:
+            body = exc.read().decode("utf-8", "replace")[:300]
+        except Exception:  # noqa: BLE001
+            body = ""
+        if body:
+            return f"{exc} {body}"
+    return str(exc)
+
+
 #: Seconds to wait after each successive 429, floor-first. See ``_post`` for
 #: why the server's own ``Retry-After`` is a ceiling on these rather than the
 #: value used: this gateway sends 60 unconditionally and recovers in under 0.5s.
@@ -114,7 +148,10 @@ class K2ThinkClient(LLMClient):
         try:
             body = self._post(payload)
         except Exception as exc:  # noqa: BLE001
-            return LLMResponse(content=f"[k2think transport error: {exc}]", finish_reason="error")
+            return LLMResponse(
+                content=f"[k2think transport error: {_http_error_detail(exc)}]",
+                finish_reason="error",
+            )
         resp = self._parse(body)
 
         # K2-Think's long inline reasoning can push the actual tool call past the
@@ -185,7 +222,7 @@ class K2ThinkClient(LLMClient):
                         "of guessing.]"
                     )
                 wire.append({"role": m.role, "content": content})
-        return wire
+        return _with_reasoning_field(wire)
 
     def _post(self, payload: dict) -> dict:
         import time

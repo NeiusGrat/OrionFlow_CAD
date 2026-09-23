@@ -363,7 +363,15 @@ class OFLLLMClient:
 
         payload = {
             "model": self.model,
-            "messages": messages,
+            # api.ifm.ai 400s multi-turn history (the few-shot pairs) unless
+            # every assistant turn carries a ``reasoning`` field; empty is
+            # accepted. See orion_agent/harness/llm/k2think.py.
+            "messages": [
+                {**m, "reasoning": m.get("reasoning", "")}
+                if m.get("role") == "assistant"
+                else m
+                for m in messages
+            ],
             "stream": False,
             "temperature": 0.2,
             # Reasoning tokens count against the budget; leave headroom so the
