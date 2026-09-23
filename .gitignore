@@ -129,3 +129,6 @@ ORIONFLOW_*.md
 
 # Studio reference models (MicroDuck demo) are served by the frontend
 !orionflow-ui/public/demo/**/*.glb
+
+# MuJoCo writes its warning log to the working directory
+MUJOCO_LOG.TXT
