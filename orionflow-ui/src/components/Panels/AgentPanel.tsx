@@ -240,6 +240,16 @@ function Steps({ steps }: { steps: StudioStep[] }) {
  *  tell which system produced the result. */
 function ModelBadge({ model }: { model: string }) {
     if (!model) return null;
+    if (model === "reference")
+        return (
+            <span
+                className="of-label"
+                title="Pre-built reference model loaded for demonstration — no model generated it"
+                style={{ color: "var(--st-caution)", letterSpacing: "0.1em" }}
+            >
+                reference
+            </span>
+        );
     const compiled = model.startsWith("compiled:");
     const readBy = compiled ? model.slice("compiled:".length) : "";
     const ours = model === "orionflow" || compiled;

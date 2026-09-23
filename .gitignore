@@ -126,3 +126,6 @@ pdf files/
 
 # Internal audit / architecture reports — repo is public
 ORIONFLOW_*.md
+
+# Studio reference models (MicroDuck demo) are served by the frontend
+!orionflow-ui/public/demo/**/*.glb

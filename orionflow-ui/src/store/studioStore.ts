@@ -22,6 +22,7 @@ import { useEditStore } from './editStore';
 import { route, type AgentIntent } from '../lib/intent';
 import { resolveSelection } from '../lib/selection';
 import { readEdit, describeVariable, tidy, type Candidate } from '../lib/dimensions';
+import { matchDemoModel, type DemoModel } from '../lib/demoModels';
 
 /** What a design turn produced, once it has finished. */
 export interface DesignOutcome {
@@ -386,7 +387,12 @@ async function runTurn(
         }));
 
     try {
-        if (routed.intent === 'build' && get().planFirst) {
+        // A forced route other than /build means the user wants that route, so
+        // "/ask show me microduck" stays a question.
+        const demo = routed.forced && routed.intent !== 'build' ? null : matchDemoModel(message);
+        if (demo) {
+            runDemo(get, patch, message, demo);
+        } else if (routed.intent === 'build' && get().planFirst) {
             await runPlanned(patch, message);
         } else if (routed.intent === 'select') {
             await runSelect(patch, routed.text);
@@ -405,6 +411,55 @@ async function runTurn(
     } finally {
         set(() => ({ busy: false }));
     }
+}
+
+/* ─────────────────────── reference models ─────────────────────── */
+
+/**
+ * Show a pre-built reference assembly, labelled as one.
+ *
+ * No server call and no meter: nothing is generated. The outcome has no
+ * Blueprint (so sliders say there is nothing to rebuild) and no verification
+ * (so no verdict is shown for geometry this turn did not produce).
+ */
+function runDemo(
+    get: Getter,
+    patch: (fn: (m: StudioMessage) => StudioMessage) => void,
+    message: string,
+    demo: DemoModel,
+) {
+    // Absolute, because `fullUrl` sends a relative path to the API host and
+    // these files are served by the frontend itself.
+    const files: StudioFiles = { glb: `${window.location.origin}${demo.glb}` };
+    const outcome: DesignOutcome = {
+        partClass: `${demo.title} (${demo.pose})`,
+        variables: {},
+        blueprint: null,
+        files,
+        stats: { volume_mm3: demo.volume_mm3, bbox_mm: demo.bbox_mm, watertight: false },
+        verification: null,
+        generationTimeMs: 0,
+        requestId: '',
+        featureTree: null,
+    };
+    const [x, y, z] = demo.bbox_mm.map((v) => Math.round(v));
+
+    patch((m) => ({
+        ...m,
+        streaming: false,
+        phase: null,
+        model: 'reference',
+        design: outcome,
+        content:
+            `**Reference model — not generated from this prompt.** This is the ${demo.title} robot, ` +
+            `${demo.parts} parts in the ${demo.pose} pose, ${x} × ${y} × ${z} mm. It was rebuilt ahead of time ` +
+            `from Pollen Robotics' open MicroDuck simulator and checked part by part. ` +
+            `Generating a multi-part robot like this directly from a description is on the roadmap. ` +
+            `Today the studio builds single parts and simple assemblies from text.\n\n` +
+            `Try "show microduck standing", "crouching" or "on rollers" for the other poses.`,
+        actions: [{ verb: 'loaded', what: `${demo.title} reference assembly`, note: demo.pose, tone: 'info' }],
+    }));
+    get().adopt(outcome, message, `${demo.title} (${demo.pose})`);
 }
 
 /* ─────────────────────── the reviewed route ─────────────────────── */

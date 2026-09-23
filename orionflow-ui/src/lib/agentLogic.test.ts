@@ -22,6 +22,7 @@
 import { route } from './intent';
 import { readEdit, rankVariables, readAmount, describeVariable } from './dimensions';
 import { resolveSelection } from './selection';
+import { matchDemoModel } from './demoModels';
 import type { TopologyRecord } from './faceMap';
 
 let failures = 0;
@@ -219,6 +220,22 @@ ok(resolveSelection('select the holes', null).refusal !== null, 'no topology ref
 // A count that cannot be met is reported, not quietly rounded down.
 const s3 = resolveSelection('select the six holes on the left', RECORD);
 ok(/only 2 match/.test(s3.describe), 'a shortfall is stated', s3.describe);
+
+/* ══════════════════════ 4. reference models ══════════════════════ */
+
+section('reference models — load only when asked to see or make one');
+
+eq(matchDemoModel('show me the microduck')?.pose, 'zero', 'a plain request loads the default pose');
+eq(matchDemoModel('create a MicroDuck robot')?.pose, 'zero', 'a build request loads it');
+eq(matchDemoModel('show micro duck standing')?.pose, 'stand', 'standing picks the stand pose');
+eq(matchDemoModel('show the micro-duck crouching')?.pose, 'crouch', 'crouching picks the crouch pose');
+eq(matchDemoModel('build microduck on rollers')?.pose, 'rollers', 'rollers picks the rollers pose');
+eq(matchDemoModel('what is microduck?'), null, 'a question about it does not load it');
+eq(matchDemoModel('show me a duck-shaped bracket'), null, 'another part is not captured');
+ok(
+    (matchDemoModel('show microduck')?.glb ?? '').startsWith('/demo/microduck/'),
+    'files are served from the frontend',
+);
 
 /* ══════════════════════ report ══════════════════════ */
 
