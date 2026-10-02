@@ -1,0 +1,254 @@
+# Drawing-check rules.
+#
+# One entry per rule. The check itself lives in rules.py under the same id;
+# this file holds what a reviewer reads: the title, the severity, which
+# standard governs it, and the question the supplier sends to the customer.
+#
+# `clause` is left empty until an engineer with the standard in hand has
+# verified the number. A wrong clause citation costs more trust than none.
+# Never paste standard text here: ASME and ISO standards are copyrighted.
+#
+# Placeholders in `query`: {evidence} {value} {page}
+
+version: 1
+
+rules:
+  # ------------------------------------------------------------ title block
+  TB-001:
+    title: No title block found
+    severity: error
+    standard: ISO 7200 / ASME Y14.1
+    topic: title block content
+    query: "We could not locate a title block on this drawing. Please confirm the drawing number, revision and material for this part."
+  TB-002:
+    title: Drawing or part number missing
+    severity: error
+    standard: ISO 7200
+    topic: identification
+    query: "The drawing number / part number is not stated in the title block. Please confirm the number we should quote and mark parts against."
+  TB-003:
+    title: Revision not stated
+    severity: error
+    standard: ISO 7200
+    topic: revision control
+    query: "No revision is shown on this drawing. Please confirm the current revision so we quote and manufacture to the right issue."
+  TB-004:
+    title: Material not specified
+    severity: error
+    standard: ISO 7200
+    topic: material
+    query: "Material is not specified. Please confirm material grade and standard (e.g. EN 10083, IS 2062, AISI)."
+  TB-005:
+    title: Scale not stated
+    severity: info
+    standard: ISO 5455
+    topic: scale
+    query: "Scale is not stated on this drawing. Dimensions will not be scaled from the print; please confirm all required dimensions are given."
+  TB-006:
+    title: Approval not shown
+    severity: warning
+    standard: ISO 7200
+    topic: approval
+    query: "This drawing shows no approval (approved by / date). Please confirm it is released for manufacture."
+  TB-007:
+    title: Heat treatment without hardness
+    severity: warning
+    standard: ""
+    topic: heat treatment
+    query: "A heat treatment is called out ('{evidence}') but no hardness value or range is given. Please specify the required hardness (HRC/HB/HV) and depth where applicable."
+
+  # ------------------------------------------------------------ general tolerance / standards
+  GT-001:
+    title: No general tolerance
+    severity: error
+    standard: ISO 2768-1 / ISO 22081 / IS 2102
+    topic: general tolerances
+    query: "{value} dimensions on this drawing carry no tolerance and no general tolerance is stated. Please confirm the general tolerance class (e.g. ISO 2768-m) that applies."
+  GT-002:
+    title: ISO 2768 class not given
+    severity: warning
+    standard: ISO 2768-1 / ISO 2768-2
+    topic: general tolerance class
+    query: "ISO 2768 is referenced ('{evidence}') without a tolerance class. Please confirm the class (f, m, c or v; and H, K or L for geometric)."
+  GT-003:
+    title: GD&T without a governing standard
+    severity: warning
+    standard: ASME Y14.5 / ISO 1101
+    topic: interpretation standard
+    query: "This drawing uses geometric tolerances but does not say which standard governs them. Please confirm whether ASME Y14.5 (which year) or ISO GPS (ISO 1101 / ISO 8015) applies."
+  GT-004:
+    title: ASME and ISO interpretation mixed
+    severity: warning
+    standard: ASME Y14.5 / ISO 8015
+    topic: envelope vs independency principle
+    query: "The drawing references both ASME Y14.5 and ISO tolerancing standards ({value}). Size/form interpretation differs between them (envelope rule vs independency principle). Please confirm which governs."
+
+  # ------------------------------------------------------------ projection / units
+  PR-001:
+    title: Projection method not stated
+    severity: warning
+    standard: ISO 128 / ISO 5456-2
+    topic: projection method
+    query: "The projection method (first-angle or third-angle) is not stated. Please confirm; view arrangement differs between Indian/European and US practice."
+  PR-002:
+    title: Conflicting projection statements
+    severity: error
+    standard: ISO 5456-2
+    topic: projection method
+    query: "The drawing states both first-angle and third-angle projection ({evidence}). Please confirm which projection the views are drawn in."
+  UN-001:
+    title: Units not stated
+    severity: warning
+    standard: ASME Y14.5 / ISO 129-1
+    topic: units of measure
+    query: "Units of measure are not stated on this drawing. Please confirm whether dimensions are in millimetres or inches."
+  UN-002:
+    title: Inch-style decimals on a metric drawing
+    severity: warning
+    standard: ASME Y14.5
+    topic: decimal conventions
+    query: "Dimension '{evidence}' is written without a leading zero, which is inch convention, on a drawing stated in millimetres. Please confirm the units of this dimension."
+
+  # ------------------------------------------------------------ dimensions
+  DM-001:
+    title: Tolerance limits reversed
+    severity: error
+    standard: ""
+    topic: tolerance expression
+    query: "Tolerance '{evidence}' has an upper deviation smaller than the lower deviation. Please confirm the intended limits."
+  DM-002:
+    title: Invalid fit designation
+    severity: error
+    standard: ISO 286-1 / IS 919
+    topic: limits and fits
+    query: "Fit '{evidence}' is not a valid ISO 286 tolerance class ({value}). Please confirm the intended fit."
+  DM-003:
+    title: Zero-width tolerance
+    severity: error
+    standard: ""
+    topic: tolerance expression
+    query: "Dimension '{evidence}' has a tolerance band of zero, which cannot be manufactured or inspected. Please confirm the tolerance."
+
+  # ------------------------------------------------------------ threads
+  TH-001:
+    title: Unified thread without class
+    severity: warning
+    standard: ASME B1.1
+    topic: thread designation
+    query: "Thread '{evidence}' has no class of fit (1A/2A/3A or 1B/2B/3B). Please confirm the thread class."
+  TH-002:
+    title: Metric thread without tolerance class
+    severity: info
+    standard: ISO 965-1
+    topic: thread designation
+    query: "Thread '{evidence}' has no tolerance class. We will assume 6H (internal) / 6g (external) per common practice unless advised otherwise."
+  TH-003:
+    title: Inch and metric threads mixed
+    severity: info
+    standard: ""
+    topic: thread systems
+    query: "This drawing uses both metric and unified (inch) threads ({value}). Please confirm this is intended; it affects tooling and gauges."
+  TH-004:
+    title: Blind thread without depth
+    severity: warning
+    standard: ISO 6410
+    topic: thread depth
+    query: "Thread '{evidence}' does not state a depth or THRU. Please confirm the full-thread depth."
+
+  # ------------------------------------------------------------ surface finish
+  SF-001:
+    title: No surface finish specified
+    severity: warning
+    standard: ISO 21920-1 / ISO 1302
+    topic: surface texture
+    query: "No surface roughness is specified on this drawing. Please confirm the general surface finish requirement (e.g. Ra 3.2 all over)."
+  SF-002:
+    title: Non-preferred roughness value
+    severity: info
+    standard: ISO 1302
+    topic: preferred Ra values
+    query: "Roughness '{evidence}' is not a preferred Ra value. Please confirm, or we will process to the next finer preferred value."
+
+  # ------------------------------------------------------------ GD&T
+  GD-001:
+    title: Datum referenced but not defined
+    severity: error
+    standard: ASME Y14.5 / ISO 5459
+    topic: datum references
+    query: "Feature control frame '{evidence}' references datum {value}, but no datum feature {value} is identified on the drawing. Please identify datum {value}."
+  GD-002:
+    title: Form tolerance with a datum
+    severity: error
+    standard: ASME Y14.5 / ISO 1101
+    topic: form tolerances
+    query: "Form tolerance '{evidence}' references a datum. Form tolerances (straightness, flatness, circularity, cylindricity) are not related to datums. Please confirm whether an orientation tolerance was intended."
+  GD-003:
+    title: Orientation tolerance without a datum
+    severity: error
+    standard: ASME Y14.5 / ISO 1101
+    topic: orientation tolerances
+    query: "Orientation tolerance '{evidence}' has no datum reference. Parallelism, perpendicularity and angularity must be related to a datum. Please specify the datum."
+  GD-004:
+    title: Position tolerance without a datum
+    severity: warning
+    standard: ASME Y14.5 / ISO 1101
+    topic: location tolerances
+    query: "Position tolerance '{evidence}' has no datum reference. Please confirm the datum reference frame the position is measured from."
+  GD-005:
+    title: Runout without a datum axis
+    severity: error
+    standard: ASME Y14.5 / ISO 1101
+    topic: runout
+    query: "Runout tolerance '{evidence}' has no datum axis. Please specify the datum axis the runout is measured about."
+  GD-006:
+    title: Material condition not allowed here
+    severity: error
+    standard: ASME Y14.5
+    topic: material condition modifiers
+    query: "'{evidence}' applies a material condition modifier ({value}) to a characteristic that does not permit one. Please confirm the intended requirement."
+  GD-007:
+    title: Datum letter defined twice
+    severity: error
+    standard: ASME Y14.5 / ISO 5459
+    topic: datum feature identification
+    query: "Datum {value} is identified on more than one feature. Please confirm which feature is datum {value}."
+  GD-008:
+    title: Datum letter I, O or Q used
+    severity: warning
+    standard: ASME Y14.5
+    topic: datum feature identification
+    query: "Datum letter {value} is used; the letters I, O and Q are normally avoided because they are mistaken for 1 and 0. Please confirm the datum letter."
+  GD-009:
+    title: Zero tolerance without MMC/LMC
+    severity: error
+    standard: ASME Y14.5
+    topic: zero tolerance at MMC
+    query: "'{evidence}' specifies a zero geometric tolerance without a material condition modifier, which leaves no tolerance at all. Please confirm."
+  GD-010:
+    title: Feature control frame not readable
+    severity: warning
+    standard: ""
+    topic: legibility
+    query: "We could not read the feature control frame '{evidence}' unambiguously. Please confirm its content."
+  GD-011:
+    title: Defined datum never used
+    severity: info
+    standard: ""
+    topic: datum references
+    query: "Datum {value} is identified but no tolerance references it. Please confirm whether a requirement is missing."
+
+  # ------------------------------------------------------------ notes
+  NT-001:
+    title: Edge condition not specified
+    severity: info
+    standard: ISO 13715
+    topic: edges of undefined shape
+    query: "No edge condition (deburr / break sharp edges) is specified. We will break sharp edges 0.2-0.5 x 45 degrees unless advised otherwise."
+
+  # ------------------------------------------------------------ reader
+  RD-001:
+    title: Page could not be read
+    severity: warning
+    standard: ""
+    topic: legibility
+    query: "Page {page} has no readable text layer and could not be checked automatically. A manual review is required."

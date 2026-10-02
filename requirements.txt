@@ -56,6 +56,13 @@ structlog
 # in the image, Blueprint builds fail at import, not at call time.
 modal
 
+# drawcheck (incoming drawing checker): PDF text/geometry, query-list export,
+# rules file, vision reader over REST
+pymupdf>=1.24
+openpyxl
+pyyaml
+httpx
+
 # Testing
 pytest>=7.0
 pytest-cov

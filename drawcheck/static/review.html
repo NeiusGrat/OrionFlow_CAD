@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>drawcheck</title>
+<style>
+  :root {
+    --vellum: #f4f1e8; --sheet: #fbfaf5; --ink: #1d2733; --muted: #6b7380; --rule: #d8d3c4;
+    --blue: #1f4e8c; --blue-soft: #e3ebf6; --red: #c0262d; --amber: #c77700; --info: #2f6db5;
+    --ok: #2e7d4f; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    --sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--vellum); color: var(--ink); font: 14px/1.45 var(--sans); }
+  header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1.5px solid var(--ink);
+           background: var(--sheet); flex-wrap: wrap; }
+  header h1 { font: 600 16px var(--mono); margin: 0; letter-spacing: .04em; }
+  header h1 span { color: var(--red); }
+  form.upload { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; }
+  input, select, button { font: 13px var(--sans); }
+  input[type=text], input[type=password], select { padding: 5px 8px; border: 1px solid var(--rule); background: #fff; border-radius: 3px; }
+  button { padding: 5px 12px; border: 1px solid var(--ink); background: var(--sheet); border-radius: 3px; cursor: pointer; }
+  button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  button:disabled { opacity: .5; cursor: default; }
+  main { display: grid; grid-template-columns: 240px 1fr 400px; height: calc(100vh - 56px); }
+  aside, section { overflow: auto; }
+  #runs { border-right: 1px solid var(--rule); background: var(--sheet); }
+  .run { padding: 9px 12px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+  .run:hover { background: var(--blue-soft); }
+  .run.sel { background: var(--blue-soft); box-shadow: inset 3px 0 var(--blue); }
+  .run .name { font-weight: 600; word-break: break-all; }
+  .run .sub { font: 11px var(--mono); color: var(--muted); }
+  .counts { font: 11px var(--mono); }
+  .e { color: var(--red); } .w { color: var(--amber); } .i { color: var(--info); }
+  #viewer { padding: 12px; }
+  #pagetabs { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  #pagetabs button.on { background: var(--ink); color: #fff; }
+  #stage { position: relative; display: inline-block; border: 1px solid var(--ink); background: #fff; max-width: 100%; }
+  #stage img { display: block; max-width: 100%; height: auto; }
+  .box { position: absolute; border: 2px solid; cursor: pointer; }
+  .box .n { position: absolute; top: -15px; right: -2px; font: 600 10px var(--mono); color: #fff; padding: 0 4px; }
+  .box.error { border-color: var(--red); } .box.error .n { background: var(--red); }
+  .box.warning { border-color: var(--amber); } .box.warning .n { background: var(--amber); }
+  .box.info { border-color: var(--info); } .box.info .n { background: var(--info); }
+  .box.hl { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .box.decided { opacity: .35; }
+  #side { border-left: 1px solid var(--rule); background: var(--sheet); padding: 12px; }
+  .titleblock { display: grid; grid-template-columns: auto 1fr; border: 1.5px solid var(--ink); font: 12px var(--mono); margin-bottom: 10px; }
+  .titleblock div { padding: 3px 6px; border-bottom: 1px solid var(--rule); }
+  .titleblock .k { color: var(--muted); border-right: 1px solid var(--rule); }
+  .downloads { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+  .downloads a { font: 12px var(--mono); color: var(--blue); }
+  .finding { border: 1px solid var(--rule); border-left: 4px solid; padding: 8px 10px; margin-bottom: 8px; background: #fff; }
+  .finding.error { border-left-color: var(--red); } .finding.warning { border-left-color: var(--amber); }
+  .finding.info { border-left-color: var(--info); }
+  .finding.hl { box-shadow: 0 0 0 2px var(--blue); }
+  .finding.decided { opacity: .55; }
+  .finding .head { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+  .finding .num { font: 600 11px var(--mono); }
+  .finding .rule { font: 11px var(--mono); color: var(--muted); }
+  .finding .title { font-weight: 600; }
+  .finding .ev { font: 12px var(--mono); background: var(--vellum); padding: 2px 5px; margin: 4px 0; word-break: break-word; }
+  .finding .q { font-size: 13px; }
+  .finding .ref { font: 11px var(--mono); color: var(--muted); margin-top: 3px; }
+  .badge { font: 600 10px var(--mono); padding: 1px 5px; border-radius: 2px; text-transform: uppercase; }
+  .badge.verify { background: #fff1d6; color: #7a4a00; border: 1px solid #e9c37a; }
+  .badge.state { background: var(--blue-soft); color: var(--blue); }
+  .actions { display: flex; gap: 6px; margin-top: 6px; }
+  .actions button { font-size: 12px; padding: 3px 8px; }
+  .warnbox { font-size: 12px; border: 1px dashed var(--amber); background: #fffaf0; padding: 6px 8px; margin-bottom: 10px; }
+  .empty { color: var(--muted); padding: 30px; text-align: center; }
+  .status { font: 12px var(--mono); color: var(--muted); }
+  @media (max-width: 1000px) {
+    main { grid-template-columns: 1fr; height: auto; }
+    #runs, #side { border: 0; border-bottom: 1px solid var(--rule); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>DRAW<span>CHECK</span></h1>
+  <span class="status" id="health"></span>
+  <form class="upload" id="upload">
+    <input type="file" id="file" accept="application/pdf" required>
+    <input type="text" id="customer" placeholder="Customer" size="12">
+    <select id="vision" title="Vision reader">
+      <option value="scanned">Vision: scans only</option>
+      <option value="all">Vision: all pages (cross-check)</option>
+      <option value="off">Vision: off</option>
+    </select>
+    <input type="password" id="token" placeholder="API token" size="10">
+    <button class="primary" type="submit">Check drawing</button>
+  </form>
+</header>
+<main>
+  <aside id="runs"></aside>
+  <section id="viewer"><div class="empty">Upload a drawing PDF, or pick a run on the left.</div></section>
+  <aside id="side"></aside>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+let token = ""; try { token = localStorage.getItem("drawcheck_token") || ""; } catch (e) {}
+$("#token").value = token;
+$("#token").addEventListener("change", e => { token = e.target.value; try { localStorage.setItem("drawcheck_token", token); } catch (x) {} refresh(); });
+const H = () => token ? { Authorization: "Bearer " + token } : {};
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), ...H() } });
+  if (!r.ok) throw new Error((await r.text()) || r.status);
+  return r;
+}
+let current = null, currentPage = 0, poll = null, hl = null;
+
+async function refresh() {
+  let runs = [];
+  try { runs = await (await api("/api/runs")).json(); } catch (e) { $("#runs").replaceChildren(el("div", "empty", "Cannot list runs: " + e.message)); return; }
+  const box = $("#runs"); box.replaceChildren();
+  if (!runs.length) box.append(el("div", "empty", "No runs yet."));
+  for (const r of runs) {
+    const d = el("div", "run" + (current && current.id === r.id ? " sel" : ""));
+    d.append(el("div", "name", r.filename));
+    const sub = el("div", "sub", `${r.customer || "—"} · ${new Date(r.created * 1000).toLocaleString()}`);
+    d.append(sub);
+    if (r.status === "done") {
+      const c = el("div", "counts");
+      c.append(el("span", "e", `E${r.errors} `), el("span", "w", `W${r.warnings} `), el("span", "i", `I${r.infos}`));
+      d.append(c);
+    } else d.append(el("div", "status", r.status + (r.error ? ": " + r.error : "")));
+    d.onclick = () => open(r.id);
+    box.append(d);
+  }
+}
+
+async function open(id) {
+  clearInterval(poll);
+  const run = await (await api("/api/runs/" + id)).json();
+  current = run; currentPage = 0; hl = null;
+  refresh();
+  if (run.status !== "done") {
+    $("#viewer").replaceChildren(el("div", "empty", run.status === "error" ? "Failed: " + run.error : "Checking… (" + run.status + ")"));
+    $("#side").replaceChildren();
+    if (run.status !== "error") poll = setInterval(async () => {
+      const r = await (await api("/api/runs/" + id)).json();
+      if (r.status !== "running" && r.status !== "queued") { clearInterval(poll); open(id); }
+    }, 2000);
+    return;
+  }
+  renderViewer(); renderSide();
+}
+
+async function renderViewer() {
+  const run = current, v = $("#viewer"); v.replaceChildren();
+  const tabs = el("div"); tabs.id = "pagetabs";
+  run.pages.forEach((p, i) => {
+    const b = el("button", i === currentPage ? "on" : "", `Sheet ${i + 1}` + (p.layer !== "text" ? ` (${p.layer})` : ""));
+    b.onclick = () => { currentPage = i; renderViewer(); };
+    tabs.append(b);
+  });
+  v.append(tabs);
+  const stage = el("div"); stage.id = "stage";
+  const img = el("img"); img.alt = "Drawing sheet " + (currentPage + 1);
+  stage.append(img); v.append(stage);
+  const blob = await (await api(`/api/runs/${run.id}/pages/${currentPage}.png?dpi=130`)).blob();
+  img.src = URL.createObjectURL(blob);
+  const pg = run.pages[currentPage];
+  run.report.findings.forEach((f, i) => {
+    if (f.page !== currentPage || !f.bbox) return;
+    const b = el("div", `box ${f.severity}` + (f.decision ? " decided" : "") + (hl === f.id ? " hl" : ""));
+    const [x0, y0, x1, y1] = f.bbox, pad = 3;
+    Object.assign(b.style, { left: ((x0 - pad) / pg.w * 100) + "%", top: ((y0 - pad) / pg.h * 100) + "%",
+      width: ((x1 - x0 + 2 * pad) / pg.w * 100) + "%", height: ((y1 - y0 + 2 * pad) / pg.h * 100) + "%" });
+    b.append(el("span", "n", String(i + 1)));
+    b.title = `${f.rule} ${f.title}`;
+    b.onclick = () => { hl = f.id; renderViewer(); renderSide(); document.getElementById("f-" + f.id)?.scrollIntoView({ block: "center" }); };
+    stage.append(b);
+  });
+}
+
+function renderSide() {
+  const run = current, rep = run.report, s = $("#side"); s.replaceChildren();
+  const tb = el("div", "titleblock");
+  for (const [k, label] of [["drawing_number", "DWG NO"], ["revision", "REV"], ["material", "MATERIAL"], ["title", "TITLE"]]) {
+    tb.append(el("div", "k", label), el("div", "", rep.title[k] || "—"));
+  }
+  s.append(tb);
+  const dl = el("div", "downloads");
+  for (const [name, label] of [["queries.xlsx", "Query list (.xlsx)"], ["checked.pdf", "Annotated PDF"], ["report.json", "JSON"]]) {
+    const a = el("a", "", label); a.href = "#";
+    a.onclick = async e => { e.preventDefault(); const b = await (await api(`/api/runs/${run.id}/files/${name}`)).blob();
+      const u = URL.createObjectURL(b); const t = el("a"); t.href = u; t.download = run.filename.replace(/\.pdf$/i, "") + "." + name; t.click(); };
+    dl.append(a);
+  }
+  const del = el("button", "", "Delete run");
+  del.onclick = async () => { await api("/api/runs/" + run.id, { method: "DELETE" }); current = null;
+    $("#viewer").replaceChildren(el("div", "empty", "Deleted.")); s.replaceChildren(); refresh(); };
+  dl.append(del);
+  s.append(dl);
+  for (const w of rep.reader_warnings) s.append(el("div", "warnbox", w));
+  if (rep.stats.vision) {
+    const v = rep.stats.vision;
+    s.append(el("div", "warnbox", `Vision reader ${v.model}: ${v.pages} page(s), ${v.confirmed} confirmed by text layer, ` +
+      `${v.conflict} disagreements, ${v.vision_only} vision-only (verify these).`));
+  }
+  if (!rep.findings.length) s.append(el("div", "empty", "No open findings."));
+  rep.findings.forEach((f, i) => {
+    const d = el("div", `finding ${f.severity}` + (f.decision ? " decided" : "") + (hl === f.id ? " hl" : ""));
+    d.id = "f-" + f.id;
+    const head = el("div", "head");
+    head.append(el("span", "num", `${i + 1}.`), el("span", "title", f.title), el("span", "rule", `${f.rule} · ${f.severity}` + (f.page != null ? ` · sheet ${f.page + 1}` : "")));
+    if (!["vector", "confirmed", "absence"].includes(f.confidence)) head.append(el("span", "badge verify", f.confidence === "partial" ? "unread page" : "verify"));
+    if (f.decision) head.append(el("span", "badge state", f.decision));
+    d.append(head);
+    if (f.evidence) d.append(el("div", "ev", f.evidence));
+    d.append(el("div", "q", f.query));
+    if (f.standard) d.append(el("div", "ref", "Ref: " + f.standard + (f.clause ? " cl. " + f.clause : "")));
+    const act = el("div", "actions");
+    const mk = (label, dec, title) => { const b = el("button", "", label); b.title = title; b.onclick = () => decide(f.id, dec); return b; };
+    if (!f.decision) {
+      act.append(mk("Accept deviation", "accepted", "Real, but the customer accepts it: suppress on future drawings for this customer"),
+                 mk("Checker wrong", "rejected", "The checker misread or misapplied a rule: remove and record"));
+    } else act.append(mk("Undo", "", "Reopen this finding"));
+    d.append(act);
+    d.onclick = e => { if (e.target.tagName === "BUTTON") return; hl = f.id; f.page != null && (currentPage = f.page); renderViewer(); renderSide(); };
+    s.append(d);
+  });
+  if (rep.suppressed.length) s.append(el("div", "status", `${rep.suppressed.length} finding(s) suppressed by earlier decisions.`));
+}
+
+async function decide(fid, decision) {
+  await api(`/api/runs/${current.id}/findings/${fid}`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision }) });
+  await open(current.id);
+}
+
+$("#upload").addEventListener("submit", async e => {
+  e.preventDefault();
+  const fd = new FormData();
+  fd.append("file", $("#file").files[0]); fd.append("customer", $("#customer").value); fd.append("vision", $("#vision").value);
+  const btn = e.target.querySelector("button"); btn.disabled = true;
+  try { const r = await (await api("/api/runs", { method: "POST", body: fd })).json(); await refresh(); open(r.id); }
+  catch (err) { alert("Upload failed: " + err.message); }
+  finally { btn.disabled = false; }
+});
+api("/api/health").then(r => r.json()).then(h => { $("#health").textContent = `retention ${h.retention_days}d` + (h.auth ? " · token required" : " · local"); }).catch(() => {});
+refresh();
+</script>
+</body>
+</html>
