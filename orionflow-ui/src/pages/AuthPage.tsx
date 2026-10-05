@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import AuthArt from '../components/Inspect/AuthArt';
+import '../styles/inspect.css';
 import OrionFlowLogo from '../components/OrionFlowLogo';
 import { useAuthStore } from '../store/authStore';
 
@@ -56,7 +58,7 @@ export default function AuthPage() {
                     setLoading(true);
                     try {
                         await googleLogin(response.credential);
-                        navigate('/app');
+                        navigate('/');
                     } catch (err: any) {
                         setError(err.message || 'Google sign-in failed');
                     } finally {
@@ -97,7 +99,7 @@ export default function AuthPage() {
             } else {
                 await signup(name, email, password);
             }
-            navigate('/app');
+            navigate('/');
         } catch (err: any) {
             const msg = err.message || 'Authentication failed';
             setError(
@@ -111,25 +113,19 @@ export default function AuthPage() {
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            width: '100%',
-            background: 'var(--st-void)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '48px 24px',
-        }}>
+        <div className="in in-auth">
+            <AuthArt />
+            <div className="in-auth-form">
             <div style={{ width: '100%', maxWidth: '372px' }}>
 
                 {/* Card — logo, brand, and form all inside, like the reference */}
                 <div style={{
                     background: 'var(--st-sheet)',
                     border: '1px solid var(--st-rule)',
-                    borderRadius: 'var(--st-r-xl)',
+                    borderRadius: 0,
                     padding: '40px 32px 32px',
                     textAlign: 'center',
-                    boxShadow: 'var(--st-shadow)',
+                    boxShadow: 'none',
                 }}>
                     {/* Logo mark */}
                     <a href="https://orionflow.in" style={{ textDecoration: 'none', display: 'inline-block' }}>
@@ -310,6 +306,7 @@ export default function AuthPage() {
                     {' '}and{' '}
                     <Link to="/privacy" style={{ color: 'var(--st-graphite)', textDecoration: 'underline', textUnderlineOffset: '2px' }}>Privacy Policy</Link>.
                 </p>
+            </div>
             </div>
         </div>
     );

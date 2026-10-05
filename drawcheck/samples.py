@@ -18,6 +18,10 @@ import pymupdf
 A3 = (1191.0, 842.0)
 SYMBOL_FONTS = [
     "C:/Windows/Fonts/seguisym.ttf",
+    # Symbola has every GD&T glyph (⌖ Ⓜ ⟂ ↧); DejaVu lacks ⌖ and Ⓜ, so a frame drawn
+    # with it loses its symbol and its datum cells read as datum feature symbols.
+    "/usr/share/fonts/truetype/ancient-scripts/Symbola_hint.ttf",
+    "/usr/share/fonts/truetype/symbola/Symbola.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/dejavu/DejaVuSans.ttf",
 ]

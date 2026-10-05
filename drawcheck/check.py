@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 VISION_MODES = ("off", "scanned", "all")
 
 
-def read(path: str | Path, vision: str = "scanned") -> Drawing:
+def read(path: str | Path, vision: str = "scanned", model: str | None = None) -> Drawing:
     if vision not in VISION_MODES:
         raise ValueError(f"vision must be one of {VISION_MODES}")
     d = Drawing(source=str(path), pages=ingest.read_pdf(path))
@@ -27,15 +27,15 @@ def read(path: str | Path, vision: str = "scanned") -> Drawing:
     if want:
         from . import extract_vision
         try:
-            extract_vision.extract(d, path, [p.index for p in want])
+            extract_vision.extract(d, path, [p.index for p in want], model)
         except extract_vision.VisionUnavailable as e:
             d.warnings.append(f"vision reader not run: {e}")
     return d
 
 
 def check_file(path: str | Path, vision: str = "scanned", store: "Store | None" = None,
-               customer: str = "") -> tuple[Report, Drawing]:
-    d = read(path, vision)
+               customer: str = "", model: str | None = None) -> tuple[Report, Drawing]:
+    d = read(path, vision, model)
     findings = rules.run(d)
     for f in findings:
         f.id = fingerprint(f)

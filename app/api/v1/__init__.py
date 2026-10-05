@@ -14,11 +14,13 @@ from app.api.v1 import (
     designs,
     billing,
     editing,
+    fai,
     jobs,
     sessions,
     studio,
     topology,
     waitlist,
+    watchdog,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -53,3 +55,11 @@ api_router.include_router(topology.router, prefix="/topology", tags=["Topology"]
 # rather than beside /topology: reading geometry and changing a design are
 # different acts, and only the second one is metered.
 api_router.include_router(editing.router, prefix="/studio/edit", tags=["Editing"])
+
+# The verification watchdog: engine status and robot-model runs. Assembly and
+# drawing checks are mounted as their own apps at /verify and /drawing.
+api_router.include_router(watchdog.router, prefix="/watchdog", tags=["Watchdog"])
+
+# OrionFlow Inspect: first article inspection from a drawing (+ STEP, + PO).
+# Every rule lives in the standalone `fai` package; this is the HTTP surface.
+api_router.include_router(fai.router, prefix="/fai", tags=["Inspect (FAI)"])

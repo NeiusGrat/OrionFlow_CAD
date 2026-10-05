@@ -10,6 +10,12 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import AccountPage from "./pages/AccountPage";
+import WatchdogPage from "./pages/WatchdogPage";
+import InspectHome from "./pages/inspect/InspectHome";
+import ProjectPage from "./pages/inspect/ProjectPage";
+import InspectWorkspace from "./pages/inspect/Workspace";
+import ComparePage from "./pages/inspect/ComparePage";
+import AssemblyPage from "./pages/inspect/AssemblyPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -48,12 +54,36 @@ function CADApp() {
     return <Workspace />;
 }
 
+function HomeRoute() {
+    const [searchParams] = useSearchParams();
+    const example = searchParams.get("example");
+    if (example) return <Navigate to={`/studio?example=${encodeURIComponent(example)}`} replace />;
+    return <InspectHome />;
+}
+
 export default function App() {
     return (
         <Routes>
-            {/* app.orionflow.in is the studio — no marketing pages here */}
+            {/* app.orionflow.in opens on OrionFlow Inspect (FAI). The
+                assembly watchdog lives at /watchdog and the design studio
+                at /studio; a gallery deep link (/?example=<id>) is a studio
+                link and is forwarded there. */}
             <Route
                 path="/"
+                element={
+                    <ProtectedRoute>
+                        <HomeRoute />
+                    </ProtectedRoute>
+                }
+            />
+            <Route path="/p/:pid" element={<ProtectedRoute><ProjectPage /></ProtectedRoute>} />
+            <Route path="/r/:rid" element={<ProtectedRoute><InspectWorkspace /></ProtectedRoute>} />
+            <Route path="/compare/:pid" element={<ProtectedRoute><ComparePage /></ProtectedRoute>} />
+            <Route path="/assembly" element={<ProtectedRoute><AssemblyPage /></ProtectedRoute>} />
+            <Route path="/assembly/:id" element={<ProtectedRoute><AssemblyPage /></ProtectedRoute>} />
+            <Route path="/watchdog" element={<ProtectedRoute><WatchdogPage /></ProtectedRoute>} />
+            <Route
+                path="/studio"
                 element={
                     <ProtectedRoute>
                         <CADApp />

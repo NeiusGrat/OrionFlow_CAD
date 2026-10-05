@@ -27,45 +27,47 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-/** Canonical machined-aluminium surface. */
+/** Canonical part surface: anodised cobalt.
+ *
+ *  Coloured rather than grey because the product decided every model on screen
+ *  should read in colour (2026-10-04). Metalness is kept low enough (0.38) that
+ *  the diffuse colour survives the environment map — a fully metallic surface
+ *  takes its colour from the room and the anodised hue would wash out to grey. */
 export const CAD_SURFACE = {
-    color: "#c2c7cf",
-    metalness: 0.72,
-    roughness: 0.29,
-    envMapIntensity: 1.15,
+    color: "#3F7FF0",
+    metalness: 0.38,
+    roughness: 0.34,
+    envMapIntensity: 1.1,
 } as const;
 
-/** Per-component tints for an assembly.
+/** Per-component colours for an assembly: anodised and powder-coat hues.
  *
- * An assembly arrives as one GLB node per component (see
- * `assembly_service._assembly_glb`), and painting every node the same
- * machined aluminium makes a four-gear stage read as a single grey lump — the
- * user cannot tell the sun from a planet, which is the one thing the picture
- * is for.
+ * An assembly arrives as one GLB node per component, and the point of the
+ * picture is telling the components apart — the bearing from its housing, the
+ * shaft from the arm. Neighbouring entries are far apart in hue, and every
+ * entry sits in the same lightness band, so no part dominates the frame and
+ * the white/grey severity overlays in the watchdog stay legible on top.
  *
- * These are **tinted metals, not category colours.** Every entry sits in the
- * same narrow value range as {@link CAD_SURFACE} and keeps its metalness, so
- * the set reads as a bill of materials — aluminium, steel, brass, bronze,
- * anodised — rather than as a chart. A saturated primary palette would
- * distinguish the parts just as well and make the viewport look like a toy,
- * which is the opposite of what a CAD surface is trying to say.
- *
- * Index 0 is the neutral aluminium, so a single-body part is unchanged and
- * the first component of an assembly matches what a lone part looks like.
+ * Index 0 matches {@link CAD_SURFACE}, so a single-body part and the first
+ * component of an assembly look the same.
  *
  * Assigned by sorted component id, so the same assembly is always coloured the
  * same way — a planet does not change colour because a rebuild reordered the
  * scene graph.
  */
 export const CAD_COMPONENT_TINTS = [
-    "#C2C7CF", // aluminium, the neutral
-    "#9FB6CE", // steel blue
-    "#C9B27E", // brass
-    "#B4907A", // bronze
-    "#A6BAAE", // patina
-    "#B0A6C0", // anodised violet
-    "#CBBEA6", // champagne
-    "#93AFB8", // titanium
+    "#3F7FF0", // cobalt
+    "#F2994A", // tangerine
+    "#27C2A0", // jade
+    "#E2557A", // raspberry
+    "#F2C94C", // saffron
+    "#8E6CF0", // violet
+    "#2FB4E8", // cyan
+    "#9ACD4A", // lime
+    "#EF6F4B", // vermilion
+    "#C770D8", // orchid
+    "#4FD1C5", // aqua
+    "#D9A35F", // bronze
 ] as const;
 
 /** The tint for a component, by its position in the sorted component list. */

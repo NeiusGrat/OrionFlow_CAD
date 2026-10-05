@@ -5,9 +5,20 @@ Secrets:  expects a Modal secret named "orionflow-secrets" holding the
           production env (GROQ_API_KEY, JWT_SECRET_KEY, DB_*, CORS_ORIGINS,
           S3_*/AWS_* ...) — created by deploy/create_modal_secret.py.
 
+          OrionFlow Inspect's vision reader (drawings whose text is outlines or
+          scanned) uses Claude. Put the key in its own secret and deploy with it:
+              modal secret create orionflow-anthropic ANTHROPIC_API_KEY=sk-ant-...
+              WITH_ANTHROPIC=1 modal deploy deploy/modal_app.py
+          Without it every deterministic check still runs; text-less sheets are
+          reported as needing manual entry.
+Storage:  Modal Volume "orionflow-fai" at /data: Inspect projects, revisions,
+          audit trail (SQLite) and drawcheck runs. SQLite on a volume is safe
+          only with one writer, hence max_containers=1.
+
 The served URL is https://<workspace>--orionflow-api-api.modal.run
 """
 
+import os
 import subprocess
 
 import modal
@@ -78,13 +89,22 @@ _SOURCE_DIRS = [
     "orion",
     "orion_agent",
     "alembic",
+    # OrionFlow Inspect (FAI) and the engines it reads with: drawcheck reads the
+    # drawing, interface_check measures STEP geometry and BOMs.
+    "fai",
+    "drawcheck",
+    "interface_check",
 ]
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
     # libgl1/libglu1/libxrender1/libxext6: required by the OCP (OpenCascade)
     # wheel that build123d links against; absent on slim images.
-    .apt_install("libgl1", "libglu1-mesa", "libxrender1", "libxext6", "libpq5")
+    .apt_install("libgl1", "libglu1-mesa", "libxrender1", "libxext6", "libpq5",
+                 # Unicode fonts: Ø ± ≤ ⟂ in the FAI PDF exports and the GD&T glyphs of the sample drawings
+                 "fonts-dejavu-core", "fonts-symbola")
+    # requirements.txt pins the geometry kernel as one set (build123d 0.10.0 on OCP
+    # 7.8.1): a second install on top would leave a mixed OCP package.
     .pip_install_from_requirements("requirements.txt")
     .env(
         {
@@ -94,6 +114,10 @@ image = (
             # Belt and braces behind copy=True: pins the image to the commit, so
             # even a change this file forgot to copy still gets a fresh snapshot.
             "ORIONFLOW_BUILD": _build_stamp(),
+            "FAI_DATA": "/data/fai",
+            "DRAWCHECK_DATA": "/data/drawcheck",
+            "DRAWCHECK_CACHE": "/data/vision-cache",
+            "WATCHDOG_ROBOT_DATA": "/data/robot",
         }
     )
 )
@@ -108,6 +132,10 @@ for _d in _SOURCE_DIRS:
 image = image.add_local_file("alembic.ini", "/root/alembic.ini", copy=True)
 
 app = modal.App("orionflow-api")
+fai_volume = modal.Volume.from_name("orionflow-fai", create_if_missing=True)
+secrets = [modal.Secret.from_name("orionflow-secrets")]
+if os.environ.get("WITH_ANTHROPIC"):
+    secrets.append(modal.Secret.from_name("orionflow-anthropic"))
 
 # Import the FastAPI app at container-import time so the memory snapshot
 # captures it.
@@ -126,12 +154,14 @@ with image.imports():
 
 @app.function(
     image=image,
-    secrets=[modal.Secret.from_name("orionflow-secrets")],
+    secrets=secrets,
+    volumes={"/data": fai_volume},
     cpu=2,
-    memory=2048,
-    timeout=300,
+    memory=4096,  # STEP measurement and PDF rendering run in-process for Inspect
+    timeout=600,
     scaledown_window=600,  # keep a warm container 10 min after last request
     min_containers=0,  # scale to zero — stays inside the $30/mo credits
+    max_containers=1,  # the Inspect store is SQLite on a volume: one writer only
     # Cold boot was ~2 min (OCP/OpenCascade import). Snapshot captures the
     # imported process image; later cold starts restore it in seconds. The
     # asyncpg engine is created lazily (no open sockets at snapshot time) and

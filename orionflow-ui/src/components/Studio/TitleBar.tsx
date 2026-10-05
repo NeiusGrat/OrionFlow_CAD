@@ -6,8 +6,10 @@ import {
     Loader2,
     Redo2,
     Save,
+    ShieldCheck,
     Undo2,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import OrionFlowLogo, { OrionFlowWordmark } from "../OrionFlowLogo";
 import AccountMenu from "./AccountMenu";
 import { useStudioStore } from "../../store/studioStore";
@@ -77,6 +79,19 @@ function BarButton({
             {icon}
             {label && <span>{label}</span>}
         </button>
+    );
+}
+
+/** Back to OrionFlow Inspect, the app's home. */
+function WatchdogButton() {
+    const navigate = useNavigate();
+    return (
+        <BarButton
+            icon={<ShieldCheck size={13} />}
+            label="Inspect"
+            onClick={() => navigate("/")}
+            title="First article inspection: drawings, models, AS9102 forms"
+        />
     );
 }
 
@@ -380,6 +395,8 @@ export default function TitleBar() {
                         : "Build a part first"
                 }
             />
+
+            <WatchdogButton />
 
             <AccountMenu />
         </div>

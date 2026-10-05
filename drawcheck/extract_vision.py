@@ -13,8 +13,9 @@ it:
              drawn as geometry, an outlined or scanned page). Findings that
              rest on these are marked for the reviewer to verify.
 
-Provider: Gemini over REST (GEMINI_API_KEY). Responses are cached on disk by
-image hash, so re-running a drawing costs nothing.
+Providers: Claude through the Anthropic SDK (ANTHROPIC_API_KEY; a model id
+starting with "claude-") or Gemini over REST (GEMINI_API_KEY). Responses are
+cached on disk by image hash, so re-running a drawing costs nothing.
 """
 from __future__ import annotations
 
@@ -217,6 +218,160 @@ def _call_one(png: bytes, model: str, timeout: float) -> tuple[dict, dict]:
     raise _Overloaded(str(last)[:160])
 
 
+
+# ------------------------------------------------------------------ Claude
+
+#: $ per million tokens: (input, output, cache read, cache write). Used only to
+#: report what a run cost; the API's own usage numbers are the source.
+CLAUDE_PRICES = {"claude-opus-5-5": (4.0, 20.0, 0.20, 5.0), "claude-sonnet-5-5": (2.0, 10.0, 0.20, 2.5),
+                 "claude-fable-5-1": (10.0, 50.0, 0.25, 12.5), "claude-haiku-4-5": (1.0, 5.0, 0.10, 1.25)}
+CLAUDE_MAX_SIDE = 2576      # pixels on the long edge: Claude's high-resolution vision limit
+CLAUDE_EFFORT = os.environ.get("DRAWCHECK_CLAUDE_EFFORT", "high")
+
+
+def default_model() -> str | None:
+    """The configured vision model, or None when no provider has a key."""
+    explicit = os.environ.get("DRAWCHECK_VISION_MODEL", "")
+    if explicit:
+        return explicit
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return "claude-opus-5-5"
+    try:
+        _api_key()
+        return DEFAULT_MODEL
+    except VisionUnavailable:
+        return None
+
+
+def _nullable(t: str) -> dict:
+    return {"type": [t, "null"]}
+
+
+#: Claude structured-output schema: every field required (null / "none" when absent), no extras.
+_CLAUDE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "annotations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "enum": ["dimension", "gdt_frame", "datum_feature", "thread",
+                                                        "surface_finish", "note", "title_field", "projection"]},
+                    "text": {"type": "string"},
+                    "box": {"type": "array", "items": {"type": "integer"}},
+                    "characteristic": {"type": "string", "enum": CHARACTERISTICS + ["none"]},
+                    "tolerance": _nullable("number"),
+                    "basic": {"type": "boolean"},
+                    "diameter_zone": {"type": "boolean"},
+                    "material_modifier": {"type": "string", "enum": ["none", "MMC", "LMC"]},
+                    "datums": {"type": "array", "items": {"type": "string"}},
+                    "field": {"type": "string", "enum": TITLE_FIELDS + ["none"]},
+                    "projection": {"type": "string", "enum": ["first", "third", "none"]},
+                },
+                "required": ["kind", "text", "box", "characteristic", "tolerance", "basic", "diameter_zone",
+                             "material_modifier", "datums", "field", "projection"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["annotations"],
+    "additionalProperties": False,
+}
+
+_CLAUDE_PROMPT = PROMPT.replace(
+    "- box_2d: [ymin, xmin, ymax, xmax] of the annotation, normalised to 0-1000.",
+    "- box: [x_min, y_min, x_max, y_max] of the annotation in image pixels (origin top-left).",
+) + """
+
+Every field is required in the output: use "none", null, false or [] when a field does not apply
+to that annotation (characteristic "none" for anything that is not a feature control frame)."""
+
+
+def call_claude(png: bytes, size: tuple[int, int], model: str, timeout: float = 600.0) -> tuple[dict, dict]:
+    """(parsed JSON in the Gemini shape, usage). Cached by image + prompt + model."""
+    cache = _cache_path(png, model)
+    if cache.exists():
+        hit = json.loads(cache.read_text(encoding="utf-8"))
+        return hit["result"], {**hit["usage"], "cached": True}
+    try:
+        import anthropic
+    except ImportError as e:
+        raise VisionUnavailable("the anthropic package is not installed") from e
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise VisionUnavailable("no ANTHROPIC_API_KEY in the environment")
+    client = anthropic.Anthropic(timeout=timeout, max_retries=3)
+    w, h = size
+    t0 = time.time()
+    try:
+        with client.beta.messages.stream(
+            model=model,
+            max_tokens=64000,
+            betas=["server-side-fallback-2026-07-01"],
+            fallbacks="default",
+            output_config={"effort": CLAUDE_EFFORT,
+                           "format": {"type": "json_schema", "schema": _CLAUDE_SCHEMA}},
+            # The instructions are identical for every page, so they are cached.
+            system=[{"type": "text", "text": _CLAUDE_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                             "data": base64.standard_b64encode(png).decode()}},
+                {"type": "text", "text": f"This drawing sheet image is {w} x {h} pixels. Transcribe it."},
+            ]}],
+        ) as stream:
+            msg = stream.get_final_message()
+            resp = getattr(stream, "response", None)
+            request_id = getattr(msg, "_request_id", None) or (resp.headers.get("request-id") if resp is not None else None)
+    except anthropic.RateLimitError as e:
+        raise _Overloaded(f"{model} rate limited: {e.message}") from e
+    except anthropic.APIStatusError as e:
+        if e.status_code >= 500:
+            raise _Overloaded(f"{model} HTTP {e.status_code}") from e
+        raise VisionUnavailable(f"Claude HTTP {e.status_code}: {e.message[:300]}") from e
+    except anthropic.APIConnectionError as e:
+        raise VisionUnavailable(f"cannot reach the Claude API: {e}") from e
+    if msg.stop_reason == "refusal":
+        cat = getattr(msg.stop_details, "category", None) if msg.stop_details else None
+        raise VisionUnavailable(f"{model} declined the page ({cat or 'no category'})")
+    if msg.stop_reason == "max_tokens":
+        raise VisionUnavailable(f"{model} ran out of output tokens on this page")
+    text = next((b.text for b in msg.content if b.type == "text"), "")
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise VisionUnavailable(f"Claude returned invalid JSON: {text[:200]}") from e
+    result = {"annotations": claude_items(raw, size)}
+    u = msg.usage
+    used = getattr(msg, "model", model) or model
+    price = CLAUDE_PRICES.get(used) or CLAUDE_PRICES.get(model) or (0.0, 0.0, 0.0, 0.0)
+    cache_read = getattr(u, "cache_read_input_tokens", 0) or 0
+    cache_write = getattr(u, "cache_creation_input_tokens", 0) or 0
+    cost = (u.input_tokens * price[0] + u.output_tokens * price[1] + cache_read * price[2]
+            + cache_write * price[3]) / 1e6
+    usage = {"model": used, "seconds": round(time.time() - t0, 1), "input_tokens": u.input_tokens,
+             "output_tokens": u.output_tokens, "cache_read_tokens": cache_read, "cache_write_tokens": cache_write,
+             "cost_usd": round(cost, 5), "request_id": request_id}
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps({"result": result, "usage": usage}), encoding="utf-8")
+    return result, {**usage, "cached": False}
+
+
+def claude_items(raw: dict, size: tuple[int, int]) -> list[dict]:
+    """Claude's pixel boxes -> the shared 0-1000 [ymin, xmin, ymax, xmax] shape; "none" -> None."""
+    w, h = size
+    items = []
+    for it in raw.get("annotations", []):
+        box = it.get("box") or []
+        if len(box) == 4 and w and h:
+            x0, y0, x1, y1 = box
+            it["box_2d"] = [round(y0 / h * 1000), round(x0 / w * 1000), round(y1 / h * 1000), round(x1 / w * 1000)]
+        for k in ("characteristic", "field", "projection", "material_modifier"):
+            if it.get(k) == "none":
+                it[k] = None
+        items.append(it)
+    return items
+
+
 # ------------------------------------------------------------------ conversion
 
 def _bbox(box: list, page: Page) -> BBox | None:
@@ -378,20 +533,35 @@ def merge(drawing: Drawing, page: Page, found: list[Annotation]) -> dict[str, in
 # ------------------------------------------------------------------ entry
 
 def read_page_image(path: str | Path, page: Page, model: str = DEFAULT_MODEL) -> tuple[list[Annotation], dict]:
-    dpi = DPI
-    longest = max(page.width, page.height) / 72 * dpi
-    if longest > MAX_SIDE:
-        dpi = int(dpi * MAX_SIDE / longest)
+    claude = model.startswith("claude-")
+    cap = CLAUDE_MAX_SIDE if claude else MAX_SIDE
+    longest_pt = max(page.width, page.height)
+    # Claude: render to exactly its long-edge limit; Gemini: DPI, capped.
+    dpi = int(cap / longest_pt * 72) if claude else DPI
+    if longest_pt / 72 * dpi > cap:
+        dpi = int(cap / longest_pt * 72)
     png, _ = render_page(path, page.index, dpi=dpi)
-    result, usage = call_gemini(png, model)
+    if claude:
+        import pymupdf
+        pix = pymupdf.Pixmap(png)
+        result, usage = call_claude(png, (pix.width, pix.height), model)
+    else:
+        result, usage = call_gemini(png, model)
     anns = [a for a in (to_annotation(it, page) for it in result.get("annotations", [])) if a is not None]
     return anns, usage
 
 
-def extract(drawing: Drawing, path: str | Path, pages: list[int], model: str = DEFAULT_MODEL) -> Drawing:
-    _api_key()   # fail before rendering anything
+def extract(drawing: Drawing, path: str | Path, pages: list[int], model: str | None = None) -> Drawing:
+    model = model or default_model()
+    if model is None:
+        raise VisionUnavailable("no vision model configured (set ANTHROPIC_API_KEY or GEMINI_API_KEY)")
+    if model.startswith("claude-"):
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            raise VisionUnavailable("no ANTHROPIC_API_KEY in the environment")
+    else:
+        _api_key()   # fail before rendering anything
     totals = {"model": model, "pages": 0, "seconds": 0.0, "input_tokens": 0, "output_tokens": 0, "cached_pages": 0,
-              "confirmed": 0, "conflict": 0, "vision_only": 0, "duplicate": 0}
+              "cost_usd": 0.0, "confirmed": 0, "conflict": 0, "vision_only": 0, "duplicate": 0}
     failed = 0
     for i in pages:
         page = drawing.pages[i]
@@ -408,6 +578,8 @@ def extract(drawing: Drawing, path: str | Path, pages: list[int], model: str = D
         totals["model"] = usage.get("model", model)
         totals["input_tokens"] += usage.get("input_tokens", 0)
         totals["output_tokens"] += usage.get("output_tokens", 0)
+        if not usage.get("cached"):
+            totals["cost_usd"] = round(totals["cost_usd"] + usage.get("cost_usd", 0.0), 5)
         totals["cached_pages"] += int(usage.get("cached", False))
         for k, v in st.items():
             totals[k] += v

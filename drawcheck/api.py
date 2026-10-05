@@ -48,9 +48,13 @@ _lock = threading.Lock()
 PERSIST: Callable[[], None] = lambda: None
 
 
-def _auth(authorization: str = Header(default="")) -> None:
+def _auth(authorization: str = Header(default="")) -> str:
+    """The caller's identity. Standalone it is "" (one tenant); a host that
+    mounts this app overrides it with a per-user resolver, and every run is
+    then visible only to the user who created it."""
     if TOKEN and authorization != f"Bearer {TOKEN}":
         raise HTTPException(401, "missing or wrong token")
+    return ""
 
 
 def _store() -> Store:
@@ -58,11 +62,11 @@ def _store() -> Store:
     return Store(DATA / "reviews.sqlite")
 
 
-def _run_dir(rid: str) -> Path:
+def _run_dir(rid: str, owner: str = "") -> Path:
     if not rid.isalnum():
         raise HTTPException(400, "bad run id")
     d = DATA / rid
-    if not d.is_dir():
+    if not d.is_dir() or _meta(d).get("owner", "") != owner:
         raise HTTPException(404, "no such run")
     return d
 
@@ -134,9 +138,10 @@ def health() -> dict:
     return {"ok": True, "auth": bool(TOKEN), "retention_days": RETENTION_DAYS}
 
 
-@app.post("/api/runs", dependencies=[Depends(_auth)])
+@app.post("/api/runs")
 async def create_run(background: BackgroundTasks, file: UploadFile = File(...),
-                     customer: str = Form(""), vision: str = Form("scanned")) -> dict:
+                     customer: str = Form(""), vision: str = Form("scanned"),
+                     owner: str = Depends(_auth)) -> dict:
     if vision not in ("off", "scanned", "all"):
         raise HTTPException(400, "vision must be off, scanned or all")
     data = await file.read()
@@ -150,40 +155,41 @@ async def create_run(background: BackgroundTasks, file: UploadFile = File(...),
     d.mkdir(parents=True)
     (d / "original.pdf").write_bytes(data)
     _write_meta(d, {"id": rid, "filename": Path(file.filename or "drawing.pdf").name, "customer": customer.strip(),
-                    "vision": vision, "status": "queued", "created": time.time()})
+                    "vision": vision, "status": "queued", "created": time.time(), "owner": owner})
     PERSIST()
     background.add_task(_process, rid)
     return {"id": rid, "status": "queued"}
 
 
-@app.get("/api/runs", dependencies=[Depends(_auth)])
-def list_runs() -> list[dict]:
+@app.get("/api/runs")
+def list_runs(owner: str = Depends(_auth)) -> list[dict]:
     _purge()
     if not DATA.exists():
         return []
     runs = [_meta(d) for d in DATA.iterdir() if d.is_dir() and (d / "meta.json").exists()]
+    runs = [m for m in runs if m.get("owner", "") == owner]
     return sorted(runs, key=lambda m: -m.get("created", 0))
 
 
-@app.get("/api/runs/{rid}", dependencies=[Depends(_auth)])
-def get_run(rid: str) -> dict:
-    d = _run_dir(rid)
+@app.get("/api/runs/{rid}")
+def get_run(rid: str, owner: str = Depends(_auth)) -> dict:
+    d = _run_dir(rid, owner)
     out = _meta(d)
     if (d / "report.json").exists():
         out["report"] = json.loads((d / "report.json").read_text(encoding="utf-8"))
     return out
 
 
-@app.delete("/api/runs/{rid}", dependencies=[Depends(_auth)])
-def delete_run(rid: str) -> dict:
-    shutil.rmtree(_run_dir(rid))
+@app.delete("/api/runs/{rid}")
+def delete_run(rid: str, owner: str = Depends(_auth)) -> dict:
+    shutil.rmtree(_run_dir(rid, owner))
     PERSIST()
     return {"deleted": rid}
 
 
-@app.get("/api/runs/{rid}/pages/{n}.png", dependencies=[Depends(_auth)])
-def page_image(rid: str, n: int, dpi: int = 110) -> Response:
-    d = _run_dir(rid)
+@app.get("/api/runs/{rid}/pages/{n}.png")
+def page_image(rid: str, n: int, dpi: int = 110, owner: str = Depends(_auth)) -> Response:
+    d = _run_dir(rid, owner)
     dpi = max(50, min(dpi, 220))
     cache = d / f"page{n}_{dpi}.png"
     if not cache.exists():
@@ -200,11 +206,11 @@ _FILES = {"checked.pdf": "application/pdf", "queries.xlsx":
           "original.pdf": "application/pdf"}
 
 
-@app.get("/api/runs/{rid}/files/{name}", dependencies=[Depends(_auth)])
-def run_file(rid: str, name: str) -> FileResponse:
+@app.get("/api/runs/{rid}/files/{name}")
+def run_file(rid: str, name: str, owner: str = Depends(_auth)) -> FileResponse:
     if name not in _FILES:
         raise HTTPException(404, "unknown file")
-    d = _run_dir(rid)
+    d = _run_dir(rid, owner)
     if not (d / name).exists():
         raise HTTPException(404, "not ready")
     stem = Path(_meta(d)["filename"]).stem
@@ -217,11 +223,11 @@ class Decision(BaseModel):
     reviewer: str = ""
 
 
-@app.post("/api/runs/{rid}/findings/{fid}", dependencies=[Depends(_auth)])
-def decide(rid: str, fid: str, body: Decision) -> dict:
+@app.post("/api/runs/{rid}/findings/{fid}")
+def decide(rid: str, fid: str, body: Decision, owner: str = Depends(_auth)) -> dict:
     if body.decision not in ("accepted", "rejected", ""):
         raise HTTPException(400, "decision must be accepted, rejected or empty")
-    d = _run_dir(rid)
+    d = _run_dir(rid, owner)
     meta = _meta(d)
     with _lock:
         report = _report_from(json.loads((d / "report.json").read_text(encoding="utf-8")))
@@ -245,7 +251,7 @@ def decide(rid: str, fid: str, body: Decision) -> dict:
     return {"ok": True, "open": sum(1 for x in report.findings if not x.decision)}
 
 
-@app.get("/api/reviews/stats", dependencies=[Depends(_auth)])
-def review_stats() -> dict:
+@app.get("/api/reviews/stats")
+def review_stats(_owner: str = Depends(_auth)) -> dict:
     """Per rule: how often reviewers accepted (real, but waived) or rejected (checker wrong)."""
     return _store().stats()

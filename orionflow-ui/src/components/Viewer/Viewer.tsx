@@ -47,13 +47,13 @@ function token(name: string, fallback: string): string {
  *  derived from that base rather than restating it. */
 const MAT_BASE = createPartMaterial();
 const MAT_HOVER = createPartMaterial({
-    color: new THREE.Color("#c9ced6"),
+    color: new THREE.Color("#6E9CF5"),
     roughness: 0.26,
     envMapIntensity: 1.2,
 });
 const MAT_SELECTED = createPartMaterial({
-    color: new THREE.Color("#A8BDEE"),
-    metalness: 0.65,
+    color: new THREE.Color("#A9C4FF"),
+    metalness: 0.4,
     roughness: 0.3,
     emissive: new THREE.Color("#24468F"),
     emissiveIntensity: 0.12,

@@ -119,7 +119,9 @@ def _merge_stacks(page: Page) -> None:
         for bot in cands:
             if bot is top or id(bot.w) in gone or _angle(bot.w) != _angle(top.w):
                 continue
-            if (abs(bot.u0 - top.u0) < max(3.0, 0.5 * top.h) and 0 < bot.v - top.v <= 1.6 * top.h
+            # Rotated words have estimated starts and "-" is narrower than "+": NIST's rotated
+            # stacks sit 6.4-7.0 pt apart at 12 pt, just outside the old 0.5 h.
+            if (abs(bot.u0 - top.u0) < max(3.0, 0.65 * top.h) and 0 < bot.v - top.v <= 1.6 * top.h
                     and (top.w.text.startswith(("+", "-")) or bot.w.text.startswith(("+", "-")))):
                 top.w.text = f"{top.w.text}/{bot.w.text}"
                 top.w.bbox = _union([top.w.bbox, bot.w.bbox])

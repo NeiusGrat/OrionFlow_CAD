@@ -105,6 +105,9 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
 
+    if not settings.testing:
+        start_background()
+
     # Initialize Sentry
     if settings.sentry_dsn:
         try:
@@ -444,6 +447,12 @@ app.mount("/metrics", metrics_app)
 
 # Include API v1 routes
 app.include_router(api_router)
+
+# Verification engines (interface_check at /verify, drawcheck at /drawing),
+# signed in with the same access tokens as the rest of the API.
+from app.watchdog.engines import mount_engines, start_background  # noqa: E402
+
+mount_engines(app)
 
 _generation_service_instance = None
 
