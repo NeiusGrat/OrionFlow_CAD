@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interface Check</title>
+<style>
+  :root {
+    --vellum: #f4f1e8; --sheet: #fbfaf5; --ink: #1d2733; --muted: #6b7380; --rule: #d8d3c4;
+    --blue: #1f4e8c; --blue-soft: #e3ebf6; --red: #c0262d; --amber: #c77700; --low: #5d6672; --info: #2f6db5;
+    --ok: #2e7d4f; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    --sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--vellum); color: var(--ink); font: 14px/1.45 var(--sans); }
+  header { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1.5px solid var(--ink);
+           background: var(--sheet); flex-wrap: wrap; }
+  header h1 { font: 600 16px var(--mono); margin: 0; letter-spacing: .04em; }
+  header h1 span { color: var(--red); }
+  form.upload { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto; font-size: 12px; }
+  form.upload label { display: flex; flex-direction: column; color: var(--muted); font: 11px var(--mono); }
+  input, button, select { font: 12px var(--sans); }
+  input[type=password] { padding: 5px 8px; border: 1px solid var(--rule); border-radius: 3px; width: 110px; }
+  button { padding: 5px 12px; border: 1px solid var(--ink); background: var(--sheet); border-radius: 3px; cursor: pointer; }
+  button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  button.on { background: var(--ink); color: #fff; }
+  main { display: grid; grid-template-columns: 220px 440px 1fr; height: calc(100vh - 60px); }
+  aside, section { overflow: auto; }
+  #checks { border-right: 1px solid var(--rule); background: var(--sheet); }
+  .check { padding: 9px 12px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+  .check:hover, .check.sel { background: var(--blue-soft); }
+  .check.sel { box-shadow: inset 3px 0 var(--blue); }
+  .check .name { font-weight: 600; word-break: break-all; }
+  .check .sub { font: 11px var(--mono); color: var(--muted); }
+  .h { color: var(--red); } .m { color: var(--amber); } .l { color: var(--low); } .i { color: var(--info); }
+  #list { border-right: 1px solid var(--rule); background: var(--sheet); padding: 12px; }
+  .meta { font: 12px var(--mono); color: var(--muted); margin-bottom: 8px; }
+  .downloads { display: flex; gap: 10px; margin: 6px 0 10px; }
+  .downloads a { font: 12px var(--mono); color: var(--blue); }
+  .group { font: 600 12px var(--mono); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: .05em; }
+  .finding { border: 1px solid var(--rule); border-left: 4px solid; padding: 8px 10px; margin-bottom: 8px; background: #fff; cursor: pointer; }
+  .finding.high { border-left-color: var(--red); } .finding.medium { border-left-color: var(--amber); }
+  .finding.low { border-left-color: var(--low); } .finding.info { border-left-color: var(--info); }
+  .finding.sel { box-shadow: 0 0 0 2px var(--blue); }
+  .finding.reviewed { opacity: .6; }
+  .finding .rule { font: 600 12px var(--mono); }
+  .finding .tag { font: 10px var(--mono); padding: 0 5px; border: 1px solid var(--rule); border-radius: 8px; margin-left: 6px; }
+  .finding .msg { margin: 4px 0; font-size: 13px; }
+  .finding .mx { font: 11px var(--mono); color: var(--muted); word-break: break-all; }
+  .finding .rev { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
+  .finding .rev input { flex: 1; padding: 3px 6px; border: 1px solid var(--rule); font-size: 11px; }
+  .notes { font: 11px var(--mono); color: var(--muted); border-top: 1px solid var(--rule); margin-top: 12px; padding-top: 8px; }
+  .change { font-size: 12px; border-bottom: 1px solid var(--rule); padding: 5px 0; }
+  #view { position: relative; background: #eef0f2; }
+  #view canvas { display: block; }
+  #legend { position: absolute; left: 10px; bottom: 10px; font: 11px var(--mono); background: rgba(251,250,245,.9);
+            padding: 6px 8px; border: 1px solid var(--rule); max-width: 60%; }
+  .empty { color: var(--muted); padding: 30px; text-align: center; }
+  .state { font: 600 10px var(--mono); padding: 1px 6px; border-radius: 8px; border: 1px solid currentColor; }
+  .state.SUCCEEDED { color: var(--ok); } .state.RUNNING, .state.QUEUED { color: var(--blue); }
+  .state.FAILED, .state.TIMEOUT, .state.RESOURCE_LIMIT, .state.UNSUPPORTED { color: var(--red); }
+  .state.CANCELLED { color: var(--muted); }
+  .stages { font: 11px var(--mono); margin: 8px 0; display: grid; grid-template-columns: 26px 1fr auto; gap: 1px 6px; }
+  .stages .PASS { color: var(--ok); } .stages .FAIL, .stages .ERROR { color: var(--red); }
+  .stages .WARNING { color: var(--amber); } .stages .SKIPPED { color: var(--muted); }
+  .narr { font-size: 13px; background: #fff; border: 1px solid var(--rule); padding: 8px 10px; margin: 8px 0; }
+  .fail { border: 1px solid var(--red); background: #fff; padding: 10px; margin: 8px 0; }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; height: auto; }
+    #view { height: 60vh; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <h1>INTERFACE<span>/</span>CHECK</h1>
+  <form class="upload" id="upload">
+    <label>assembly STEP*<input type="file" name="step" accept=".step,.stp" required></label>
+    <label>BOM csv<input type="file" name="bom" accept=".csv,.tsv,.txt"></label>
+    <label>previous STEP<input type="file" name="prev_step" accept=".step,.stp"></label>
+    <label>URDF<input type="file" name="urdf" accept=".urdf,.xml"></label>
+    <label>link map<input type="file" name="urdf_map" accept=".yaml,.yml"></label>
+    <label>drawings<input type="file" name="drawing" accept=".pdf" multiple></label>
+    <label>token<input type="password" id="token" placeholder="OrionFlow token"></label>
+    <button class="primary" type="submit">Check</button>
+  </form>
+</header>
+<main>
+  <aside id="checks"></aside>
+  <section id="list"><div class="empty">Upload a STEP assembly (and its BOM) to check its interfaces.<br><br>
+    Uploads are deleted after 30 days. Nothing is used for training without written consent.</div></section>
+  <section id="view"><div id="legend">3D view: click a finding to highlight its parts</div></section>
+</main>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const $ = (s) => document.querySelector(s);
+const tokenEl = $("#token");
+try { tokenEl.value = localStorage.getItem("ic_token") || ""; } catch (e) {}
+const hdr = () => (tokenEl.value ? { Authorization: "Bearer " + tokenEl.value } : {});
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const SEV = ["high", "medium", "low", "info"];
+let current = null, poll = null;
+
+// ---------------------------------------------------------------- 3D
+const view = $("#view");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef0f2);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.0005, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(1, 2, 3); scene.add(sun);
+let model = null, meshes = [], marker = null;
+const base = new THREE.MeshStandardMaterial({ color: 0xb8c0c8, metalness: 0.1, roughness: 0.6 });
+const ghost = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, transparent: true, opacity: 0.15, depthWrite: false });
+const hot = { high: 0xc0262d, medium: 0xc77700, low: 0x5d6672, info: 0x2f6db5 };
+
+function resize() {
+  const r = view.getBoundingClientRect();
+  renderer.setSize(r.width, r.height); camera.aspect = r.width / Math.max(r.height, 1); camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+(function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+resize();
+
+// GLTFLoader sanitises node names the same way three's PropertyBinding does.
+const sanitize = (n) => n.replace(/\s/g, "_").replace(/[\[\]\.:\/]/g, "");
+
+function frame(box) {
+  const size = box.getSize(new THREE.Vector3()).length() || 0.1, c = box.getCenter(new THREE.Vector3());
+  controls.target.copy(c);
+  camera.position.copy(c).add(new THREE.Vector3(0.8, -1.1, 0.9).multiplyScalar(size));
+  camera.up.set(0, 0, 1); camera.near = size / 1000; camera.far = size * 100; camera.updateProjectionMatrix();
+}
+
+async function loadModel(id) {
+  if (model) { scene.remove(model); model = null; meshes = []; }
+  const r = await fetch(`/api/analysis/${id}/files/model.glb`, { headers: hdr() });
+  if (!r.ok) return;
+  const buf = await r.arrayBuffer();
+  new GLTFLoader().parse(buf, "", (g) => {
+    model = g.scene;
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+      o.material = base; meshes.push(o);
+    });
+    scene.add(model);
+    frame(new THREE.Box3().setFromObject(model));
+  });
+}
+
+function highlight(f) {
+  if (!model) return;
+  const want = new Set((f?.instances || []).map(sanitize));
+  const hit = [];
+  for (const m of meshes) {
+    const name = m.name || m.parent?.name || "";
+    const on = want.has(name) || want.has(m.parent?.name || "");
+    m.material = !f ? base : on ? new THREE.MeshStandardMaterial({ color: hot[f.severity], roughness: 0.5 }) : ghost;
+    if (on) hit.push(m);
+  }
+  if (marker) { scene.remove(marker); marker = null; }
+  if (f?.location) {
+    const p = new THREE.Vector3(...f.location).multiplyScalar(0.001);
+    const box = new THREE.Box3().setFromObject(model);
+    const r = box.getSize(new THREE.Vector3()).length() / 80;
+    marker = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), new THREE.MeshBasicMaterial({ color: hot[f.severity] }));
+    marker.position.copy(p); scene.add(marker);
+    const b = new THREE.Box3(); hit.forEach((m) => b.expandByObject(m));
+    if (!b.isEmpty()) frame(b); controls.target.copy(p);
+  } else if (hit.length) { const b = new THREE.Box3(); hit.forEach((m) => b.expandByObject(m)); frame(b); }
+  $("#legend").textContent = f ? `${f.rule_id}: ${f.instances.join(", ") || f.parts.join(", ")}` : "3D view";
+}
+
+// ---------------------------------------------------------------- data
+const TERMINAL = new Set(["SUCCEEDED", "FAILED", "TIMEOUT", "CANCELLED", "RESOURCE_LIMIT", "UNSUPPORTED"]);
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { ...hdr(), ...(opts.headers || {}) } });
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { msg = (await r.json()).detail || msg; } catch (e) {}
+    throw new Error(`${r.status}: ${msg}`);
+  }
+  return r.json();
+}
+
+async function refreshChecks() {
+  let jobs = [];
+  try { jobs = await api("/api/analysis"); } catch (e) { $("#checks").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  $("#checks").innerHTML = jobs.map((j) => `
+    <div class="check ${current === j.id ? "sel" : ""}" data-id="${j.id}">
+      <div class="name">${esc(j.label)}</div>
+      <div class="sub">${new Date(j.created_at).toLocaleString()} <span class="state ${j.state}">${j.state}</span></div>
+      ${j.summary ? `<div class="sub"><span class="h">${j.summary.high} high</span> · <span class="m">${j.summary.medium} med</span> · ${j.summary.low} low</div>` : ""}
+      ${j.failure_code ? `<div class="sub h">${esc(j.failure_code)}</div>` : ""}
+    </div>`).join("") || `<div class="empty">No analyses yet</div>`;
+  document.querySelectorAll(".check").forEach((el) => el.onclick = () => open(el.dataset.id));
+}
+
+async function open(id) {
+  try { await openJob(id); }
+  catch (e) { console.error(e); $("#list").innerHTML = `<div class="empty h">${esc(e.message)}</div>`; }
+}
+
+async function openJob(id) {
+  current = id; clearInterval(poll);
+  const j = await api(`/api/analysis/${id}`);
+  refreshChecks();
+  if (!TERMINAL.has(j.state)) {
+    $("#list").innerHTML = `<div class="empty"><span class="state ${j.state}">${j.state}</span><br><br>
+      ${esc(j.stage || "")}${j.tier ? ` · ${j.tier} worker` : ""}${j.attempts > 1 ? ` · attempt ${j.attempts}` : ""}<br><br>
+      <button id="cancel">Cancel</button></div>`;
+    $("#cancel").onclick = async () => { await api(`/api/analysis/${id}/cancel`, { method: "POST" }); open(id); };
+    poll = setInterval(async () => {
+      try { const s = await api(`/api/analysis/${id}`); if (TERMINAL.has(s.state) || s.stage !== j.stage) open(id); } catch (e) {}
+    }, 2000);
+    return;
+  }
+  if (j.state !== "SUCCEEDED") {
+    $("#list").innerHTML = `<div class="fail"><span class="state ${j.state}">${j.state}</span>
+      <b>${esc(j.failure_code || "")}</b><br>${esc(j.error || "")}
+      ${j.stage ? `<div class="meta">at stage: ${esc(j.stage)} · ${j.attempts} attempt(s), last on ${esc(j.tier)}</div>` : ""}
+      ${j.complexity ? `<div class="meta">${j.complexity.face_count} faces · mesh ${Math.round((j.complexity.mesh_ratio || 0) * 100)}% · est. ${j.complexity.estimated_memory_gb} GB</div>` : ""}</div>`;
+    return;
+  }
+  render(j);
+  loadModel(id);
+}
+
+function render(j) {
+  const st = j.stats || {};
+  const counts = { high: 0, medium: 0, low: 0, info: 0 };
+  j.findings.forEach((f) => counts[f.severity]++);
+  let html = `<div class="meta">${esc(j.label)} · <span class="state ${j.state}">${j.state}</span> on ${esc(j.tier)}<br>
+    ${st.parts} parts · ${st.instances} instances · ${st.interfaces} interfaces · ${st.runtime_s}s · peak ${st.peak_rss_mb} MB
+    ${st.cache ? ` · cache ${st.cache.hits}/${st.cache.hits + st.cache.misses}` : ""}</div>
+    <div class="downloads">${(j.downloads || []).map((n) => `<a href="#" data-dl="${n}">${n.split(".").pop().toUpperCase()}</a>`).join("")}</div>
+    <div class="meta"><span class="h">${counts.high} high</span> · <span class="m">${counts.medium} medium</span> · <span class="l">${counts.low} low</span> · <span class="i">${counts.info} info</span></div>`;
+  if (j.narrative && j.narrative.summary) {
+    html += `<div class="narr">${esc(j.narrative.summary)}${(j.narrative.points || []).length && j.narrative.status === "llm"
+      ? "<ul>" + j.narrative.points.map((p) => `<li>${esc(p.text)}</li>`).join("") + "</ul>" : ""}</div>`;
+  }
+  for (const sev of SEV) {
+    const fs = j.findings.filter((f) => f.severity === sev);
+    if (!fs.length) continue;
+    html += `<div class="group ${sev[0]}">${sev} (${fs.length})</div>`;
+    fs.forEach((f) => {
+      const rv = f.review && f.review !== "open" ? f.review : null;
+      html += `<div class="finding ${sev} ${rv ? "reviewed" : ""}" data-fp="${f.fingerprint}">
+        <div class="rule">${esc(f.rule_id)}${f.change_status ? `<span class="tag">${esc(f.change_status)}</span>` : ""}${rv ? `<span class="tag">${esc(rv)}</span>` : ""}</div>
+        <div class="msg">${esc(f.message)}</div>
+        ${(f.instances || []).length ? `<div class="mx">${esc(f.instances.slice(0, 6).join(", "))}</div>` : ""}
+        ${Object.keys(f.measured || {}).length || Object.keys(f.expected || {}).length ? `<div class="mx">measured ${esc(JSON.stringify(f.measured))} · expected ${esc(JSON.stringify(f.expected))}</div>` : ""}
+        ${f.method ? `<div class="mx">method: ${esc(f.method)}</div>` : ""}
+        <div class="rev"><button data-v="real" class="${rv === "real" ? "on" : ""}">Real issue</button>
+          <button data-v="not_issue" class="${rv === "not_issue" ? "on" : ""}">Not an issue</button>
+          <input placeholder="note" value="${esc(f.review_note || "")}"></div>
+      </div>`;
+    });
+  }
+  if ((j.stages || []).length) {
+    html += `<div class="group">Stages</div><div class="stages">` + j.stages.map((g) =>
+      `<span>${g.stage_id}</span><span>${esc(g.stage)}${g.reason ? ` <span class="l">— ${esc(g.reason)}</span>` : ""}</span><span class="${g.status}">${g.status}${g.duration_s != null ? ` ${g.duration_s}s` : ""}</span>`).join("") + `</div>`;
+  }
+  $("#list").innerHTML = html;
+  const byFp = Object.fromEntries(j.findings.map((f) => [f.fingerprint, f]));
+  document.querySelectorAll(".finding").forEach((el) => {
+    el.onclick = (e) => {
+      if (e.target.closest(".rev")) return;
+      document.querySelectorAll(".finding.sel").forEach((x) => x.classList.remove("sel"));
+      el.classList.add("sel"); highlight(byFp[el.dataset.fp]);
+    };
+    el.querySelectorAll("button[data-v]").forEach((b) => b.onclick = async () => {
+      await api(`/api/analysis/${current}/findings/${el.dataset.fp}/review`, { method: "POST",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ verdict: b.dataset.v, note: el.querySelector("input").value }) });
+      open(current);
+    });
+  });
+  document.querySelectorAll("[data-dl]").forEach((a) => a.onclick = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`/api/analysis/${current}/files/${a.dataset.dl}`, { headers: hdr() });
+    const url = URL.createObjectURL(await res.blob());
+    const link = Object.assign(document.createElement("a"), { href: url, download: `${current}-${a.dataset.dl}` });
+    link.click(); URL.revokeObjectURL(url);
+  });
+}
+
+$("#upload").onsubmit = async (e) => {
+  e.preventDefault();
+  try { localStorage.setItem("ic_token", tokenEl.value); } catch (err) {}
+  const picked = [];
+  for (const input of e.target.querySelectorAll("input[type=file]")) {
+    for (const f of input.files) picked.push({ kind: input.name, file: f });
+  }
+  try {
+    $("#list").innerHTML = `<div class="empty">uploading…</div>`;
+    const init = await api("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ files: picked.map((p) => ({ kind: p.kind, filename: p.file.name, size: p.file.size })) }) });
+    for (let k = 0; k < init.files.length; k++) {
+      const t = init.files[k];
+      // Signed storage URLs carry their own authorisation; only our own upload route takes the token.
+      const r = await fetch(t.url, { method: "PUT", body: picked[k].file, headers: t.url.startsWith("/") ? hdr() : {} });
+      if (!r.ok) throw new Error(`upload of ${t.filename} failed (${r.status})`);
+    }
+    const job = await api("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": init.upload_id },
+      body: JSON.stringify({ upload_id: init.upload_id }) });
+    open(job.id);
+  } catch (err) { $("#list").innerHTML = `<div class="empty h">${esc(err.message)}</div>`; }
+};
+refreshChecks();
+</script>
+</body>
+</html>
