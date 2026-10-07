@@ -1,7 +1,7 @@
 """OrionFlow Review checks. Each module registers its checks with :func:`base.check`."""
 from .base import REGISTRY, CheckConfig, Finding, run_checks  # noqa: F401
 
-_MODULES = ("structure", "interfaces", "clearance")
+_MODULES = ("structure", "interfaces", "clearance", "documentation")
 
 
 def load_all() -> None:

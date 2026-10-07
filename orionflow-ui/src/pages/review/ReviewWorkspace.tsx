@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Box, LayoutDashboard, ListChecks, Search } from 'lucide-react';
+import { Box, ClipboardList, LayoutDashboard, ListChecks, Search } from 'lucide-react';
 import { Brand, ReviewRoot, StepList } from '../../components/Review/Shell';
 import Viewer from '../../components/Review/Viewer';
 import ProductTree from '../../components/Review/ProductTree';
@@ -15,16 +15,18 @@ import Inspector from '../../components/Review/Inspector';
 import CommandPalette from '../../components/Review/CommandPalette';
 import ContactsDrawer from '../../components/Review/ContactsDrawer';
 import FindingsLens, { RunStatus } from '../../components/Review/FindingsLens';
+import BomLens from '../../components/Review/BomLens';
 import FindingPanel, { SevMark } from '../../components/Review/FindingPanel';
 import {
-    downloadReportJson, fetchViewerGlb, fmtBytes, getGraph, getProject, getRevision, listFindings, runReview, SEVERITIES,
-    type Finding, type FindingsPayload, type ModelGraph, type Project, type Revision,
+    downloadReportJson, fetchViewerGlb, fmtBytes, getBom, getGraph, getProject, getRevision, listFindings, runReview, SEVERITIES,
+    type BomPayload, type Finding, type FindingsPayload, type ModelGraph, type Project, type Revision,
 } from '../../services/reviewApi';
 import { useReview } from '../../store/reviewStore';
 
 const LENSES = [
     { key: 'overview', label: 'Overview', icon: LayoutDashboard },
     { key: 'model', label: 'Model', icon: Box },
+    { key: 'bom', label: 'BOM', icon: ClipboardList },
     { key: 'findings', label: 'Findings', icon: ListChecks },
 ] as const;
 type LensKey = (typeof LENSES)[number]['key'];
@@ -193,6 +195,7 @@ export default function ReviewWorkspace() {
     const [palette, setPalette] = useState(false);
     const [findings, setFindings] = useState<FindingsPayload | null>(null);
     const [exporting, setExporting] = useState(false);
+    const [bom, setBom] = useState<BomPayload | null>(null);
     const selection = useReview((s) => s.selection);
     const select = useReview((s) => s.select);
     const reset = useReview((s) => s.reset);
@@ -204,6 +207,7 @@ export default function ReviewWorkspace() {
         setGraph(null);
         setGlb(null);
         setFindings(null);
+        setBom(null);
         setError('');
         getGraph(rid)
             .then(async (g) => {
@@ -213,6 +217,7 @@ export default function ReviewWorkspace() {
                 getProject(r.project_id).then((p) => alive && setProject(p));
                 fetchViewerGlb(rid).then((b) => alive && setGlb(b)).catch((e) => alive && setError(String(e.message)));
                 listFindings(rid).then((f) => alive && setFindings(f)).catch(() => alive && setFindings(null));
+                getBom(rid).then((b) => alive && setBom(b)).catch(() => alive && setBom(null));
             })
             .catch((e) => alive && setError(String(e.message)));
         return () => {
@@ -235,6 +240,12 @@ export default function ReviewWorkspace() {
     const selectedFinding = selection?.kind === 'finding' ? findings?.findings.find((f) => f.id === selection.id) : undefined;
     const onFindingChanged = (f: Finding) =>
         setFindings((d) => d && { ...d, findings: d.findings.map((x) => (x.id === f.id ? { ...x, ...f } : x)) });
+    // a BOM pairing re-ran the checks and re-derived materials and masses: refresh both (the GLB is unchanged)
+    const onBomChanged = (b: BomPayload) => {
+        setBom(b);
+        listFindings(rid).then(setFindings).catch(() => {});
+        getGraph(rid).then(setGraph).catch(() => {});
+    };
     const exportJson = async () => {
         if (!rev || !project) return;
         setExporting(true);
@@ -288,6 +299,10 @@ export default function ReviewWorkspace() {
                         <Overview graph={graph} rev={rev} findings={findings}
                             onOpen={(f) => { select({ kind: 'finding', id: f.id }); nav(`/review/r/${rid}/findings`); }} />
                     )}
+                    {graph && active === 'bom' && (bom
+                        ? <BomLens rid={rid} data={bom} onChanged={onBomChanged}
+                            filename={`bom-reconciled-${project?.name ?? 'project'}-${rev?.label ?? ''}`.replace(/\s+/g, '_')} />
+                        : <div className="rv-loading">Loading the BOM…</div>)}
                     {graph && active === 'findings' && (findings
                         ? <FindingsLens data={findings} onExport={exportJson} exporting={exporting} />
                         : <div className="rv-loading">Loading findings…</div>)}

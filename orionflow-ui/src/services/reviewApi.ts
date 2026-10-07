@@ -388,3 +388,63 @@ export function findingsFor(findings: Finding[], instanceId: string, partId: str
         (e.type === 'instance' && e.id === instanceId) || (e.type === 'part' && e.id === partId)
         || (e.type === 'contact' && e.id !== undefined && contactIds.has(e.id))));
 }
+
+// ------------------------------------------------------------------ BOM
+
+export interface BomRow {
+    key: string;
+    file: string;
+    row: number;
+    part_number: string;
+    name: string;
+    quantity: number | null;
+    material: string;
+    type: string;
+    cad_file: string;
+    part_id: string | null;
+    method: 'exact' | 'fuzzy' | 'ai' | 'human' | 'none';
+    confidence: number;
+    process: string | null;
+    density: number | null;
+    density_note: string;
+}
+
+export interface BomPart {
+    id: string;
+    name: string;
+    count: number;
+    material: string | null;
+    process: string | null;
+    mass: number | null;
+    volume: number;
+    rows: string[];
+}
+
+export interface BomPayload {
+    rows: BomRow[];
+    parts: BomPart[];
+    files: { file: string; header_row: number; columns: Record<string, string>; rows: number; skipped: number }[];
+}
+
+export const getBom = (rid: string) => requestJson<BomPayload>(api(`/revisions/${rid}/bom`), 'Loading the BOM');
+export const setBomLink = (rid: string, row_key: string, part_id: string | null) =>
+    requestJson<BomPayload>(api(`/revisions/${rid}/bom/links`), 'Pairing the BOM row', {
+        method: 'PUT',
+        body: JSON.stringify({ row_key, part_id }),
+    });
+export const clearBomLink = (rid: string, row_key: string) =>
+    requestJson<BomPayload>(api(`/revisions/${rid}/bom/links`), 'Resetting the BOM row', {
+        method: 'DELETE',
+        body: JSON.stringify({ row_key }),
+    });
+
+export async function downloadBom(rid: string, fmt: 'csv' | 'xlsx', filename: string): Promise<void> {
+    const res = await authedFetch(api(`/revisions/${rid}/bom.${fmt}`));
+    if (!res.ok) throw new Error(await readError(res, 'Exporting the BOM'));
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}

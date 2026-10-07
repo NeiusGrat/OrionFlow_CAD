@@ -264,6 +264,10 @@ def _threaded(graph) -> set[tuple[str, float]]:
     return out
 
 
+def _part(graph, iid: str) -> str:
+    return next(i.part_id for i in graph.instances if i.id == iid)
+
+
 def _fastener_shafts(graph) -> list[dict]:
     """Every fastener shank in the assembly frame: axis line, diameter, metric size.
 
@@ -420,13 +424,22 @@ def if_fastener_size(graph, cfg: CheckConfig) -> list[Finding]:
             holes = f"{n} hole{'s' if n > 1 else ''} across this joint: {names[owner]} {metric.describe(list(s1))}; {names[other]} {metric.describe(list(s2))}."
             if kind == "modelled":
                 from interface_check.rules.fasteners import METRIC
+                from ..materials import is_plastic
                 nominal, tap = METRIC[size][0], METRIC[size][1]
                 undersize = min(min(s1), min(s2)) < nominal
                 sev = "major" if undersize else "critical"
                 title = f"Holes do not fit the modelled {size} screw"
+                small = [pid for pid, st in ((_part(graph, owner), s1), (_part(graph, other), s2))
+                         if any(d < nominal - 0.05 and abs(d - tap) > metric.TAP_TOL for d in st)]
+                plastic = bool(small) and all(is_plastic(graph.part(pid).material, graph.part(pid).process) for pid in small)
                 stmt = (f"{holes} The screw modelled through them is {size}: a hole on its path is smaller than the screw "
                         f"and is not its Ø{tap} tap drill.")
-                if undersize:
+                if plastic:
+                    sev, title = "info", f"{size} screw self-taps into printed plastic"
+                    mats = ", ".join(sorted({graph.part(pid).material or graph.part(pid).process or "plastic" for pid in small}))
+                    stmt = (f"{holes} The {size} screw modelled through them cuts its own thread in {mats} "
+                            f"(per the BOM) — a normal printed-part detail; confirm the hole size suits the material.")
+                elif undersize:
                     stmt += (f" A hole smaller than the screw can work only if it is self-tapped into plastic; in metal or a "
                              f"PCB it needs the Ø{tap} tap drill, or a clearance hole.")
             elif kind == "ambiguous":

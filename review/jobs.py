@@ -94,6 +94,36 @@ def _pick_step(files: list[dict], primary: str | None) -> dict | None:
     return max(steps, key=lambda f: f["size"], default=None)
 
 
+def attach_bom(graph, boms: list[dict], storage, store: Store, rid: str, job_id: str | None, work: Path) -> str:
+    """Parse every BOM file of the revision, match rows to parts and write the result into the graph."""
+    from .bom import apply, match_with_llm, parse, reconcile
+    from .llm import Gateway
+
+    rows, infos, problems = [], [], []
+    for f in boms:
+        local = work / f"bom_{f['id']}_{Path(f['name']).name}"
+        storage.get_file(f["storage_key"], local)
+        try:
+            r, info = parse(f["name"], local.read_bytes())
+            rows += r
+            infos.append(info)
+        except ValueError as e:
+            problems.append(str(e))
+    gw = Gateway(store, job_id)
+    records = reconcile(rows, graph, llm_match=match_with_llm(gw), human=store.bom_links_for(rid))
+    apply(graph, records)
+    graph.documents = [d for d in graph.documents if d.get("kind") != "bom"] + [{"kind": "bom", **i} for i in infos]
+    by = {}
+    for r in records:
+        by[r["method"]] = by.get(r["method"], 0) + 1
+    note = f"{len(records)} rows · " + " · ".join(f"{v} {k}" for k, v in sorted(by.items()))
+    if not gw.available:
+        note += " · AI matching off"
+    if problems:
+        note += " · " + "; ".join(problems)
+    return note
+
+
 def run_job(job_id: str, db_url: str, spec: dict) -> None:
     """Worker entry point. Never raises: every failure is written to the job."""
     store = Store(db_url)
@@ -130,6 +160,14 @@ def run_job(job_id: str, db_url: str, spec: dict) -> None:
         graph = build_graph(local, rid, files=[s for s in sources if s.name == step_file["name"]] +
                             [s for s in sources if s.name != step_file["name"]], glb_path=glb, progress=progress)
         steps.finish("mesh", f"{graph.stats.triangles:,} triangles")
+
+        boms = [f for f in files if f["kind"] == "bom"]
+        steps.start("bom", "reading BOM" if boms else "")
+        if boms:
+            note = attach_bom(graph, boms, storage, store, rid, job_id, work)
+            steps.finish("bom", note)
+        else:
+            steps.finish("bom", "no BOM in this revision", state="skipped")
         for key, note in (("features", f"{graph.stats.features} features"), ("contacts", f"{graph.stats.contacts} contacts")):
             st = next(x for x in steps.steps if x["key"] == key)
             st["note"] = note

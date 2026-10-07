@@ -235,8 +235,10 @@ export default function Inspector({ graph, findings = [] }: { graph: ModelGraph;
                     <Row k="Centre of mass" v={part.com.map((c) => c.toFixed(2)).join(', ')} unit="mm" src={`${GEO}; uniform density, part frame`} />
                     <Row k="Faces" v={part.face_count} />
                     <Row k="Body type" v={part.geometry_type === 'BREP' ? 'B-rep solid' : 'Mesh (triangles)'} />
-                    <Row k="Mass" v={part.mass === null ? '—' : fmtNum(part.mass, 4)} unit={part.mass === null ? undefined : 'kg'}
-                        src={part.mass === null ? 'needs a density: material from the BOM or Library' : 'volume × density'} />
+                    <Row k="Material" v={part.material ?? '—'} src={part.material ? 'BOM' : 'no BOM row with a material'} />
+                    <Row k="Process" v={part.process ?? '—'} src={part.process ? 'BOM type column' : 'no BOM type'} />
+                    <Row k="Mass" v={part.mass === null ? '—' : fmtNum(part.mass * 1000, 2)} unit={part.mass === null ? undefined : 'g'}
+                        src={part.mass === null ? 'needs one known material: from the BOM or the Library' : 'STEP volume × handbook density of the BOM material'} />
                 </dl>
             </div>
             {inst && pos && (

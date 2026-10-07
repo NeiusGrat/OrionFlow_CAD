@@ -22,6 +22,10 @@ Mounted by the main app at ``/review`` (routes below are relative to it), with
     PATCH  /api/findings/{fid}                   {status, owner, note}; rejecting needs a reason
     POST   /api/findings/{fid}/comments          {text}
     GET    /api/revisions/{rid}/report.json      the whole review, with check versions and file hashes
+    GET    /api/revisions/{rid}/bom              BOM rows matched to CAD parts, with counts, materials, mass
+    PUT    /api/revisions/{rid}/bom/links        {row_key, part_id|null}: the engineer's pairing (re-checks)
+    DELETE /api/revisions/{rid}/bom/links        {row_key}: back to automatic matching
+    GET    /api/revisions/{rid}/bom.csv | bom.xlsx   the reconciled BOM
     POST   /api/demo/yubi                        the YUBI gripper, fetched at pinned tags
 """
 from __future__ import annotations
@@ -435,3 +439,118 @@ def report_json(rid: str, uid: str = Depends(owner)):
     }
     name = f"orionflow-review-{p['name']}-{r['label']}.json".replace(" ", "_")
     return JSONResponse(report, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+# ----------------------------------------------------------------------- BOM --
+
+def _graph_model(rid: str):
+    from .schema import ModelGraph
+    g = store().graph(rid)
+    if g is None:
+        raise HTTPException(404, "no model graph yet: run the review first")
+    return ModelGraph.model_validate(g["graph"]), g
+
+
+def _bom_out(graph) -> dict:
+    from collections import Counter
+    count = Counter(i.part_id for i in graph.instances)
+    matched: dict[str, list[str]] = {}
+    for r in graph.bom_rows:
+        if r["part_id"] and r["method"] != "none":
+            matched.setdefault(r["part_id"], []).append(r["key"])
+    return {
+        "rows": graph.bom_rows,
+        "parts": [{"id": p.id, "name": p.name, "count": count[p.id], "material": p.material, "process": p.process,
+                   "mass": p.mass, "volume": p.volume, "rows": matched.get(p.id, [])} for p in graph.parts],
+        "files": [d for d in graph.documents if d.get("kind") == "bom"],
+    }
+
+
+@app.get("/api/revisions/{rid}/bom")
+def get_bom(rid: str, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    graph, _ = _graph_model(rid)
+    return _bom_out(graph)
+
+
+class BomLinkIn(BaseModel):
+    row_key: str = Field(min_length=1, max_length=500)
+    part_id: Optional[str] = None
+
+
+def _relink(rid: str, job_owner: str) -> dict:
+    """Re-apply matching with the engineer's links, save the graph and re-run the checks (no geometry)."""
+    import json as _json
+
+    from .bom import apply, reconcile, rows_from_records
+    from .checks import run_checks
+
+    s = store()
+    graph, row = _graph_model(rid)
+    human = s.bom_links_for(rid)
+    prior = {r["key"]: (r["part_id"], "ai", r["confidence"]) for r in graph.bom_rows if r["method"] == "ai"}
+    records = reconcile(rows_from_records(graph.bom_rows), graph, human=human, prior=prior)
+    apply(graph, records)
+    s.save_graph(rid, graph.schema_version, _json.loads(graph.model_dump_json()), row["glb_key"])
+    results, runs = run_checks(graph)
+    s.save_check_results(rid, None, results, runs)
+    return _bom_out(graph)
+
+
+@app.put("/api/revisions/{rid}/bom/links")
+def put_bom_link(rid: str, body: BomLinkIn, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    graph, _ = _graph_model(rid)
+    if not any(r["key"] == body.row_key for r in graph.bom_rows):
+        raise HTTPException(404, "no such BOM row")
+    if body.part_id is not None and not any(p.id == body.part_id for p in graph.parts):
+        raise HTTPException(422, "no such CAD part")
+    store().set_bom_link(rid, body.row_key, body.part_id, uid)
+    return _relink(rid, uid)
+
+
+class BomUnlinkIn(BaseModel):
+    row_key: str = Field(min_length=1, max_length=500)
+
+
+@app.delete("/api/revisions/{rid}/bom/links")
+def delete_bom_link(rid: str, body: BomUnlinkIn, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    store().clear_bom_link(rid, body.row_key)
+    return _relink(rid, uid)
+
+
+@app.get("/api/revisions/{rid}/bom.{fmt}")
+def export_bom(rid: str, fmt: str, uid: str = Depends(owner)):
+    import csv
+    import io
+
+    from fastapi.responses import Response
+
+    from .bom import export_rows
+
+    if fmt not in ("csv", "xlsx"):
+        raise HTTPException(404, "csv or xlsx")
+    r = _revision_of(rid, uid)
+    graph, _ = _graph_model(rid)
+    rows = export_rows(graph)
+    cols = list(rows[0].keys()) if rows else ["status"]
+    name = f"bom-reconciled-{store().project(r['project_id'])['name']}-{r['label']}".replace(" ", "_")
+    if fmt == "csv":
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=cols)
+        w.writeheader()
+        w.writerows(rows)
+        return Response(buf.getvalue(), media_type="text/csv",
+                        headers={"Content-Disposition": f'attachment; filename="{name}.csv"'})
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Reconciled BOM"
+    ws.append(cols)
+    for row in rows:
+        ws.append([row.get(c) for c in cols])
+    out = io.BytesIO()
+    wb.save(out)
+    return Response(out.getvalue(), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{name}.xlsx"'})

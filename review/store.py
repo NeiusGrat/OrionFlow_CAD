@@ -132,9 +132,34 @@ finding_events = sa.Table(
     sa.Column("note", sa.Text),
     sa.Column("created_at", TS, default=now))
 
+bom_links = sa.Table(
+    "rv_bom_links", meta,
+    sa.Column("revision_id", sa.String(32), sa.ForeignKey("rv_revisions.id", ondelete="CASCADE"), primary_key=True),
+    sa.Column("row_key", sa.String(500), primary_key=True),       # "<bom file>#<row>"
+    sa.Column("part_id", sa.String(32)),                          # null = the engineer says: no CAD part
+    sa.Column("set_by", sa.String(64), nullable=False),
+    sa.Column("created_at", TS, default=now))
+
+llm_calls = sa.Table(
+    "rv_llm_calls", meta,
+    sa.Column("id", sa.String(32), primary_key=True),
+    sa.Column("job_id", sa.String(32), index=True),
+    sa.Column("task", sa.String(40), nullable=False),
+    sa.Column("provider", sa.String(200)),
+    sa.Column("model", sa.String(120)),
+    sa.Column("tokens_in", sa.Integer, default=0),
+    sa.Column("tokens_out", sa.Integer, default=0),
+    sa.Column("cost_usd", sa.Float, default=0.0),
+    sa.Column("latency_ms", sa.Integer),
+    sa.Column("cached", sa.Boolean, default=False),
+    sa.Column("prompt_version", sa.String(40)),
+    sa.Column("inputs_hash", sa.String(40)),
+    sa.Column("error", sa.Text),
+    sa.Column("created_at", TS, default=now))
+
 #: The step list a review job reports, in order. Later milestones append to it.
 STEPS = [("parse", "Parse"), ("features", "Features"), ("contacts", "Contacts"), ("mesh", "Mesh"),
-         ("graph", "Model graph"), ("checks", "Checks")]
+         ("bom", "BOM"), ("graph", "Model graph"), ("checks", "Checks")]
 
 
 def database_url() -> str:
@@ -366,3 +391,23 @@ class Store:
                 c.execute(finding_events.insert().values(id=new_id(), finding_id=fid, user_id=user, action="comment",
                                                          note=note, created_at=t))
         return self.finding(fid)
+
+    # ---- BOM links (the engineer's own pairings) -------------------------------------
+    def bom_links_for(self, revision_id: str) -> dict[str, Optional[str]]:
+        return {r["row_key"]: r["part_id"] for r in self._all(bom_links.select().where(bom_links.c.revision_id == revision_id))}
+
+    def set_bom_link(self, revision_id: str, row_key: str, part_id: Optional[str], user: str) -> None:
+        with self.engine.begin() as c:
+            c.execute(bom_links.delete().where(bom_links.c.revision_id == revision_id, bom_links.c.row_key == row_key))
+            c.execute(bom_links.insert().values(revision_id=revision_id, row_key=row_key, part_id=part_id, set_by=user,
+                                                created_at=now()))
+
+    def clear_bom_link(self, revision_id: str, row_key: str) -> None:
+        self._exec(bom_links.delete().where(bom_links.c.revision_id == revision_id, bom_links.c.row_key == row_key))
+
+    # ---- LLM call log -----------------------------------------------------------------
+    def log_llm_call(self, **values) -> None:
+        self._exec(llm_calls.insert().values(id=new_id(), created_at=now(), **values))
+
+    def llm_calls_for(self, job_id: str) -> list[dict]:
+        return self._all(llm_calls.select().where(llm_calls.c.job_id == job_id).order_by(llm_calls.c.created_at))
