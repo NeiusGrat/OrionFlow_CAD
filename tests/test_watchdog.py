@@ -14,13 +14,17 @@ from fastapi.testclient import TestClient
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("IC_DATABASE_URL", f"sqlite:///{(tmp_path / 'ic.sqlite').as_posix()}")
     monkeypatch.setenv("IC_STORAGE_ROOT", str(tmp_path / "ic_store"))
+    monkeypatch.setenv("REVIEW_DATABASE_URL", f"sqlite:///{(tmp_path / 'review.sqlite').as_posix()}")
+    monkeypatch.setenv("REVIEW_STORAGE_ROOT", str(tmp_path / "review_store"))
     import drawcheck.api as dc
+    import review.api as rv
     from interface_check.service.dispatch import context
 
     from app.main import app            # shares the JWT secret with the engines on import
     from app.watchdog import robot
 
     monkeypatch.setattr(dc, "DATA", tmp_path / "drawcheck")
+    monkeypatch.setattr(rv, "_store", None)
     context(reset=True)
 
     monkeypatch.setattr(robot, "DATA", tmp_path / "robot")
@@ -39,12 +43,18 @@ def test_engines_are_mounted_and_accept_main_app_tokens(client):
     c, _, _ = client
     from app.watchdog.engines import STATUS
 
-    assert STATUS == {"interface_check": None, "drawcheck": None}
+    assert STATUS == {"interface_check": None, "review": None, "drawcheck": None}
     assert c.get("/verify/api/analysis").status_code == 401
     assert c.get("/drawing/api/runs").status_code == 401
+    assert c.get("/review/api/projects").status_code == 401
     me = _bearer(str(uuid.uuid4()))
     assert c.get("/verify/api/analysis", headers=me).json() == []
     assert c.get("/drawing/api/runs", headers=me).json() == []
+    assert c.get("/review/api/projects", headers=me).json() == []
+    made = c.post("/review/api/projects", json={"name": "Arm"}, headers=me).json()
+    assert [p["id"] for p in c.get("/review/api/projects", headers=me).json()] == [made["id"]]
+    other = _bearer(str(uuid.uuid4()))
+    assert c.get(f"/review/api/projects/{made['id']}", headers=other).status_code == 404
 
 
 def test_a_forged_token_is_refused(client):
@@ -55,6 +65,7 @@ def test_a_forged_token_is_refused(client):
     h = {"Authorization": f"Bearer {forged}"}
     assert c.get("/verify/api/analysis", headers=h).status_code == 401
     assert c.get("/drawing/api/runs", headers=h).status_code == 401
+    assert c.get("/review/api/projects", headers=h).status_code == 401
 
 
 def test_drawing_runs_are_visible_only_to_their_owner(client):

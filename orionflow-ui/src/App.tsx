@@ -16,6 +16,9 @@ import ProjectPage from "./pages/inspect/ProjectPage";
 import InspectWorkspace from "./pages/inspect/Workspace";
 import ComparePage from "./pages/inspect/ComparePage";
 import AssemblyPage from "./pages/inspect/AssemblyPage";
+import ReviewHome from "./pages/review/ReviewHome";
+import ReviewProject from "./pages/review/ReviewProject";
+import ReviewWorkspace from "./pages/review/ReviewWorkspace";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -82,6 +85,11 @@ export default function App() {
             <Route path="/assembly" element={<ProtectedRoute><AssemblyPage /></ProtectedRoute>} />
             <Route path="/assembly/:id" element={<ProtectedRoute><AssemblyPage /></ProtectedRoute>} />
             <Route path="/watchdog" element={<ProtectedRoute><WatchdogPage /></ProtectedRoute>} />
+            {/* OrionFlow Review: robot hardware review (projects -> revisions -> lenses) */}
+            <Route path="/review" element={<ProtectedRoute><ReviewHome /></ProtectedRoute>} />
+            <Route path="/review/p/:pid" element={<ProtectedRoute><ReviewProject /></ProtectedRoute>} />
+            <Route path="/review/r/:rid" element={<ProtectedRoute><ReviewWorkspace /></ProtectedRoute>} />
+            <Route path="/review/r/:rid/:lens" element={<ProtectedRoute><ReviewWorkspace /></ProtectedRoute>} />
             <Route
                 path="/studio"
                 element={

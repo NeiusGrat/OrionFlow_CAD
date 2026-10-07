@@ -1,0 +1,153 @@
+"""Run a review job: fetch the revision's files, build the Model Graph, store it.
+
+The API never does geometry itself. OpenCASCADE holds the GIL for seconds at a
+time, so a model read in the API process would freeze every other request.
+Jobs therefore run in worker processes (``REVIEW_WORKERS``, default 2); each
+writes its own step progress to the database, which the API reads back.
+
+Every step records state (pending | running | done | skipped | failed),
+seconds and a note, so a slow or failed run says exactly where.
+"""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import tempfile
+import time
+import traceback
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
+from .store import Store, now
+
+_POOL: ProcessPoolExecutor | None = None
+
+
+def storage_spec() -> dict:
+    return {
+        "kind": os.environ.get("REVIEW_STORAGE", "local"),
+        "root": os.environ.get("REVIEW_STORAGE_ROOT", "data/review/store"),
+        "bucket": os.environ.get("REVIEW_S3_BUCKET", ""),
+        "endpoint": os.environ.get("REVIEW_S3_ENDPOINT", ""),
+        "region": os.environ.get("REVIEW_S3_REGION", "us-east-1"),
+        "key": os.environ.get("REVIEW_S3_KEY", ""),
+        "secret": os.environ.get("REVIEW_S3_SECRET", ""),
+    }
+
+
+def open_storage(spec: dict | None = None):
+    from interface_check.service.storage import open_storage as _open
+    return _open(spec or storage_spec())
+
+
+def submit(job_id: str, db_url: str) -> None:
+    """Queue a job on the worker pool (or run inline when REVIEW_INLINE=1, for tests)."""
+    global _POOL
+    if os.environ.get("REVIEW_INLINE") == "1":
+        run_job(job_id, db_url, storage_spec())
+        return
+    if _POOL is None:
+        _POOL = ProcessPoolExecutor(max_workers=int(os.environ.get("REVIEW_WORKERS", "2")))
+    _POOL.submit(run_job, job_id, db_url, storage_spec())
+
+
+class _Steps:
+    def __init__(self, store: Store, job_id: str, steps: list[dict]):
+        self.store, self.job_id, self.steps = store, job_id, steps
+        self.t0: dict[str, float] = {}
+
+    def _save(self) -> None:
+        self.store.update_job(self.job_id, steps=json.loads(json.dumps(self.steps)))
+
+    def _get(self, key: str) -> dict:
+        return next(s for s in self.steps if s["key"] == key)
+
+    def start(self, key: str, note: str = "") -> None:
+        s = self._get(key)
+        s.update(state="running", note=note, started_at=now().isoformat())
+        self.t0[key] = time.perf_counter()
+        self._save()
+
+    def finish(self, key: str, note: str | None = None, state: str = "done") -> None:
+        s = self._get(key)
+        if key in self.t0:
+            s["seconds"] = round(time.perf_counter() - self.t0[key], 2)
+        s.update(state=state, ended_at=now().isoformat())
+        if note is not None:
+            s["note"] = note
+        self._save()
+
+    def fail_running(self, note: str) -> None:
+        for s in self.steps:
+            if s["state"] == "running":
+                s["note"] = note
+                self.finish(s["key"], state="failed")
+
+
+def _pick_step(files: list[dict], primary: str | None) -> dict | None:
+    steps = [f for f in files if f["kind"] == "step"]
+    if primary:
+        chosen = next((f for f in steps if f["id"] == primary), None)
+        if chosen:
+            return chosen
+    return max(steps, key=lambda f: f["size"], default=None)
+
+
+def run_job(job_id: str, db_url: str, spec: dict) -> None:
+    """Worker entry point. Never raises: every failure is written to the job."""
+    store = Store(db_url)
+    job = store.job(job_id)
+    if job is None or not store.update_job(job_id, only_if=("queued",), state="running", started_at=now()):
+        return
+    rid = job["revision_id"]
+    store.set_revision_status(rid, "running")
+    steps = _Steps(store, job_id, job["steps"])
+    work = Path(tempfile.mkdtemp(prefix="review_"))
+    try:
+        from .ingest import build_graph
+        from .schema import SourceFile
+
+        storage = open_storage(spec)
+        rev = store.revision(rid)
+        files = store.files_for(rid)
+        step_file = _pick_step(files, rev.get("primary_file_id"))
+        if step_file is None:
+            raise RuntimeError("this revision has no STEP file: add a STEP assembly or part to run a review")
+        local = work / Path(step_file["name"]).name
+        storage.get_file(step_file["storage_key"], local)
+
+        sources = [SourceFile(name=f["name"], kind=f["kind"], sha256=f["sha256"], size=f["size"]) for f in files]
+        glb = work / "viewer.glb"
+
+        def progress(key: str, note: str) -> None:
+            for st in steps.steps:                 # each stage closes the one before it
+                if st["state"] == "running":
+                    steps.finish(st["key"])
+            steps.start(key, note)
+
+        # build_graph reports "parse" first; progress() opens each step as it starts
+        graph = build_graph(local, rid, files=[s for s in sources if s.name == step_file["name"]] +
+                            [s for s in sources if s.name != step_file["name"]], glb_path=glb, progress=progress)
+        steps.finish("mesh", f"{graph.stats.triangles:,} triangles")
+        for key, note in (("features", f"{graph.stats.features} features"), ("contacts", f"{graph.stats.contacts} contacts")):
+            st = next(x for x in steps.steps if x["key"] == key)
+            st["note"] = note
+        steps._save()
+
+        steps.start("graph", "saving")
+        glb_key = f"review/{rid}/viewer.glb"
+        storage.put_file(glb_key, glb)
+        store.save_graph(rid, graph.schema_version, json.loads(graph.model_dump_json()), glb_key)
+        steps.finish("graph", f"{graph.stats.parts} parts · {graph.stats.instances} instances")
+
+        if store.update_job(job_id, only_if=("running",), state="done", ended_at=now()):
+            store.set_revision_status(rid, "done")
+    except Exception as e:  # noqa: BLE001 - reported on the job, never lost
+        msg = f"{type(e).__name__}: {e}"
+        steps.fail_running(msg)
+        store.update_job(job_id, only_if=("running",), state="failed", error=msg + "\n" + traceback.format_exc()[-2000:],
+                         ended_at=now())
+        store.set_revision_status(rid, "failed")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)

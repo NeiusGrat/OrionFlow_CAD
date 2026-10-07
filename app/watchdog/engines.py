@@ -2,6 +2,7 @@
 
     /verify/api/...    interface_check service (assembly, BOM, revisions, drawings, URDF drift)
     /drawing/api/...   drawcheck (incoming drawing checker)
+    /review/api/...    OrionFlow Review (robot hardware review: model graph, checks, lenses)
 
 Both accept the main app's own access tokens, so a user signed in to the
 studio needs no second login. A missing optional dependency disables one
@@ -49,6 +50,21 @@ def mount_engines(app) -> None:
     except Exception as e:  # noqa: BLE001
         STATUS["interface_check"] = f"{type(e).__name__}: {e}"
         logger.warning("watchdog_engine_unavailable", engine="interface_check", error=str(e))
+
+    try:
+        from fastapi import Header
+
+        import review.api as rv
+
+        def review_owner(authorization: str = Header(default="")) -> str:
+            return _token_user(authorization)
+
+        rv.app.dependency_overrides[rv.owner] = review_owner
+        app.mount("/review", rv.app, name="review")
+        STATUS["review"] = None
+    except Exception as e:  # noqa: BLE001
+        STATUS["review"] = f"{type(e).__name__}: {e}"
+        logger.warning("watchdog_engine_unavailable", engine="review", error=str(e))
 
     try:
         from fastapi import Header
