@@ -105,6 +105,10 @@ class CheckConfig:
         "unit_tiny_mm": 0.05,
         "dup_body_tol_mm": 1e-3,
         "max_fastener_hole_mm": 7.1,      # robotics scale (up to M6 coarse clearance); raise for machinery
+        "sim_mass_rel": 0.05,
+        "sim_com_mm": 2.0,
+        "sim_inertia_rel": 0.10,
+        "sim_axis_deg": 0.5,
     }
 
     def get(self, key: str) -> Any:
@@ -152,6 +156,7 @@ REASONS = {
     "contacts": "no touching parts were found",
     "features": "no holes or cylinders were found",
     "instances": "no geometry",
+    "sim": "no URDF or MJCF in this revision",
 }
 
 

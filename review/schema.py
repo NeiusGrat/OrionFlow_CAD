@@ -18,7 +18,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-SCHEMA_VERSION = "1.2"   # 1.1: features + contacts; 1.2: joints, threads, overlaps, clearances
+SCHEMA_VERSION = "1.3"   # 1.1: features + contacts; 1.2: joints, threads, overlaps, clearances
 
 FileKind = Literal["step", "bom", "pdf", "urdf", "mjcf", "mesh", "other"]
 
@@ -49,6 +49,8 @@ class Part(BaseModel):
     area: float                      # mm^2
     bbox: Bbox                       # in part coordinates
     com: list[float]                 # mm, part coordinates
+    #: inertia about the COM for unit density (mm^5), part frame; times density (kg/mm^3) gives kg mm^2
+    inertia: Optional[list[list[float]]] = None
     valid: bool = True
     problems: list[str] = Field(default_factory=list)
     face_count: int = 0
@@ -57,6 +59,7 @@ class Part(BaseModel):
     material: Optional[str] = None   # filled from BOM / Library (M5)
     process: Optional[str] = None
     mass: Optional[float] = None     # kg, only once a density is known
+    mass_source: Optional[str] = None  # how the mass was obtained (BOM material, an engineer's override)
     features: list[str] = Field(default_factory=list)   # feature ids
     plane_count: int = 0
 
@@ -119,6 +122,11 @@ class ModelGraph(BaseModel):
     bom_rows: list[dict] = Field(default_factory=list)     # M5
     documents: list[dict] = Field(default_factory=list)    # M9
     components: list[dict] = Field(default_factory=list)   # M4 / M10
+
+    @property
+    def sim(self) -> Optional[dict]:
+        """The sim-model document (URDF/MJCF read and compared), if the revision has one."""
+        return next((d for d in self.documents if d.get("kind") == "sim"), None)
 
     def part(self, pid: str) -> Part:
         return next(p for p in self.parts if p.id == pid)

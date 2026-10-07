@@ -124,6 +124,51 @@ def attach_bom(graph, boms: list[dict], storage, store: Store, rid: str, job_id:
     return note
 
 
+def attach_sim(graph, sims: list[dict], files: list[dict], storage, store: Store, rid: str, work: Path) -> str:
+    """Parse the sim model, map its bodies to CAD instances and compare mass properties; store it in the graph."""
+    from .sim import analyse, cad_axes, map_bodies, parse_sim, pick_robot, read_aux
+
+    f = sims[0]
+    local = work / f"sim_{f['id']}_{Path(f['name']).name}"
+    storage.get_file(f["storage_key"], local)
+    model = pick_robot(parse_sim(f["name"], local.read_bytes()))
+    aux = []
+    for x in files:
+        if x["name"].lower().endswith(".json") and x["size"] < 5_000_000:
+            p = work / f"aux_{x['id']}.json"
+            storage.get_file(x["storage_key"], p)
+            aux.append((x["name"], p.read_bytes()))
+    reg, man = read_aux(aux)
+    doc = {"kind": "sim", "file": f["name"], "format": model["format"], "model": model.get("model"), "root": model["root"],
+           "copies": model.get("copies", 1), "robot": {"bodies": model["bodies"], "joints": model["joints"]},
+           "registration": reg, "manifest": {"file": man["file"], "source_sha256": man.get("source_sha256"),
+                                              "meshes": man["meshes"]} if man else None}
+    graph.documents = [d for d in graph.documents if d.get("kind") != "sim"] + [doc]
+    return refresh_sim(graph, store.sim_links_for(rid))
+
+
+def refresh_sim(graph, human: dict | None = None) -> str:
+    """(Re)compute the sim mapping and comparison from the stored sim document — no file access, no geometry."""
+    from .sim import analyse, cad_axes, map_bodies
+
+    doc = next((d for d in graph.documents if d.get("kind") == "sim"), None)
+    if doc is None:
+        return "no sim model"
+    robot = {"root": doc["root"], **doc["robot"]}
+    reg = doc.get("registration")
+    man = doc.get("manifest")
+    mapping = map_bodies(robot, graph, man, human=human, reg=reg)
+    result = analyse(graph, robot, mapping, reg)
+    parent_ids = {b["body"]: b["instances"] for b in result["bodies"]}
+    for j in result["joints"]:
+        j["cad_axes"] = cad_axes(graph, reg, parent_ids.get(j["parent"], []), parent_ids.get(j["body"], []))[:3]
+    doc["analysis"] = result
+    graph.joints = [{"source": doc["format"], **j} for j in result["joints"]]
+    mapped = sum(len(b["instances"]) for b in result["bodies"])
+    return (f"{len(result['bodies'])} bodies · {len(result['joints'])} joints · {mapped}/{len(graph.instances)} CAD instances mapped"
+            + ("" if reg else " · no registration: frame-free checks only"))
+
+
 def run_job(job_id: str, db_url: str, spec: dict) -> None:
     """Worker entry point. Never raises: every failure is written to the job."""
     store = Store(db_url)
@@ -163,11 +208,23 @@ def run_job(job_id: str, db_url: str, spec: dict) -> None:
 
         boms = [f for f in files if f["kind"] == "bom"]
         steps.start("bom", "reading BOM" if boms else "")
+        overrides = store.overrides_for(rev["project_id"])
         if boms:
             note = attach_bom(graph, boms, storage, store, rid, job_id, work)
-            steps.finish("bom", note)
         else:
-            steps.finish("bom", "no BOM in this revision", state="skipped")
+            note = "no BOM in this revision"
+        from .bom import apply_overrides
+        n_over = apply_overrides(graph, overrides)
+        if n_over:
+            note += f" · {n_over} part override{'s' if n_over > 1 else ''}"
+        steps.finish("bom", note, state="done" if boms or n_over else "skipped")
+
+        sims = [f for f in files if f["kind"] in ("mjcf", "urdf")]
+        steps.start("sim", "reading the sim model" if sims else "")
+        if sims:
+            steps.finish("sim", attach_sim(graph, sims, files, storage, store, rid, work))
+        else:
+            steps.finish("sim", "no URDF or MJCF in this revision", state="skipped")
         for key, note in (("features", f"{graph.stats.features} features"), ("contacts", f"{graph.stats.contacts} contacts")):
             st = next(x for x in steps.steps if x["key"] == key)
             st["note"] = note

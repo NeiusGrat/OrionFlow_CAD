@@ -140,6 +140,26 @@ bom_links = sa.Table(
     sa.Column("set_by", sa.String(64), nullable=False),
     sa.Column("created_at", TS, default=now))
 
+part_overrides = sa.Table(
+    "rv_part_overrides", meta,
+    sa.Column("project_id", sa.String(32), sa.ForeignKey("rv_projects.id", ondelete="CASCADE"), primary_key=True),
+    sa.Column("part_key", sa.String(300), primary_key=True),      # normalised part name: survives revisions
+    sa.Column("part_name", sa.String(300), nullable=False),
+    sa.Column("material", sa.String(200)),
+    sa.Column("density", sa.Float),                               # kg/m^3
+    sa.Column("mass_kg", sa.Float),                               # each
+    sa.Column("source", sa.Text, nullable=False),                 # where the number comes from: datasheet, measured, ...
+    sa.Column("set_by", sa.String(64), nullable=False),
+    sa.Column("created_at", TS, default=now))
+
+sim_links = sa.Table(
+    "rv_sim_links", meta,
+    sa.Column("revision_id", sa.String(32), sa.ForeignKey("rv_revisions.id", ondelete="CASCADE"), primary_key=True),
+    sa.Column("body", sa.String(200), primary_key=True),
+    sa.Column("instances", JSON, nullable=False),                 # CAD instance ids the engineer assigned to the body
+    sa.Column("set_by", sa.String(64), nullable=False),
+    sa.Column("created_at", TS, default=now))
+
 llm_calls = sa.Table(
     "rv_llm_calls", meta,
     sa.Column("id", sa.String(32), primary_key=True),
@@ -159,7 +179,7 @@ llm_calls = sa.Table(
 
 #: The step list a review job reports, in order. Later milestones append to it.
 STEPS = [("parse", "Parse"), ("features", "Features"), ("contacts", "Contacts"), ("mesh", "Mesh"),
-         ("bom", "BOM"), ("graph", "Model graph"), ("checks", "Checks")]
+         ("bom", "BOM"), ("sim", "Sim model"), ("graph", "Model graph"), ("checks", "Checks")]
 
 
 def database_url() -> str:
@@ -411,3 +431,32 @@ class Store:
 
     def llm_calls_for(self, job_id: str) -> list[dict]:
         return self._all(llm_calls.select().where(llm_calls.c.job_id == job_id).order_by(llm_calls.c.created_at))
+
+    # ---- part overrides (material / density / mass the engineer states, with its source) -----
+    def overrides_for(self, project_id: str) -> list[dict]:
+        return self._all(part_overrides.select().where(part_overrides.c.project_id == project_id))
+
+    def set_override(self, project_id: str, part_key: str, part_name: str, user: str, *, material=None, density=None,
+                     mass_kg=None, source: str) -> None:
+        with self.engine.begin() as c:
+            c.execute(part_overrides.delete().where(part_overrides.c.project_id == project_id,
+                                                    part_overrides.c.part_key == part_key))
+            c.execute(part_overrides.insert().values(project_id=project_id, part_key=part_key, part_name=part_name,
+                                                     material=material, density=density, mass_kg=mass_kg, source=source,
+                                                     set_by=user, created_at=now()))
+
+    def clear_override(self, project_id: str, part_key: str) -> None:
+        self._exec(part_overrides.delete().where(part_overrides.c.project_id == project_id,
+                                                 part_overrides.c.part_key == part_key))
+
+    # ---- sim body <-> CAD instances, as the engineer set them -------------------------------
+    def sim_links_for(self, revision_id: str) -> dict[str, list[str]]:
+        return {r["body"]: list(r["instances"]) for r in self._all(sim_links.select().where(sim_links.c.revision_id == revision_id))}
+
+    def set_sim_link(self, revision_id: str, body: str, instances: list[str], user: str) -> None:
+        with self.engine.begin() as c:
+            c.execute(sim_links.delete().where(sim_links.c.revision_id == revision_id, sim_links.c.body == body))
+            c.execute(sim_links.insert().values(revision_id=revision_id, body=body, instances=instances, set_by=user, created_at=now()))
+
+    def clear_sim_link(self, revision_id: str, body: str) -> None:
+        self._exec(sim_links.delete().where(sim_links.c.revision_id == revision_id, sim_links.c.body == body))

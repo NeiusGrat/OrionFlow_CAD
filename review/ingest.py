@@ -155,12 +155,13 @@ def build_graph(step_path: str | Path, revision_id: str, files: list[SourceFile]
         pid_of[key] = pid
         sig = p.signature or signature(p.shape)
         try:
-            com, _ = volume_props(p.shape)
+            com, inertia = volume_props(p.shape)
         except Exception:  # noqa: BLE001 - a broken solid still gets a row
-            com = np.zeros(3)
+            com, inertia = np.zeros(3), None
         parts.append(Part(
             id=pid, name=p.name or pid, hash=_sig_hash(sig), volume=round(sig["volume"], 3),
             area=round(sig["area"], 3), bbox=_bbox(p.shape), com=_round(com), valid=p.valid,
+            inertia=None if inertia is None else [[float(f"{v:.9g}") for v in row] for row in np.asarray(inertia).tolist()],
             problems=list(p.problems), face_count=sum(1 for _ in faces(p.shape))))
 
     by_pid = {p.id: p for p in parts}

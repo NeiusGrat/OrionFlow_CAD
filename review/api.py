@@ -27,6 +27,11 @@ Mounted by the main app at ``/review`` (routes below are relative to it), with
     DELETE /api/revisions/{rid}/bom/links        {row_key}: back to automatic matching
     GET    /api/revisions/{rid}/bom.csv | bom.xlsx   the reconciled BOM
     POST   /api/revisions/{base}/compare/{target}    part changes, interchangeability, findings delta
+    GET    /api/revisions/{rid}/sim              sim bodies <-> CAD, drift, corrected inertials
+    PUT    /api/revisions/{rid}/sim/links        {body, instances}: the engineer's mapping (re-checks)
+    GET    /api/projects/{pid}/overrides         part material / density / mass the engineer stated
+    PUT    /api/projects/{pid}/overrides         {part_name, material|density|mass_kg, source}
+    DELETE /api/projects/{pid}/overrides         {part_name}
     POST   /api/demo/yubi                        the YUBI gripper, fetched at pinned tags
 """
 from __future__ import annotations
@@ -480,21 +485,9 @@ class BomLinkIn(BaseModel):
 
 
 def _relink(rid: str, job_owner: str) -> dict:
-    """Re-apply matching with the engineer's links, save the graph and re-run the checks (no geometry)."""
-    import json as _json
-
-    from .bom import apply, reconcile, rows_from_records
-    from .checks import run_checks
-
-    s = store()
-    graph, row = _graph_model(rid)
-    human = s.bom_links_for(rid)
-    prior = {r["key"]: (r["part_id"], "ai", r["confidence"]) for r in graph.bom_rows if r["method"] == "ai"}
-    records = reconcile(rows_from_records(graph.bom_rows), graph, human=human, prior=prior)
-    apply(graph, records)
-    s.save_graph(rid, graph.schema_version, _json.loads(graph.model_dump_json()), row["glb_key"])
-    results, runs = run_checks(graph)
-    s.save_check_results(rid, None, results, runs)
+    """Re-apply matching with the engineer's links (and overrides), save the graph and re-run the checks."""
+    _refresh(rid)
+    graph, _ = _graph_model(rid)
     return _bom_out(graph)
 
 
@@ -580,3 +573,116 @@ def compare_revisions(base: str, target: str, uid: str = Depends(owner)) -> dict
     out["base"] = {"id": base, "label": rb["label"], "flat": gb.stats.flat}
     out["target"] = {"id": target, "label": rt["label"], "flat": gt.stats.flat}
     return out
+
+
+# ----------------------------------------------------------------------- sim --
+
+def _refresh(rid: str) -> None:
+    """Re-derive masses (BOM + overrides) and the sim comparison, save, re-run checks. No geometry."""
+    import json as _json
+
+    from .bom import apply, apply_overrides, reconcile, rows_from_records
+    from .checks import run_checks
+    from .jobs import refresh_sim
+
+    s = store()
+    graph, row = _graph_model(rid)
+    r = s.revision(rid)
+    if graph.bom_rows:
+        prior = {x["key"]: (x["part_id"], "ai", x["confidence"]) for x in graph.bom_rows if x["method"] == "ai"}
+        apply(graph, reconcile(rows_from_records(graph.bom_rows), graph, human=s.bom_links_for(rid), prior=prior))
+    apply_overrides(graph, s.overrides_for(r["project_id"]))
+    if graph.sim:
+        refresh_sim(graph, s.sim_links_for(rid))
+    s.save_graph(rid, graph.schema_version, _json.loads(graph.model_dump_json()), row["glb_key"])
+    results, runs = run_checks(graph)
+    s.save_check_results(rid, None, results, runs)
+
+
+def _sim_out(graph) -> dict:
+    doc = graph.sim
+    if doc is None:
+        return {"sim": None}
+    return {"sim": {k: doc.get(k) for k in ("file", "format", "model", "root", "copies")}
+            | {"registration": (doc.get("registration") or {}).get("file"),
+               "manifest": (doc.get("manifest") or {}).get("file"),
+               "manifest_source_sha256": (doc.get("manifest") or {}).get("source_sha256"),
+               "analysis": doc.get("analysis")},
+            "parts": [{"id": p.id, "name": p.name, "mass": p.mass, "mass_source": p.mass_source, "material": p.material}
+                      for p in graph.parts]}
+
+
+@app.get("/api/revisions/{rid}/sim")
+def get_sim(rid: str, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    graph, _ = _graph_model(rid)
+    return _sim_out(graph)
+
+
+class SimLinkIn(BaseModel):
+    body: str = Field(min_length=1, max_length=200)
+    instances: Optional[list[str]] = None        # None: back to automatic mapping
+
+
+@app.put("/api/revisions/{rid}/sim/links")
+def put_sim_link(rid: str, body: SimLinkIn, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    graph, _ = _graph_model(rid)
+    if graph.sim is None:
+        raise HTTPException(404, "this revision has no sim model")
+    if body.instances is None:
+        store().clear_sim_link(rid, body.body)
+    else:
+        known = {i.id for i in graph.instances}
+        if any(i not in known for i in body.instances):
+            raise HTTPException(422, "unknown CAD instance")
+        store().set_sim_link(rid, body.body, body.instances, uid)
+    _refresh(rid)
+    graph, _ = _graph_model(rid)
+    return _sim_out(graph)
+
+
+@app.get("/api/projects/{pid}/overrides")
+def list_overrides(pid: str, uid: str = Depends(owner)) -> list[dict]:
+    _project_of(pid, uid)
+    return [{k: o[k] for k in ("part_key", "part_name", "material", "density", "mass_kg", "source", "set_by")}
+            for o in store().overrides_for(pid)]
+
+
+class OverrideIn(BaseModel):
+    part_name: str = Field(min_length=1, max_length=300)
+    material: Optional[str] = Field(default=None, max_length=200)
+    density: Optional[float] = Field(default=None, gt=0, lt=30000)
+    mass_kg: Optional[float] = Field(default=None, gt=0, lt=10000)
+    source: str = Field(min_length=3, max_length=1000)          # a value with no stated source is not accepted
+
+
+@app.put("/api/projects/{pid}/overrides")
+def put_override(pid: str, body: OverrideIn, revision: Optional[str] = None, uid: str = Depends(owner)) -> list[dict]:
+    from .bom import part_key
+
+    _project_of(pid, uid)
+    if not (body.material or body.density or body.mass_kg):
+        raise HTTPException(422, "give a material, a density or a mass")
+    store().set_override(pid, part_key(body.part_name), body.part_name, uid, material=body.material, density=body.density,
+                         mass_kg=body.mass_kg, source=body.source)
+    for r in store().revisions_for(pid):
+        if store().graph(r["id"]) is not None and (revision is None or r["id"] == revision):
+            _refresh(r["id"])
+    return list_overrides(pid, uid)
+
+
+class OverrideDel(BaseModel):
+    part_name: str
+
+
+@app.delete("/api/projects/{pid}/overrides")
+def delete_override(pid: str, body: OverrideDel, uid: str = Depends(owner)) -> list[dict]:
+    from .bom import part_key
+
+    _project_of(pid, uid)
+    store().clear_override(pid, part_key(body.part_name))
+    for r in store().revisions_for(pid):
+        if store().graph(r["id"]) is not None:
+            _refresh(r["id"])
+    return list_overrides(pid, uid)

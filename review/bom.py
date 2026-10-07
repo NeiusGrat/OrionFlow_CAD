@@ -245,6 +245,7 @@ def apply(graph, records: list[dict]) -> None:
         p.process = procs[0] if len(procs) == 1 else (" | ".join(procs) if procs else None)
         rho = recs[0]["density"] if len(mats) == 1 and recs and recs[0]["density"] else None
         p.mass = round(p.volume * 1e-9 * rho, 6) if rho else None
+        p.mass_source = f"STEP volume × {recs[0]['density_note']}" if rho else None
 
 
 def match_with_llm(llm, job_logger=None):
@@ -300,3 +301,31 @@ def export_rows(graph) -> list[dict]:
                         "cad_qty": count[p.id], "match": "none", "confidence": "", "material": "", "process": "",
                         "density_kg_m3": "", "unit_mass_kg": "", "status": "not in BOM"})
     return out
+
+
+def part_key(name: str) -> str:
+    return norm(name)
+
+
+def apply_overrides(graph, overrides: list[dict]) -> int:
+    """The engineer's stated material, density or mass wins over the BOM; returns how many parts it touched."""
+    by_key = {o["part_key"]: o for o in overrides}
+    n = 0
+    for p in graph.parts:
+        o = by_key.get(part_key(p.name))
+        if not o:
+            continue
+        n += 1
+        if o.get("material"):
+            p.material = o["material"]
+            rho, note = density(o["material"])
+            if rho and not o.get("density") and not o.get("mass_kg"):
+                p.mass = round(p.volume * 1e-9 * rho, 6)
+                p.mass_source = f"STEP volume × {note} — override: {o['source']}"
+        if o.get("density"):
+            p.mass = round(p.volume * 1e-9 * float(o["density"]), 6)
+            p.mass_source = f"STEP volume × {o['density']:g} kg/m³ — override: {o['source']}"
+        if o.get("mass_kg"):
+            p.mass = round(float(o["mass_kg"]), 6)
+            p.mass_source = f"{o['mass_kg']:g} kg each — override: {o['source']}"
+    return n

@@ -482,3 +482,79 @@ export interface CompareResult {
 
 export const compareRevisions = (base: string, target: string) =>
     requestJson<CompareResult>(api(`/revisions/${base}/compare/${target}`), 'Comparing revisions', { method: 'POST' });
+
+// ------------------------------------------------------------------ sim
+
+export interface SimInertial { mass: number; com: number[]; inertia: number[][] }
+
+export interface SimBody {
+    body: string;
+    parent: string | null;
+    method: 'human' | 'manifest+position' | 'manifest' | 'name' | 'none';
+    instances: string[];
+    labels: string[];
+    sim: SimInertial | null;
+    cad: null | {
+        mass: number;
+        complete: boolean;
+        principal_kg_m2?: number[];
+        com_m?: number[];
+        cyl_m?: number[];
+        inertia_kg_m2?: number[][];
+    };
+    missing: string[];
+    frame: 'rigid' | 'hinge' | null;
+    pose_offset_deg?: number;
+    sim_cyl_m?: number[];
+    corrected: { mjcf: string; urdf?: string } | null;
+    notes: string[];
+}
+
+export interface SimJoint {
+    name: string;
+    type: string;
+    body: string;
+    parent: string | null;
+    axis: number[];
+    range: number[] | null;
+    axis_root: number[];
+    pos_root: number[];
+    cad_axes?: { diameter: number; axis_root: number[]; point_root: number[] }[];
+}
+
+export interface SimPayload {
+    sim: null | {
+        file: string;
+        format: 'mjcf' | 'urdf';
+        model: string;
+        root: string | null;
+        copies: number;
+        registration: string | null;
+        manifest: string | null;
+        manifest_source_sha256: string | null;
+        analysis: { bodies: SimBody[]; joints: SimJoint[] } | null;
+    };
+    parts?: { id: string; name: string; mass: number | null; mass_source: string | null; material: string | null }[];
+}
+
+export interface PartOverride {
+    part_key: string;
+    part_name: string;
+    material: string | null;
+    density: number | null;
+    mass_kg: number | null;
+    source: string;
+    set_by: string;
+}
+
+export const getSim = (rid: string) => requestJson<SimPayload>(api(`/revisions/${rid}/sim`), 'Loading the sim comparison');
+export const setSimLink = (rid: string, body: string, instances: string[] | null) =>
+    requestJson<SimPayload>(api(`/revisions/${rid}/sim/links`), 'Mapping the sim body', {
+        method: 'PUT',
+        body: JSON.stringify({ body, instances }),
+    });
+export const listOverrides = (pid: string) => requestJson<PartOverride[]>(api(`/projects/${pid}/overrides`), 'Loading part masses');
+export const setOverride = (pid: string, o: { part_name: string; material?: string; density?: number; mass_kg?: number; source: string }) =>
+    requestJson<PartOverride[]>(api(`/projects/${pid}/overrides`), 'Saving the part mass', { method: 'PUT', body: JSON.stringify(o) });
+export const deleteOverride = (pid: string, part_name: string) =>
+    requestJson<PartOverride[]>(api(`/projects/${pid}/overrides`), 'Removing the override', { method: 'DELETE', body: JSON.stringify({ part_name }) });
