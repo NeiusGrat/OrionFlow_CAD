@@ -6,8 +6,8 @@
  * store, so switching lenses keeps what is selected.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Box, ClipboardList, LayoutDashboard, ListChecks, Search } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Box, ClipboardList, GitCompare, LayoutDashboard, ListChecks, Search } from 'lucide-react';
 import { Brand, ReviewRoot, StepList } from '../../components/Review/Shell';
 import Viewer from '../../components/Review/Viewer';
 import ProductTree from '../../components/Review/ProductTree';
@@ -16,6 +16,7 @@ import CommandPalette from '../../components/Review/CommandPalette';
 import ContactsDrawer from '../../components/Review/ContactsDrawer';
 import FindingsLens, { RunStatus } from '../../components/Review/FindingsLens';
 import BomLens from '../../components/Review/BomLens';
+import CompareLens from '../../components/Review/CompareLens';
 import FindingPanel, { SevMark } from '../../components/Review/FindingPanel';
 import {
     downloadReportJson, fetchViewerGlb, fmtBytes, getBom, getGraph, getProject, getRevision, listFindings, runReview, SEVERITIES,
@@ -27,6 +28,7 @@ const LENSES = [
     { key: 'overview', label: 'Overview', icon: LayoutDashboard },
     { key: 'model', label: 'Model', icon: Box },
     { key: 'bom', label: 'BOM', icon: ClipboardList },
+    { key: 'compare', label: 'Compare', icon: GitCompare },
     { key: 'findings', label: 'Findings', icon: ListChecks },
 ] as const;
 type LensKey = (typeof LENSES)[number]['key'];
@@ -188,6 +190,7 @@ function Overview({ graph, rev, findings, onOpen }: { graph: ModelGraph; rev: Re
 export default function ReviewWorkspace() {
     const { rid = '', lens = 'model' } = useParams();
     const nav = useNavigate();
+    const [params, setParams] = useSearchParams();
     const [project, setProject] = useState<Project | null>(null);
     const [graph, setGraph] = useState<ModelGraph | null>(null);
     const [glb, setGlb] = useState<ArrayBuffer | null>(null);
@@ -235,6 +238,14 @@ export default function ReviewWorkspace() {
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, []);
+
+    useEffect(() => {
+        const f = params.get('f');
+        if (!f || !findings) return;
+        if (findings.findings.some((x) => x.id === f)) select({ kind: 'finding', id: f });
+        setParams({}, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [findings]);
 
     const rev = project?.revisions.find((r) => r.id === rid) ?? null;
     const selectedFinding = selection?.kind === 'finding' ? findings?.findings.find((f) => f.id === selection.id) : undefined;
@@ -303,6 +314,15 @@ export default function ReviewWorkspace() {
                         ? <BomLens rid={rid} data={bom} onChanged={onBomChanged}
                             filename={`bom-reconciled-${project?.name ?? 'project'}-${rev?.label ?? ''}`.replace(/\s+/g, '_')} />
                         : <div className="rv-loading">Loading the BOM…</div>)}
+                    {graph && active === 'compare' && project && (
+                        <CompareLens rid={rid} revisions={project.revisions} targetGraph={graph} targetGlb={glb}
+                            onOpenFinding={(f, revId) => {
+                                if (revId === rid) {
+                                    select({ kind: 'finding', id: f.id });
+                                    nav(`/review/r/${rid}/findings`);
+                                } else nav(`/review/r/${revId}/findings?f=${f.id}`);
+                            }} />
+                    )}
                     {graph && active === 'findings' && (findings
                         ? <FindingsLens data={findings} onExport={exportJson} exporting={exporting} />
                         : <div className="rv-loading">Loading findings…</div>)}

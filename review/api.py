@@ -26,6 +26,7 @@ Mounted by the main app at ``/review`` (routes below are relative to it), with
     PUT    /api/revisions/{rid}/bom/links        {row_key, part_id|null}: the engineer's pairing (re-checks)
     DELETE /api/revisions/{rid}/bom/links        {row_key}: back to automatic matching
     GET    /api/revisions/{rid}/bom.csv | bom.xlsx   the reconciled BOM
+    POST   /api/revisions/{base}/compare/{target}    part changes, interchangeability, findings delta
     POST   /api/demo/yubi                        the YUBI gripper, fetched at pinned tags
 """
 from __future__ import annotations
@@ -554,3 +555,28 @@ def export_bom(rid: str, fmt: str, uid: str = Depends(owner)):
     wb.save(out)
     return Response(out.getvalue(), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     headers={"Content-Disposition": f'attachment; filename="{name}.xlsx"'})
+
+
+# ------------------------------------------------------------------- compare --
+
+@app.post("/api/revisions/{base}/compare/{target}")
+def compare_revisions(base: str, target: str, uid: str = Depends(owner)) -> dict:
+    """Base -> target: matched parts and what changed, whether each old part still fits, findings new/fixed/unchanged."""
+    from .compare import compare, findings_delta
+
+    rb, rt = _revision_of(base, uid), _revision_of(target, uid)
+    if rb["project_id"] != rt["project_id"]:
+        raise HTTPException(422, "revisions belong to different projects")
+    gb, _ = _graph_model(base)
+    gt, _ = _graph_model(target)
+    out = compare(gb, gt)
+    s = store()
+    fb = [_finding_out(f) for f in s.findings_for(base)]
+    ft = [_finding_out(f) for f in s.findings_for(target)]
+    delta = findings_delta(fb, ft, gb, gt, out["pairs"])
+    out["findings"] = delta
+    out["summary"].update({"new_findings": len(delta["new"]), "fixed_findings": len(delta["fixed"]),
+                           "unchanged_findings": len(delta["unchanged"])})
+    out["base"] = {"id": base, "label": rb["label"], "flat": gb.stats.flat}
+    out["target"] = {"id": target, "label": rt["label"], "flat": gt.stats.flat}
+    return out

@@ -448,3 +448,37 @@ export async function downloadBom(rid: string, fmt: 'csv' | 'xlsx', filename: st
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+
+// ------------------------------------------------------------------ compare
+
+export interface PartChange {
+    base: string | null;
+    target: string | null;
+    base_name: string | null;
+    target_name: string | null;
+    method: 'name' | 'signature' | 'shape' | null;
+    similarity: number | null;
+    status: 'unchanged' | 'modified' | 'added' | 'removed';
+    kinds: string[];
+    details: string[];
+}
+
+export interface Interchange {
+    base: string;
+    target: string;
+    name: string;
+    verdict: 'yes' | 'no' | 'needs review';
+    reason: string;
+}
+
+export interface CompareResult {
+    base: { id: string; label: string; flat: boolean };
+    target: { id: string; label: string; flat: boolean };
+    changes: PartChange[];
+    interchangeability: Interchange[];
+    summary: Record<string, number>;
+    findings: { new: Finding[]; fixed: Finding[]; unchanged: Finding[] };
+}
+
+export const compareRevisions = (base: string, target: string) =>
+    requestJson<CompareResult>(api(`/revisions/${base}/compare/${target}`), 'Comparing revisions', { method: 'POST' });
