@@ -204,7 +204,9 @@ def build_graph(step_path: str | Path, revision_id: str, files: list[SourceFile]
         placed = {ic.instance_id: ic_feats[ic.part_id].moved(np.asarray(ic.transform, float), ic.loc)
                   for ic in ic_instances}
         cstats: dict = {}
-        graph.contacts = contacts(ic_instances, placed, iid_of, cstats)
+        near: list = []
+        graph.contacts = contacts(ic_instances, placed, iid_of, cstats, near=near)
+        graph.clearances = near
         graph.stats.contacts = len(graph.contacts)
         graph.stats.features = len(graph.features)
 

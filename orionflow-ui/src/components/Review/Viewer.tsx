@@ -22,7 +22,7 @@ import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { CAD_Z_UP_TO_Y_UP } from '../../lib/cadAppearance';
 import { useReview } from '../../store/reviewStore';
-import type { GraphContact, GraphFeature, GraphInstance, GraphPart, HoleFeature } from '../../services/reviewApi';
+import type { Finding, GraphContact, GraphFeature, GraphInstance, GraphPart, HoleFeature } from '../../services/reviewApi';
 
 export type ViewName = 'iso' | 'front' | 'top' | 'right';
 
@@ -32,6 +32,7 @@ interface Props {
     parts: Map<string, GraphPart>;
     features: GraphFeature[];
     contacts: GraphContact[];
+    findings?: Finding[];
     dark?: boolean;
 }
 
@@ -107,7 +108,7 @@ function Lights() {
     );
 }
 
-function Model({ glb, instances, parts, features, contacts, explode, section, view, viewTick }: Props & {
+function Model({ glb, instances, parts, features, contacts, findings = [], explode, section, view, viewTick }: Props & {
     explode: number;
     section: number | null;
     view: ViewName;
@@ -203,8 +204,38 @@ function Model({ glb, instances, parts, features, contacts, explode, section, vi
             const c = contacts.find((x) => x.id === selection.id);
             return new Set(c ? [c.a, c.b] : []);
         }
+        if (selection.kind === 'finding') {
+            const f = findings.find((x) => x.id === selection.id);
+            const ids = new Set<string>();
+            for (const e of f?.evidence ?? []) {
+                if (e.type === 'instance' && e.id) ids.add(e.id);
+                if (e.type === 'contact' && e.id) {
+                    const c = contacts.find((x) => x.id === e.id);
+                    if (c) { ids.add(c.a); ids.add(c.b); }
+                }
+                if (e.type === 'part' && e.id) for (const i of instances.values()) if (i.part_id === e.id) ids.add(i.id);
+            }
+            return ids;
+        }
         return new Set([...instances.values()].filter((i) => i.part_id === selection.id).map((i) => i.id));
-    }, [selection, instances, contacts]);
+    }, [selection, instances, contacts, findings]);
+
+    // measurement points of the selected finding (assembly frame, mm -> m)
+    const evidencePoints = useMemo(() => {
+        if (selection?.kind !== 'finding') return [];
+        const f = findings.find((x) => x.id === selection.id);
+        const out: { p: THREE.Vector3; label: string }[] = [];
+        for (const e of f?.evidence ?? []) {
+            if (e.type !== 'measurement' || !e.points) continue;
+            for (const q of e.points.slice(0, 12)) {
+                out.push({
+                    p: new THREE.Vector3(q[0] / 1000, q[1] / 1000, q[2] / 1000),
+                    label: e.value !== undefined && e.value !== null ? `${Number(e.value.toPrecision(4))} ${e.unit ?? ''}`.trim() : (e.label ?? ''),
+                });
+            }
+        }
+        return out;
+    }, [selection, findings]);
 
     // ---- camera framing ---------------------------------------------------------
     const frame = (targets: THREE.Object3D[], dir?: THREE.Vector3) => {
@@ -231,7 +262,9 @@ function Model({ glb, instances, parts, features, contacts, explode, section, vi
 
     useEffect(() => {
         if (!items.length) return;
-        frame(visibleObjects(), new THREE.Vector3(1, 0.75, 1));
+        // first view: the current selection if there is one (a finding opened with "Show in 3D"), else everything
+        const sel = items.filter((i) => selectedIds.has(i.id)).map((i) => i.mesh);
+        frame(sel.length ? sel : visibleObjects(), new THREE.Vector3(1, 0.75, 1));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items.length]);
 
@@ -315,6 +348,7 @@ function Model({ glb, instances, parts, features, contacts, explode, section, vi
         const inst = instances.get(sel[0].id);
         const part = inst ? parts.get(inst.part_id) : undefined;
         const dims = part ? [...part.bbox.max].map((v, k) => v - part.bbox.min[k]).sort((a, b) => b - a) : [];
+        if (selection.kind === 'finding') return null;        // a finding labels its own measurement points
         const contact = selection.kind === 'contact' ? contacts.find((x) => x.id === selection.id) : undefined;
         const fit = contact?.fits[0];
         const label = contact
@@ -345,7 +379,7 @@ function Model({ glb, instances, parts, features, contacts, explode, section, vi
 
     // ---- hole rings on the selected part / instance ------------------------------------
     const holeRings = useMemo(() => {
-        if (!selection || selection.kind === 'contact') return null;
+        if (!selection || selection.kind === 'contact' || selection.kind === 'finding') return null;
         const ids = [...selectedIds];
         if (ids.length > 24) return null;
         const segs: number[] = [];
@@ -393,6 +427,19 @@ function Model({ glb, instances, parts, features, contacts, explode, section, vi
                     }}
                     onPointerOut={() => hover(null)}
                 />
+                {explode === 0 && evidencePoints.map((m, k) => (
+                    <group key={k} position={m.p}>
+                        <mesh renderOrder={20}>
+                            <sphereGeometry args={[extent / 400, 12, 12]} />
+                            <meshBasicMaterial color="#111111" depthTest={false} />
+                        </mesh>
+                        {m.label && k < 4 && (
+                            <Html zIndexRange={[12, 0]} style={{ pointerEvents: 'none' }}>
+                                <div className="rv-callout"><span>{m.label}</span></div>
+                            </Html>
+                        )}
+                    </group>
+                ))}
                 {showContacts && explode === 0 && markers.ids.length > 0 && (
                     <points
                         geometry={markers.geometry}

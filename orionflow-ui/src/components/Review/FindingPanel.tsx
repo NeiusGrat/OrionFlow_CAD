@@ -118,6 +118,7 @@ export default function FindingPanel({ finding, graph, onChanged, onJump }: {
     const [owner, setOwner] = useState(finding.owner ?? '');
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    const requestFit = useReview((s) => s.requestFit);
 
     useEffect(() => {
         let alive = true;
@@ -194,7 +195,12 @@ export default function FindingPanel({ finding, graph, onChanged, onJump }: {
                 {finding.expected?.basis && <div className="mono muted" style={{ fontSize: 11, marginTop: 4 }}>basis: {finding.expected.basis}</div>}
             </div>
             <div className="rv-sec">
-                <h3>Evidence</h3>
+                <h3 style={{ display: 'flex', alignItems: 'center' }}>
+                    Evidence
+                    {finding.evidence.some((e) => ['instance', 'part', 'contact', 'measurement'].includes(e.type)) && (
+                        <button className="btn" style={{ marginLeft: 'auto', height: 24 }} onClick={() => { requestFit(); onJump(); }}>Show in 3D</button>
+                    )}
+                </h3>
                 <EvidenceChips evidence={finding.evidence} graph={graph} onJump={onJump} />
             </div>
             {finding.recommendation && (

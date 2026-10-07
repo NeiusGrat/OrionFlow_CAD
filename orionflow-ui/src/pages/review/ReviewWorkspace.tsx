@@ -296,7 +296,8 @@ export default function ReviewWorkspace() {
                             <ProductTree tree={graph.tree} parts={graph.parts} instances={graph.instances} />
                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                                 {glb ? (
-                                    <Viewer glb={glb} instances={instances} parts={parts} features={graph.features ?? []} contacts={graph.contacts ?? []} />
+                                    <Viewer glb={glb} instances={instances} parts={parts} features={graph.features ?? []} contacts={graph.contacts ?? []}
+                                        findings={findings?.findings ?? []} />
                                 ) : (
                                     <div className="rv-view"><div className="rv-loading">Loading the 3D model…</div></div>
                                 )}

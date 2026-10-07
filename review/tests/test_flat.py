@@ -76,7 +76,9 @@ def test_no_false_duplicates_in_a_flat_file(flat):
     from review.checks import run_checks
     path, _ = flat
     findings, _ = run_checks(build_graph(path, "t", analyse=False))
-    assert [f.check_id for f in findings] == ["ST-TREE"]          # only the missing tree
+    structure = [f for f in findings if f.domain == "structure"]
+    assert [f.check_id for f in structure] == ["ST-TREE"]         # only the missing tree, no false duplicates
+    findings = structure
     assert findings[0].title == "No assembly structure in the file"
 
 

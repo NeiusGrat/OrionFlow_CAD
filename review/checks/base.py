@@ -104,6 +104,7 @@ class CheckConfig:
         "min_clearance_mm": 0.3,
         "unit_tiny_mm": 0.05,
         "dup_body_tol_mm": 1e-3,
+        "max_fastener_hole_mm": 7.1,      # robotics scale (up to M6 coarse clearance); raise for machinery
     }
 
     def get(self, key: str) -> Any:

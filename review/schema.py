@@ -18,7 +18,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-SCHEMA_VERSION = "1.1"   # 1.1: features + contacts
+SCHEMA_VERSION = "1.2"   # 1.1: features + contacts; 1.2: joints, threads, overlaps, clearances
 
 FileKind = Literal["step", "bom", "pdf", "urdf", "mjcf", "mesh", "other"]
 
@@ -113,6 +113,8 @@ class ModelGraph(BaseModel):
     features: list[dict] = Field(default_factory=list)
     #: touching pairs: {id, a, b, type, kinds, min_distance, point, planes, fits, coaxial_holes}
     contacts: list[dict] = Field(default_factory=list)
+    #: non-touching pairs closer than 1 mm: {a, b, min_distance, point}
+    clearances: list[dict] = Field(default_factory=list)
     joints: list[dict] = Field(default_factory=list)       # M7 / M8
     bom_rows: list[dict] = Field(default_factory=list)     # M5
     documents: list[dict] = Field(default_factory=list)    # M9
