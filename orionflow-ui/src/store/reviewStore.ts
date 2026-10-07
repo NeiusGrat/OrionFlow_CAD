@@ -7,7 +7,7 @@
  */
 import { create } from 'zustand';
 
-export type EntityKind = 'instance' | 'part' | 'contact';
+export type EntityKind = 'instance' | 'part' | 'contact' | 'finding';
 
 export interface Selection {
     kind: EntityKind;

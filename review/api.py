@@ -17,6 +17,11 @@ Mounted by the main app at ``/review`` (routes below are relative to it), with
     GET    /api/jobs/{jid}
     GET    /api/revisions/{rid}/graph
     GET    /api/revisions/{rid}/viewer.glb
+    GET    /api/revisions/{rid}/findings         findings + check runs (what ran, what did not and why)
+    GET    /api/findings/{fid}                   one finding with its audit trail
+    PATCH  /api/findings/{fid}                   {status, owner, note}; rejecting needs a reason
+    POST   /api/findings/{fid}/comments          {text}
+    GET    /api/revisions/{rid}/report.json      the whole review, with check versions and file hashes
     POST   /api/demo/yubi                        the YUBI gripper, fetched at pinned tags
 """
 from __future__ import annotations
@@ -89,7 +94,41 @@ def _revision_out(r: dict) -> dict:
         "files": [_file_out(f) for f in files],
         "job": _job_out(job) if job else None,
         "stats": (g["graph"] or {}).get("stats") if g else None,
+        "findings": _summary(s.findings_for(r["id"])) if g else None,
     }
+
+
+SEVERITIES = ("critical", "major", "minor", "info")
+
+
+def _summary(rows: list[dict]) -> dict:
+    out = {sev: 0 for sev in SEVERITIES}
+    for f in rows:
+        if f["status"] in ("open", "deferred"):
+            out[f["severity"]] += 1
+    out["total"] = len(rows)
+    out["open"] = sum(1 for f in rows if f["status"] == "open")
+    return out
+
+
+def _iso(v):
+    return v.isoformat() if v else None
+
+
+def _finding_out(f: dict) -> dict:
+    return {k: f[k] for k in ("id", "fingerprint", "check_id", "check_version", "domain", "severity", "status",
+                              "provenance", "title", "statement", "measured", "expected", "evidence",
+                              "recommendation", "active")} | {
+        "owner": f["owner_id"], "created_at": _iso(f["created_at"]), "updated_at": _iso(f["updated_at"])}
+
+
+def _run_out(r: dict) -> dict:
+    return {k: r[k] for k in ("check_id", "check_version", "domain", "title", "kind", "status", "reason",
+                              "findings", "seconds")}
+
+
+def _event_out(e: dict) -> dict:
+    return {k: e[k] for k in ("id", "user_id", "action", "from_status", "to_status", "note")} | {"created_at": _iso(e["created_at"])}
 
 
 def _job_out(j: dict) -> dict:
@@ -313,3 +352,86 @@ def demo_yubi(uid: str = Depends(owner)) -> dict:
         s.set_revision_status(r["id"], "queued")
         jobrunner.submit(job["id"], database_url())
     return get_project(p["id"], uid)
+
+
+# ------------------------------------------------------------------ findings --
+
+def _finding_of(fid: str, uid: str) -> dict:
+    f = store().finding(fid)
+    if f is None:
+        raise HTTPException(404, "finding not found")
+    _revision_of(f["revision_id"], uid)
+    return f
+
+
+@app.get("/api/revisions/{rid}/findings")
+def list_findings(rid: str, include_resolved: bool = False, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    s = store()
+    rows = s.findings_for(rid, active_only=not include_resolved)
+    order = {sev: i for i, sev in enumerate(SEVERITIES)}
+    rows.sort(key=lambda f: (order[f["severity"]], f["domain"], f["check_id"], f["title"]))
+    from .checks.base import DOMAINS
+    return {"findings": [_finding_out(f) for f in rows], "check_runs": [_run_out(r) for r in s.check_runs_for(rid)],
+            "summary": _summary([f for f in rows if f["active"]]), "domains": DOMAINS}
+
+
+@app.get("/api/findings/{fid}")
+def get_finding(fid: str, uid: str = Depends(owner)) -> dict:
+    f = _finding_of(fid, uid)
+    return _finding_out(f) | {"events": [_event_out(e) for e in store().events_for(fid)]}
+
+
+class FindingPatch(BaseModel):
+    status: Optional[str] = Field(default=None, pattern="^(open|accepted|rejected|fixed|deferred)$")
+    owner: Optional[str] = Field(default=None, max_length=120)
+    clear_owner: bool = False
+    note: Optional[str] = Field(default=None, max_length=4000)
+
+
+@app.patch("/api/findings/{fid}")
+def patch_finding(fid: str, body: FindingPatch, uid: str = Depends(owner)) -> dict:
+    f = _finding_of(fid, uid)
+    if body.status == "rejected" and body.status != f["status"] and not (body.note or "").strip():
+        raise HTTPException(422, "rejecting a finding needs a reason")
+    store().update_finding(fid, uid, status=body.status, owner=body.owner, note=(body.note or "").strip() or None,
+                           clear_owner=body.clear_owner)
+    return get_finding(fid, uid)
+
+
+class CommentIn(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+@app.post("/api/findings/{fid}/comments", status_code=201)
+def comment_finding(fid: str, body: CommentIn, uid: str = Depends(owner)) -> dict:
+    _finding_of(fid, uid)
+    store().update_finding(fid, uid, note=body.text.strip())
+    return get_finding(fid, uid)
+
+
+@app.get("/api/revisions/{rid}/report.json")
+def report_json(rid: str, uid: str = Depends(owner)):
+    """Everything needed to audit the review later: inputs by hash, check versions, findings and their history."""
+    from datetime import datetime, timezone
+
+    from fastapi.responses import JSONResponse
+
+    r = _revision_of(rid, uid)
+    s = store()
+    p = s.project(r["project_id"])
+    g = s.graph(rid)
+    rows = s.findings_for(rid, active_only=False)
+    report = {
+        "report": "OrionFlow Review", "generated_at": datetime.now(timezone.utc).isoformat(), "generated_by": uid,
+        "project": {"id": p["id"], "name": p["name"]},
+        "revision": {"id": r["id"], "label": r["label"], "git_repo": r["git_repo"], "git_ref": r["git_ref"]},
+        "inputs": [_file_out(f) for f in s.files_for(rid)],
+        "model_graph": {"schema_version": g["schema_version"], "stats": g["graph"]["stats"],
+                        "source": g["graph"]["source"]} if g else None,
+        "check_runs": [_run_out(c) for c in s.check_runs_for(rid)],
+        "summary": _summary([f for f in rows if f["active"]]),
+        "findings": [_finding_out(f) | {"events": [_event_out(e) for e in s.events_for(f["id"])]} for f in rows],
+    }
+    name = f"orionflow-review-{p['name']}-{r['label']}.json".replace(" ", "_")
+    return JSONResponse(report, headers={"Content-Disposition": f'attachment; filename="{name}"'})

@@ -55,6 +55,7 @@ export interface GraphStats {
 }
 
 export interface Revision {
+    findings?: { critical: number; major: number; minor: number; info: number; total: number; open: number } | null;
     id: string;
     project_id: string;
     label: string;
@@ -266,4 +267,124 @@ export function fmtBytes(n: number): string {
 /** Fixed-point mm with thin grouping, never scientific. */
 export function fmtNum(v: number, digits = 2): string {
     return v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+// ------------------------------------------------------------------ findings
+
+export type Severity = 'critical' | 'major' | 'minor' | 'info';
+export type FindingStatus = 'open' | 'accepted' | 'rejected' | 'fixed' | 'deferred';
+export type Provenance = 'geometry' | 'rule' | 'ai_reading' | 'ai_inference';
+export const SEVERITIES: Severity[] = ['critical', 'major', 'minor', 'info'];
+
+export interface Quantity {
+    value?: number;
+    min?: number;
+    max?: number;
+    unit?: string;
+    basis?: string;
+    text?: string;
+}
+
+export interface Evidence {
+    type: 'instance' | 'part' | 'feature' | 'contact' | 'measurement' | 'file' | 'bom_row' | 'document' | 'joint';
+    id?: string;
+    kind?: string;
+    label?: string;
+    points?: number[][];
+    value?: number;
+    unit?: string;
+    sha256?: string;
+}
+
+export interface Finding {
+    id: string;
+    fingerprint: string;
+    check_id: string;
+    check_version: string;
+    domain: string;
+    severity: Severity;
+    status: FindingStatus;
+    provenance: Provenance;
+    title: string;
+    statement: string;
+    measured: Quantity | null;
+    expected: Quantity | null;
+    evidence: Evidence[];
+    recommendation: string;
+    active: boolean;
+    owner: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+export interface FindingEvent {
+    id: string;
+    user_id: string;
+    action: 'detected' | 'status' | 'owner' | 'comment' | 'redetected' | 'resolved';
+    from_status: FindingStatus | null;
+    to_status: FindingStatus | null;
+    note: string | null;
+    created_at: string | null;
+}
+
+export interface CheckRun {
+    check_id: string;
+    check_version: string;
+    domain: string;
+    title: string;
+    kind: 'deterministic' | 'ai_assisted';
+    status: 'passed' | 'findings' | 'not_run' | 'error';
+    reason: string | null;
+    findings: number;
+    seconds: number | null;
+}
+
+export interface FindingsSummary {
+    critical: number;
+    major: number;
+    minor: number;
+    info: number;
+    total: number;
+    open: number;
+}
+
+export interface FindingsPayload {
+    findings: Finding[];
+    check_runs: CheckRun[];
+    summary: FindingsSummary;
+    domains: Record<string, string>;
+}
+
+export const listFindings = (rid: string, includeResolved = false) =>
+    requestJson<FindingsPayload>(api(`/revisions/${rid}/findings${includeResolved ? '?include_resolved=true' : ''}`), 'Loading findings');
+export const getFinding = (fid: string) =>
+    requestJson<Finding & { events: FindingEvent[] }>(api(`/findings/${fid}`), 'Loading the finding');
+export const patchFinding = (fid: string, body: { status?: FindingStatus; owner?: string; clear_owner?: boolean; note?: string }) =>
+    requestJson<Finding & { events: FindingEvent[] }>(api(`/findings/${fid}`), 'Updating the finding', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+    });
+export const commentFinding = (fid: string, text: string) =>
+    requestJson<Finding & { events: FindingEvent[] }>(api(`/findings/${fid}/comments`), 'Posting the comment', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+    });
+
+/** Download the JSON report (authenticated fetch -> blob -> save). */
+export async function downloadReportJson(rid: string, filename: string): Promise<void> {
+    const res = await authedFetch(api(`/revisions/${rid}/report.json`));
+    if (!res.ok) throw new Error(await readError(res, 'Exporting the report'));
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/** Findings that point at an instance (directly, through its part, or through a contact it is in). */
+export function findingsFor(findings: Finding[], instanceId: string, partId: string, contactIds: Set<string>): Finding[] {
+    return findings.filter((f) => f.evidence.some((e) =>
+        (e.type === 'instance' && e.id === instanceId) || (e.type === 'part' && e.id === partId)
+        || (e.type === 'contact' && e.id !== undefined && contactIds.has(e.id))));
 }

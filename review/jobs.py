@@ -141,6 +141,16 @@ def run_job(job_id: str, db_url: str, spec: dict) -> None:
         store.save_graph(rid, graph.schema_version, json.loads(graph.model_dump_json()), glb_key)
         steps.finish("graph", f"{graph.stats.parts} parts · {graph.stats.instances} instances")
 
+        steps.start("checks", "running the check catalogue")
+        from .checks import run_checks
+        results, runs = run_checks(graph)
+        counts = store.save_check_results(rid, job_id, results, runs)
+        ran = sum(1 for r in runs if r["status"] in ("passed", "findings"))
+        not_run = sum(1 for r in runs if r["status"] == "not_run")
+        errors = sum(1 for r in runs if r["status"] == "error")
+        note = f"{ran} run · {not_run} not run · {len(results)} findings ({counts['new']} new)"
+        steps.finish("checks", note + (f" · {errors} check errors" if errors else ""))
+
         if store.update_job(job_id, only_if=("running",), state="done", ended_at=now()):
             store.set_revision_status(rid, "done")
     except Exception as e:  # noqa: BLE001 - reported on the job, never lost

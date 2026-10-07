@@ -148,7 +148,7 @@ def test_api_end_to_end(client, chassis):
     job = client.post(f"/api/revisions/{rev['id']}/run", headers=H).json()   # inline in tests
     job = client.get(f"/api/jobs/{job['id']}", headers=H).json()
     assert job["state"] == "done", job
-    assert [s["key"] for s in job["steps"]] == ["parse", "features", "contacts", "mesh", "graph"]
+    assert [s["key"] for s in job["steps"]] == ["parse", "features", "contacts", "mesh", "graph", "checks"]
     assert all(s["state"] == "done" for s in job["steps"]), job["steps"]
     assert all(s["seconds"] is not None for s in job["steps"])
 

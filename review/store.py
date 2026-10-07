@@ -83,8 +83,58 @@ jobs = sa.Table(
     sa.Column("started_at", TS),
     sa.Column("ended_at", TS))
 
+check_runs = sa.Table(
+    "rv_check_runs", meta,
+    sa.Column("id", sa.String(32), primary_key=True),
+    sa.Column("revision_id", sa.String(32), sa.ForeignKey("rv_revisions.id", ondelete="CASCADE"), index=True),
+    sa.Column("job_id", sa.String(32)),
+    sa.Column("check_id", sa.String(40), nullable=False),
+    sa.Column("check_version", sa.String(20), nullable=False),
+    sa.Column("domain", sa.String(30), nullable=False),
+    sa.Column("title", sa.String(200)),
+    sa.Column("kind", sa.String(20)),
+    sa.Column("status", sa.String(16), nullable=False),        # passed | findings | not_run | error
+    sa.Column("reason", sa.Text),
+    sa.Column("findings", sa.Integer, default=0),
+    sa.Column("seconds", sa.Float),
+    sa.Column("created_at", TS, default=now))
+
+findings = sa.Table(
+    "rv_findings", meta,
+    sa.Column("id", sa.String(32), primary_key=True),
+    sa.Column("revision_id", sa.String(32), sa.ForeignKey("rv_revisions.id", ondelete="CASCADE"), index=True),
+    sa.Column("fingerprint", sa.String(32), nullable=False, index=True),
+    sa.Column("check_id", sa.String(40), nullable=False),
+    sa.Column("check_version", sa.String(20), nullable=False),
+    sa.Column("domain", sa.String(30), nullable=False),
+    sa.Column("severity", sa.String(10), nullable=False),
+    sa.Column("status", sa.String(10), nullable=False, default="open"),
+    sa.Column("provenance", sa.String(16), nullable=False),
+    sa.Column("title", sa.String(300), nullable=False),
+    sa.Column("statement", sa.Text, nullable=False),
+    sa.Column("measured", JSON),
+    sa.Column("expected", JSON),
+    sa.Column("evidence", JSON, nullable=False),
+    sa.Column("recommendation", sa.Text),
+    sa.Column("owner_id", sa.String(64)),
+    sa.Column("active", sa.Boolean, nullable=False, default=True),   # false: no longer detected on the last run
+    sa.Column("created_at", TS, default=now),
+    sa.Column("updated_at", TS, default=now))
+
+finding_events = sa.Table(
+    "rv_finding_events", meta,
+    sa.Column("id", sa.String(32), primary_key=True),
+    sa.Column("finding_id", sa.String(32), sa.ForeignKey("rv_findings.id", ondelete="CASCADE"), index=True),
+    sa.Column("user_id", sa.String(64), nullable=False),           # "system" for engine events
+    sa.Column("action", sa.String(20), nullable=False),            # detected | status | owner | comment | redetected | resolved
+    sa.Column("from_status", sa.String(10)),
+    sa.Column("to_status", sa.String(10)),
+    sa.Column("note", sa.Text),
+    sa.Column("created_at", TS, default=now))
+
 #: The step list a review job reports, in order. Later milestones append to it.
-STEPS = [("parse", "Parse"), ("features", "Features"), ("contacts", "Contacts"), ("mesh", "Mesh"), ("graph", "Model graph")]
+STEPS = [("parse", "Parse"), ("features", "Features"), ("contacts", "Contacts"), ("mesh", "Mesh"),
+         ("graph", "Model graph"), ("checks", "Checks")]
 
 
 def database_url() -> str:
@@ -218,3 +268,101 @@ class Store:
         if only_if:
             q = q.where(jobs.c.state.in_(only_if))
         return self._exec(q.values(**values)).rowcount == 1
+
+    # ---- check runs + findings -----------------------------------------------------
+    def save_check_results(self, revision_id: str, job_id: str | None, results: list, runs: list[dict]) -> dict:
+        """Persist a run's findings, matched to earlier ones by fingerprint.
+
+        A finding seen before keeps its id, status, owner and history. One that
+        is gone is marked inactive (and ``fixed`` if it was open) with a system
+        event; one that comes back after being marked fixed is reopened.
+        """
+        t = now()
+        counts = {"new": 0, "kept": 0, "resolved": 0, "reopened": 0}
+        with self.engine.begin() as c:
+            c.execute(check_runs.delete().where(check_runs.c.revision_id == revision_id))
+            for r in runs:
+                c.execute(check_runs.insert().values(
+                    id=new_id(), revision_id=revision_id, job_id=job_id, created_at=t,
+                    **{k: r.get(k) for k in ("check_id", "check_version", "domain", "title", "kind", "status",
+                                             "reason", "findings", "seconds")}))
+            old = {row["fingerprint"]: dict(row) for row in
+                   c.execute(findings.select().where(findings.c.revision_id == revision_id)).mappings()}
+            seen = set()
+            for f in results:
+                fp = f.fingerprint
+                seen.add(fp)
+                body = dict(check_id=f.check_id, check_version=f.check_version, domain=f.domain, severity=f.severity,
+                            provenance=f.provenance, title=f.title, statement=f.statement,
+                            measured=f.measured.model_dump(exclude_none=True) if f.measured else None,
+                            expected=f.expected.model_dump(exclude_none=True) if f.expected else None,
+                            evidence=[e.model_dump(exclude_none=True) for e in f.evidence],
+                            recommendation=f.recommendation, active=True, updated_at=t)
+                prev = old.get(fp)
+                if prev is None:
+                    fid = new_id()
+                    c.execute(findings.insert().values(id=fid, revision_id=revision_id, fingerprint=fp, status="open",
+                                                       created_at=t, **body))
+                    c.execute(finding_events.insert().values(id=new_id(), finding_id=fid, user_id="system",
+                                                             action="detected", to_status="open", created_at=t))
+                    counts["new"] += 1
+                else:
+                    status = prev["status"]
+                    if status == "fixed" or not prev["active"]:
+                        c.execute(finding_events.insert().values(
+                            id=new_id(), finding_id=prev["id"], user_id="system", action="redetected",
+                            from_status=status, to_status="open", note="detected again on a new run", created_at=t))
+                        status = "open"
+                        counts["reopened"] += 1
+                    else:
+                        counts["kept"] += 1
+                    c.execute(findings.update().where(findings.c.id == prev["id"]).values(status=status, **body))
+            for fp, prev in old.items():
+                if fp in seen or not prev["active"]:
+                    continue
+                to = "fixed" if prev["status"] == "open" else prev["status"]
+                c.execute(findings.update().where(findings.c.id == prev["id"]).values(active=False, status=to, updated_at=t))
+                c.execute(finding_events.insert().values(
+                    id=new_id(), finding_id=prev["id"], user_id="system", action="resolved", from_status=prev["status"],
+                    to_status=to, note="no longer detected on the latest run", created_at=t))
+                counts["resolved"] += 1
+        return counts
+
+    def check_runs_for(self, revision_id: str) -> list[dict]:
+        return self._all(check_runs.select().where(check_runs.c.revision_id == revision_id).order_by(check_runs.c.check_id))
+
+    def findings_for(self, revision_id: str, active_only: bool = True) -> list[dict]:
+        q = findings.select().where(findings.c.revision_id == revision_id)
+        if active_only:
+            q = q.where(findings.c.active.is_(True))
+        return self._all(q)
+
+    def finding(self, fid: str) -> Optional[dict]:
+        return self._one(findings.select().where(findings.c.id == fid))
+
+    def events_for(self, fid: str) -> list[dict]:
+        return self._all(finding_events.select().where(finding_events.c.finding_id == fid)
+                         .order_by(finding_events.c.created_at))
+
+    def update_finding(self, fid: str, user: str, *, status: str | None = None, owner: str | None = None,
+                       note: str | None = None, clear_owner: bool = False) -> Optional[dict]:
+        cur = self.finding(fid)
+        if cur is None:
+            return None
+        t = now()
+        with self.engine.begin() as c:
+            if status and status != cur["status"]:
+                c.execute(findings.update().where(findings.c.id == fid).values(status=status, updated_at=t))
+                c.execute(finding_events.insert().values(id=new_id(), finding_id=fid, user_id=user, action="status",
+                                                         from_status=cur["status"], to_status=status, note=note,
+                                                         created_at=t))
+                note = None                     # the note travelled with the status change
+            if owner is not None or clear_owner:
+                c.execute(findings.update().where(findings.c.id == fid)
+                          .values(owner_id=None if clear_owner else owner, updated_at=t))
+                c.execute(finding_events.insert().values(id=new_id(), finding_id=fid, user_id=user, action="owner",
+                                                         note=None if clear_owner else owner, created_at=t))
+            if note:
+                c.execute(finding_events.insert().values(id=new_id(), finding_id=fid, user_id=user, action="comment",
+                                                         note=note, created_at=t))
+        return self.finding(fid)

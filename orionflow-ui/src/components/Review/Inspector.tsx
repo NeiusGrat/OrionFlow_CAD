@@ -6,7 +6,9 @@
  * reading, unverified". A number with no stated source is not shown.
  */
 import { Crosshair, Eye, Focus } from 'lucide-react';
-import type { CylinderFeature, GraphContact, GraphInstance, GraphPart, HoleFeature, ModelGraph, PatternFeature } from '../../services/reviewApi';
+import type { CylinderFeature, Finding, GraphContact, GraphInstance, GraphPart, HoleFeature, ModelGraph, PatternFeature } from '../../services/reviewApi';
+import { findingsFor } from '../../services/reviewApi';
+import { SevMark } from './FindingPanel';
 import { fmtNum } from '../../services/reviewApi';
 import { useReview } from '../../store/reviewStore';
 
@@ -154,7 +156,7 @@ function dims(p: GraphPart): number[] {
     return p.bbox.max.map((v, k) => v - p.bbox.min[k]);
 }
 
-export default function Inspector({ graph }: { graph: ModelGraph }) {
+export default function Inspector({ graph, findings = [] }: { graph: ModelGraph; findings?: Finding[] }) {
     const selection = useReview((s) => s.selection);
     const select = useReview((s) => s.select);
     const isolate = useReview((s) => s.isolate);
@@ -297,10 +299,29 @@ export default function Inspector({ graph }: { graph: ModelGraph }) {
                     </div>
                 );
             })()}
-            <div className="rv-sec">
-                <h3>Findings</h3>
-                <div className="muted">No checks have run on this revision yet.</div>
-            </div>
+            {(() => {
+                const ids = inst ? [inst.id] : copies.map((c) => c.id);
+                const cids = new Set((graph.contacts ?? []).filter((c) => ids.includes(c.a) || ids.includes(c.b)).map((c) => c.id));
+                const linked = [...new Map(ids.flatMap((iid) => findingsFor(findings, iid, part.id, cids)).map((f) => [f.id, f])).values()];
+                return (
+                    <div className="rv-sec">
+                        <h3>Findings <span className="muted mono" style={{ fontWeight: 400 }}>{linked.length}</span></h3>
+                        {linked.length === 0 ? <div className="muted">No findings point at this {inst ? 'instance' : 'part'}.</div> : (
+                            <table className="rv-table">
+                                <tbody>
+                                    {linked.map((f) => (
+                                        <tr key={f.id} data-click onClick={() => select({ kind: 'finding', id: f.id })}>
+                                            <td style={{ width: 84 }}><SevMark s={f.severity} /></td>
+                                            <td>{f.title}</td>
+                                            <td className="mono muted" style={{ fontSize: 11 }}>{f.status}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                );
+            })()}
         </aside>
     );
 }

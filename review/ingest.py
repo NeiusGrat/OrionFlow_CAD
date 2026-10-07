@@ -143,6 +143,10 @@ def build_graph(step_path: str | Path, revision_id: str, files: list[SourceFile]
     say = progress or (lambda *_: None)
     say("parse", "reading STEP (XCAF)")
     ic_parts, ic_instances, notes = read_assembly(step_path)
+    extra_notes: list[str] = []
+    if any(f.rule_id == "ASSEMBLY_STRUCTURE_MISSING" for f in notes):
+        from .flat import realign
+        extra_notes = realign(ic_parts, ic_instances)
 
     pid_of: dict[str, str] = {}
     parts: list[Part] = []
@@ -178,7 +182,7 @@ def build_graph(step_path: str | Path, revision_id: str, files: list[SourceFile]
         revision_id=revision_id, source=source, files=files or [source],
         stats=Stats(parts=len(parts), instances=len(instances), assemblies=n_asm, max_depth=depth, flat=flat),
         parts=parts, instances=instances, tree=tree,
-        ingest_notes=[f"{f.rule_id}: {f.message}" for f in notes])
+        ingest_notes=[f"{f.rule_id}: {f.message}" for f in notes] + extra_notes)
 
     if analyse:
         from .geometry import contacts, part_features

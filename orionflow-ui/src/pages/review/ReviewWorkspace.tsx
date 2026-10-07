@@ -7,22 +7,25 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Box, LayoutDashboard, Search } from 'lucide-react';
+import { Box, LayoutDashboard, ListChecks, Search } from 'lucide-react';
 import { Brand, ReviewRoot, StepList } from '../../components/Review/Shell';
 import Viewer from '../../components/Review/Viewer';
 import ProductTree from '../../components/Review/ProductTree';
 import Inspector from '../../components/Review/Inspector';
 import CommandPalette from '../../components/Review/CommandPalette';
 import ContactsDrawer from '../../components/Review/ContactsDrawer';
+import FindingsLens, { RunStatus } from '../../components/Review/FindingsLens';
+import FindingPanel, { SevMark } from '../../components/Review/FindingPanel';
 import {
-    fetchViewerGlb, fmtBytes, getGraph, getProject, getRevision, runReview,
-    type ModelGraph, type Project, type Revision,
+    downloadReportJson, fetchViewerGlb, fmtBytes, getGraph, getProject, getRevision, listFindings, runReview, SEVERITIES,
+    type Finding, type FindingsPayload, type ModelGraph, type Project, type Revision,
 } from '../../services/reviewApi';
 import { useReview } from '../../store/reviewStore';
 
 const LENSES = [
     { key: 'overview', label: 'Overview', icon: LayoutDashboard },
     { key: 'model', label: 'Model', icon: Box },
+    { key: 'findings', label: 'Findings', icon: ListChecks },
 ] as const;
 type LensKey = (typeof LENSES)[number]['key'];
 
@@ -52,7 +55,7 @@ function summary(g: ModelGraph, rev: Revision): string {
     return lines.join('\n');
 }
 
-function Overview({ graph, rev }: { graph: ModelGraph; rev: Revision }) {
+function Overview({ graph, rev, findings, onOpen }: { graph: ModelGraph; rev: Revision; findings: FindingsPayload | null; onOpen: (f: Finding) => void }) {
     const kinds = new Set(rev.files.map((f) => f.kind));
     const has = (k: string) => k.split('|').some((x) => kinds.has(x as never));
     const missing = UNLOCKS.filter((u) => !has(u.kind));
@@ -79,13 +82,60 @@ function Overview({ graph, rev }: { graph: ModelGraph; rev: Revision }) {
                         </table>
                     </section>
                     <section>
-                        <span className="label">Checks</span>
-                        <div className="rv-empty" style={{ border: '1px solid var(--line)', marginTop: 8, padding: 18 }}>
-                            <b>No checks have run on this revision</b>
-                            The model graph is built. Findings appear here once checks run.
-                        </div>
+                        <span className="label">Readiness</span>
+                        {findings ? (
+                            <>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: '1px solid var(--line)', marginTop: 8 }}>
+                                    {SEVERITIES.map((s) => (
+                                        <div key={s} style={{ padding: '10px 12px', borderRight: '1px solid var(--line)' }}>
+                                            <SevMark s={s} />
+                                            <div className="mono" style={{ fontSize: 24, marginTop: 4 }}>{findings.summary[s]}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="mono muted" style={{ fontSize: 11, margin: '6px 0 0' }}>
+                                    open + deferred · {findings.check_runs.filter((r) => r.status === 'passed' || r.status === 'findings').length} checks run ·{' '}
+                                    {findings.check_runs.filter((r) => r.status === 'not_run').length} not run
+                                </p>
+                            </>
+                        ) : <div className="rv-empty" style={{ border: '1px solid var(--line)', marginTop: 8 }}>Loading findings…</div>}
                     </section>
                 </div>
+
+                {findings && findings.findings.length > 0 && (
+                    <section style={{ marginTop: 28 }}>
+                        <span className="label">Top findings</span>
+                        <table className="rv-table" style={{ marginTop: 8 }}>
+                            <tbody>
+                                {findings.findings.filter((f) => f.status === 'open').slice(0, 5).map((f) => (
+                                    <tr key={f.id} data-click onClick={() => onOpen(f)}>
+                                        <td style={{ width: 92 }}><SevMark s={f.severity} /></td>
+                                        <td>{f.title}<div className="muted" style={{ fontSize: 12 }}>{f.statement}</div></td>
+                                        <td className="mono muted" style={{ fontSize: 11 }}>{f.check_id}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </section>
+                )}
+
+                {findings && (
+                    <section style={{ marginTop: 28 }}>
+                        <span className="label">What ran</span>
+                        <table className="rv-table" style={{ marginTop: 8 }}>
+                            <tbody>
+                                {findings.check_runs.map((r) => (
+                                    <tr key={r.check_id}>
+                                        <td className="mono" style={{ fontSize: 11.5, width: 130 }}>{r.check_id}</td>
+                                        <td>{r.title}</td>
+                                        <td><RunStatus r={r} /></td>
+                                        <td className="muted" style={{ fontSize: 12 }}>{r.status === 'not_run' ? r.reason : ''}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </section>
+                )}
 
                 {missing.length > 0 && (
                     <section style={{ marginTop: 28 }}>
@@ -141,6 +191,10 @@ export default function ReviewWorkspace() {
     const [glb, setGlb] = useState<ArrayBuffer | null>(null);
     const [error, setError] = useState('');
     const [palette, setPalette] = useState(false);
+    const [findings, setFindings] = useState<FindingsPayload | null>(null);
+    const [exporting, setExporting] = useState(false);
+    const selection = useReview((s) => s.selection);
+    const select = useReview((s) => s.select);
     const reset = useReview((s) => s.reset);
     const active = (LENSES.find((l) => l.key === lens)?.key ?? 'model') as LensKey;
 
@@ -149,6 +203,7 @@ export default function ReviewWorkspace() {
         reset();
         setGraph(null);
         setGlb(null);
+        setFindings(null);
         setError('');
         getGraph(rid)
             .then(async (g) => {
@@ -157,6 +212,7 @@ export default function ReviewWorkspace() {
                 const r = await getRevision(rid);
                 getProject(r.project_id).then((p) => alive && setProject(p));
                 fetchViewerGlb(rid).then((b) => alive && setGlb(b)).catch((e) => alive && setError(String(e.message)));
+                listFindings(rid).then((f) => alive && setFindings(f)).catch(() => alive && setFindings(null));
             })
             .catch((e) => alive && setError(String(e.message)));
         return () => {
@@ -176,6 +232,20 @@ export default function ReviewWorkspace() {
     }, []);
 
     const rev = project?.revisions.find((r) => r.id === rid) ?? null;
+    const selectedFinding = selection?.kind === 'finding' ? findings?.findings.find((f) => f.id === selection.id) : undefined;
+    const onFindingChanged = (f: Finding) =>
+        setFindings((d) => d && { ...d, findings: d.findings.map((x) => (x.id === f.id ? { ...x, ...f } : x)) });
+    const exportJson = async () => {
+        if (!rev || !project) return;
+        setExporting(true);
+        try {
+            await downloadReportJson(rid, `orionflow-review-${project.name}-${rev.label}.json`.replace(/\s+/g, '_'));
+        } catch (e) {
+            setError(String((e as Error).message));
+        } finally {
+            setExporting(false);
+        }
+    };
     const instances = useMemo(() => new Map((graph?.instances ?? []).map((i) => [i.id, i])), [graph]);
     const parts = useMemo(() => new Map((graph?.parts ?? []).map((p) => [p.id, p])), [graph]);
 
@@ -214,7 +284,13 @@ export default function ReviewWorkspace() {
                 <main className="rv-main">
                     {error && <div className="rv-loading"><span className="rv-err">{error}</span></div>}
                     {!error && !graph && <div className="rv-loading">Loading the model graph…</div>}
-                    {graph && active === 'overview' && rev && <Overview graph={graph} rev={rev} />}
+                    {graph && active === 'overview' && rev && (
+                        <Overview graph={graph} rev={rev} findings={findings}
+                            onOpen={(f) => { select({ kind: 'finding', id: f.id }); nav(`/review/r/${rid}/findings`); }} />
+                    )}
+                    {graph && active === 'findings' && (findings
+                        ? <FindingsLens data={findings} onExport={exportJson} exporting={exporting} />
+                        : <div className="rv-loading">Loading findings…</div>)}
                     {graph && active === 'model' && (
                         <>
                             <ProductTree tree={graph.tree} parts={graph.parts} instances={graph.instances} />
@@ -229,7 +305,10 @@ export default function ReviewWorkspace() {
                         </>
                     )}
                 </main>
-                {graph && <Inspector graph={graph} />}
+                {graph && (selectedFinding
+                    ? <FindingPanel finding={selectedFinding} graph={graph} onChanged={onFindingChanged}
+                        onJump={() => active !== 'model' && nav(`/review/r/${rid}/model`)} />
+                    : <Inspector graph={graph} findings={findings?.findings ?? []} />)}
             </div>
             <footer className="rv-status">
                 {graph ? (
@@ -238,7 +317,8 @@ export default function ReviewWorkspace() {
                         <span><b>{graph.stats.parts}</b> parts</span>
                         <span><b>{graph.stats.features ?? 0}</b> features</span>
                         <span><b>{graph.stats.contacts ?? 0}</b> contacts</span>
-                        <span><b>0</b> checks run</span>
+                        <span><b>{findings ? findings.check_runs.filter((r) => r.status === 'passed' || r.status === 'findings').length : 0}</b> checks run</span>
+                        {findings && <span><b>{findings.summary.open}</b> open findings</span>}
                         <span>units mm</span>
                         <span className="push">graph schema {graph.schema_version}</span>
                         <span title={graph.source.sha256}>{graph.source.name} · {graph.source.sha256.slice(0, 10)}</span>

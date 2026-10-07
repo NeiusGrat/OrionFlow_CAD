@@ -204,7 +204,9 @@
 .rv-table select { height: 26px; border: 1px solid var(--line); border-radius: 2px; background: var(--bg); padding: 0 4px; }
 
 /* ---- severity marks (shape, never colour) ------------------------------ */
-.rv .sev { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; }
+.rv .sev { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; width: auto; justify-content: flex-start; line-height: 1.2; }
+/* marks on an inverted (selected) row draw in the inverted ink */
+.rv tr.is-sel, .rv [aria-selected="true"] { --text: var(--inv-text); }
 .rv .sev::before { content: ""; display: inline-block; width: 9px; height: 9px; flex: none; }
 .rv .sev--critical { font-weight: 700; }
 .rv .sev--critical::before { background: var(--text); }
