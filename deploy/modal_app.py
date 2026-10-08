@@ -94,6 +94,8 @@ _SOURCE_DIRS = [
     "fai",
     "drawcheck",
     "interface_check",
+    # OrionFlow Review (robot hardware review), mounted at /review by app/watchdog/engines.py
+    "review",
 ]
 
 image = (
@@ -118,6 +120,12 @@ image = (
             "DRAWCHECK_DATA": "/data/drawcheck",
             "DRAWCHECK_CACHE": "/data/vision-cache",
             "WATCHDOG_ROBOT_DATA": "/data/robot",
+            # Review keeps its store on the volume like Inspect: SQLite (max_containers=1, one writer) + files.
+            # One worker process: OpenCascade jobs share the container's 2 CPUs with the API.
+            "REVIEW_DATABASE_URL": "sqlite:////data/review/review.sqlite",
+            "REVIEW_STORAGE": "local",
+            "REVIEW_STORAGE_ROOT": "/data/review/store",
+            "REVIEW_WORKERS": "1",
         }
     )
 )

@@ -74,6 +74,7 @@ httpx
 # interface_check (assembly STEP + BOM checker): BOM name matching,
 # worker memory watchdog, verifying OrionFlow access tokens
 rapidfuzz
+scipy  # review/flat.py: verifying realigned copies of one-body STEP exports (cKDTree)
 psutil
 pyjwt
 
