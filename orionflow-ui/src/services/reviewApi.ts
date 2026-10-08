@@ -558,3 +558,80 @@ export const setOverride = (pid: string, o: { part_name: string; material?: stri
     requestJson<PartOverride[]>(api(`/projects/${pid}/overrides`), 'Saving the part mass', { method: 'PUT', body: JSON.stringify(o) });
 export const deleteOverride = (pid: string, part_name: string) =>
     requestJson<PartOverride[]>(api(`/projects/${pid}/overrides`), 'Removing the override', { method: 'DELETE', body: JSON.stringify({ part_name }) });
+
+// ------------------------------------------------------------------ motion
+
+export interface JointSpec {
+    key: string;
+    name: string;
+    source: 'sim' | 'inferred' | 'manual';
+    kind: 'hinge' | 'slide';
+    unit: 'rad' | 'mm';
+    axis: number[];
+    point: number[];
+    lower: number | null;
+    upper: number | null;
+    cad_q: number;
+    cad_q_source: string;
+    limits_source: string;
+    moving: string[];
+    ignore?: string[];
+    step?: number;
+    followers?: { name: string; coef: number[]; source: string }[];
+    evidence?: string;
+}
+
+export interface SweepGroup { name: string; kind: 'hinge' | 'slide'; axis: number[]; point: number[]; coef: number[]; source: string; carried: string[]; moving: string[] }
+export interface SweepSample { q: number; delta: number; min_distance: number | null; pair: string[] | null; point: number[] | null; overlap?: unknown[] }
+export interface SweepCollision { q: number; delta: number; clear_until_q: number; kind: 'contact' | 'overlap'; moving: string; other: string; point?: number[]; volume?: number; at_cad_pose?: number }
+export interface SweepEnd {
+    q: number;
+    reached_limit: boolean;
+    nearest: { moving: string; other: string; distance: number; point: number[] | null }[];
+    riding_overlap: { moving: string; other: string; volume: number; at_cad_pose: number; grows: boolean }[];
+}
+export interface SweepResult {
+    joint: JointSpec;
+    groups: SweepGroup[];
+    drivers: { id: string; group: string; via: string[] }[];
+    step: number;
+    samples: SweepSample[];
+    collisions: { upper: SweepCollision | null; lower: SweepCollision | null };
+    ends: { upper: SweepEnd; lower: SweepEnd };
+    at_cad_pose: { collides: boolean; kind?: string; moving?: string; other?: string };
+    riding: { moving: string; other: string }[];
+    tracked: { moving: string; other: string; overlap_at_cad_pose: number }[];
+    skipped: { moving: string; other: string }[];
+    min_clearance: { distance: number; q: number; pair: string[] } | null;
+    seconds: number;
+    method: string;
+}
+export interface Sweep {
+    id: string;
+    joint_key: string;
+    spec_hash: string;
+    state: 'queued' | 'running' | 'done' | 'failed';
+    progress: number;
+    note: string;
+    error: string | null;
+    created_at: string | null;
+    result: SweepResult | null;
+}
+export interface JointRow {
+    candidate: JointSpec;
+    confirmed: JointSpec | null;
+    confirmed_by: string | null;
+    spec_hash: string | null;
+    sweep: Sweep | null;
+    stale: boolean;
+}
+export interface MotionPayload { joints: JointRow[]; inferred: JointRow[]; sim_reason: string | null }
+
+export const getMotion = (rid: string) => requestJson<MotionPayload>(api(`/revisions/${rid}/motion`), 'Loading joints');
+export const confirmJoint = (rid: string, spec: JointSpec) =>
+    requestJson<MotionPayload>(api(`/revisions/${rid}/motion/joints`), 'Confirming the joint', { method: 'PUT', body: JSON.stringify(spec) });
+export const unconfirmJoint = (rid: string, key: string) =>
+    requestJson<MotionPayload>(api(`/revisions/${rid}/motion/joints`), 'Unconfirming the joint', { method: 'DELETE', body: JSON.stringify({ key }) });
+export const startSweep = (rid: string, key: string) =>
+    requestJson<Sweep>(api(`/revisions/${rid}/motion/sweeps`), 'Starting the sweep', { method: 'POST', body: JSON.stringify({ key }) });
+export const getSweep = (sid: string) => requestJson<Sweep>(api(`/sweeps/${sid}`), 'Loading the sweep');

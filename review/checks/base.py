@@ -157,6 +157,7 @@ REASONS = {
     "features": "no holes or cylinders were found",
     "instances": "no geometry",
     "sim": "no URDF or MJCF in this revision",
+    "motion": "no joint swept yet: confirm a joint in the Motion lens and run its sweep",
 }
 
 

@@ -140,7 +140,8 @@ def attach_sim(graph, sims: list[dict], files: list[dict], storage, store: Store
             aux.append((x["name"], p.read_bytes()))
     reg, man = read_aux(aux)
     doc = {"kind": "sim", "file": f["name"], "format": model["format"], "model": model.get("model"), "root": model["root"],
-           "copies": model.get("copies", 1), "robot": {"bodies": model["bodies"], "joints": model["joints"]},
+           "copies": model.get("copies", 1),
+           "robot": {"bodies": model["bodies"], "joints": model["joints"], "couplings": model.get("couplings", [])},
            "registration": reg, "manifest": {"file": man["file"], "source_sha256": man.get("source_sha256"),
                                               "meshes": man["meshes"]} if man else None}
     graph.documents = [d for d in graph.documents if d.get("kind") != "sim"] + [doc]
@@ -167,6 +168,90 @@ def refresh_sim(graph, human: dict | None = None) -> str:
     mapped = sum(len(b["instances"]) for b in result["bodies"])
     return (f"{len(result['bodies'])} bodies · {len(result['joints'])} joints · {mapped}/{len(graph.instances)} CAD instances mapped"
             + ("" if reg else " · no registration: frame-free checks only"))
+
+
+def spec_hash(spec: dict) -> str:
+    import hashlib
+    return hashlib.sha1(json.dumps(spec, sort_keys=True, default=float).encode()).hexdigest()[:16]
+
+
+def apply_motion(graph, store: Store, rid: str) -> int:
+    """Put the latest finished sweep of every confirmed joint (with the spec it was run on) into the graph."""
+    specs = store.joint_specs_for(rid)
+    latest: dict[str, dict] = {}
+    for s in store.sweeps_for(rid):                       # newest first
+        if s["state"] == "done" and s["joint_key"] not in latest and s["joint_key"] in specs                 and specs[s["joint_key"]]["spec_hash"] == s["spec_hash"] and s["result"]:
+            latest[s["joint_key"]] = s["result"] | {"sweep_id": s["id"]}
+    graph.documents = [d for d in graph.documents if d.get("kind") != "motion"]
+    if latest:
+        graph.documents.append({"kind": "motion", "sweeps": list(latest.values())})
+    return len(latest)
+
+
+def recheck(store: Store, rid: str, graph, glb_key: str | None) -> None:
+    from .checks import run_checks
+
+    store.save_graph(rid, graph.schema_version, json.loads(graph.model_dump_json()), glb_key)
+    results, runs = run_checks(graph)
+    store.save_check_results(rid, None, results, runs)
+
+
+def submit_sweep(sweep_id: str, db_url: str) -> None:
+    global _POOL
+    if os.environ.get("REVIEW_INLINE") == "1":
+        run_sweep(sweep_id, db_url, storage_spec())
+        return
+    if _POOL is None:
+        _POOL = ProcessPoolExecutor(max_workers=int(os.environ.get("REVIEW_WORKERS", "2")))
+    _POOL.submit(run_sweep, sweep_id, db_url, storage_spec())
+
+
+def run_sweep(sweep_id: str, db_url: str, spec: dict) -> None:
+    """Worker: sweep one confirmed joint on the revision's STEP, store the result, re-run the checks."""
+    store = Store(db_url)
+    sw = store.sweep(sweep_id)
+    if sw is None or not store.update_sweep(sweep_id, only_if=("queued",), state="running", started_at=now()):
+        return
+    rid = sw["revision_id"]
+    work = Path(tempfile.mkdtemp(prefix="review_sweep_"))
+    try:
+        from .motion import Scene, sim_joints, sweep
+        from .schema import ModelGraph
+
+        specs = store.joint_specs_for(rid)
+        if sw["joint_key"] not in specs or specs[sw["joint_key"]]["spec_hash"] != sw["spec_hash"]:
+            raise RuntimeError("the joint was changed or unconfirmed after this sweep was queued")
+        row = store.graph(rid)
+        graph = ModelGraph.model_validate(row["graph"])
+        files = store.files_for(rid)
+        step_file = next((f for f in files if f["name"] == graph.source.name and f["sha256"] == graph.source.sha256), None)
+        if step_file is None:
+            raise RuntimeError("the STEP this model graph was read from is no longer in the revision")
+        local = work / Path(step_file["name"]).name
+        open_storage(spec).get_file(step_file["storage_key"], local)
+        store.update_sweep(sweep_id, note="reading the STEP")
+        scene = Scene.from_step(local, graph)
+        others = {j["name"]: j for j in sim_joints(graph)}
+        for k, s in specs.items():
+            others[s["spec"]["name"]] = s["spec"]
+        last = [0.0]
+
+        def progress(frac: float, note: str) -> None:
+            if time.time() - last[0] > 1.0:
+                last[0] = time.time()
+                store.update_sweep(sweep_id, progress=round(frac, 3), note=note)
+        result = sweep(scene, graph, specs[sw["joint_key"]]["spec"], others, progress=progress)
+        result["spec_hash"] = sw["spec_hash"]
+        store.update_sweep(sweep_id, only_if=("running",), state="done", progress=1.0, note=f"{result['seconds']} s",
+                           result=json.loads(json.dumps(result, default=float)), ended_at=now())
+        graph = ModelGraph.model_validate(store.graph(rid)["graph"])          # fresh: an edit may have landed meanwhile
+        apply_motion(graph, store, rid)
+        recheck(store, rid, graph, row["glb_key"])
+    except Exception as e:  # noqa: BLE001 - reported on the sweep, never lost
+        store.update_sweep(sweep_id, only_if=("running",), state="failed", ended_at=now(),
+                           error=f"{type(e).__name__}: {e}\n" + traceback.format_exc()[-2000:])
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def run_job(job_id: str, db_url: str, spec: dict) -> None:
@@ -230,6 +315,7 @@ def run_job(job_id: str, db_url: str, spec: dict) -> None:
             st["note"] = note
         steps._save()
 
+        apply_motion(graph, store, rid)
         steps.start("graph", "saving")
         glb_key = f"review/{rid}/viewer.glb"
         storage.put_file(glb_key, glb)

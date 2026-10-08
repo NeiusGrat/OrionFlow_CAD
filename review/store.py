@@ -160,6 +160,31 @@ sim_links = sa.Table(
     sa.Column("set_by", sa.String(64), nullable=False),
     sa.Column("created_at", TS, default=now))
 
+joint_specs = sa.Table(
+    "rv_joint_specs", meta,
+    sa.Column("revision_id", sa.String(32), sa.ForeignKey("rv_revisions.id", ondelete="CASCADE"), primary_key=True),
+    sa.Column("joint_key", sa.String(200), primary_key=True),
+    sa.Column("spec", JSON, nullable=False),          # axis, point, limits, CAD pose, moving set, ignore: confirmed
+    sa.Column("spec_hash", sa.String(16), nullable=False),
+    sa.Column("set_by", sa.String(64), nullable=False),
+    sa.Column("created_at", TS, default=now))
+
+sweeps = sa.Table(
+    "rv_sweeps", meta,
+    sa.Column("id", sa.String(32), primary_key=True),
+    sa.Column("revision_id", sa.String(32), sa.ForeignKey("rv_revisions.id", ondelete="CASCADE"), index=True),
+    sa.Column("joint_key", sa.String(200), nullable=False),
+    sa.Column("spec_hash", sa.String(16), nullable=False),
+    sa.Column("owner_id", sa.String(64), nullable=False),
+    sa.Column("state", sa.String(16), nullable=False),  # queued|running|done|failed
+    sa.Column("progress", sa.Float, default=0.0),
+    sa.Column("note", sa.Text, default=""),
+    sa.Column("result", JSON),
+    sa.Column("error", sa.Text),
+    sa.Column("created_at", TS, default=now),
+    sa.Column("started_at", TS),
+    sa.Column("ended_at", TS))
+
 llm_calls = sa.Table(
     "rv_llm_calls", meta,
     sa.Column("id", sa.String(32), primary_key=True),
@@ -460,3 +485,34 @@ class Store:
 
     def clear_sim_link(self, revision_id: str, body: str) -> None:
         self._exec(sim_links.delete().where(sim_links.c.revision_id == revision_id, sim_links.c.body == body))
+
+    # ---- motion: confirmed joints and their sweeps -----------------------------------
+    def joint_specs_for(self, revision_id: str) -> dict[str, dict]:
+        return {r["joint_key"]: r for r in self._all(joint_specs.select().where(joint_specs.c.revision_id == revision_id))}
+
+    def set_joint_spec(self, revision_id: str, key: str, spec: dict, spec_hash: str, user: str) -> None:
+        with self.engine.begin() as c:
+            c.execute(joint_specs.delete().where(joint_specs.c.revision_id == revision_id, joint_specs.c.joint_key == key))
+            c.execute(joint_specs.insert().values(revision_id=revision_id, joint_key=key, spec=spec, spec_hash=spec_hash,
+                                                  set_by=user, created_at=now()))
+
+    def clear_joint_spec(self, revision_id: str, key: str) -> None:
+        self._exec(joint_specs.delete().where(joint_specs.c.revision_id == revision_id, joint_specs.c.joint_key == key))
+
+    def create_sweep(self, revision_id: str, key: str, spec_hash: str, owner: str) -> dict:
+        sid = new_id()
+        self._exec(sweeps.insert().values(id=sid, revision_id=revision_id, joint_key=key, spec_hash=spec_hash,
+                                          owner_id=owner, state="queued", progress=0.0, note="", created_at=now()))
+        return self.sweep(sid)
+
+    def sweep(self, sid: str) -> Optional[dict]:
+        return self._one(sweeps.select().where(sweeps.c.id == sid))
+
+    def sweeps_for(self, revision_id: str) -> list[dict]:
+        return self._all(sweeps.select().where(sweeps.c.revision_id == revision_id).order_by(sweeps.c.created_at.desc()))
+
+    def update_sweep(self, sid: str, *, only_if: tuple[str, ...] | None = None, **values) -> bool:
+        q = sweeps.update().where(sweeps.c.id == sid)
+        if only_if:
+            q = q.where(sweeps.c.state.in_(only_if))
+        return self._exec(q.values(**values)).rowcount == 1

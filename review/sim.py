@@ -130,7 +130,15 @@ def parse_mjcf(text: str) -> dict:
     wb = root.find("worldbody")
     if wb is not None:
         walk(wb, None, np.eye(4))
-    return {"format": "mjcf", "model": root.get("model", ""), "bodies": bodies, "joints": joints}
+    # <equality><joint joint1 joint2 polycoef>: q1 = c0 + c1 q2 + c2 q2^2 + ... (a gear train, a linkage)
+    couplings = []
+    for eq in root.iter("equality"):
+        for e in eq.findall("joint"):
+            if e.get("joint1") and e.get("joint2") and e.get("active", "true") != "false":
+                coef = _f(e.get("polycoef")) if e.get("polycoef") else [0, 1, 0, 0, 0]
+                couplings.append({"joint": e.get("joint1"), "of": e.get("joint2"), "coef": coef,
+                                  "source": f"<equality><joint name=\"{e.get('name') or ''}\">"})
+    return {"format": "mjcf", "model": root.get("model", ""), "bodies": bodies, "joints": joints, "couplings": couplings}
 
 
 def parse_urdf(text: str) -> dict:
@@ -161,8 +169,13 @@ def parse_urdf(text: str) -> dict:
             inertial = {"mass": float(m.get("value", 0)) if m is not None else 0.0, "com": To[:3, 3].tolist(), "inertia": I.tolist()}
         meshes = [Path(mm.get("filename", "")).name for mm in l.iter("mesh")]
         links[l.get("name")] = {"inertial": inertial, "meshes": meshes}
-    parent_of, joints, T_child = {}, [], {}
+    parent_of, joints, T_child, couplings = {}, [], {}, []
     for j in root.findall("joint"):
+        mm = j.find("mimic")
+        if mm is not None and mm.get("joint"):
+            couplings.append({"joint": j.get("name"), "of": mm.get("joint"),
+                              "coef": [float(mm.get("offset", 0)), float(mm.get("multiplier", 1))],
+                              "source": f"<mimic> on joint {j.get('name')}"})
         p, c = j.find("parent").get("link"), j.find("child").get("link")
         parent_of[c] = p
         T_child[c] = origin(j)
@@ -188,7 +201,7 @@ def parse_urdf(text: str) -> dict:
         bodies.append({"name": name, "parent": parent_of.get(name), "T_world": world(name).tolist(),
                        "T_parent": T_child.get(name, np.eye(4)).tolist(), "inertial": l["inertial"],
                        "meshes": l["meshes"], "free": False, "mocap": False})
-    return {"format": "urdf", "model": root.get("name", ""), "bodies": bodies, "joints": joints}
+    return {"format": "urdf", "model": root.get("name", ""), "bodies": bodies, "joints": joints, "couplings": couplings}
 
 
 def parse_sim(name: str, data: bytes) -> dict:
@@ -223,8 +236,10 @@ def pick_robot(model: dict) -> dict:
     r, sub = best
     same = sum(1 for r2 in roots if len([x for x in subtree(r2) if x in jointed]) == len([x for x in sub if x in jointed]))
     keep = set(sub)
-    return {**model, "root": r, "copies": same, "bodies": [b for b in bodies if b["name"] in keep],
-            "joints": [j for j in model["joints"] if j["body"] in keep]}
+    joints = [j for j in model["joints"] if j["body"] in keep]
+    names = {j["name"] for j in joints}
+    return {**model, "root": r, "copies": same, "bodies": [b for b in bodies if b["name"] in keep], "joints": joints,
+            "couplings": [c for c in model.get("couplings", []) if c["joint"] in names and c["of"] in names]}
 
 
 # ------------------------------------------------------------------ provenance --

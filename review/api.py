@@ -32,6 +32,11 @@ Mounted by the main app at ``/review`` (routes below are relative to it), with
     GET    /api/projects/{pid}/overrides         part material / density / mass the engineer stated
     PUT    /api/projects/{pid}/overrides         {part_name, material|density|mass_kg, source}
     DELETE /api/projects/{pid}/overrides         {part_name}
+    GET    /api/revisions/{rid}/motion           joints (sim + inferred), confirmations, latest sweeps
+    PUT    /api/revisions/{rid}/motion/joints    confirm a joint {key, ...spec} (re-checks)
+    DELETE /api/revisions/{rid}/motion/joints    {key}: unconfirm
+    POST   /api/revisions/{rid}/motion/sweeps    {key} -> sweep (runs on the worker pool)
+    GET    /api/sweeps/{sid}                     progress, then the clearance curve
     POST   /api/demo/yubi                        the YUBI gripper, fetched at pinned tags
 """
 from __future__ import annotations
@@ -594,6 +599,8 @@ def _refresh(rid: str) -> None:
     apply_overrides(graph, s.overrides_for(r["project_id"]))
     if graph.sim:
         refresh_sim(graph, s.sim_links_for(rid))
+    from .jobs import apply_motion
+    apply_motion(graph, s, rid)
     s.save_graph(rid, graph.schema_version, _json.loads(graph.model_dump_json()), row["glb_key"])
     results, runs = run_checks(graph)
     s.save_check_results(rid, None, results, runs)
@@ -686,3 +693,123 @@ def delete_override(pid: str, body: OverrideDel, uid: str = Depends(owner)) -> l
         if store().graph(r["id"]) is not None:
             _refresh(r["id"])
     return list_overrides(pid, uid)
+
+
+# -------------------------------------------------------------------- motion --
+
+def _sweep_out(sw: dict | None, with_result: bool = True) -> dict | None:
+    if sw is None:
+        return None
+    out = {k: sw[k] for k in ("id", "joint_key", "spec_hash", "state", "progress", "note", "error")}
+    out["created_at"] = sw["created_at"].isoformat() if sw.get("created_at") else None
+    if with_result:
+        out["result"] = sw.get("result")
+    return out
+
+
+@app.get("/api/revisions/{rid}/motion")
+def get_motion(rid: str, uid: str = Depends(owner)) -> dict:
+    from .motion import inferred_joints, sim_joints
+
+    _revision_of(rid, uid)
+    graph, _ = _graph_model(rid)
+    sim = sim_joints(graph)
+    inferred = inferred_joints(graph, [(j["axis"], j["point"]) for j in sim])
+    specs = store().joint_specs_for(rid)
+    sweeps = store().sweeps_for(rid)
+    known = {j["key"] for j in sim + inferred}
+    custom = [s["spec"] for k, s in specs.items() if k not in known]
+
+    def row(j: dict) -> dict:
+        sp = specs.get(j["key"])
+        latest = next((w for w in sweeps if w["joint_key"] == j["key"]), None)
+        return {"candidate": j, "confirmed": sp["spec"] if sp else None, "confirmed_by": sp["set_by"] if sp else None,
+                "spec_hash": sp["spec_hash"] if sp else None,
+                "sweep": _sweep_out(latest), "stale": bool(latest and sp and latest["spec_hash"] != sp["spec_hash"])}
+    reason = None
+    if not sim:
+        reason = ("no sim model in this revision" if graph.sim is None else
+                  "the sim model has no registration file, so its joints cannot be placed in the CAD frame")
+    return {"joints": [row(j) for j in sim + custom], "inferred": [row(j) for j in inferred], "sim_reason": reason}
+
+
+class JointIn(BaseModel):
+    key: str = Field(min_length=1, max_length=200)
+    name: str = Field(min_length=1, max_length=200)
+    source: str = Field(pattern="^(sim|inferred|manual)$")
+    kind: str = Field(pattern="^(hinge|slide)$")
+    axis: list[float] = Field(min_length=3, max_length=3)
+    point: list[float] = Field(min_length=3, max_length=3)
+    lower: float
+    upper: float
+    cad_q: float = 0.0
+    cad_q_source: str = Field(default="", max_length=500)
+    limits_source: str = Field(min_length=3, max_length=500)     # a limit with no stated source is not accepted
+    moving: list[str] = Field(min_length=1)
+    ignore: list[str] = []
+    step: Optional[float] = Field(default=None, gt=0)
+    followers: list[dict] = []
+    unit: str = "rad"
+
+
+@app.put("/api/revisions/{rid}/motion/joints")
+def put_joint(rid: str, body: JointIn, uid: str = Depends(owner)) -> dict:
+    import math
+
+    from .jobs import spec_hash
+
+    _revision_of(rid, uid)
+    graph, _ = _graph_model(rid)
+    known = {i.id for i in graph.instances}
+    if any(i not in known for i in body.moving + body.ignore):
+        raise HTTPException(422, "unknown CAD instance")
+    if body.upper - body.lower <= 0:
+        raise HTTPException(422, "the upper limit must be above the lower limit")
+    if not body.lower <= body.cad_q <= body.upper:
+        raise HTTPException(422, "the CAD pose must lie within the limits")
+    n = math.sqrt(sum(x * x for x in body.axis))
+    if n < 1e-9:
+        raise HTTPException(422, "the axis has no direction")
+    spec = body.model_dump()
+    spec["axis"] = [x / n for x in body.axis]
+    spec["unit"] = "rad" if body.kind == "hinge" else "mm"
+    if body.step is None:
+        spec["step"] = math.radians(2.0) if body.kind == "hinge" else 0.5
+    store().set_joint_spec(rid, body.key, spec, spec_hash(spec), uid)
+    _refresh(rid)
+    return get_motion(rid, uid)
+
+
+class JointKey(BaseModel):
+    key: str
+
+
+@app.delete("/api/revisions/{rid}/motion/joints")
+def delete_joint(rid: str, body: JointKey, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    store().clear_joint_spec(rid, body.key)
+    _refresh(rid)
+    return get_motion(rid, uid)
+
+
+@app.post("/api/revisions/{rid}/motion/sweeps")
+def start_sweep(rid: str, body: JointKey, uid: str = Depends(owner)) -> dict:
+    _revision_of(rid, uid)
+    sp = store().joint_specs_for(rid).get(body.key)
+    if sp is None:
+        raise HTTPException(409, "confirm the joint before sweeping it")
+    busy = next((w for w in store().sweeps_for(rid) if w["joint_key"] == body.key and w["state"] in ("queued", "running")), None)
+    if busy:
+        return _sweep_out(busy)
+    sw = store().create_sweep(rid, body.key, sp["spec_hash"], uid)
+    jobrunner.submit_sweep(sw["id"], database_url())
+    return _sweep_out(store().sweep(sw["id"]))
+
+
+@app.get("/api/sweeps/{sid}")
+def get_sweep(sid: str, uid: str = Depends(owner)) -> dict:
+    sw = store().sweep(sid)
+    if sw is None:
+        raise HTTPException(404, "no such sweep")
+    _revision_of(sw["revision_id"], uid)
+    return _sweep_out(sw)

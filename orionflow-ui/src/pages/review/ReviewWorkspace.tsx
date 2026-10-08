@@ -5,9 +5,9 @@
  * not shown. Every lens reads the same Model Graph and the same selection
  * store, so switching lenses keeps what is selected.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Box, ClipboardList, Cpu, GitCompare, LayoutDashboard, ListChecks, Search } from 'lucide-react';
+import { Box, ClipboardList, Cpu, GitCompare, Move3d, LayoutDashboard, ListChecks, Search } from 'lucide-react';
 import { Brand, ReviewRoot, StepList } from '../../components/Review/Shell';
 import Viewer from '../../components/Review/Viewer';
 import ProductTree from '../../components/Review/ProductTree';
@@ -18,10 +18,11 @@ import FindingsLens, { RunStatus } from '../../components/Review/FindingsLens';
 import BomLens from '../../components/Review/BomLens';
 import CompareLens from '../../components/Review/CompareLens';
 import SimLens from '../../components/Review/SimLens';
+import MotionLens from '../../components/Review/MotionLens';
 import FindingPanel, { SevMark } from '../../components/Review/FindingPanel';
 import {
-    downloadReportJson, fetchViewerGlb, fmtBytes, getBom, getGraph, getProject, getRevision, getSim, listFindings, listOverrides, runReview, SEVERITIES,
-    type BomPayload, type PartOverride, type SimPayload, type Finding, type FindingsPayload, type ModelGraph, type Project, type Revision,
+    downloadReportJson, fetchViewerGlb, fmtBytes, getBom, getGraph, getMotion, getProject, getRevision, getSim, listFindings, listOverrides, runReview, SEVERITIES,
+    type BomPayload, type MotionPayload, type PartOverride, type SimPayload, type Finding, type FindingsPayload, type ModelGraph, type Project, type Revision,
 } from '../../services/reviewApi';
 import { useReview } from '../../store/reviewStore';
 
@@ -31,6 +32,7 @@ const LENSES = [
     { key: 'bom', label: 'BOM', icon: ClipboardList },
     { key: 'compare', label: 'Compare', icon: GitCompare },
     { key: 'sim', label: 'Sim', icon: Cpu },
+    { key: 'motion', label: 'Motion', icon: Move3d },
     { key: 'findings', label: 'Findings', icon: ListChecks },
 ] as const;
 type LensKey = (typeof LENSES)[number]['key'];
@@ -202,6 +204,7 @@ export default function ReviewWorkspace() {
     const [exporting, setExporting] = useState(false);
     const [bom, setBom] = useState<BomPayload | null>(null);
     const [sim, setSim] = useState<SimPayload | null>(null);
+    const [motion, setMotion] = useState<MotionPayload | null>(null);
     const [overrides, setOverrides] = useState<PartOverride[]>([]);
     const selection = useReview((s) => s.selection);
     const select = useReview((s) => s.select);
@@ -216,6 +219,7 @@ export default function ReviewWorkspace() {
         setFindings(null);
         setBom(null);
         setSim(null);
+        setMotion(null);
         setError('');
         getGraph(rid)
             .then(async (g) => {
@@ -227,6 +231,7 @@ export default function ReviewWorkspace() {
                 listFindings(rid).then((f) => alive && setFindings(f)).catch(() => alive && setFindings(null));
                 getBom(rid).then((b) => alive && setBom(b)).catch(() => alive && setBom(null));
                 getSim(rid).then((x) => alive && setSim(x)).catch(() => alive && setSim({ sim: null }));
+                getMotion(rid).then((x) => alive && setMotion(x)).catch(() => alive && setMotion({ joints: [], inferred: [], sim_reason: 'could not load joints' }));
                 listOverrides(r.project_id).then((o) => alive && setOverrides(o)).catch(() => {});
             })
             .catch((e) => alive && setError(String(e.message)));
@@ -272,6 +277,11 @@ export default function ReviewWorkspace() {
         getGraph(rid).then(setGraph).catch(() => {});
         getBom(rid).then(setBom).catch(() => {});
     };
+    // a joint confirmed or swept re-ran the checks: refresh joints and findings
+    const onMotionChanged = useCallback((m?: MotionPayload) => {
+        if (m) setMotion(m); else getMotion(rid).then(setMotion).catch(() => {});
+        listFindings(rid).then(setFindings).catch(() => {});
+    }, [rid]);
     const exportJson = async () => {
         if (!rev || !project) return;
         setExporting(true);
@@ -341,6 +351,9 @@ export default function ReviewWorkspace() {
                     {graph && active === 'sim' && (sim && project
                         ? <SimLens rid={rid} pid={project.id} graph={graph} data={sim} overrides={overrides} onChanged={onSimChanged} />
                         : <div className="rv-loading">Loading the sim comparison…</div>)}
+                    {graph && active === 'motion' && (motion
+                        ? <MotionLens rid={rid} graph={graph} glb={glb} data={motion} onChanged={onMotionChanged} />
+                        : <div className="rv-loading">Loading joints…</div>)}
                     {graph && active === 'findings' && (findings
                         ? <FindingsLens data={findings} onExport={exportJson} exporting={exporting} />
                         : <div className="rv-loading">Loading findings…</div>)}

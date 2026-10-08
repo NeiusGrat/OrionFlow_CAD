@@ -128,6 +128,12 @@ class ModelGraph(BaseModel):
         """The sim-model document (URDF/MJCF read and compared), if the revision has one."""
         return next((d for d in self.documents if d.get("kind") == "sim"), None)
 
+    @property
+    def motion(self) -> Optional[dict]:
+        """Sweeps of confirmed joints (review/motion.py), if any joint has been swept with its current spec."""
+        d = next((d for d in self.documents if d.get("kind") == "motion"), None)
+        return d if d and d.get("sweeps") else None
+
     def part(self, pid: str) -> Part:
         return next(p for p in self.parts if p.id == pid)
 

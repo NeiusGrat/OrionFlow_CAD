@@ -34,6 +34,8 @@ interface Props {
     contacts: GraphContact[];
     findings?: Finding[];
     dark?: boolean;
+    /** instance id -> extra 4x4 in the assembly frame (mm), applied on top of its placement: a joint pose */
+    pose?: Map<string, number[][]>;
 }
 
 /** part-frame point (mm) -> assembly frame (m), through the instance's 4x4 */
@@ -82,6 +84,8 @@ interface Item {
     edges: THREE.LineSegments;
     home: THREE.Vector3;          // local position before explode
     dir: THREE.Vector3;           // explode direction (local)
+    local0: THREE.Matrix4;        // local matrix as loaded
+    pRel: THREE.Matrix4;          // parent's matrix relative to the GLB root (the assembly frame, metres)
 }
 
 function Lights() {
@@ -108,7 +112,7 @@ function Lights() {
     );
 }
 
-function Model({ glb, instances, parts, features, contacts, findings = [], explode, section, view, viewTick }: Props & {
+function Model({ glb, instances, parts, features, contacts, findings = [], explode, section, view, viewTick, pose }: Props & {
     explode: number;
     section: number | null;
     view: ViewName;
@@ -160,10 +164,15 @@ function Model({ glb, instances, parts, features, contacts, findings = [], explo
                 const edges = new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: C.edge.clone(), transparent: true, opacity: 0.55 }));
                 edges.raycast = () => {};
                 m.add(edges);
-                list.push({ id, mesh: m, edges, home: m.position.clone(), dir: new THREE.Vector3() });
+                list.push({ id, mesh: m, edges, home: m.position.clone(), dir: new THREE.Vector3(), local0: m.matrix.clone(), pRel: new THREE.Matrix4() });
             });
             // explode direction: from the assembly centre to each instance's centre, in the parent's frame
             gltf.scene.updateMatrixWorld(true);
+            const rootInv = new THREE.Matrix4().copy(gltf.scene.matrixWorld).invert();
+            for (const it of list) {
+                it.local0.copy(it.mesh.matrix);
+                if (it.mesh.parent) it.pRel.multiplyMatrices(rootInv, it.mesh.parent.matrixWorld);
+            }
             const box = new THREE.Box3().setFromObject(gltf.scene);
             const centre = box.getCenter(new THREE.Vector3());
             for (const it of list) {
@@ -289,8 +298,25 @@ function Model({ glb, instances, parts, features, contacts, findings = [], explo
 
     // ---- explode ----------------------------------------------------------------
     useEffect(() => {
-        for (const it of items) it.mesh.position.copy(it.home).addScaledVector(it.dir, explode * 0.9);
-    }, [items, explode]);
+        const W = new THREE.Matrix4();
+        const inv = new THREE.Matrix4();
+        const M = new THREE.Matrix4();
+        for (const it of items) {
+            const P = pose?.get(it.id);
+            if (!P) {
+                it.mesh.matrix.copy(it.local0);
+                it.mesh.matrix.decompose(it.mesh.position, it.mesh.quaternion, it.mesh.scale);
+                it.mesh.position.copy(it.home).addScaledVector(it.dir, explode * 0.9);
+                continue;
+            }
+            // local' = pRel^-1 * W * pRel * local0, W in metres
+            W.set(P[0][0], P[0][1], P[0][2], P[0][3] / 1000, P[1][0], P[1][1], P[1][2], P[1][3] / 1000,
+                P[2][0], P[2][1], P[2][2], P[2][3] / 1000, 0, 0, 0, 1);
+            inv.copy(it.pRel).invert();
+            M.multiplyMatrices(inv, W).multiply(it.pRel).multiply(it.local0);
+            M.decompose(it.mesh.position, it.mesh.quaternion, it.mesh.scale);
+        }
+    }, [items, explode, pose]);
 
     // ---- section plane (horizontal, height as a fraction of the model) -----------
     useEffect(() => {
