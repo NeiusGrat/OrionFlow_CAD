@@ -151,3 +151,23 @@ def test_confirmation_is_validated(client, tmp_path):
     assert client.put(f"/api/revisions/{rid}/motion/joints", headers=H, json=spec | {"cad_q": 5.0}).status_code == 422
     assert client.put(f"/api/revisions/{rid}/motion/joints", headers=H, json=spec | {"moving": ["i9999"]}).status_code == 422
     assert client.post(f"/api/revisions/{rid}/motion/sweeps", headers=H, json={"key": spec["key"]}).status_code == 409
+
+
+def test_showcase_copy_opens_with_every_result(client, tmp_path):
+    rid, _ = _revision(client, tmp_path)
+    _confirm_and_sweep(client, rid)
+    import review.api as api
+    s = api.store()
+    src = s.revision(rid)["project_id"]
+    p = s.clone_project(src, "someone-else")
+    (r2,) = s.revisions_for(p["id"])
+    assert s.graph(r2["id"])["graph"]["revision_id"] == r2["id"]
+    assert len(s.findings_for(r2["id"])) == len(s.findings_for(rid)) > 0
+    assert [w["state"] for w in s.sweeps_for(r2["id"])] == ["done"] and s.joint_specs_for(r2["id"])
+    assert s.sim_links_for(r2["id"]) == s.sim_links_for(rid)
+    assert {f["storage_key"] for f in s.files_for(r2["id"])} == {f["storage_key"] for f in s.files_for(rid)}
+    # the copy is the caller's own: the motion doc still reads its sweep
+    from review.jobs import apply_motion
+    from review.schema import ModelGraph
+    g = ModelGraph.model_validate(s.graph(r2["id"])["graph"])
+    assert apply_motion(g, s, r2["id"]) == 1

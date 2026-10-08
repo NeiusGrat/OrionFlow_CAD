@@ -126,6 +126,8 @@ image = (
             "REVIEW_STORAGE": "local",
             "REVIEW_STORAGE_ROOT": "/data/review/store",
             "REVIEW_WORKERS": "1",
+            # the prepared YUBI review every account gets a copy of (POST /review/api/demo/yubi/open)
+            "REVIEW_SHOWCASE_OWNER": "orionflow-showcase",
         }
     )
 )

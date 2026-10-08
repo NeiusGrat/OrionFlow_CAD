@@ -516,3 +516,46 @@ class Store:
         if only_if:
             q = q.where(sweeps.c.state.in_(only_if))
         return self._exec(q.values(**values)).rowcount == 1
+
+    # ---- showcase copy -----------------------------------------------------------
+    def clone_project(self, src_pid: str, owner: str) -> dict:
+        """A full copy of a finished project for another owner: revisions, files (same stored objects), model
+        graphs, jobs, check runs, findings (fresh audit trail), BOM and sim pairings, overrides, joints, sweeps.
+        Nothing is recomputed, so the copy opens with every result already there."""
+        src = self.project(src_pid)
+        if src is None:
+            raise KeyError(src_pid)
+        with self.engine.begin() as c:
+            pid = new_id()
+            c.execute(projects.insert().values(id=pid, owner_id=owner, name=src["name"], description=src["description"],
+                                               created_at=now()))
+            for o in c.execute(part_overrides.select().where(part_overrides.c.project_id == src_pid)).mappings().all():
+                c.execute(part_overrides.insert().values({**o, "project_id": pid, "set_by": owner}))
+            revs = c.execute(revisions.select().where(revisions.c.project_id == src_pid)
+                             .order_by(revisions.c.created_at)).mappings().all()
+            for r in revs:
+                rid = new_id()
+                fs = c.execute(files.select().where(files.c.revision_id == r["id"])).mappings().all()
+                fmap = {f["id"]: new_id() for f in fs}
+                c.execute(revisions.insert().values({**r, "id": rid, "project_id": pid,
+                                                     "primary_file_id": fmap.get(r["primary_file_id"])}))
+                for f in fs:
+                    c.execute(files.insert().values({**f, "id": fmap[f["id"]], "revision_id": rid}))
+                g = c.execute(model_graphs.select().where(model_graphs.c.revision_id == r["id"])).mappings().first()
+                if g is not None:
+                    graph = dict(g["graph"])
+                    graph["revision_id"] = rid
+                    c.execute(model_graphs.insert().values({**g, "revision_id": rid, "graph": graph}))
+                for t in (jobs, check_runs, sweeps):
+                    for row in c.execute(t.select().where(t.c.revision_id == r["id"])).mappings().all():
+                        extra = {"owner_id": owner} if "owner_id" in t.c else {}
+                        c.execute(t.insert().values({**row, "id": new_id(), "revision_id": rid, **extra}))
+                for row in c.execute(findings.select().where(findings.c.revision_id == r["id"])).mappings().all():
+                    fid = new_id()
+                    c.execute(findings.insert().values({**row, "id": fid, "revision_id": rid, "owner_id": None}))
+                    c.execute(finding_events.insert().values(id=new_id(), finding_id=fid, user_id="system", action="detected",
+                                                             note="copied from the prepared demo review", created_at=now()))
+                for t, by in ((bom_links, "set_by"), (sim_links, "set_by"), (joint_specs, "set_by")):
+                    for row in c.execute(t.select().where(t.c.revision_id == r["id"])).mappings().all():
+                        c.execute(t.insert().values({**row, "revision_id": rid, by: owner}))
+        return self.project(pid)

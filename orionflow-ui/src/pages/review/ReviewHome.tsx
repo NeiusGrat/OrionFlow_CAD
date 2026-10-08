@@ -12,7 +12,15 @@ export default function ReviewHome() {
     const [busy, setBusy] = useState<'' | 'new' | 'demo'>('');
 
     useEffect(() => {
-        listProjects().then(setProjects).catch((e) => setError(String(e.message ?? e)));
+        // every account starts with the YUBI gripper demo already reviewed, so there is something to open
+        listProjects()
+            .then(async (ps) => {
+                if (ps.some((p) => p.name === 'YUBI Gripper')) return setProjects(ps);
+                setProjects(ps);
+                await createYubiDemo().catch(() => null);
+                setProjects(await listProjects());
+            })
+            .catch((e) => setError(String(e.message ?? e)));
     }, []);
 
     const create = async (e: React.FormEvent) => {
@@ -71,7 +79,7 @@ export default function ReviewHome() {
                         </button>
                         <button type="button" className="btn btn--lg" onClick={demo} disabled={!!busy}
                             title="Fetches the YUBI gripper from github.com/Toyota/yubi-hw at tags v1.2.0 and v2.0.0">
-                            {busy === 'demo' ? 'Fetching from GitHub…' : 'Load YUBI gripper demo'}
+                            {busy === 'demo' ? 'Opening…' : 'Open YUBI gripper demo'}
                         </button>
                     </form>
                     {error && <p className="rv-err">{error}</p>}

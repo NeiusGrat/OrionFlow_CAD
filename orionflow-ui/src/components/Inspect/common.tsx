@@ -27,6 +27,7 @@ export function AppBar({ crumbs, right }: { crumbs?: ReactNode; right?: ReactNod
             <div className="right">
                 <Link to="/" className="in-btn quiet sm">Projects</Link>
                 <Link to="/assembly" className="in-btn quiet sm">Assembly check</Link>
+                <Link to="/review" className="in-btn quiet sm">Robot review</Link>
                 {right}
                 <button className="in-btn quiet sm" onClick={logout} title={user?.email ? `Sign out ${user.email}` : "Sign out"} aria-label="Sign out">
                     <LogOut size={14} />

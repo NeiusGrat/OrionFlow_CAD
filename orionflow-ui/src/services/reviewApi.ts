@@ -248,7 +248,8 @@ export const deleteFile = (rid: string, fid: string) =>
 export const runReview = (rid: string) => requestJson<Job>(api(`/revisions/${rid}/run`), 'Starting the review', { method: 'POST' });
 export const getJob = (jid: string) => requestJson<Job>(api(`/jobs/${jid}`), 'Checking the job');
 export const getGraph = (rid: string) => requestJson<ModelGraph>(api(`/revisions/${rid}/graph`), 'Loading the model graph');
-export const createYubiDemo = () => requestJson<Project>(api('/demo/yubi'), 'Fetching YUBI from GitHub', { method: 'POST' });
+/** The caller's YUBI project: an instant copy of the prepared, fully-run demo (or a fresh import if none). */
+export const createYubiDemo = () => requestJson<Project>(api('/demo/yubi/open'), 'Opening the YUBI demo', { method: 'POST' });
 
 export async function fetchViewerGlb(rid: string): Promise<ArrayBuffer> {
     const res = await authedFetch(api(`/revisions/${rid}/viewer.glb`));

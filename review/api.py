@@ -38,6 +38,7 @@ Mounted by the main app at ``/review`` (routes below are relative to it), with
     POST   /api/revisions/{rid}/motion/sweeps    {key} -> sweep (runs on the worker pool)
     GET    /api/sweeps/{sid}                     progress, then the clearance curve
     POST   /api/demo/yubi                        the YUBI gripper, fetched at pinned tags
+    POST   /api/demo/yubi/open                   the caller's YUBI project (copy of the prepared showcase)
 """
 from __future__ import annotations
 
@@ -367,6 +368,29 @@ def demo_yubi(uid: str = Depends(owner)) -> dict:
         s.set_revision_status(r["id"], "queued")
         jobrunner.submit(job["id"], database_url())
     return get_project(p["id"], uid)
+
+
+def _showcase() -> dict | None:
+    """The prepared YUBI project (fully run, sim compared, a joint swept), owned by REVIEW_SHOWCASE_OWNER."""
+    who = os.environ.get("REVIEW_SHOWCASE_OWNER", "")
+    if not who:
+        return None
+    ps = [p for p in store().projects_for(who) if p["name"] == "YUBI Gripper"]
+    return ps[0] if ps else None
+
+
+@app.post("/api/demo/yubi/open")
+def demo_yubi_open(uid: str = Depends(owner)) -> dict:
+    """The caller's YUBI project: the existing one, else an instant copy of the prepared showcase, else a fresh
+    import from GitHub (which takes a few minutes to run)."""
+    mine = [p for p in store().projects_for(uid) if p["name"] == "YUBI Gripper"]
+    if mine:
+        return get_project(mine[0]["id"], uid)
+    src = _showcase()
+    if src is not None and src["owner_id"] != uid:
+        p = store().clone_project(src["id"], uid)
+        return get_project(p["id"], uid)
+    return demo_yubi(uid)
 
 
 # ------------------------------------------------------------------ findings --
