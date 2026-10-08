@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any
 import uuid
 
 from jose import jwt, JWTError
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.config import settings
 
@@ -162,7 +162,9 @@ def verify_token(token: str, token_type: str = "access") -> Optional[TokenPayloa
 
         return TokenPayload(**payload)
 
-    except JWTError:
+    except (JWTError, ValidationError):
+        # ValidationError: correctly signed but missing claims (an older or foreign token) is
+        # still not a valid token — a 401 for the caller, never a 500
         return None
 
 
