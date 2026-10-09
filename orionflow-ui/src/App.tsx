@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import Workspace from "./components/Studio/Workspace";
 import { useAuthStore } from "./store/authStore";
 import AuthPage from "./pages/AuthPage";
+import AuthHandoffPage from "./pages/AuthHandoffPage";
 import StartPage from "./pages/StartPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -121,6 +122,7 @@ export default function App() {
                 anyone has an account. */}
             <Route path="/start" element={<StartPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/handoff" element={<AuthHandoffPage />} />
             <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
             <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />

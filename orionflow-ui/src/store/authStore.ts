@@ -16,6 +16,10 @@ interface AuthState {
     login: (email: string, password: string) => Promise<boolean>;
     signup: (name: string, email: string, password: string) => Promise<boolean>;
     googleLogin: (credential: string) => Promise<boolean>;
+    /** Take over a session that was opened on another origin (the landing
+     *  page's sign-in form). The access token is checked against /me before
+     *  anything is stored. */
+    adoptTokens: (accessToken: string, refreshToken: string) => Promise<boolean>;
     /** New access token, or null when the session cannot be revived. Called
      *  by the HTTP layer on a 401; never call it directly from a component. */
     refresh: () => Promise<string | null>;
@@ -62,6 +66,17 @@ export const useAuthStore = create<AuthState>()(
                     user: { id: me.id, email: me.email, name: me.name },
                     accessToken: tokens.access_token,
                     refreshToken: tokens.refresh_token,
+                });
+                return true;
+            },
+
+            adoptTokens: async (accessToken: string, refreshToken: string) => {
+                const me = await apiMe(accessToken);
+                set({
+                    isAuthenticated: true,
+                    user: { id: me.id, email: me.email, name: me.name },
+                    accessToken,
+                    refreshToken,
                 });
                 return true;
             },

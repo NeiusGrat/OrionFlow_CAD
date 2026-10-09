@@ -349,6 +349,10 @@ class Settings(BaseSettings):
         default="noreply@orionflow.dev", description="From email address"
     )
     smtp_from_name: str = Field(default="OrionFlow", description="From name")
+    sales_notify_email: str = Field(
+        default="sahilmaniyar@orionflow.in",
+        description="Where new demo requests are announced",
+    )
 
     # -------------------------------------------------------------------------
     # Onshape Integration

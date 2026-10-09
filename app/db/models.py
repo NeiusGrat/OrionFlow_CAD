@@ -659,6 +659,36 @@ class WaitlistEntry(Base):
 
     __table_args__ = (Index("ix_waitlist_entries_created", "created_at"),)
 
+
+class DemoRequest(Base):
+    """
+    A "Book a demo" submission from the public landing page.
+
+    Unlike the waitlist, every submission is kept: the same person asking twice
+    is two requests, and the second one usually says something the first did
+    not. Insert-only from the public endpoint.
+    """
+
+    __tablename__ = "demo_requests"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    company: Mapped[str] = mapped_column(String(200), nullable=False)
+    role: Mapped[Optional[str]] = mapped_column(String(200))
+    message: Mapped[Optional[str]] = mapped_column(Text)
+    source: Mapped[Optional[str]] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (
+        Index("ix_demo_requests_created", "created_at"),
+        Index("ix_demo_requests_email", "email"),
+    )
+
     def __repr__(self) -> str:
         return f"<WaitlistEntry {self.email}>"
 
